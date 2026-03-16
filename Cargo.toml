@@ -1,13 +1,13 @@
 [package]
 name = "sqlglot-rust"
-version = "0.9.0"
+version = "0.9.1"
 edition = "2024"
 description = "A SQL parser, optimizer, and transpiler library inspired by Python's sqlglot"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/protegrity/sql-glot-rust"
 homepage = "https://github.com/protegrity/sql-glot-rust"
-documentation = "https://docs.rs/sqlglot-rust"
+documentation = "https://github.com/protegrity/sql-glot-rust/blob/master/docs/guide.md"
 keywords = ["sql", "parser", "transpiler", "ast", "database"]
 categories = ["parser-implementations", "database"]
 
