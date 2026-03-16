@@ -1100,3 +1100,48 @@ fn test_serde_roundtrip() {
 fn test_identity_truncate() {
     validate_identity("TRUNCATE TABLE t");
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SELECT TOP N (T-SQL) — Issue #1
+// ═════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_top_n_star_tsql_roundtrip() {
+    // Core bug: SELECT TOP 5 * was failing because * was consumed as multiply
+    validate_with_dialect(
+        "SELECT TOP 5 * FROM t",
+        "SELECT TOP 5 * FROM t",
+        Dialect::Tsql,
+        Dialect::Tsql,
+    );
+}
+
+#[test]
+fn test_top_n_columns_tsql_roundtrip() {
+    validate_with_dialect(
+        "SELECT TOP 10 id, name FROM t",
+        "SELECT TOP 10 id, name FROM t",
+        Dialect::Tsql,
+        Dialect::Tsql,
+    );
+}
+
+#[test]
+fn test_top_n_parenthesized_tsql_roundtrip() {
+    validate_with_dialect(
+        "SELECT TOP (5) * FROM t",
+        "SELECT TOP (5) * FROM t",
+        Dialect::Tsql,
+        Dialect::Tsql,
+    );
+}
+
+#[test]
+fn test_top_distinct_tsql_roundtrip() {
+    validate_with_dialect(
+        "SELECT DISTINCT TOP 3 id FROM t",
+        "SELECT DISTINCT TOP 3 id FROM t",
+        Dialect::Tsql,
+        Dialect::Tsql,
+    );
+}
