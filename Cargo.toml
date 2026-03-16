@@ -5,6 +5,9 @@ edition = "2024"
 description = "A SQL parser, optimizer, and transpiler library inspired by Python's sqlglot"
 license = "MIT"
 readme = "README.md"
+repository = "https://github.com/protegrity/sql-glot-rust"
+homepage = "https://github.com/protegrity/sql-glot-rust"
+documentation = "https://docs.rs/sqlglot-rust"
 keywords = ["sql", "parser", "transpiler", "ast", "database"]
 categories = ["parser-implementations", "database"]
 
