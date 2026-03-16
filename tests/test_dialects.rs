@@ -1910,3 +1910,62 @@ fn test_complex_select_identity_all_dialects() {
         }
     }
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SELECT TOP N — Cross-Dialect (Issue #1)
+// ═════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_top_tsql_to_postgres() {
+    // T-SQL TOP → Postgres LIMIT
+    assert_transpile(
+        "SELECT TOP 5 * FROM t",
+        "SELECT * FROM t LIMIT 5",
+        Dialect::Tsql,
+        Dialect::Postgres,
+    );
+}
+
+#[test]
+fn test_top_tsql_to_mysql() {
+    // T-SQL TOP → MySQL LIMIT
+    assert_transpile(
+        "SELECT TOP 10 id FROM t",
+        "SELECT id FROM t LIMIT 10",
+        Dialect::Tsql,
+        Dialect::Mysql,
+    );
+}
+
+#[test]
+fn test_top_tsql_star_to_duckdb() {
+    // The exact bug case: TOP N * should not confuse * with multiplication
+    assert_transpile(
+        "SELECT TOP 5 * FROM t",
+        "SELECT * FROM t LIMIT 5",
+        Dialect::Tsql,
+        Dialect::DuckDb,
+    );
+}
+
+#[test]
+fn test_limit_postgres_to_tsql() {
+    // Postgres LIMIT → T-SQL TOP (reverse direction)
+    assert_transpile(
+        "SELECT * FROM t LIMIT 10",
+        "SELECT TOP 10 * FROM t",
+        Dialect::Postgres,
+        Dialect::Tsql,
+    );
+}
+
+#[test]
+fn test_top_parenthesized_tsql_to_postgres() {
+    // Parenthesized TOP expr
+    assert_transpile(
+        "SELECT TOP (5) * FROM t",
+        "SELECT * FROM t LIMIT (5)",
+        Dialect::Tsql,
+        Dialect::Postgres,
+    );
+}

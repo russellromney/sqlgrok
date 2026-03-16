@@ -315,8 +315,11 @@ impl Parser {
         let distinct = self.match_token(TokenType::Distinct);
 
         // TOP N (SQL Server style)
+        // Use parse_primary() instead of parse_expr() to prevent the parser
+        // from consuming `*` (SELECT all columns) as a multiplication operator.
+        // This correctly handles: TOP 5, TOP 100, TOP (expr), TOP (@var)
         let top = if self.match_token(TokenType::Top) {
-            Some(Box::new(self.parse_expr()?))
+            Some(Box::new(self.parse_primary()?))
         } else {
             None
         };
