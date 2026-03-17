@@ -36,6 +36,11 @@ the AST, optimizing queries, and serializing results.
 - [Transforming the AST](#transforming-the-ast)
   - [Doubling Numeric Literals](#doubling-numeric-literals)
   - [Renaming Columns](#renaming-columns)
+- [Schema Management](#schema-management)
+  - [Creating a Schema](#creating-a-schema)
+  - [Querying the Schema](#querying-the-schema)
+  - [Dialect-Aware Normalization](#dialect-aware-normalization)
+  - [Building Schemas from Maps](#building-schemas-from-maps)
 - [Query Optimization](#query-optimization)
   - [Constant Folding](#constant-folding)
   - [Boolean Simplification](#boolean-simplification)
@@ -749,6 +754,100 @@ You can also call the pass directly:
 use sqlglot_rust::optimizer::unnest_subqueries::unnest_subqueries;
 
 let unnested = unnest_subqueries(stmt);
+```
+
+---
+
+## Schema Management
+
+The schema module provides a `Schema` trait and `MappingSchema` implementation
+for registering table metadata and performing dialect-aware lookups. This is the
+foundation for type annotation, column qualification, and lineage analysis.
+
+### Creating a Schema
+
+```rust
+use sqlglot_rust::schema::{MappingSchema, Schema};
+use sqlglot_rust::ast::DataType;
+use sqlglot_rust::Dialect;
+
+let mut schema = MappingSchema::new(Dialect::Postgres);
+
+// Register a table with column definitions
+schema.add_table(
+    &["public", "users"],
+    vec![
+        ("id".to_string(), DataType::Int),
+        ("name".to_string(), DataType::Varchar(Some(255))),
+        ("email".to_string(), DataType::Text),
+    ],
+).unwrap();
+
+// 3-level path: catalog.database.table
+schema.add_table(
+    &["prod", "analytics", "events"],
+    vec![
+        ("event_id".to_string(), DataType::BigInt),
+        ("payload".to_string(), DataType::Json),
+    ],
+).unwrap();
+```
+
+### Querying the Schema
+
+```rust
+// Get column names in definition order
+let cols = schema.column_names(&["public", "users"]).unwrap();
+assert_eq!(cols, vec!["id", "name", "email"]);
+
+// Look up a column's type
+let dt = schema.get_column_type(&["public", "users"], "id").unwrap();
+assert_eq!(dt, DataType::Int);
+
+// Check column existence
+assert!(schema.has_column(&["public", "users"], "email"));
+assert!(!schema.has_column(&["public", "users"], "age"));
+
+// Short-path lookup — searches all catalogs/databases
+assert!(schema.has_column(&["users"], "id"));
+```
+
+### Dialect-Aware Normalization
+
+Identifier lookups are normalized per the schema's dialect:
+
+```rust
+// Postgres: case-insensitive — these all match
+let mut pg = MappingSchema::new(Dialect::Postgres);
+pg.add_table(&["Users"], vec![("ID".to_string(), DataType::Int)]).unwrap();
+assert!(pg.has_column(&["users"], "id"));   // matches
+assert!(pg.has_column(&["USERS"], "ID"));   // matches
+
+// BigQuery: case-sensitive — exact match required
+let mut bq = MappingSchema::new(Dialect::BigQuery);
+bq.add_table(&["Users"], vec![("ID".to_string(), DataType::Int)]).unwrap();
+assert!(bq.has_column(&["Users"], "ID"));    // matches
+assert!(!bq.has_column(&["users"], "id"));   // does not match
+```
+
+### Building Schemas from Maps
+
+The `ensure_schema` helper builds a `MappingSchema` from nested `HashMap`s:
+
+```rust
+use std::collections::HashMap;
+use sqlglot_rust::schema::ensure_schema;
+use sqlglot_rust::ast::DataType;
+use sqlglot_rust::Dialect;
+
+let mut tables = HashMap::new();
+let mut cols = HashMap::new();
+cols.insert("id".to_string(), DataType::Int);
+cols.insert("name".to_string(), DataType::Text);
+tables.insert("users".to_string(), cols);
+
+let schema = ensure_schema(tables, Dialect::Postgres);
+assert!(schema.has_column(&["users"], "id"));
 ```
 
 ---

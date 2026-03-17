@@ -10,6 +10,7 @@ A SQL parser, optimizer, and transpiler library written in Rust, inspired by Pyt
 - **LIMIT / TOP / FETCH FIRST** transpilation across dialects
 - **Quoted identifier** preservation and cross-dialect conversion (`"id"` ↔ `` `id` `` ↔ `[id]`)
 - **Optimize** SQL queries (constant folding, boolean simplification, subquery unnesting)
+- **Schema management** — dialect-aware table/column registration and type lookup
 - **AST traversal** — walk, find, transform expressions
 - CTEs, subqueries, set operations (UNION / INTERSECT / EXCEPT)
 - Window functions with frames and filters
@@ -195,6 +196,7 @@ src/
 ├── generator/    # SQL code generator
 ├── dialects/     # 30 dialect definitions with transform rules
 ├── optimizer/    # Query optimization (constant folding, boolean simplification, subquery unnesting)
+├── schema/       # Schema management (MappingSchema, dialect-aware lookups)
 ├── errors/       # Error types
 └── lib.rs        # Public API (parse, generate, transpile)
 ```

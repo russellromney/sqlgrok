@@ -1,4 +1,5 @@
 use sqlglot_rust::{generate, parse, transpile, Dialect};
+use sqlglot_rust::schema::{MappingSchema, Schema, SchemaError, ensure_schema};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Basic roundtrip tests
@@ -288,4 +289,131 @@ fn test_find_tables() {
     .unwrap();
     let tables = sqlglot_rust::ast::find_tables(&ast);
     assert_eq!(tables.len(), 2);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Schema system integration tests
+// ═══════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_schema_from_create_table() {
+    // Parse a CREATE TABLE and use it to populate a schema
+    let sql = "CREATE TABLE products (id INT, name VARCHAR(100), price DECIMAL(10, 2), active BOOLEAN)";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+
+    let mut schema = MappingSchema::new(Dialect::Ansi);
+
+    if let sqlglot_rust::ast::Statement::CreateTable(ct) = &ast {
+        let columns: Vec<(String, sqlglot_rust::ast::DataType)> = ct
+            .columns
+            .iter()
+            .map(|col| (col.name.clone(), col.data_type.clone()))
+            .collect();
+        schema.add_table(&[&ct.table.name], columns).unwrap();
+    }
+
+    assert_eq!(
+        schema.column_names(&["products"]).unwrap(),
+        vec!["id", "name", "price", "active"]
+    );
+    assert_eq!(
+        schema.get_column_type(&["products"], "price").unwrap(),
+        sqlglot_rust::ast::DataType::Decimal {
+            precision: Some(10),
+            scale: Some(2)
+        }
+    );
+    assert!(schema.has_column(&["products"], "active"));
+    assert!(!schema.has_column(&["products"], "nonexistent"));
+}
+
+#[test]
+fn test_schema_validates_query_columns() {
+    // Build a schema and verify that query columns can be validated
+    let mut schema = MappingSchema::new(Dialect::Postgres);
+    schema
+        .add_table(
+            &["users"],
+            vec![
+                ("id".into(), sqlglot_rust::ast::DataType::Int),
+                ("name".into(), sqlglot_rust::ast::DataType::Text),
+                ("email".into(), sqlglot_rust::ast::DataType::Text),
+            ],
+        )
+        .unwrap();
+
+    let ast = parse("SELECT id, name, email FROM users WHERE id > 10", Dialect::Postgres).unwrap();
+    if let sqlglot_rust::ast::Statement::Select(sel) = &ast {
+        // Verify all selected columns exist in schema
+        for item in &sel.columns {
+            if let sqlglot_rust::ast::SelectItem::Expr {
+                expr: sqlglot_rust::ast::Expr::Column { name, .. },
+                ..
+            } = item
+            {
+                assert!(
+                    schema.has_column(&["users"], name),
+                    "Column {name} should exist in schema"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn test_schema_cross_dialect_normalization() {
+    use std::collections::HashMap;
+
+    // Build schema with ensure_schema helper
+    let mut tables = HashMap::new();
+    let mut cols = HashMap::new();
+    cols.insert("UserId".to_string(), sqlglot_rust::ast::DataType::Int);
+    cols.insert("UserName".to_string(), sqlglot_rust::ast::DataType::Text);
+    tables.insert("UserAccounts".to_string(), cols);
+
+    // Postgres: case-insensitive
+    let pg_schema = ensure_schema(tables.clone(), Dialect::Postgres);
+    assert!(pg_schema.has_column(&["useraccounts"], "userid"));
+    assert!(pg_schema.has_column(&["USERACCOUNTS"], "USERNAME"));
+
+    // BigQuery: case-sensitive
+    let bq_schema = ensure_schema(tables, Dialect::BigQuery);
+    assert!(bq_schema.has_column(&["UserAccounts"], "UserId"));
+    assert!(!bq_schema.has_column(&["useraccounts"], "userid"));
+}
+
+#[test]
+fn test_schema_duplicate_and_replace() {
+    let mut schema = MappingSchema::new(Dialect::Ansi);
+    schema
+        .add_table(&["t"], vec![("a".into(), sqlglot_rust::ast::DataType::Int)])
+        .unwrap();
+
+    // Duplicate should fail
+    let result = schema.add_table(&["t"], vec![("b".into(), sqlglot_rust::ast::DataType::Text)]);
+    assert!(matches!(result, Err(SchemaError::DuplicateTable(_))));
+
+    // Replace should succeed
+    schema
+        .replace_table(&["t"], vec![("b".into(), sqlglot_rust::ast::DataType::Text)])
+        .unwrap();
+    assert!(schema.has_column(&["t"], "b"));
+    assert!(!schema.has_column(&["t"], "a"));
+}
+
+#[test]
+fn test_schema_udf_types() {
+    let mut schema = MappingSchema::new(Dialect::Ansi);
+    schema.add_udf("calculate_score", sqlglot_rust::ast::DataType::Double);
+    schema.add_udf("format_name", sqlglot_rust::ast::DataType::Text);
+
+    assert_eq!(
+        schema.get_udf_type("calculate_score").unwrap(),
+        &sqlglot_rust::ast::DataType::Double,
+    );
+    // Case-insensitive lookup in ANSI
+    assert_eq!(
+        schema.get_udf_type("CALCULATE_SCORE").unwrap(),
+        &sqlglot_rust::ast::DataType::Double,
+    );
 }
