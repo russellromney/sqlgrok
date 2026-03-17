@@ -36,6 +36,7 @@ pub mod errors;
 pub mod generator;
 pub mod optimizer;
 pub mod parser;
+pub mod schema;
 pub mod tokens;
 
 pub use ast::{Expr, QuoteStyle, Statement};

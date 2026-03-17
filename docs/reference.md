@@ -47,6 +47,11 @@ Complete type and function reference for **sqlglot-rust**.
   - [Identifier Quote Styles by Dialect](#identifier-quote-styles-by-dialect)
 - [Error Types](#error-types)
 - [Free Functions (ast module)](#free-functions-ast-module)
+- [Schema System](#schema-system)
+  - [Schema Trait](#schema-trait)
+  - [MappingSchema](#mappingschema)
+  - [Helper Functions](#helper-functions)
+  - [SchemaError](#schemaerror)
 - [Optimizer](#optimizer)
 
 ---
@@ -943,6 +948,66 @@ assert_eq!(tables.len(), 2);
 assert_eq!(tables[0].name, "t1");
 assert_eq!(tables[1].name, "t2");
 ```
+
+---
+
+## Schema System
+
+Accessed via `use sqlglot_rust::schema::*`.
+
+The schema module provides dialect-aware table and column metadata management, serving as the foundation for type annotation, column qualification, and lineage analysis.
+
+### Schema Trait
+
+| Method | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `add_table` | `(&mut self, table_path: &[&str], columns: Vec<(String, DataType)>)` | `Result<(), SchemaError>` | Register a table with column definitions |
+| `column_names` | `(&self, table_path: &[&str])` | `Result<Vec<String>, SchemaError>` | Get column names in definition order |
+| `get_column_type` | `(&self, table_path: &[&str], column: &str)` | `Result<DataType, SchemaError>` | Get the data type of a column |
+| `has_column` | `(&self, table_path: &[&str], column: &str)` | `bool` | Check if a column exists |
+| `dialect` | `(&self)` | `Dialect` | Get the configured dialect |
+
+### MappingSchema
+
+In-memory implementation of `Schema` with 3-level nesting: `catalog → database → table → column → type`.
+
+| Method | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `new` | `(dialect: Dialect)` | `MappingSchema` | Create an empty schema for the given dialect |
+| `replace_table` | `(&mut self, table_path: &[&str], columns: Vec<(String, DataType)>)` | `Result<(), SchemaError>` | Add or overwrite a table |
+| `remove_table` | `(&mut self, table_path: &[&str])` | `Result<bool, SchemaError>` | Remove a table (returns true if existed) |
+| `add_udf` | `(&mut self, name: &str, return_type: DataType)` | `()` | Register a UDF with its return type |
+| `get_udf_type` | `(&self, name: &str)` | `Option<&DataType>` | Look up a UDF's return type |
+| `table_names` | `(&self)` | `Vec<(String, String, String)>` | List all registered tables |
+
+**Table path formats:**
+
+| Path | Example | Resolved as |
+| --- | --- | --- |
+| `&["table"]` | `&["users"]` | `"" → "" → "users"` |
+| `&["db", "table"]` | `&["public", "users"]` | `"" → "public" → "users"` |
+| `&["catalog", "db", "table"]` | `&["prod", "public", "users"]` | `"prod" → "public" → "users"` |
+
+**Identifier normalization:** Unquoted identifiers are lowercased for case-insensitive dialects (Postgres, MySQL, Snowflake, etc.) and kept as-is for case-sensitive dialects (BigQuery, Hive, Spark, Databricks).
+
+### Helper Functions
+
+| Function | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `ensure_schema` | `(tables: HashMap<String, HashMap<String, DataType>>, dialect: Dialect)` | `MappingSchema` | Build schema from `table → column → type` map |
+| `ensure_schema_nested` | `(catalog_map: CatalogMap, dialect: Dialect)` | `MappingSchema` | Build schema from `catalog → db → table → column → type` map |
+| `normalize_identifier` | `(name: &str, dialect: Dialect)` | `String` | Normalize an identifier per dialect rules |
+| `is_case_sensitive_dialect` | `(dialect: Dialect)` | `bool` | Check if a dialect is case-sensitive |
+
+### SchemaError
+
+| Variant | Description |
+| --- | --- |
+| `TableNotFound(String)` | The referenced table was not found |
+| `ColumnNotFound { table, column }` | The column was not found in the table |
+| `DuplicateTable(String)` | Table is already registered (use `replace_table` instead) |
+
+`SchemaError` implements `From<SchemaError> for SqlglotError`.
 
 ---
 
