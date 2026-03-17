@@ -21,7 +21,7 @@ Add `sqlglot-rust` to your project's `Cargo.toml`:
 
 ```toml
 [dependencies]
-sqlglot-rust = "0.9.8"
+sqlglot-rust = "0.9.9"
 ```
 
 Then run:
