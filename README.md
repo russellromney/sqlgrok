@@ -276,8 +276,34 @@ The `VERSION` parameter is required and must be a full semantic version (e.g. `1
 
 ## Acknowledgements
 
-Inspired by [sqlglot](https://github.com/tobymao/sqlglot) by Toby Mao.
+This project is inspired by and derived from [sqlglot](https://github.com/tobymao/sqlglot) by Toby Mao, licensed under the MIT License. The original sqlglot license is included in this repository as required by the MIT License terms. A copy of the original license can also be found [here](https://github.com/tobilg/polyglot/tree/main/licenses).
 
 ## License
 
-MIT
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+This project includes code and concepts derived from [sqlglot](https://github.com/tobymao/sqlglot), which is also licensed under the MIT License. The original copyright notice and permission notice are reproduced below:
+
+```
+MIT License
+
+Copyright (c) 2023 Toby Mao
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
