@@ -203,6 +203,12 @@ pub enum TokenType {
     // Existence checks
     Qualify,
 
+    // Grouped set operations
+    Cube,
+    Rollup,
+    Grouping,
+    Sets,
+
     // Logical
     Xor,
 

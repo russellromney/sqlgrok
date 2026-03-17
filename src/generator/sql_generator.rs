@@ -1266,6 +1266,25 @@ impl Generator {
             Expr::Default => self.write_keyword("DEFAULT"),
             Expr::Wildcard | Expr::Star => self.write("*"),
 
+            Expr::Cube { exprs } => {
+                self.write_keyword("CUBE");
+                self.write("(");
+                self.gen_expr_list(exprs);
+                self.write(")");
+            }
+            Expr::Rollup { exprs } => {
+                self.write_keyword("ROLLUP");
+                self.write("(");
+                self.gen_expr_list(exprs);
+                self.write(")");
+            }
+            Expr::GroupingSets { sets } => {
+                self.write_keyword("GROUPING SETS");
+                self.write("(");
+                self.gen_expr_list(sets);
+                self.write(")");
+            }
+
             Expr::BinaryOp { left, op, right } => {
                 self.gen_expr(left);
                 self.write(Self::binary_op_str(op));

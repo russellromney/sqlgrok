@@ -591,6 +591,11 @@ fn walk_expr_for_subqueries(expr: &Expr, scope: &mut Scope) {
         Expr::Extract { expr: inner, .. } | Expr::Interval { value: inner, .. } => {
             collect_subqueries_from_expr(inner, scope);
         }
+        Expr::Cube { exprs } | Expr::Rollup { exprs } | Expr::GroupingSets { sets: exprs } => {
+            for item in exprs {
+                collect_subqueries_from_expr(item, scope);
+            }
+        }
         // Leaf nodes — nothing to do
         _ => {}
     }

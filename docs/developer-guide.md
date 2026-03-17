@@ -106,14 +106,14 @@ SELECT 1; SELECT 2; INSERT INTO t VALUES (1)
 
 | Category | Examples |
 | --- | --- |
-| **SELECT** | `SELECT`, `JOIN`, `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT`, `OFFSET`, `FETCH FIRST`, `DISTINCT`, `TOP`, `QUALIFY`, window functions |
+| **SELECT** | `SELECT`, `JOIN`, `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT`, `OFFSET`, `FETCH FIRST`, `DISTINCT`, `TOP`, `QUALIFY`, `GROUPING SETS`, `CUBE`, `ROLLUP`, window functions |
 | **CTEs** | `WITH ... AS (...)`, `WITH RECURSIVE ...` |
 | **Set Operations** | `UNION`, `UNION ALL`, `INTERSECT`, `EXCEPT` |
 | **DML** | `INSERT INTO ... VALUES`, `INSERT INTO ... SELECT`, `UPDATE ... SET`, `DELETE FROM` |
 | **DDL** | `CREATE TABLE`, `CREATE TABLE ... AS SELECT`, `ALTER TABLE` (add/drop/rename column, add/drop constraint), `DROP TABLE`, `CREATE VIEW`, `DROP VIEW`, `TRUNCATE` |
 | **Transaction** | `BEGIN`, `COMMIT`, `ROLLBACK`, `SAVEPOINT`, `RELEASE SAVEPOINT`, `ROLLBACK TO` |
 | **Other** | `EXPLAIN [ANALYZE]`, `USE database` |
-| **Expressions** | Binary/unary ops, `BETWEEN`, `IN`, `ANY`/`ALL`/`SOME`, `LIKE`, `ILIKE`, `CASE`, `CAST`, `TRY_CAST`, `EXTRACT`, `EXISTS`, `COALESCE`, `IF`, `NULLIF`, `INTERVAL`, window functions, subqueries, array literals, JSON access (`->`, `->>`), parameters (`$1`, `?`, `:name`), lambdas |
+| **Expressions** | Binary/unary ops, `BETWEEN`, `IN`, `ANY`/`ALL`/`SOME`, `LIKE`, `ILIKE`, `CASE`, `CAST`, `TRY_CAST`, `EXTRACT`, `EXISTS`, `COALESCE`, `IF`, `NULLIF`, `INTERVAL`, `GROUPING()`, window functions, subqueries, array literals, JSON access (`->`, `->>`), parameters (`$1`, `?`, `:name`), lambdas |
 
 ---
 

@@ -441,6 +441,11 @@ fn annotate_children<S: Schema>(
                 annotate_expr(f, ctx, ann);
             }
         }
+        Expr::Cube { exprs } | Expr::Rollup { exprs } | Expr::GroupingSets { sets: exprs } => {
+            for item in exprs {
+                annotate_expr(item, ctx, ann);
+            }
+        }
         // Leaf nodes — no children to annotate
         Expr::Column { .. }
         | Expr::Number(_)
@@ -626,7 +631,10 @@ fn infer_type<S: Schema>(
         | Expr::QualifiedWildcard { .. }
         | Expr::Parameter(_)
         | Expr::Lambda { .. }
-        | Expr::Default => None,
+        | Expr::Default
+        | Expr::Cube { .. }
+        | Expr::Rollup { .. }
+        | Expr::GroupingSets { .. } => None,
     }
 }
 

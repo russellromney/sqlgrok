@@ -427,6 +427,12 @@ pub enum Expr {
     },
     /// `DEFAULT` keyword in INSERT/UPDATE contexts
     Default,
+    /// `CUBE(a, b, ...)` in GROUP BY clause
+    Cube { exprs: Vec<Expr> },
+    /// `ROLLUP(a, b, ...)` in GROUP BY clause
+    Rollup { exprs: Vec<Expr> },
+    /// `GROUPING SETS ((a, b), (c), ...)` in GROUP BY clause
+    GroupingSets { sets: Vec<Expr> },
     /// A typed function expression with semantic awareness.
     /// Enables per-function, per-dialect code generation and transpilation.
     TypedFunction {
@@ -1744,6 +1750,16 @@ impl Expr {
                     f.walk(visitor);
                 }
             }
+            Expr::Cube { exprs } | Expr::Rollup { exprs } => {
+                for item in exprs {
+                    item.walk(visitor);
+                }
+            }
+            Expr::GroupingSets { sets } => {
+                for item in sets {
+                    item.walk(visitor);
+                }
+            }
             // Leaf nodes
             Expr::Column { .. }
             | Expr::Number(_)
@@ -1987,6 +2003,15 @@ impl Expr {
             Expr::Lambda { params, body } => Expr::Lambda {
                 params,
                 body: Box::new(body.transform(func)),
+            },
+            Expr::Cube { exprs } => Expr::Cube {
+                exprs: exprs.into_iter().map(|e| e.transform(func)).collect(),
+            },
+            Expr::Rollup { exprs } => Expr::Rollup {
+                exprs: exprs.into_iter().map(|e| e.transform(func)).collect(),
+            },
+            Expr::GroupingSets { sets } => Expr::GroupingSets {
+                sets: sets.into_iter().map(|e| e.transform(func)).collect(),
             },
             other => other,
         };

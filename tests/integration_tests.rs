@@ -428,3 +428,168 @@ fn test_schema_udf_types() {
         &sqlglot_rust::ast::DataType::Double,
     );
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// GROUPING SETS, CUBE, ROLLUP tests
+// ═══════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_roundtrip_group_by_cube() {
+    let sql = "SELECT a, b, SUM(c) FROM t GROUP BY CUBE(a, b)";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_group_by_rollup() {
+    let sql = "SELECT a, b, SUM(c) FROM t GROUP BY ROLLUP(a, b)";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_group_by_grouping_sets() {
+    let sql = "SELECT a, b, SUM(c) FROM t GROUP BY GROUPING SETS((a, b), (a), ())";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_group_by_cube_single_column() {
+    let sql = "SELECT a, COUNT(*) FROM t GROUP BY CUBE(a)";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_group_by_rollup_three_columns() {
+    let sql = "SELECT a, b, c, SUM(d) FROM t GROUP BY ROLLUP(a, b, c)";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_grouping_sets_with_empty_set() {
+    let sql = "SELECT a, SUM(b) FROM t GROUP BY GROUPING SETS((a), ())";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_nested_grouping_sets_with_rollup() {
+    let sql = "SELECT a, b, c, SUM(d) FROM t GROUP BY GROUPING SETS(ROLLUP(a, b), CUBE(c))";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_mixed_group_by_and_cube() {
+    let sql = "SELECT a, b, c, SUM(d) FROM t GROUP BY a, CUBE(b, c)";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_mixed_group_by_and_rollup() {
+    let sql = "SELECT a, b, c, SUM(d) FROM t GROUP BY a, ROLLUP(b, c)";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_grouping_function() {
+    let sql = "SELECT a, b, GROUPING(a), SUM(c) FROM t GROUP BY CUBE(a, b)";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_grouping_function_multiple_args() {
+    let sql = "SELECT a, b, GROUPING(a, b), SUM(c) FROM t GROUP BY CUBE(a, b)";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_cube_with_having() {
+    let sql = "SELECT a, b, SUM(c) FROM t GROUP BY CUBE(a, b) HAVING SUM(c) > 10";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_rollup_with_order_by() {
+    let sql = "SELECT a, b, SUM(c) FROM t GROUP BY ROLLUP(a, b) ORDER BY a";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_transpile_cube_across_dialects() {
+    let sql = "SELECT a, b, SUM(c) FROM t GROUP BY CUBE(a, b)";
+    for dialect in &[
+        Dialect::Postgres,
+        Dialect::Snowflake,
+        Dialect::BigQuery,
+        Dialect::Spark,
+    ] {
+        let result = transpile(sql, Dialect::Ansi, *dialect).unwrap();
+        assert!(
+            result.contains("CUBE"),
+            "CUBE should be present in {:?} output: {}",
+            dialect,
+            result
+        );
+    }
+}
+
+#[test]
+fn test_transpile_rollup_across_dialects() {
+    let sql = "SELECT a, b, SUM(c) FROM t GROUP BY ROLLUP(a, b)";
+    for dialect in &[
+        Dialect::Postgres,
+        Dialect::Snowflake,
+        Dialect::BigQuery,
+        Dialect::Spark,
+    ] {
+        let result = transpile(sql, Dialect::Ansi, *dialect).unwrap();
+        assert!(
+            result.contains("ROLLUP"),
+            "ROLLUP should be present in {:?} output: {}",
+            dialect,
+            result
+        );
+    }
+}
+
+#[test]
+fn test_transpile_grouping_sets_across_dialects() {
+    let sql = "SELECT a, b, SUM(c) FROM t GROUP BY GROUPING SETS((a, b), (a), ())";
+    for dialect in &[
+        Dialect::Postgres,
+        Dialect::Snowflake,
+        Dialect::BigQuery,
+        Dialect::Spark,
+    ] {
+        let result = transpile(sql, Dialect::Ansi, *dialect).unwrap();
+        assert!(
+            result.contains("GROUPING SETS"),
+            "GROUPING SETS should be present in {:?} output: {}",
+            dialect,
+            result
+        );
+    }
+}

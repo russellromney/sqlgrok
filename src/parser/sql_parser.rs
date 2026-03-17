@@ -112,6 +112,10 @@ impl Parser {
                 | TokenType::Left
                 | TokenType::Right
                 | TokenType::Replace
+                | TokenType::Cube
+                | TokenType::Rollup
+                | TokenType::Grouping
+                | TokenType::Sets
         )
     }
 
@@ -347,7 +351,7 @@ impl Parser {
 
         let group_by = if self.match_token(TokenType::Group) {
             self.expect(TokenType::By)?;
-            self.parse_expr_list()?
+            self.parse_group_by_list()?
         } else {
             vec![]
         };
@@ -774,6 +778,143 @@ impl Parser {
             exprs.push(self.parse_expr()?);
         }
         Ok(exprs)
+    }
+
+    /// Parse a GROUP BY list, which may contain regular expressions,
+    /// CUBE(...), ROLLUP(...), and GROUPING SETS(...).
+    fn parse_group_by_list(&mut self) -> Result<Vec<Expr>> {
+        let mut items = vec![self.parse_group_by_item()?];
+        while self.match_token(TokenType::Comma) {
+            items.push(self.parse_group_by_item()?);
+        }
+        Ok(items)
+    }
+
+    /// Parse a single GROUP BY item: a CUBE, ROLLUP, GROUPING SETS, or regular expression.
+    fn parse_group_by_item(&mut self) -> Result<Expr> {
+        match self.peek_type() {
+            TokenType::Cube => {
+                self.advance();
+                self.expect(TokenType::LParen)?;
+                let exprs = if self.peek_type() == &TokenType::RParen {
+                    vec![]
+                } else {
+                    self.parse_group_by_element_list()?
+                };
+                self.expect(TokenType::RParen)?;
+                Ok(Expr::Cube { exprs })
+            }
+            TokenType::Rollup => {
+                self.advance();
+                self.expect(TokenType::LParen)?;
+                let exprs = if self.peek_type() == &TokenType::RParen {
+                    vec![]
+                } else {
+                    self.parse_group_by_element_list()?
+                };
+                self.expect(TokenType::RParen)?;
+                Ok(Expr::Rollup { exprs })
+            }
+            TokenType::Grouping => {
+                // Could be GROUPING SETS or GROUPING() function
+                let saved = self.pos;
+                self.advance();
+                if self.peek_type() == &TokenType::Sets {
+                    // GROUPING SETS (...)
+                    self.advance();
+                    self.expect(TokenType::LParen)?;
+                    let sets = self.parse_grouping_sets_elements()?;
+                    self.expect(TokenType::RParen)?;
+                    Ok(Expr::GroupingSets { sets })
+                } else {
+                    // It's the GROUPING() function, backtrack and parse as expression
+                    self.pos = saved;
+                    self.parse_expr()
+                }
+            }
+            _ => self.parse_expr(),
+        }
+    }
+
+    /// Parse elements inside CUBE(...) or ROLLUP(...).
+    /// Each element can be a single expression or a parenthesized tuple of expressions.
+    fn parse_group_by_element_list(&mut self) -> Result<Vec<Expr>> {
+        let mut items = vec![self.parse_group_by_element()?];
+        while self.match_token(TokenType::Comma) {
+            items.push(self.parse_group_by_element()?);
+        }
+        Ok(items)
+    }
+
+    /// Parse a single element inside CUBE/ROLLUP: either `expr` or `(expr, expr, ...)`.
+    fn parse_group_by_element(&mut self) -> Result<Expr> {
+        if self.peek_type() == &TokenType::LParen {
+            self.advance();
+            let exprs = self.parse_expr_list()?;
+            self.expect(TokenType::RParen)?;
+            if exprs.len() == 1 {
+                Ok(Expr::Nested(Box::new(exprs.into_iter().next().unwrap())))
+            } else {
+                Ok(Expr::Tuple(exprs))
+            }
+        } else {
+            self.parse_expr()
+        }
+    }
+
+    /// Parse elements inside GROUPING SETS (...).
+    /// Each element can be: (), (expr, ...), CUBE(...), ROLLUP(...), or a single expr.
+    fn parse_grouping_sets_elements(&mut self) -> Result<Vec<Expr>> {
+        let mut items = vec![self.parse_grouping_sets_element()?];
+        while self.match_token(TokenType::Comma) {
+            items.push(self.parse_grouping_sets_element()?);
+        }
+        Ok(items)
+    }
+
+    /// Parse a single GROUPING SETS element.
+    fn parse_grouping_sets_element(&mut self) -> Result<Expr> {
+        match self.peek_type() {
+            TokenType::Cube => {
+                self.advance();
+                self.expect(TokenType::LParen)?;
+                let exprs = if self.peek_type() == &TokenType::RParen {
+                    vec![]
+                } else {
+                    self.parse_group_by_element_list()?
+                };
+                self.expect(TokenType::RParen)?;
+                Ok(Expr::Cube { exprs })
+            }
+            TokenType::Rollup => {
+                self.advance();
+                self.expect(TokenType::LParen)?;
+                let exprs = if self.peek_type() == &TokenType::RParen {
+                    vec![]
+                } else {
+                    self.parse_group_by_element_list()?
+                };
+                self.expect(TokenType::RParen)?;
+                Ok(Expr::Rollup { exprs })
+            }
+            TokenType::LParen => {
+                self.advance();
+                if self.peek_type() == &TokenType::RParen {
+                    // Empty grouping set: ()
+                    self.advance();
+                    Ok(Expr::Tuple(vec![]))
+                } else {
+                    let exprs = self.parse_expr_list()?;
+                    self.expect(TokenType::RParen)?;
+                    if exprs.len() == 1 {
+                        Ok(Expr::Nested(Box::new(exprs.into_iter().next().unwrap())))
+                    } else {
+                        Ok(Expr::Tuple(exprs))
+                    }
+                }
+            }
+            _ => self.parse_expr(),
+        }
     }
 
     // ── INSERT ──────────────────────────────────────────────────────

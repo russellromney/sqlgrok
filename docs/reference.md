@@ -335,6 +335,9 @@ pub struct AlterTableStatement {
 | `JsonAccess` | `{ expr, path, as_text }` | `data->'key'`, `data->>'key'` |
 | `Lambda` | `{ params, body }` | `x -> x + 1` |
 | `Default` | — | `DEFAULT` |
+| `Cube` | `{ exprs }` | `CUBE(a, b)` |
+| `Rollup` | `{ exprs }` | `ROLLUP(a, b)` |
+| `GroupingSets` | `{ sets }` | `GROUPING SETS((a, b), (a), ())` |
 
 ### Expr Methods
 
