@@ -1,15 +1,17 @@
-/// Query optimization passes.
-///
-/// Inspired by Python sqlglot's optimizer module. Currently implements:
-/// - Constant folding (e.g., `1 + 2` → `3`)
-/// - Boolean simplification (e.g., `TRUE AND x` → `x`)
-/// - Dead predicate elimination (e.g., `WHERE TRUE`)
-///
-/// Future optimizations:
-/// - Predicate pushdown
-/// - Join reordering
-/// - Column pruning
-/// - Subquery unnesting
+//! Query optimization passes.
+//!
+//! Inspired by Python sqlglot's optimizer module. Currently implements:
+//! - Constant folding (e.g., `1 + 2` → `3`)
+//! - Boolean simplification (e.g., `TRUE AND x` → `x`)
+//! - Dead predicate elimination (e.g., `WHERE TRUE`)
+//! - Subquery unnesting / decorrelation (EXISTS, IN → JOINs)
+//!
+//! Future optimizations:
+//! - Predicate pushdown
+//! - Join reordering
+//! - Column pruning
+
+pub mod unnest_subqueries;
 
 use crate::ast::*;
 use crate::errors::Result;
@@ -19,6 +21,7 @@ pub fn optimize(statement: Statement) -> Result<Statement> {
     let mut stmt = statement;
     stmt = fold_constants(stmt);
     stmt = simplify_booleans(stmt);
+    stmt = unnest_subqueries::unnest_subqueries(stmt);
     Ok(stmt)
 }
 
