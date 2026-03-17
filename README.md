@@ -13,7 +13,7 @@ A SQL parser, optimizer, and transpiler library written in Rust, inspired by Pyt
 - **AST traversal** — walk, find, transform expressions
 - CTEs, subqueries, set operations (UNION / INTERSECT / EXCEPT)
 - Window functions with frames and filters
-- CAST, TRY_CAST, EXTRACT, INTERVAL, EXISTS
+- CAST, TRY_CAST, EXTRACT, INTERVAL, EXISTS, ANY/ALL/SOME
 - Full DDL support (CREATE TABLE, ALTER TABLE, DROP TABLE, CREATE VIEW, etc.)
 - Serde serialization for AST nodes
 

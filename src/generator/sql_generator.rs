@@ -1181,6 +1181,33 @@ impl Generator {
     // Expressions
     // ══════════════════════════════════════════════════════════════
 
+    fn binary_op_str(op: &BinaryOperator) -> &'static str {
+        match op {
+            BinaryOperator::Plus => " + ",
+            BinaryOperator::Minus => " - ",
+            BinaryOperator::Multiply => " * ",
+            BinaryOperator::Divide => " / ",
+            BinaryOperator::Modulo => " % ",
+            BinaryOperator::Eq => " = ",
+            BinaryOperator::Neq => " <> ",
+            BinaryOperator::Lt => " < ",
+            BinaryOperator::Gt => " > ",
+            BinaryOperator::LtEq => " <= ",
+            BinaryOperator::GtEq => " >= ",
+            BinaryOperator::And => " AND ",
+            BinaryOperator::Or => " OR ",
+            BinaryOperator::Xor => " XOR ",
+            BinaryOperator::Concat => " || ",
+            BinaryOperator::BitwiseAnd => " & ",
+            BinaryOperator::BitwiseOr => " | ",
+            BinaryOperator::BitwiseXor => " ^ ",
+            BinaryOperator::ShiftLeft => " << ",
+            BinaryOperator::ShiftRight => " >> ",
+            BinaryOperator::Arrow => " -> ",
+            BinaryOperator::DoubleArrow => " ->> ",
+        }
+    }
+
     fn gen_expr_list(&mut self, exprs: &[Expr]) {
         for (i, expr) in exprs.iter().enumerate() {
             if i > 0 {
@@ -1212,32 +1239,32 @@ impl Generator {
 
             Expr::BinaryOp { left, op, right } => {
                 self.gen_expr(left);
-                let op_str = match op {
-                    BinaryOperator::Plus => " + ",
-                    BinaryOperator::Minus => " - ",
-                    BinaryOperator::Multiply => " * ",
-                    BinaryOperator::Divide => " / ",
-                    BinaryOperator::Modulo => " % ",
-                    BinaryOperator::Eq => " = ",
-                    BinaryOperator::Neq => " <> ",
-                    BinaryOperator::Lt => " < ",
-                    BinaryOperator::Gt => " > ",
-                    BinaryOperator::LtEq => " <= ",
-                    BinaryOperator::GtEq => " >= ",
-                    BinaryOperator::And => " AND ",
-                    BinaryOperator::Or => " OR ",
-                    BinaryOperator::Xor => " XOR ",
-                    BinaryOperator::Concat => " || ",
-                    BinaryOperator::BitwiseAnd => " & ",
-                    BinaryOperator::BitwiseOr => " | ",
-                    BinaryOperator::BitwiseXor => " ^ ",
-                    BinaryOperator::ShiftLeft => " << ",
-                    BinaryOperator::ShiftRight => " >> ",
-                    BinaryOperator::Arrow => " -> ",
-                    BinaryOperator::DoubleArrow => " ->> ",
-                };
-                self.write(op_str);
+                self.write(Self::binary_op_str(op));
                 self.gen_expr(right);
+            }
+            Expr::AnyOp { expr, op, right } => {
+                self.gen_expr(expr);
+                self.write(Self::binary_op_str(op));
+                self.write_keyword("ANY");
+                self.write("(");
+                if let Expr::Subquery(query) = right.as_ref() {
+                    self.gen_statement(query);
+                } else {
+                    self.gen_expr(right);
+                }
+                self.write(")");
+            }
+            Expr::AllOp { expr, op, right } => {
+                self.gen_expr(expr);
+                self.write(Self::binary_op_str(op));
+                self.write_keyword("ALL");
+                self.write("(");
+                if let Expr::Subquery(query) = right.as_ref() {
+                    self.gen_statement(query);
+                } else {
+                    self.gen_expr(right);
+                }
+                self.write(")");
             }
             Expr::UnaryOp { op, expr } => {
                 let op_str = match op {

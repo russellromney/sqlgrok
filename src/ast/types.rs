@@ -312,6 +312,18 @@ pub enum Expr {
         subquery: Box<Statement>,
         negated: bool,
     },
+    /// `expr op ANY(subexpr)` — PostgreSQL array/subquery comparison
+    AnyOp {
+        expr: Box<Expr>,
+        op: BinaryOperator,
+        right: Box<Expr>,
+    },
+    /// `expr op ALL(subexpr)` — PostgreSQL array/subquery comparison
+    AllOp {
+        expr: Box<Expr>,
+        op: BinaryOperator,
+        right: Box<Expr>,
+    },
     /// `expr IS [NOT] NULL`
     IsNull {
         expr: Box<Expr>,
@@ -845,6 +857,10 @@ impl Expr {
             }
             Expr::IsNull { expr, .. } => expr.walk(visitor),
             Expr::IsBool { expr, .. } => expr.walk(visitor),
+            Expr::AnyOp { expr, right, .. } | Expr::AllOp { expr, right, .. } => {
+                expr.walk(visitor);
+                right.walk(visitor);
+            }
             Expr::Like { expr, pattern, .. } | Expr::ILike { expr, pattern, .. } => {
                 expr.walk(visitor);
                 pattern.walk(visitor);
@@ -998,6 +1014,16 @@ impl Expr {
                 expr: Box::new(expr.transform(func)),
                 value,
                 negated,
+            },
+            Expr::AnyOp { expr, op, right } => Expr::AnyOp {
+                expr: Box::new(expr.transform(func)),
+                op,
+                right: Box::new(right.transform(func)),
+            },
+            Expr::AllOp { expr, op, right } => Expr::AllOp {
+                expr: Box::new(expr.transform(func)),
+                op,
+                right: Box::new(right.transform(func)),
             },
             other => other,
         };
