@@ -89,7 +89,14 @@ impl Tokenizer {
         ch
     }
 
-    fn make_token(&self, token_type: TokenType, value: impl Into<String>, start: usize, start_line: usize, start_col: usize) -> Token {
+    fn make_token(
+        &self,
+        token_type: TokenType,
+        value: impl Into<String>,
+        start: usize,
+        start_line: usize,
+        start_col: usize,
+    ) -> Token {
         Token::with_location(token_type, value, start, start_line, start_col)
     }
 
@@ -169,12 +176,26 @@ impl Tokenizer {
                     while self.peek().is_some_and(|c| c != '\n') {
                         value.push(self.advance().unwrap());
                     }
-                    Ok(self.make_token(TokenType::LineComment, value, start, start_line, start_col))
+                    Ok(
+                        self.make_token(
+                            TokenType::LineComment,
+                            value,
+                            start,
+                            start_line,
+                            start_col,
+                        ),
+                    )
                 } else if self.peek() == Some('>') {
                     self.advance();
                     if self.peek() == Some('>') {
                         self.advance();
-                        Ok(self.make_token(TokenType::DoubleArrow, "->>", start, start_line, start_col))
+                        Ok(self.make_token(
+                            TokenType::DoubleArrow,
+                            "->>",
+                            start,
+                            start_line,
+                            start_col,
+                        ))
                     } else {
                         Ok(self.make_token(TokenType::Arrow, "->", start, start_line, start_col))
                     }
@@ -210,7 +231,13 @@ impl Tokenizer {
                             }
                         }
                     }
-                    Ok(self.make_token(TokenType::BlockComment, value, start, start_line, start_col))
+                    Ok(self.make_token(
+                        TokenType::BlockComment,
+                        value,
+                        start,
+                        start_line,
+                        start_col,
+                    ))
                 } else {
                     Ok(self.make_token(TokenType::Slash, "/", start, start_line, start_col))
                 }
@@ -277,16 +304,36 @@ impl Tokenizer {
                     self.advance();
                     if self.peek() == Some('>') {
                         self.advance();
-                        Ok(self.make_token(TokenType::HashDoubleArrow, "#>>", start, start_line, start_col))
+                        Ok(self.make_token(
+                            TokenType::HashDoubleArrow,
+                            "#>>",
+                            start,
+                            start_line,
+                            start_col,
+                        ))
                     } else {
-                        Ok(self.make_token(TokenType::HashArrow, "#>", start, start_line, start_col))
+                        Ok(self.make_token(
+                            TokenType::HashArrow,
+                            "#>",
+                            start,
+                            start_line,
+                            start_col,
+                        ))
                     }
                 } else {
                     let mut value = String::from("#");
                     while self.peek().is_some_and(|c| c != '\n') {
                         value.push(self.advance().unwrap());
                     }
-                    Ok(self.make_token(TokenType::LineComment, value, start, start_line, start_col))
+                    Ok(
+                        self.make_token(
+                            TokenType::LineComment,
+                            value,
+                            start,
+                            start_line,
+                            start_col,
+                        ),
+                    )
                 }
             }
 
@@ -297,7 +344,9 @@ impl Tokenizer {
             c if c.is_ascii_digit() => self.read_number(start, start_line, start_col, c),
 
             // ── Identifiers and keywords ────────────────────────────
-            c if c.is_ascii_alphabetic() || c == '_' => self.read_identifier(start, start_line, start_col, c),
+            c if c.is_ascii_alphabetic() || c == '_' => {
+                self.read_identifier(start, start_line, start_col, c)
+            }
 
             // ── Quoted identifiers (double quote) ───────────────────
             '"' => self.read_quoted_identifier(start, start_line, start_col, '"'),
@@ -336,32 +385,36 @@ impl Tokenizer {
                         self.advance();
                         value.push('\'');
                     } else {
-                        return Ok(self.make_token(TokenType::String, value, start, start_line, start_col));
+                        return Ok(self.make_token(
+                            TokenType::String,
+                            value,
+                            start,
+                            start_line,
+                            start_col,
+                        ));
                     }
                 }
-                Some('\\') => {
-                    match self.peek() {
-                        Some('\\') => {
-                            self.advance();
-                            value.push('\\');
-                        }
-                        Some('n') => {
-                            self.advance();
-                            value.push('\n');
-                        }
-                        Some('t') => {
-                            self.advance();
-                            value.push('\t');
-                        }
-                        Some('r') => {
-                            self.advance();
-                            value.push('\r');
-                        }
-                        _ => {
-                            value.push('\\');
-                        }
+                Some('\\') => match self.peek() {
+                    Some('\\') => {
+                        self.advance();
+                        value.push('\\');
                     }
-                }
+                    Some('n') => {
+                        self.advance();
+                        value.push('\n');
+                    }
+                    Some('t') => {
+                        self.advance();
+                        value.push('\t');
+                    }
+                    Some('r') => {
+                        self.advance();
+                        value.push('\r');
+                    }
+                    _ => {
+                        value.push('\\');
+                    }
+                },
                 Some(c) => value.push(c),
                 None => {
                     return Err(SqlglotError::TokenizerError {
@@ -373,7 +426,13 @@ impl Tokenizer {
         }
     }
 
-    fn read_number(&mut self, start: usize, start_line: usize, start_col: usize, first: char) -> Result<Token> {
+    fn read_number(
+        &mut self,
+        start: usize,
+        start_line: usize,
+        start_col: usize,
+        first: char,
+    ) -> Result<Token> {
         let mut value = String::new();
         value.push(first);
 
@@ -409,7 +468,13 @@ impl Tokenizer {
         Ok(self.make_token(TokenType::Number, value, start, start_line, start_col))
     }
 
-    fn read_identifier(&mut self, start: usize, start_line: usize, start_col: usize, first: char) -> Result<Token> {
+    fn read_identifier(
+        &mut self,
+        start: usize,
+        start_line: usize,
+        start_col: usize,
+        first: char,
+    ) -> Result<Token> {
         let mut value = String::new();
         value.push(first);
         while self
@@ -587,7 +652,13 @@ impl Tokenizer {
         }
     }
 
-    fn read_quoted_identifier(&mut self, start: usize, start_line: usize, start_col: usize, quote: char) -> Result<Token> {
+    fn read_quoted_identifier(
+        &mut self,
+        start: usize,
+        start_line: usize,
+        start_col: usize,
+        quote: char,
+    ) -> Result<Token> {
         let end_char = if quote == '[' { ']' } else { quote };
         let mut value = String::new();
         loop {
@@ -668,14 +739,22 @@ mod tests {
     fn test_tokenize_line_comment() {
         let mut tok = Tokenizer::with_comments("SELECT 1 -- comment\nFROM t");
         let tokens = tok.tokenize().unwrap();
-        assert!(tokens.iter().any(|t| t.token_type == TokenType::LineComment));
+        assert!(
+            tokens
+                .iter()
+                .any(|t| t.token_type == TokenType::LineComment)
+        );
     }
 
     #[test]
     fn test_tokenize_block_comment() {
         let mut tok = Tokenizer::with_comments("SELECT /* hello */ 1");
         let tokens = tok.tokenize().unwrap();
-        assert!(tokens.iter().any(|t| t.token_type == TokenType::BlockComment));
+        assert!(
+            tokens
+                .iter()
+                .any(|t| t.token_type == TokenType::BlockComment)
+        );
     }
 
     #[test]

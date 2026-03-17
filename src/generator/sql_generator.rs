@@ -364,7 +364,11 @@ impl Generator {
                 self.write_keyword("LATERAL ");
                 self.gen_table_source(source);
             }
-            TableSource::Unnest { expr, alias, with_offset } => {
+            TableSource::Unnest {
+                expr,
+                alias,
+                with_offset,
+            } => {
                 self.write_keyword("UNNEST(");
                 self.gen_expr(expr);
                 self.write(")");
@@ -1053,7 +1057,11 @@ impl Generator {
             DataType::Double => self.write("DOUBLE"),
             DataType::Real => self.write("REAL"),
             DataType::Decimal { precision, scale } | DataType::Numeric { precision, scale } => {
-                self.write(if matches!(dt, DataType::Numeric { .. }) { "NUMERIC" } else { "DECIMAL" });
+                self.write(if matches!(dt, DataType::Numeric { .. }) {
+                    "NUMERIC"
+                } else {
+                    "DECIMAL"
+                });
                 if let Some(p) = precision {
                     self.write(&format!("({p}"));
                     if let Some(s) = scale {
@@ -1219,7 +1227,12 @@ impl Generator {
 
     fn gen_expr(&mut self, expr: &Expr) {
         match expr {
-            Expr::Column { table, name, quote_style, table_quote_style } => {
+            Expr::Column {
+                table,
+                name,
+                quote_style,
+                table_quote_style,
+            } => {
                 if let Some(t) = table {
                     self.write_quoted(t, *table_quote_style);
                     self.write(".");
@@ -1276,7 +1289,13 @@ impl Generator {
                 self.write(op_str);
                 self.gen_expr(expr);
             }
-            Expr::Function { name, args, distinct, filter, over } => {
+            Expr::Function {
+                name,
+                args,
+                distinct,
+                filter,
+                over,
+            } => {
                 self.write(name);
                 self.write("(");
                 if *distinct {
@@ -1295,7 +1314,10 @@ impl Generator {
                     self.write(" ");
                     self.write_keyword("OVER ");
                     if let Some(wref) = &spec.window_ref {
-                        if spec.partition_by.is_empty() && spec.order_by.is_empty() && spec.frame.is_none() {
+                        if spec.partition_by.is_empty()
+                            && spec.order_by.is_empty()
+                            && spec.frame.is_none()
+                        {
                             self.write(wref);
                         } else {
                             self.write("(");
@@ -1309,7 +1331,12 @@ impl Generator {
                     }
                 }
             }
-            Expr::Between { expr, low, high, negated } => {
+            Expr::Between {
+                expr,
+                low,
+                high,
+                negated,
+            } => {
                 self.gen_expr(expr);
                 if *negated {
                     self.write(" ");
@@ -1322,7 +1349,11 @@ impl Generator {
                 self.write_keyword("AND ");
                 self.gen_expr(high);
             }
-            Expr::InList { expr, list, negated } => {
+            Expr::InList {
+                expr,
+                list,
+                negated,
+            } => {
                 self.gen_expr(expr);
                 if *negated {
                     self.write(" ");
@@ -1333,7 +1364,11 @@ impl Generator {
                 self.gen_expr_list(list);
                 self.write(")");
             }
-            Expr::InSubquery { expr, subquery, negated } => {
+            Expr::InSubquery {
+                expr,
+                subquery,
+                negated,
+            } => {
                 self.gen_expr(expr);
                 if *negated {
                     self.write(" ");
@@ -1354,7 +1389,11 @@ impl Generator {
                     self.write_keyword("IS NULL");
                 }
             }
-            Expr::IsBool { expr, value, negated } => {
+            Expr::IsBool {
+                expr,
+                value,
+                negated,
+            } => {
                 self.gen_expr(expr);
                 self.write(" ");
                 match (negated, value) {
@@ -1364,7 +1403,12 @@ impl Generator {
                     (true, false) => self.write_keyword("IS NOT FALSE"),
                 }
             }
-            Expr::Like { expr, pattern, negated, escape } => {
+            Expr::Like {
+                expr,
+                pattern,
+                negated,
+                escape,
+            } => {
                 self.gen_expr(expr);
                 if *negated {
                     self.write(" ");
@@ -1379,7 +1423,12 @@ impl Generator {
                     self.gen_expr(esc);
                 }
             }
-            Expr::ILike { expr, pattern, negated, escape } => {
+            Expr::ILike {
+                expr,
+                pattern,
+                negated,
+                escape,
+            } => {
                 self.gen_expr(expr);
                 if *negated {
                     self.write(" ");
@@ -1394,7 +1443,11 @@ impl Generator {
                     self.gen_expr(esc);
                 }
             }
-            Expr::Case { operand, when_clauses, else_clause } => {
+            Expr::Case {
+                operand,
+                when_clauses,
+                else_clause,
+            } => {
                 self.write_keyword("CASE");
                 if let Some(op) = operand {
                     self.write(" ");
@@ -1481,7 +1534,11 @@ impl Generator {
                 self.gen_expr_list(items);
                 self.write(")");
             }
-            Expr::If { condition, true_val, false_val } => {
+            Expr::If {
+                condition,
+                true_val,
+                false_val,
+            } => {
                 self.write_keyword("IF(");
                 self.gen_expr(condition);
                 self.write(", ");
@@ -1523,7 +1580,11 @@ impl Generator {
                 self.gen_expr(index);
                 self.write("]");
             }
-            Expr::JsonAccess { expr, path, as_text } => {
+            Expr::JsonAccess {
+                expr,
+                path,
+                as_text,
+            } => {
                 self.gen_expr(expr);
                 if *as_text {
                     self.write("->>");
@@ -1717,7 +1778,10 @@ mod tests {
     #[test]
     fn test_cte_roundtrip() {
         let sql = "WITH cte AS (SELECT 1 AS x) SELECT x FROM cte";
-        assert_eq!(roundtrip(sql), "WITH cte AS (SELECT 1 AS x) SELECT x FROM cte");
+        assert_eq!(
+            roundtrip(sql),
+            "WITH cte AS (SELECT 1 AS x) SELECT x FROM cte"
+        );
     }
 
     #[test]

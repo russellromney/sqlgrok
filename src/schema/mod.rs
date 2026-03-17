@@ -101,11 +101,7 @@ pub trait Schema {
     /// # Errors
     ///
     /// Returns [`SchemaError::TableNotFound`] or [`SchemaError::ColumnNotFound`].
-    fn get_column_type(
-        &self,
-        table_path: &[&str],
-        column: &str,
-    ) -> Result<DataType, SchemaError>;
+    fn get_column_type(&self, table_path: &[&str], column: &str) -> Result<DataType, SchemaError>;
 
     /// Check whether a column exists in the given table.
     fn has_column(&self, table_path: &[&str], column: &str) -> bool;
@@ -320,9 +316,9 @@ impl Schema for MappingSchema {
             .or_default();
 
         if entry.contains_key(&table) {
-            return Err(SchemaError::DuplicateTable(
-                Self::format_table_path(table_path),
-            ));
+            return Err(SchemaError::DuplicateTable(Self::format_table_path(
+                table_path,
+            )));
         }
 
         let info = ColumnInfo::new(columns, self.dialect);
@@ -336,11 +332,7 @@ impl Schema for MappingSchema {
             .ok_or_else(|| SchemaError::TableNotFound(Self::format_table_path(table_path)))
     }
 
-    fn get_column_type(
-        &self,
-        table_path: &[&str],
-        column: &str,
-    ) -> Result<DataType, SchemaError> {
+    fn get_column_type(&self, table_path: &[&str], column: &str) -> Result<DataType, SchemaError> {
         let table_str = Self::format_table_path(table_path);
         let info = self
             .find_table(table_path)
@@ -437,19 +429,13 @@ pub type CatalogMap = HashMap<String, HashMap<String, HashMap<String, HashMap<St
 
 /// Build a [`MappingSchema`] from a 3-level nested map:
 /// `catalog → database → table → column → type`.
-pub fn ensure_schema_nested(
-    catalog_map: CatalogMap,
-    dialect: Dialect,
-) -> MappingSchema {
+pub fn ensure_schema_nested(catalog_map: CatalogMap, dialect: Dialect) -> MappingSchema {
     let mut schema = MappingSchema::new(dialect);
     for (catalog, databases) in catalog_map {
         for (database, tables) in databases {
             for (table, columns) in tables {
                 let col_vec: Vec<(String, DataType)> = columns.into_iter().collect();
-                let _ = schema.replace_table(
-                    &[&catalog, &database, &table],
-                    col_vec,
-                );
+                let _ = schema.replace_table(&[&catalog, &database, &table], col_vec);
             }
         }
     }
@@ -518,10 +504,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(schema.column_names(&["t"]).unwrap(), vec!["b"]);
-        assert_eq!(
-            schema.get_column_type(&["t"], "b").unwrap(),
-            DataType::Text
-        );
+        assert_eq!(schema.get_column_type(&["t"], "b").unwrap(), DataType::Text);
     }
 
     #[test]
@@ -564,10 +547,13 @@ mod tests {
                 &["my_catalog", "my_db", "orders"],
                 vec![
                     ("order_id".to_string(), DataType::BigInt),
-                    ("total".to_string(), DataType::Decimal {
-                        precision: Some(10),
-                        scale: Some(2),
-                    }),
+                    (
+                        "total".to_string(),
+                        DataType::Decimal {
+                            precision: Some(10),
+                            scale: Some(2),
+                        },
+                    ),
                 ],
             )
             .unwrap();
@@ -621,10 +607,7 @@ mod tests {
     fn test_case_insensitive_dialect() {
         let mut schema = MappingSchema::new(Dialect::Postgres);
         schema
-            .add_table(
-                &["Users"],
-                vec![("ID".to_string(), DataType::Int)],
-            )
+            .add_table(&["Users"], vec![("ID".to_string(), DataType::Int)])
             .unwrap();
 
         // Lookups should be case-insensitive
@@ -641,10 +624,7 @@ mod tests {
     fn test_case_sensitive_dialect() {
         let mut schema = MappingSchema::new(Dialect::BigQuery);
         schema
-            .add_table(
-                &["Users"],
-                vec![("ID".to_string(), DataType::Int)],
-            )
+            .add_table(&["Users"], vec![("ID".to_string(), DataType::Int)])
             .unwrap();
 
         // BigQuery is case-sensitive
@@ -657,10 +637,7 @@ mod tests {
     fn test_hive_case_sensitive() {
         let mut schema = MappingSchema::new(Dialect::Hive);
         schema
-            .add_table(
-                &["MyTable"],
-                vec![("Col1".to_string(), DataType::Text)],
-            )
+            .add_table(&["MyTable"], vec![("Col1".to_string(), DataType::Text)])
             .unwrap();
 
         assert!(schema.has_column(&["MyTable"], "Col1"));
@@ -674,15 +651,9 @@ mod tests {
         let mut schema = MappingSchema::new(Dialect::Ansi);
         schema.add_udf("my_custom_fn", DataType::Int);
 
-        assert_eq!(
-            schema.get_udf_type("my_custom_fn").unwrap(),
-            &DataType::Int
-        );
+        assert_eq!(schema.get_udf_type("my_custom_fn").unwrap(), &DataType::Int);
         // Case-insensitive for ANSI
-        assert_eq!(
-            schema.get_udf_type("MY_CUSTOM_FN").unwrap(),
-            &DataType::Int
-        );
+        assert_eq!(schema.get_udf_type("MY_CUSTOM_FN").unwrap(), &DataType::Int);
         assert!(schema.get_udf_type("nonexistent").is_none());
     }
 
@@ -733,23 +704,25 @@ mod tests {
     fn test_table_names() {
         let mut schema = MappingSchema::new(Dialect::Ansi);
         schema
-            .add_table(
-                &["cat", "db", "t1"],
-                vec![("a".to_string(), DataType::Int)],
-            )
+            .add_table(&["cat", "db", "t1"], vec![("a".to_string(), DataType::Int)])
             .unwrap();
         schema
-            .add_table(
-                &["cat", "db", "t2"],
-                vec![("b".to_string(), DataType::Int)],
-            )
+            .add_table(&["cat", "db", "t2"], vec![("b".to_string(), DataType::Int)])
             .unwrap();
 
         let mut names = schema.table_names();
         names.sort();
         assert_eq!(names.len(), 2);
-        assert!(names.iter().any(|(c, d, t)| c == "cat" && d == "db" && t == "t1"));
-        assert!(names.iter().any(|(c, d, t)| c == "cat" && d == "db" && t == "t2"));
+        assert!(
+            names
+                .iter()
+                .any(|(c, d, t)| c == "cat" && d == "db" && t == "t1")
+        );
+        assert!(
+            names
+                .iter()
+                .any(|(c, d, t)| c == "cat" && d == "db" && t == "t2")
+        );
     }
 
     // ── Invalid path ────────────────────────────────────────────────────
@@ -830,16 +803,25 @@ mod tests {
             .add_table(
                 &["complex_table"],
                 vec![
-                    ("tags".to_string(), DataType::Array(Some(Box::new(DataType::Text)))),
+                    (
+                        "tags".to_string(),
+                        DataType::Array(Some(Box::new(DataType::Text))),
+                    ),
                     ("metadata".to_string(), DataType::Json),
-                    ("coords".to_string(), DataType::Struct(vec![
-                        ("lat".to_string(), DataType::Double),
-                        ("lng".to_string(), DataType::Double),
-                    ])),
-                    ("lookup".to_string(), DataType::Map {
-                        key: Box::new(DataType::Text),
-                        value: Box::new(DataType::Int),
-                    }),
+                    (
+                        "coords".to_string(),
+                        DataType::Struct(vec![
+                            ("lat".to_string(), DataType::Double),
+                            ("lng".to_string(), DataType::Double),
+                        ]),
+                    ),
+                    (
+                        "lookup".to_string(),
+                        DataType::Map {
+                            key: Box::new(DataType::Text),
+                            value: Box::new(DataType::Int),
+                        },
+                    ),
                 ],
             )
             .unwrap();
@@ -849,7 +831,9 @@ mod tests {
             DataType::Array(Some(Box::new(DataType::Text)))
         );
         assert_eq!(
-            schema.get_column_type(&["complex_table"], "metadata").unwrap(),
+            schema
+                .get_column_type(&["complex_table"], "metadata")
+                .unwrap(),
             DataType::Json
         );
     }

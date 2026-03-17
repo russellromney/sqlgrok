@@ -11,6 +11,7 @@
 //! - Join reordering
 //! - Column pruning
 
+pub mod scope_analysis;
 pub mod unnest_subqueries;
 
 use crate::ast::*;
@@ -100,7 +101,10 @@ fn fold_expr(expr: Expr) -> Expr {
                 right: Box::new(right),
             }
         }
-        Expr::UnaryOp { op: UnaryOperator::Minus, expr } => {
+        Expr::UnaryOp {
+            op: UnaryOperator::Minus,
+            expr,
+        } => {
             let inner = fold_expr(*expr);
             if let Expr::Number(ref n) = inner {
                 if let Ok(v) = n.parse::<f64>() {
@@ -163,7 +167,11 @@ fn simplify_booleans(statement: Statement) -> Statement {
 
 fn simplify_bool_expr(expr: Expr) -> Expr {
     match expr {
-        Expr::BinaryOp { left, op: BinaryOperator::And, right } => {
+        Expr::BinaryOp {
+            left,
+            op: BinaryOperator::And,
+            right,
+        } => {
             let left = simplify_bool_expr(*left);
             let right = simplify_bool_expr(*right);
             match (&left, &right) {
@@ -177,7 +185,11 @@ fn simplify_bool_expr(expr: Expr) -> Expr {
                 },
             }
         }
-        Expr::BinaryOp { left, op: BinaryOperator::Or, right } => {
+        Expr::BinaryOp {
+            left,
+            op: BinaryOperator::Or,
+            right,
+        } => {
             let left = simplify_bool_expr(*left);
             let right = simplify_bool_expr(*right);
             match (&left, &right) {
@@ -191,11 +203,17 @@ fn simplify_bool_expr(expr: Expr) -> Expr {
                 },
             }
         }
-        Expr::UnaryOp { op: UnaryOperator::Not, expr } => {
+        Expr::UnaryOp {
+            op: UnaryOperator::Not,
+            expr,
+        } => {
             let inner = simplify_bool_expr(*expr);
             match inner {
                 Expr::Boolean(b) => Expr::Boolean(!b),
-                Expr::UnaryOp { op: UnaryOperator::Not, expr: inner2 } => *inner2,
+                Expr::UnaryOp {
+                    op: UnaryOperator::Not,
+                    expr: inner2,
+                } => *inner2,
                 other => Expr::UnaryOp {
                     op: UnaryOperator::Not,
                     expr: Box::new(other),
@@ -248,7 +266,13 @@ mod tests {
         if let Statement::Select(sel) = stmt {
             // Should simplify to just x > 1
             assert!(sel.where_clause.is_some());
-            assert!(!matches!(&sel.where_clause, Some(Expr::BinaryOp { op: BinaryOperator::And, .. })));
+            assert!(!matches!(
+                &sel.where_clause,
+                Some(Expr::BinaryOp {
+                    op: BinaryOperator::And,
+                    ..
+                })
+            ));
         }
     }
 

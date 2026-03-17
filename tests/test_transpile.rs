@@ -3,7 +3,7 @@
 /// These test parse→generate roundtrips (identity), normalization transforms,
 /// and basic cross-dialect transpilation. Modeled after the `validate` and
 /// `validate_identity` helpers in the Python test suite.
-use sqlglot_rust::{generate, parse, transpile, Dialect};
+use sqlglot_rust::{Dialect, generate, parse, transpile};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Helpers (mirrors Python sqlglot's TestTranspile.validate / validate_identity)
@@ -12,8 +12,8 @@ use sqlglot_rust::{generate, parse, transpile, Dialect};
 /// Parse SQL → generate SQL, assert output == input.
 /// Equivalent to Python sqlglot's `validate_identity`.
 fn validate_identity(sql: &str) {
-    let ast = parse(sql, Dialect::Ansi)
-        .unwrap_or_else(|e| panic!("Parse failed for '{}': {}", sql, e));
+    let ast =
+        parse(sql, Dialect::Ansi).unwrap_or_else(|e| panic!("Parse failed for '{}': {}", sql, e));
     let output = generate(&ast, Dialect::Ansi);
     assert_eq!(output, sql, "\n  Identity roundtrip failed");
 }
@@ -21,8 +21,8 @@ fn validate_identity(sql: &str) {
 /// Parse SQL → generate SQL, assert output == expected.
 /// Equivalent to Python sqlglot's `validate(sql, target)`.
 fn validate(sql: &str, expected: &str) {
-    let ast = parse(sql, Dialect::Ansi)
-        .unwrap_or_else(|e| panic!("Parse failed for '{}': {}", sql, e));
+    let ast =
+        parse(sql, Dialect::Ansi).unwrap_or_else(|e| panic!("Parse failed for '{}': {}", sql, e));
     let output = generate(&ast, Dialect::Ansi);
     assert_eq!(output, expected, "\n  Input: {}", sql);
 }
@@ -30,7 +30,11 @@ fn validate(sql: &str, expected: &str) {
 fn validate_with_dialect(sql: &str, expected: &str, read: Dialect, write: Dialect) {
     let result = transpile(sql, read, write)
         .unwrap_or_else(|e| panic!("Transpile failed for '{}': {}", sql, e));
-    assert_eq!(result, expected, "\n  Input: {} ({:?} → {:?})", sql, read, write);
+    assert_eq!(
+        result, expected,
+        "\n  Input: {} ({:?} → {:?})",
+        sql, read, write
+    );
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -102,12 +106,7 @@ fn test_identity_boolean_logic() {
 
 #[test]
 fn test_identity_unary() {
-    let cases = [
-        "SELECT -1",
-        "SELECT -a",
-        "SELECT +a",
-        "SELECT ~x",
-    ];
+    let cases = ["SELECT -1", "SELECT -a", "SELECT +a", "SELECT ~x"];
     for sql in &cases {
         validate_identity(sql);
     }
@@ -170,9 +169,7 @@ fn test_identity_select_distinct() {
 
 #[test]
 fn test_identity_qualified_columns() {
-    let cases = [
-        "SELECT a.b FROM a",
-    ];
+    let cases = ["SELECT a.b FROM a"];
     for sql in &cases {
         validate_identity(sql);
     }
@@ -221,9 +218,7 @@ fn test_identity_joins() {
 
 #[test]
 fn test_identity_join_subquery() {
-    validate_identity(
-        "SELECT 1 FROM a INNER JOIN (SELECT a FROM c) AS b ON a.x = b.x",
-    );
+    validate_identity("SELECT 1 FROM a INNER JOIN (SELECT a FROM c) AS b ON a.x = b.x");
 }
 
 #[test]
@@ -271,7 +266,10 @@ fn test_identity_order_by() {
 #[test]
 fn test_order_by_asc_normalization() {
     // ASC is default, so it's dropped in output
-    validate("SELECT a FROM test ORDER BY a ASC, b DESC", "SELECT a FROM test ORDER BY a, b DESC");
+    validate(
+        "SELECT a FROM test ORDER BY a ASC, b DESC",
+        "SELECT a FROM test ORDER BY a, b DESC",
+    );
 }
 
 #[test]
@@ -306,9 +304,7 @@ fn test_identity_subqueries() {
 
 #[test]
 fn test_identity_nested_subquery() {
-    validate_identity(
-        "SELECT a FROM (SELECT a FROM (SELECT a FROM test) AS y) AS x",
-    );
+    validate_identity("SELECT a FROM (SELECT a FROM (SELECT a FROM test) AS y) AS x");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -520,16 +516,12 @@ fn test_identity_ctes() {
 
 #[test]
 fn test_identity_recursive_cte() {
-    validate_identity(
-        "WITH RECURSIVE nums AS (SELECT 1 AS n) SELECT n FROM nums",
-    );
+    validate_identity("WITH RECURSIVE nums AS (SELECT 1 AS n) SELECT n FROM nums");
 }
 
 #[test]
 fn test_identity_cte_with_columns() {
-    validate_identity(
-        "WITH cte(x, y) AS (SELECT 1, 2) SELECT x, y FROM cte",
-    );
+    validate_identity("WITH cte(x, y) AS (SELECT 1, 2) SELECT x, y FROM cte");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -552,9 +544,7 @@ fn test_identity_insert() {
 
 #[test]
 fn test_identity_insert_on_conflict() {
-    validate_identity(
-        "INSERT INTO t (id) VALUES (1) ON CONFLICT (id) DO NOTHING",
-    );
+    validate_identity("INSERT INTO t (id) VALUES (1) ON CONFLICT (id) DO NOTHING");
     validate_identity(
         "INSERT INTO t (id, name) VALUES (1, 'a') ON CONFLICT (id) DO UPDATE SET name = 'b'",
     );
@@ -562,9 +552,7 @@ fn test_identity_insert_on_conflict() {
 
 #[test]
 fn test_identity_insert_returning() {
-    validate_identity(
-        "INSERT INTO users (name) VALUES ('Alice') RETURNING id",
-    );
+    validate_identity("INSERT INTO users (name) VALUES ('Alice') RETURNING id");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -586,9 +574,7 @@ fn test_identity_update() {
 
 #[test]
 fn test_identity_update_returning() {
-    validate_identity(
-        "UPDATE products SET price = 10 WHERE id = 1 RETURNING name, price",
-    );
+    validate_identity("UPDATE products SET price = 10 WHERE id = 1 RETURNING name, price");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -598,10 +584,7 @@ fn test_identity_update_returning() {
 
 #[test]
 fn test_identity_delete() {
-    let cases = [
-        "DELETE FROM x WHERE y > 1",
-        "DELETE FROM y",
-    ];
+    let cases = ["DELETE FROM x WHERE y > 1", "DELETE FROM y"];
     for sql in &cases {
         validate_identity(sql);
     }
@@ -609,9 +592,7 @@ fn test_identity_delete() {
 
 #[test]
 fn test_identity_delete_using() {
-    validate_identity(
-        "DELETE FROM event USING sales WHERE event.eventid = sales.eventid",
-    );
+    validate_identity("DELETE FROM event USING sales WHERE event.eventid = sales.eventid");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -711,11 +692,7 @@ fn test_identity_alter_table() {
 
 #[test]
 fn test_identity_transactions() {
-    let cases = [
-        "BEGIN",
-        "COMMIT",
-        "ROLLBACK",
-    ];
+    let cases = ["BEGIN", "COMMIT", "ROLLBACK"];
     for sql in &cases {
         validate_identity(sql);
     }
@@ -770,8 +747,14 @@ fn test_identity_array() {
 fn test_postgres_cast_roundtrip() {
     // x::INT parses as CAST(x AS INT) when in a SELECT context
     validate("SELECT x::INT", "SELECT CAST(x AS INT)");
-    validate("SELECT x::INT::BOOLEAN", "SELECT CAST(CAST(x AS INT) AS BOOLEAN)");
-    validate("SELECT CAST(x::INT AS BOOLEAN)", "SELECT CAST(CAST(x AS INT) AS BOOLEAN)");
+    validate(
+        "SELECT x::INT::BOOLEAN",
+        "SELECT CAST(CAST(x AS INT) AS BOOLEAN)",
+    );
+    validate(
+        "SELECT CAST(x::INT AS BOOLEAN)",
+        "SELECT CAST(CAST(x AS INT) AS BOOLEAN)",
+    );
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1021,16 +1004,12 @@ fn test_identity_cte_with_join() {
 
 #[test]
 fn test_identity_subquery_in_select() {
-    validate_identity(
-        "SELECT a, (SELECT MAX(b) FROM t2) AS max_b FROM t1",
-    );
+    validate_identity("SELECT a, (SELECT MAX(b) FROM t2) AS max_b FROM t1");
 }
 
 #[test]
 fn test_identity_union_with_order_limit() {
-    validate_identity(
-        "SELECT a FROM t1 UNION ALL SELECT b FROM t2 ORDER BY 1 LIMIT 10",
-    );
+    validate_identity("SELECT a FROM t1 UNION ALL SELECT b FROM t2 ORDER BY 1 LIMIT 10");
 }
 
 #[test]
@@ -1057,16 +1036,12 @@ fn test_identity_multiple_ctes() {
 #[test]
 fn test_identity_insert_with_cte() {
     // Note: CTE with INSERT is complex; test the basic version
-    validate_identity(
-        "INSERT INTO target SELECT * FROM src",
-    );
+    validate_identity("INSERT INTO target SELECT * FROM src");
 }
 
 #[test]
 fn test_identity_create_table_as() {
-    validate_identity(
-        "CREATE TABLE new_t AS SELECT a, b FROM old_t WHERE a > 0",
-    );
+    validate_identity("CREATE TABLE new_t AS SELECT a, b FROM old_t WHERE a > 0");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

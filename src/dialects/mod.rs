@@ -416,26 +416,24 @@ fn transform_expr(expr: Expr, target: Dialect) -> Expr {
             pattern,
             negated,
             escape,
-        } if !supports_ilike(target) => {
-            Expr::Like {
-                expr: Box::new(Expr::Function {
-                    name: "LOWER".to_string(),
-                    args: vec![transform_expr(*expr, target)],
-                    distinct: false,
-                    filter: None,
-                    over: None,
-                }),
-                pattern: Box::new(Expr::Function {
-                    name: "LOWER".to_string(),
-                    args: vec![transform_expr(*pattern, target)],
-                    distinct: false,
-                    filter: None,
-                    over: None,
-                }),
-                negated,
-                escape,
-            }
-        }
+        } if !supports_ilike(target) => Expr::Like {
+            expr: Box::new(Expr::Function {
+                name: "LOWER".to_string(),
+                args: vec![transform_expr(*expr, target)],
+                distinct: false,
+                filter: None,
+                over: None,
+            }),
+            pattern: Box::new(Expr::Function {
+                name: "LOWER".to_string(),
+                args: vec![transform_expr(*pattern, target)],
+                distinct: false,
+                filter: None,
+                over: None,
+            }),
+            negated,
+            escape,
+        },
         // Map data types in CAST
         Expr::Cast { expr, data_type } => Expr::Cast {
             expr: Box::new(transform_expr(*expr, target)),
@@ -594,14 +592,20 @@ fn map_function_name(name: &str, target: Dialect) -> String {
 
         // ── RANDOM / RAND ────────────────────────────────────────────────
         "RANDOM" => {
-            if matches!(target, Dialect::Postgres | Dialect::Sqlite | Dialect::DuckDb) {
+            if matches!(
+                target,
+                Dialect::Postgres | Dialect::Sqlite | Dialect::DuckDb
+            ) {
                 name.to_string()
             } else {
                 "RAND".to_string()
             }
         }
         "RAND" => {
-            if matches!(target, Dialect::Postgres | Dialect::Sqlite | Dialect::DuckDb) {
+            if matches!(
+                target,
+                Dialect::Postgres | Dialect::Sqlite | Dialect::DuckDb
+            ) {
                 "RANDOM".to_string()
             } else {
                 name.to_string()
@@ -754,7 +758,10 @@ fn transform_quotes(expr: Expr, target: Dialect) -> Expr {
             over,
         } => Expr::Function {
             name,
-            args: args.into_iter().map(|a| transform_quotes(a, target)).collect(),
+            args: args
+                .into_iter()
+                .map(|a| transform_quotes(a, target))
+                .collect(),
             distinct,
             filter: filter.map(|f| Box::new(transform_quotes(*f, target))),
             over,

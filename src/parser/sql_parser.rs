@@ -463,7 +463,10 @@ impl Parser {
         });
 
         // Parse trailing ORDER BY / LIMIT / OFFSET that applies to the whole set operation
-        if matches!(self.peek_type(), TokenType::Union | TokenType::Intersect | TokenType::Except) {
+        if matches!(
+            self.peek_type(),
+            TokenType::Union | TokenType::Intersect | TokenType::Except
+        ) {
             self.maybe_parse_set_operation(combined)
         } else {
             // Check for global ORDER BY / LIMIT
@@ -800,7 +803,10 @@ impl Parser {
                 }
             }
             InsertSource::Values(rows)
-        } else if matches!(self.peek_type(), TokenType::Select | TokenType::With | TokenType::LParen) {
+        } else if matches!(
+            self.peek_type(),
+            TokenType::Select | TokenType::With | TokenType::LParen
+        ) {
             InsertSource::Query(Box::new(self.parse_statement_inner()?))
         } else if self.match_token(TokenType::Default) {
             self.expect(TokenType::Values)?;
@@ -965,7 +971,9 @@ impl Parser {
         let materialized = self.match_token(TokenType::Materialized);
 
         if self.match_token(TokenType::View) {
-            return self.parse_create_view(or_replace, materialized).map(Statement::CreateView);
+            return self
+                .parse_create_view(or_replace, materialized)
+                .map(Statement::CreateView);
         }
 
         self.expect(TokenType::Table)?;
@@ -1000,7 +1008,14 @@ impl Parser {
 
         loop {
             // Check for table-level constraints
-            if matches!(self.peek_type(), TokenType::Primary | TokenType::Unique | TokenType::Foreign | TokenType::Check | TokenType::Constraint) {
+            if matches!(
+                self.peek_type(),
+                TokenType::Primary
+                    | TokenType::Unique
+                    | TokenType::Foreign
+                    | TokenType::Check
+                    | TokenType::Constraint
+            ) {
                 constraints.push(self.parse_table_constraint()?);
             } else if self.peek_type() != &TokenType::RParen {
                 columns.push(self.parse_column_def()?);
@@ -1022,7 +1037,11 @@ impl Parser {
         }))
     }
 
-    fn parse_create_view(&mut self, or_replace: bool, materialized: bool) -> Result<CreateViewStatement> {
+    fn parse_create_view(
+        &mut self,
+        or_replace: bool,
+        materialized: bool,
+    ) -> Result<CreateViewStatement> {
         let if_not_exists = if self.match_token(TokenType::If) {
             self.expect(TokenType::Not)?;
             self.expect(TokenType::Exists)?;
@@ -1087,16 +1106,18 @@ impl Parser {
             let ref_columns = self.parse_name_list()?;
             self.expect(TokenType::RParen)?;
 
-            let on_delete = if self.match_token(TokenType::On) && self.match_token(TokenType::Delete) {
-                Some(self.parse_referential_action()?)
-            } else {
-                None
-            };
-            let on_update = if self.match_token(TokenType::On) && self.match_token(TokenType::Update) {
-                Some(self.parse_referential_action()?)
-            } else {
-                None
-            };
+            let on_delete =
+                if self.match_token(TokenType::On) && self.match_token(TokenType::Delete) {
+                    Some(self.parse_referential_action()?)
+                } else {
+                    None
+                };
+            let on_update =
+                if self.match_token(TokenType::On) && self.match_token(TokenType::Update) {
+                    Some(self.parse_referential_action()?)
+                } else {
+                    None
+                };
 
             Ok(TableConstraint::ForeignKey {
                 name,
@@ -1214,17 +1235,35 @@ impl Parser {
     fn parse_data_type(&mut self) -> Result<DataType> {
         let token = self.peek().clone();
         let type_result = match &token.token_type {
-            TokenType::Int | TokenType::Integer => { self.advance(); Ok(DataType::Int) }
-            TokenType::BigInt => { self.advance(); Ok(DataType::BigInt) }
-            TokenType::SmallInt => { self.advance(); Ok(DataType::SmallInt) }
-            TokenType::TinyInt => { self.advance(); Ok(DataType::TinyInt) }
-            TokenType::Float => { self.advance(); Ok(DataType::Float) }
+            TokenType::Int | TokenType::Integer => {
+                self.advance();
+                Ok(DataType::Int)
+            }
+            TokenType::BigInt => {
+                self.advance();
+                Ok(DataType::BigInt)
+            }
+            TokenType::SmallInt => {
+                self.advance();
+                Ok(DataType::SmallInt)
+            }
+            TokenType::TinyInt => {
+                self.advance();
+                Ok(DataType::TinyInt)
+            }
+            TokenType::Float => {
+                self.advance();
+                Ok(DataType::Float)
+            }
             TokenType::Double => {
                 self.advance();
                 let _ = self.match_keyword("PRECISION");
                 Ok(DataType::Double)
             }
-            TokenType::Real => { self.advance(); Ok(DataType::Real) }
+            TokenType::Real => {
+                self.advance();
+                Ok(DataType::Real)
+            }
             TokenType::Decimal | TokenType::Numeric => {
                 let is_numeric = token.token_type == TokenType::Numeric;
                 self.advance();
@@ -1245,9 +1284,18 @@ impl Parser {
                 let len = self.parse_single_type_param()?;
                 Ok(DataType::Char(len))
             }
-            TokenType::Text => { self.advance(); Ok(DataType::Text) }
-            TokenType::Boolean => { self.advance(); Ok(DataType::Boolean) }
-            TokenType::Date => { self.advance(); Ok(DataType::Date) }
+            TokenType::Text => {
+                self.advance();
+                Ok(DataType::Text)
+            }
+            TokenType::Boolean => {
+                self.advance();
+                Ok(DataType::Boolean)
+            }
+            TokenType::Date => {
+                self.advance();
+                Ok(DataType::Date)
+            }
             TokenType::Timestamp => {
                 self.advance();
                 let precision = self.parse_single_type_param()?;
@@ -1267,19 +1315,40 @@ impl Parser {
             TokenType::TimestampTz => {
                 self.advance();
                 let precision = self.parse_single_type_param()?;
-                Ok(DataType::Timestamp { precision, with_tz: true })
+                Ok(DataType::Timestamp {
+                    precision,
+                    with_tz: true,
+                })
             }
             TokenType::Time => {
                 self.advance();
                 let precision = self.parse_single_type_param()?;
                 Ok(DataType::Time { precision })
             }
-            TokenType::Interval => { self.advance(); Ok(DataType::Interval) }
-            TokenType::Blob => { self.advance(); Ok(DataType::Blob) }
-            TokenType::Bytea => { self.advance(); Ok(DataType::Bytea) }
-            TokenType::Json => { self.advance(); Ok(DataType::Json) }
-            TokenType::Jsonb => { self.advance(); Ok(DataType::Jsonb) }
-            TokenType::Uuid => { self.advance(); Ok(DataType::Uuid) }
+            TokenType::Interval => {
+                self.advance();
+                Ok(DataType::Interval)
+            }
+            TokenType::Blob => {
+                self.advance();
+                Ok(DataType::Blob)
+            }
+            TokenType::Bytea => {
+                self.advance();
+                Ok(DataType::Bytea)
+            }
+            TokenType::Json => {
+                self.advance();
+                Ok(DataType::Json)
+            }
+            TokenType::Jsonb => {
+                self.advance();
+                Ok(DataType::Jsonb)
+            }
+            TokenType::Uuid => {
+                self.advance();
+                Ok(DataType::Uuid)
+            }
             TokenType::Array => {
                 self.advance();
                 if self.match_token(TokenType::Lt) {
@@ -1295,8 +1364,14 @@ impl Parser {
                 self.advance();
                 match name.as_str() {
                     "STRING" => Ok(DataType::String),
-                    "BINARY" => { let len = self.parse_single_type_param()?; Ok(DataType::Binary(len)) }
-                    "VARBINARY" => { let len = self.parse_single_type_param()?; Ok(DataType::Varbinary(len)) }
+                    "BINARY" => {
+                        let len = self.parse_single_type_param()?;
+                        Ok(DataType::Binary(len))
+                    }
+                    "VARBINARY" => {
+                        let len = self.parse_single_type_param()?;
+                        Ok(DataType::Varbinary(len))
+                    }
                     "DATETIME" => Ok(DataType::DateTime),
                     "BYTES" => Ok(DataType::Bytes),
                     "VARIANT" => Ok(DataType::Variant),
@@ -1305,7 +1380,10 @@ impl Parser {
                     "INET" => Ok(DataType::Inet),
                     "CIDR" => Ok(DataType::Cidr),
                     "MACADDR" => Ok(DataType::Macaddr),
-                    "BIT" => { let len = self.parse_single_type_param()?; Ok(DataType::Bit(len)) }
+                    "BIT" => {
+                        let len = self.parse_single_type_param()?;
+                        Ok(DataType::Bit(len))
+                    }
                     "MONEY" => Ok(DataType::Money),
                     "SERIAL" => Ok(DataType::Serial),
                     "BIGSERIAL" => Ok(DataType::BigSerial),
@@ -1427,7 +1505,14 @@ impl Parser {
 
     fn parse_alter_action(&mut self) -> Result<AlterTableAction> {
         if self.match_keyword("ADD") {
-            if matches!(self.peek_type(), TokenType::Constraint | TokenType::Primary | TokenType::Unique | TokenType::Foreign | TokenType::Check) {
+            if matches!(
+                self.peek_type(),
+                TokenType::Constraint
+                    | TokenType::Primary
+                    | TokenType::Unique
+                    | TokenType::Foreign
+                    | TokenType::Check
+            ) {
                 let constraint = self.parse_table_constraint()?;
                 Ok(AlterTableAction::AddConstraint(constraint))
             } else {
@@ -1653,7 +1738,11 @@ impl Parser {
                 }
             } else if matches!(
                 self.peek_type(),
-                TokenType::Not | TokenType::In | TokenType::Like | TokenType::ILike | TokenType::Between
+                TokenType::Not
+                    | TokenType::In
+                    | TokenType::Like
+                    | TokenType::ILike
+                    | TokenType::Between
             ) {
                 // Peek ahead: if NOT, only consume it if followed by IN/LIKE/ILIKE/BETWEEN
                 if self.peek_type() == &TokenType::Not {
@@ -1669,8 +1758,8 @@ impl Parser {
                     }
                     // NOT was consumed, negated = true
                 }
-                let negated = self.pos > 0
-                    && self.tokens[self.pos - 1].token_type == TokenType::Not;
+                let negated =
+                    self.pos > 0 && self.tokens[self.pos - 1].token_type == TokenType::Not;
 
                 if self.match_token(TokenType::In) {
                     self.expect(TokenType::LParen)?;
@@ -1863,7 +1952,14 @@ impl Parser {
 
         // Check for window function: expr OVER (...)
         if self.match_token(TokenType::Over) {
-            if let Expr::Function { name, args, distinct, filter, .. } = expr {
+            if let Expr::Function {
+                name,
+                args,
+                distinct,
+                filter,
+                ..
+            } = expr
+            {
                 let spec = if self.match_token(TokenType::LParen) {
                     let ws = self.parse_window_spec()?;
                     self.expect(TokenType::RParen)?;
@@ -1890,7 +1986,14 @@ impl Parser {
 
         // FILTER (WHERE ...) for aggregate functions
         if self.match_token(TokenType::Filter) {
-            if let Expr::Function { name, args, distinct, over, .. } = expr {
+            if let Expr::Function {
+                name,
+                args,
+                distinct,
+                over,
+                ..
+            } = expr
+            {
                 self.expect(TokenType::LParen)?;
                 self.expect(TokenType::Where)?;
                 let filter_expr = self.parse_expr()?;
@@ -1909,11 +2012,22 @@ impl Parser {
     }
 
     fn parse_window_spec(&mut self) -> Result<WindowSpec> {
-        let window_ref = if self.is_name_token() && !matches!(self.peek_type(), TokenType::Partition | TokenType::Order | TokenType::Rows | TokenType::Range) {
+        let window_ref = if self.is_name_token()
+            && !matches!(
+                self.peek_type(),
+                TokenType::Partition | TokenType::Order | TokenType::Rows | TokenType::Range
+            ) {
             let saved = self.pos;
             let name = self.expect_name()?;
             // Check if it's actually a keyword we need
-            if matches!(self.peek_type(), TokenType::RParen | TokenType::Partition | TokenType::Order | TokenType::Rows | TokenType::Range) {
+            if matches!(
+                self.peek_type(),
+                TokenType::RParen
+                    | TokenType::Partition
+                    | TokenType::Order
+                    | TokenType::Rows
+                    | TokenType::Range
+            ) {
                 Some(name)
             } else {
                 self.pos = saved;
@@ -2083,10 +2197,13 @@ impl Parser {
             }
 
             // ── NOT EXISTS ──────────────────────────────────────────
-            TokenType::Not if {
-                let next_pos = self.pos + 1;
-                next_pos < self.tokens.len() && self.tokens[next_pos].token_type == TokenType::Exists
-            } => {
+            TokenType::Not
+                if {
+                    let next_pos = self.pos + 1;
+                    next_pos < self.tokens.len()
+                        && self.tokens[next_pos].token_type == TokenType::Exists
+                } =>
+            {
                 self.advance(); // NOT
                 self.advance(); // EXISTS
                 self.expect(TokenType::LParen)?;
@@ -2436,11 +2553,10 @@ mod tests {
 
     #[test]
     fn test_parse_join() {
-        let stmt =
-            Parser::new("SELECT a.id, b.name FROM a INNER JOIN b ON a.id = b.a_id")
-                .unwrap()
-                .parse_statement()
-                .unwrap();
+        let stmt = Parser::new("SELECT a.id, b.name FROM a INNER JOIN b ON a.id = b.a_id")
+            .unwrap()
+            .parse_statement()
+            .unwrap();
         match stmt {
             Statement::Select(sel) => {
                 assert_eq!(sel.joins.len(), 1);
@@ -2452,12 +2568,10 @@ mod tests {
 
     #[test]
     fn test_parse_cte() {
-        let stmt = Parser::new(
-            "WITH cte AS (SELECT 1 AS x) SELECT x FROM cte",
-        )
-        .unwrap()
-        .parse_statement()
-        .unwrap();
+        let stmt = Parser::new("WITH cte AS (SELECT 1 AS x) SELECT x FROM cte")
+            .unwrap()
+            .parse_statement()
+            .unwrap();
         match stmt {
             Statement::Select(sel) => {
                 assert_eq!(sel.ctes.len(), 1);
@@ -2500,12 +2614,10 @@ mod tests {
 
     #[test]
     fn test_parse_subquery() {
-        let stmt = Parser::new(
-            "SELECT * FROM (SELECT 1 AS x) AS sub",
-        )
-        .unwrap()
-        .parse_statement()
-        .unwrap();
+        let stmt = Parser::new("SELECT * FROM (SELECT 1 AS x) AS sub")
+            .unwrap()
+            .parse_statement()
+            .unwrap();
         match stmt {
             Statement::Select(sel) => {
                 if let Some(from) = &sel.from {
@@ -2518,12 +2630,10 @@ mod tests {
 
     #[test]
     fn test_parse_exists() {
-        let stmt = Parser::new(
-            "SELECT * FROM t WHERE EXISTS (SELECT 1 FROM t2)",
-        )
-        .unwrap()
-        .parse_statement()
-        .unwrap();
+        let stmt = Parser::new("SELECT * FROM t WHERE EXISTS (SELECT 1 FROM t2)")
+            .unwrap()
+            .parse_statement()
+            .unwrap();
         match stmt {
             Statement::Select(sel) => {
                 assert!(sel.where_clause.is_some());
@@ -2579,12 +2689,11 @@ mod tests {
 
     #[test]
     fn test_parse_create_table_constraints() {
-        let stmt = Parser::new(
-            "CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE)",
-        )
-        .unwrap()
-        .parse_statement()
-        .unwrap();
+        let stmt =
+            Parser::new("CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE)")
+                .unwrap()
+                .parse_statement()
+                .unwrap();
         match stmt {
             Statement::CreateTable(ct) => {
                 assert_eq!(ct.columns.len(), 2);

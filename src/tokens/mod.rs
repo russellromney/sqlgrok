@@ -221,35 +221,35 @@ pub enum TokenType {
     Minus,
     Star,
     Slash,
-    Percent2,     // % as modulo operator
+    Percent2, // % as modulo operator
     Eq,
-    Neq,          // <> or !=
+    Neq, // <> or !=
     Lt,
     Gt,
     LtEq,
     GtEq,
-    Concat,       // ||
-    BitwiseAnd,   // &
-    BitwiseOr,    // |
-    BitwiseXor,   // ^
-    BitwiseNot,   // ~
-    ShiftLeft,    // <<
-    ShiftRight,   // >>
-    DoubleColon,  // :: (Postgres cast)
-    Arrow,        // ->
-    DoubleArrow,  // ->>
-    HashArrow,    // #>
+    Concat,          // ||
+    BitwiseAnd,      // &
+    BitwiseOr,       // |
+    BitwiseXor,      // ^
+    BitwiseNot,      // ~
+    ShiftLeft,       // <<
+    ShiftRight,      // >>
+    DoubleColon,     // :: (Postgres cast)
+    Arrow,           // ->
+    DoubleArrow,     // ->>
+    HashArrow,       // #>
     HashDoubleArrow, // #>>
-    AtSign,       // @
-    Scope,        // ::
+    AtSign,          // @
+    Scope,           // ::
 
     // ── Punctuation ────────────────────────────────────────────────
     LParen,
     RParen,
-    LBracket,     // [
-    RBracket,     // ]
-    LBrace,       // {
-    RBrace,       // }
+    LBracket, // [
+    RBracket, // ]
+    LBrace,   // {
+    RBrace,   // }
     Comma,
     Semicolon,
     Dot,

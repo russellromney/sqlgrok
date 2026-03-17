@@ -76,11 +76,7 @@ fn unnest_where(expr: Expr, alias_gen: &mut AliasGen) -> (Option<Expr>, Vec<Join
 
 /// Recursively process an expression in the WHERE clause.
 /// Returns `None` if the expression was fully consumed (replaced by a join).
-fn unnest_expr(
-    expr: Expr,
-    joins: &mut Vec<JoinClause>,
-    alias_gen: &mut AliasGen,
-) -> Option<Expr> {
+fn unnest_expr(expr: Expr, joins: &mut Vec<JoinClause>, alias_gen: &mut AliasGen) -> Option<Expr> {
     match expr {
         // AND: try to unnest each side independently
         Expr::BinaryOp {
@@ -103,10 +99,7 @@ fn unnest_expr(
         }
 
         // EXISTS (SELECT ... WHERE outer.col = inner.col)
-        Expr::Exists {
-            subquery,
-            negated,
-        } => {
+        Expr::Exists { subquery, negated } => {
             let subquery_inner = *subquery;
             if let Some((join, residual)) =
                 try_unnest_exists(subquery_inner.clone(), negated, alias_gen)
@@ -155,9 +148,12 @@ fn unnest_expr(
         } => {
             let lhs_inner = *lhs;
             let subquery_inner = *subquery;
-            if let Some((join, residual)) =
-                try_unnest_in_subquery(lhs_inner.clone(), subquery_inner.clone(), negated, alias_gen)
-            {
+            if let Some((join, residual)) = try_unnest_in_subquery(
+                lhs_inner.clone(),
+                subquery_inner.clone(),
+                negated,
+                alias_gen,
+            ) {
                 joins.push(join);
                 residual
             } else {
@@ -397,7 +393,8 @@ fn collect_correlation_predicates(
 
         // Non-equality comparisons that reference outer columns
         Expr::BinaryOp {
-            op: BinaryOperator::Lt
+            op:
+                BinaryOperator::Lt
                 | BinaryOperator::Gt
                 | BinaryOperator::LtEq
                 | BinaryOperator::GtEq
@@ -469,7 +466,10 @@ fn build_join_on(preds: &[CorrelationPredicate], alias: &str) -> Expr {
 
 /// Combine multiple expressions with AND.
 fn and_all(mut exprs: Vec<Expr>) -> Expr {
-    assert!(!exprs.is_empty(), "and_all requires at least one expression");
+    assert!(
+        !exprs.is_empty(),
+        "and_all requires at least one expression"
+    );
     if exprs.len() == 1 {
         return exprs.remove(0);
     }
@@ -484,7 +484,9 @@ fn and_all(mut exprs: Vec<Expr>) -> Expr {
 /// Rewrite a column's table qualifier to the given alias.
 fn rewrite_column_table(expr: &Expr, new_table: &str) -> Expr {
     match expr {
-        Expr::Column { name, quote_style, .. } => Expr::Column {
+        Expr::Column {
+            name, quote_style, ..
+        } => Expr::Column {
             table: Some(new_table.to_string()),
             name: name.clone(),
             quote_style: *quote_style,
@@ -566,10 +568,7 @@ fn sentinel_column(alias: &str) -> Expr {
 
 /// Strip the given correlation predicates from a WHERE expression,
 /// returning the residual expression (or None if the entire WHERE was correlations).
-fn strip_correlation_predicates(
-    expr: Expr,
-    eq_preds: &[CorrelationPredicate],
-) -> Option<Expr> {
+fn strip_correlation_predicates(expr: Expr, eq_preds: &[CorrelationPredicate]) -> Option<Expr> {
     match expr {
         Expr::BinaryOp {
             left,
@@ -613,9 +612,9 @@ fn strip_correlation_predicates(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dialects::Dialect;
     use crate::generator::generate;
     use crate::parser::Parser;
-    use crate::dialects::Dialect;
 
     fn parse_and_unnest(sql: &str) -> String {
         let stmt = Parser::new(sql).unwrap().parse_statement().unwrap();
@@ -628,25 +627,46 @@ mod tests {
         let sql = "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.id = a.id)";
         let result = parse_and_unnest(sql);
         // Should be rewritten to an INNER JOIN
-        assert!(result.contains("INNER JOIN"), "Expected INNER JOIN in: {result}");
-        assert!(result.contains("_u0"), "Expected derived alias _u0 in: {result}");
-        assert!(!result.contains("EXISTS"), "Should not contain EXISTS: {result}");
+        assert!(
+            result.contains("INNER JOIN"),
+            "Expected INNER JOIN in: {result}"
+        );
+        assert!(
+            result.contains("_u0"),
+            "Expected derived alias _u0 in: {result}"
+        );
+        assert!(
+            !result.contains("EXISTS"),
+            "Should not contain EXISTS: {result}"
+        );
     }
 
     #[test]
     fn test_not_exists_to_left_join() {
         let sql = "SELECT a.id FROM a WHERE NOT EXISTS (SELECT 1 FROM b WHERE b.id = a.id)";
         let result = parse_and_unnest(sql);
-        assert!(result.contains("LEFT JOIN"), "Expected LEFT JOIN in: {result}");
-        assert!(result.contains("IS NULL"), "Expected IS NULL check in: {result}");
-        assert!(!result.contains("NOT EXISTS"), "Should not contain NOT EXISTS: {result}");
+        assert!(
+            result.contains("LEFT JOIN"),
+            "Expected LEFT JOIN in: {result}"
+        );
+        assert!(
+            result.contains("IS NULL"),
+            "Expected IS NULL check in: {result}"
+        );
+        assert!(
+            !result.contains("NOT EXISTS"),
+            "Should not contain NOT EXISTS: {result}"
+        );
     }
 
     #[test]
     fn test_in_subquery_to_inner_join() {
         let sql = "SELECT a.id FROM a WHERE a.id IN (SELECT b.id FROM b)";
         let result = parse_and_unnest(sql);
-        assert!(result.contains("INNER JOIN"), "Expected INNER JOIN in: {result}");
+        assert!(
+            result.contains("INNER JOIN"),
+            "Expected INNER JOIN in: {result}"
+        );
         assert!(!result.contains(" IN "), "Should not contain IN: {result}");
     }
 
@@ -654,8 +674,14 @@ mod tests {
     fn test_not_in_subquery_to_left_join() {
         let sql = "SELECT a.id FROM a WHERE a.id NOT IN (SELECT b.id FROM b)";
         let result = parse_and_unnest(sql);
-        assert!(result.contains("LEFT JOIN"), "Expected LEFT JOIN in: {result}");
-        assert!(result.contains("IS NULL"), "Expected IS NULL check in: {result}");
+        assert!(
+            result.contains("LEFT JOIN"),
+            "Expected LEFT JOIN in: {result}"
+        );
+        assert!(
+            result.contains("IS NULL"),
+            "Expected IS NULL check in: {result}"
+        );
     }
 
     #[test]
@@ -663,14 +689,18 @@ mod tests {
         // Subquery without correlation should not be unnested
         let sql = "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.x > 10)";
         let result = parse_and_unnest(sql);
-        assert!(result.contains("EXISTS"), "Uncorrelated EXISTS should remain: {result}");
+        assert!(
+            result.contains("EXISTS"),
+            "Uncorrelated EXISTS should remain: {result}"
+        );
     }
 
     #[test]
     fn test_non_equality_correlation_not_unnested() {
         // Subquery with non-equality correlation (< instead of =) should NOT be unnested
         // This is the scenario described in Python sqlglot#7295
-        let sql = "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.val < a.val AND b.id = a.id)";
+        let sql =
+            "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.val < a.val AND b.id = a.id)";
         let result = parse_and_unnest(sql);
         assert!(
             result.contains("EXISTS"),
@@ -682,10 +712,14 @@ mod tests {
     fn test_subquery_in_select_not_unnested() {
         // Correlated scalar subquery inside COALESCE in SELECT list
         // This is the exact scenario from Python sqlglot#7295 — must NOT be touched
-        let sql = "SELECT COALESCE((SELECT MAX(b.val) FROM b WHERE b.id = a.id), a.val) AS result FROM a";
+        let sql =
+            "SELECT COALESCE((SELECT MAX(b.val) FROM b WHERE b.id = a.id), a.val) AS result FROM a";
         let result = parse_and_unnest(sql);
         // The subquery should remain in the SELECT, NOT be moved to a JOIN
-        assert!(!result.contains("JOIN"), "Subquery in SELECT should not become a JOIN: {result}");
+        assert!(
+            !result.contains("JOIN"),
+            "Subquery in SELECT should not become a JOIN: {result}"
+        );
     }
 
     #[test]
@@ -693,8 +727,14 @@ mod tests {
         // EXISTS with both correlation and a local predicate
         let sql = "SELECT a.id FROM a WHERE a.x > 5 AND EXISTS (SELECT 1 FROM b WHERE b.id = a.id)";
         let result = parse_and_unnest(sql);
-        assert!(result.contains("INNER JOIN"), "Expected INNER JOIN in: {result}");
-        assert!(result.contains("a.x > 5") || result.contains("a.x >"), "Should keep non-subquery predicate: {result}");
+        assert!(
+            result.contains("INNER JOIN"),
+            "Expected INNER JOIN in: {result}"
+        );
+        assert!(
+            result.contains("a.x > 5") || result.contains("a.x >"),
+            "Should keep non-subquery predicate: {result}"
+        );
     }
 
     #[test]
@@ -716,12 +756,22 @@ mod tests {
     #[test]
     fn test_exists_multiple_correlations() {
         // Two equality correlations → JOIN ON with AND
-        let sql = "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.id = a.id AND b.org = a.org)";
+        let sql =
+            "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.id = a.id AND b.org = a.org)";
         let result = parse_and_unnest(sql);
-        assert!(result.contains("INNER JOIN"), "Expected INNER JOIN in: {result}");
-        assert!(!result.contains("EXISTS"), "Should not contain EXISTS: {result}");
+        assert!(
+            result.contains("INNER JOIN"),
+            "Expected INNER JOIN in: {result}"
+        );
+        assert!(
+            !result.contains("EXISTS"),
+            "Should not contain EXISTS: {result}"
+        );
         // The ON clause must have both correlation columns joined with AND
-        assert!(result.contains(" AND "), "ON clause should have AND for multiple correlations: {result}");
+        assert!(
+            result.contains(" AND "),
+            "ON clause should have AND for multiple correlations: {result}"
+        );
         assert!(result.contains(".id"), "ON should reference id: {result}");
         assert!(result.contains(".org"), "ON should reference org: {result}");
     }
@@ -736,11 +786,17 @@ mod tests {
         let sql = "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.id = a.id) AND a.id IN (SELECT c.id FROM c)";
         let result = parse_and_unnest(sql);
         // Both should become joins
-        assert!(!result.contains("EXISTS"), "EXISTS should be unnested: {result}");
+        assert!(
+            !result.contains("EXISTS"),
+            "EXISTS should be unnested: {result}"
+        );
         assert!(!result.contains(" IN "), "IN should be unnested: {result}");
         // Should have two joins with different aliases
         assert!(result.contains("_u0"), "Expected first alias _u0: {result}");
-        assert!(result.contains("_u1"), "Expected second alias _u1: {result}");
+        assert!(
+            result.contains("_u1"),
+            "Expected second alias _u1: {result}"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -751,10 +807,17 @@ mod tests {
     fn test_exists_with_inner_residual_where() {
         // Inner subquery has a correlation AND a local (non-correlated) predicate
         // The local predicate should remain in the derived table's WHERE
-        let sql = "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.id = a.id AND b.active = 1)";
+        let sql =
+            "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.id = a.id AND b.active = 1)";
         let result = parse_and_unnest(sql);
-        assert!(result.contains("INNER JOIN"), "Expected INNER JOIN in: {result}");
-        assert!(!result.contains("EXISTS"), "Should not contain EXISTS: {result}");
+        assert!(
+            result.contains("INNER JOIN"),
+            "Expected INNER JOIN in: {result}"
+        );
+        assert!(
+            !result.contains("EXISTS"),
+            "Should not contain EXISTS: {result}"
+        );
         // The non-correlated predicate b.active = 1 should be preserved in the subquery
         assert!(
             result.contains("active") && result.contains("1"),
@@ -771,8 +834,14 @@ mod tests {
         // EXISTS wrapped in extra parentheses
         let sql = "SELECT a.id FROM a WHERE (EXISTS (SELECT 1 FROM b WHERE b.id = a.id))";
         let result = parse_and_unnest(sql);
-        assert!(result.contains("INNER JOIN"), "Expected INNER JOIN in: {result}");
-        assert!(!result.contains("EXISTS"), "Should not contain EXISTS: {result}");
+        assert!(
+            result.contains("INNER JOIN"),
+            "Expected INNER JOIN in: {result}"
+        );
+        assert!(
+            !result.contains("EXISTS"),
+            "Should not contain EXISTS: {result}"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -784,7 +853,10 @@ mod tests {
         // IN (SELECT col1, col2 ...) — multi-column, should NOT be unnested
         let sql = "SELECT a.id FROM a WHERE a.id IN (SELECT b.id, b.name FROM b)";
         let result = parse_and_unnest(sql);
-        assert!(result.contains(" IN "), "Multi-column IN should remain: {result}");
+        assert!(
+            result.contains(" IN "),
+            "Multi-column IN should remain: {result}"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -796,7 +868,10 @@ mod tests {
         // EXISTS in an OR branch — cannot safely unnest
         let sql = "SELECT a.id FROM a WHERE a.x > 1 OR EXISTS (SELECT 1 FROM b WHERE b.id = a.id)";
         let result = parse_and_unnest(sql);
-        assert!(result.contains("EXISTS"), "EXISTS in OR should remain: {result}");
+        assert!(
+            result.contains("EXISTS"),
+            "EXISTS in OR should remain: {result}"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -808,7 +883,10 @@ mod tests {
         // WHERE col = (SELECT ...) — scalar subquery comparison, not handled
         let sql = "SELECT a.id FROM a WHERE a.val = (SELECT MAX(b.val) FROM b WHERE b.id = a.id)";
         let result = parse_and_unnest(sql);
-        assert!(!result.contains("JOIN"), "Scalar subquery in WHERE should not become JOIN: {result}");
+        assert!(
+            !result.contains("JOIN"),
+            "Scalar subquery in WHERE should not become JOIN: {result}"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -823,8 +901,14 @@ mod tests {
         // Must NOT crash and must NOT modify the query.
         let sql = "SELECT COALESCE((SELECT MAX(b.val) FROM t AS b WHERE b.val < a.val AND b.id = a.id), a.val) AS result FROM t AS a";
         let result = parse_and_unnest(sql);
-        assert!(!result.contains("JOIN"), "Issue #7295 query must NOT be rewritten to JOIN: {result}");
-        assert!(result.contains("COALESCE"), "COALESCE should remain: {result}");
+        assert!(
+            !result.contains("JOIN"),
+            "Issue #7295 query must NOT be rewritten to JOIN: {result}"
+        );
+        assert!(
+            result.contains("COALESCE"),
+            "COALESCE should remain: {result}"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -846,8 +930,14 @@ mod tests {
     fn test_where_without_subqueries_unchanged() {
         let sql = "SELECT a.id FROM a WHERE a.x > 1 AND a.y = 2";
         let result = parse_and_unnest(sql);
-        assert!(!result.contains("JOIN"), "No subqueries, no joins should be added: {result}");
-        assert!(result.contains("a.x > 1"), "Original predicates should remain: {result}");
+        assert!(
+            !result.contains("JOIN"),
+            "No subqueries, no joins should be added: {result}"
+        );
+        assert!(
+            result.contains("a.x > 1"),
+            "Original predicates should remain: {result}"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -858,7 +948,10 @@ mod tests {
     fn test_exists_no_where_not_unnested() {
         let sql = "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b)";
         let result = parse_and_unnest(sql);
-        assert!(result.contains("EXISTS"), "EXISTS without inner WHERE should remain: {result}");
+        assert!(
+            result.contains("EXISTS"),
+            "EXISTS without inner WHERE should remain: {result}"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -870,7 +963,10 @@ mod tests {
         // Inner WHERE only references columns from b — no correlation to outer a
         let sql = "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.x = b.y)";
         let result = parse_and_unnest(sql);
-        assert!(result.contains("EXISTS"), "Same-table predicate is not correlation: {result}");
+        assert!(
+            result.contains("EXISTS"),
+            "Same-table predicate is not correlation: {result}"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -881,14 +977,20 @@ mod tests {
     fn test_exists_produces_distinct_derived_table() {
         let sql = "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.id = a.id)";
         let result = parse_and_unnest(sql);
-        assert!(result.contains("DISTINCT"), "Derived table should use DISTINCT: {result}");
+        assert!(
+            result.contains("DISTINCT"),
+            "Derived table should use DISTINCT: {result}"
+        );
     }
 
     #[test]
     fn test_in_produces_distinct_derived_table() {
         let sql = "SELECT a.id FROM a WHERE a.id IN (SELECT b.id FROM b)";
         let result = parse_and_unnest(sql);
-        assert!(result.contains("DISTINCT"), "IN-derived table should use DISTINCT: {result}");
+        assert!(
+            result.contains("DISTINCT"),
+            "IN-derived table should use DISTINCT: {result}"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -901,7 +1003,10 @@ mod tests {
         let result = parse_and_unnest(sql);
         assert!(result.contains("LEFT JOIN"), "Expected LEFT JOIN: {result}");
         assert!(result.contains("IS NULL"), "Expected IS NULL: {result}");
-        assert!(result.contains("active"), "Inner WHERE should be preserved: {result}");
+        assert!(
+            result.contains("active"),
+            "Inner WHERE should be preserved: {result}"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────

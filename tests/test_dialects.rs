@@ -8,20 +8,23 @@
 /// Coverage mirrors the main cross-dialect test categories from:
 ///   - tests/dialects/test_dialect.py (cast, operators, random, transactions, etc.)
 ///   - tests/dialects/test_{bigquery,mysql,postgres,duckdb,snowflake,tsql,...}.py
-use sqlglot_rust::{transpile, Dialect};
+use sqlglot_rust::{Dialect, transpile};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Helpers
 // ═════════════════════════════════════════════════════════════════════════════
 
 fn transpile_ok(sql: &str, read: Dialect, write: Dialect) -> String {
-    transpile(sql, read, write)
-        .unwrap_or_else(|e| panic!("Transpile failed for '{}': {}", sql, e))
+    transpile(sql, read, write).unwrap_or_else(|e| panic!("Transpile failed for '{}': {}", sql, e))
 }
 
 fn assert_transpile(sql: &str, expected: &str, read: Dialect, write: Dialect) {
     let result = transpile_ok(sql, read, write);
-    assert_eq!(result, expected, "\n  SQL:    {}\n  {:?} → {:?}", sql, read, write);
+    assert_eq!(
+        result, expected,
+        "\n  SQL:    {}\n  {:?} → {:?}",
+        sql, read, write
+    );
 }
 
 /// Verify that SQL roundtrips through a specific dialect pair.

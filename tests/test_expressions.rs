@@ -3,7 +3,7 @@
 /// Covers AST construction, traversal (walk, find, find_all, transform),
 /// helper methods (find_columns, find_tables, sql()), and equality.
 use sqlglot_rust::ast::{SelectItem, find_columns, find_tables};
-use sqlglot_rust::{generate, parse, Dialect, Expr, Statement};
+use sqlglot_rust::{Dialect, Expr, Statement, generate, parse};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // AST traversal helpers
@@ -170,7 +170,13 @@ fn test_transform_double_numbers() {
 fn test_transform_rename_columns() {
     let expr = parse_expr("SELECT a + b");
     let transformed = expr.transform(&|e| {
-        if let Expr::Column { name, table, quote_style, table_quote_style } = &e {
+        if let Expr::Column {
+            name,
+            table,
+            quote_style,
+            table_quote_style,
+        } = &e
+        {
             if name == "a" {
                 Expr::Column {
                     name: "x".to_string(),
@@ -309,9 +315,7 @@ fn test_cast_expression() {
 
 #[test]
 fn test_case_expression_full() {
-    let stmt = parse_stmt(
-        "SELECT CASE x WHEN 1 THEN 'a' WHEN 2 THEN 'b' ELSE 'c' END FROM t",
-    );
+    let stmt = parse_stmt("SELECT CASE x WHEN 1 THEN 'a' WHEN 2 THEN 'b' ELSE 'c' END FROM t");
     let out = generate(&stmt, Dialect::Ansi);
     assert_eq!(
         out,

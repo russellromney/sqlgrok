@@ -53,6 +53,7 @@ Complete type and function reference for **sqlglot-rust**.
   - [Helper Functions](#helper-functions)
   - [SchemaError](#schemaerror)
 - [Optimizer](#optimizer)
+  - [Scope Analysis](#scope-analysis)
 
 ---
 
@@ -1018,6 +1019,8 @@ Accessed via `use sqlglot_rust::optimizer::optimize`.
 | Function | Signature | Returns | Description |
 | --- | --- | --- | --- |
 | `optimize` | `(stmt: Statement) -> Result<Statement>` | `Statement` | Apply all optimization passes |
+| `build_scope` | `(stmt: &Statement) -> Scope` | `Scope` | Build a scope tree from a parsed statement |
+| `find_all_in_scope` | `(scope: &Scope, predicate: &F) -> Vec<&ColumnRef>` | `Vec<&ColumnRef>` | Find columns matching a predicate within a single scope |
 
 ### Optimization Passes
 
@@ -1064,4 +1067,64 @@ assert_eq!(generate(&opt, Dialect::Ansi), "SELECT 7");
 let stmt = parse("SELECT a FROM t WHERE TRUE AND x > 1", Dialect::Ansi).unwrap();
 let opt = optimize(stmt).unwrap();
 assert_eq!(generate(&opt, Dialect::Ansi), "SELECT a FROM t WHERE x > 1");
+```
+
+### Scope Analysis
+
+Scope analysis tracks the sources, columns, and inter-scope relationships
+in a query tree. It is the foundation for qualify_columns, pushdown_predicates,
+annotate_types, and column lineage analysis.
+
+Accessed via `use sqlglot_rust::optimizer::scope_analysis::{build_scope, find_all_in_scope, Scope, ScopeType}`
+or the crate-level re-exports `use sqlglot_rust::{build_scope, find_all_in_scope, Scope, ScopeType}`.
+
+#### ScopeType
+
+| Variant | Description |
+| --- | --- |
+| `Root` | The outermost query |
+| `Subquery` | A scalar or lateral subquery (WHERE / SELECT / HAVING) |
+| `DerivedTable` | A subquery in FROM |
+| `Cte` | A CTE definition (`WITH name AS (...)`) |
+| `Union` | One branch of a UNION / INTERSECT / EXCEPT |
+| `Udtf` | A user-defined table function / LATERAL |
+
+#### Scope Fields
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `scope_type` | `ScopeType` | Kind of scope |
+| `sources` | `HashMap<String, Source>` | Source name/alias → table or child scope |
+| `columns` | `Vec<ColumnRef>` | Column references in this scope (not child scopes) |
+| `external_columns` | `Vec<ColumnRef>` | Columns referencing an outer scope (correlations) |
+| `derived_table_scopes` | `Vec<Scope>` | Child scopes from subqueries in FROM |
+| `subquery_scopes` | `Vec<Scope>` | Child scopes from scalar/EXISTS/IN subqueries |
+| `union_scopes` | `Vec<Scope>` | Child scopes for UNION/INTERSECT/EXCEPT branches |
+| `cte_scopes` | `Vec<Scope>` | Child scopes for CTE definitions |
+| `selected_sources` | `HashMap<String, Source>` | Sources referenced by SELECT columns |
+| `is_correlated` | `bool` | Whether scope references outer columns |
+
+#### Example
+
+```rust
+use sqlglot_rust::{parse, Dialect, build_scope, find_all_in_scope};
+use sqlglot_rust::optimizer::scope_analysis::ScopeType;
+
+let ast = parse(
+    "SELECT a FROM t1 WHERE EXISTS (SELECT 1 FROM t2 WHERE t2.id = t1.id)",
+    Dialect::Ansi,
+).unwrap();
+let scope = build_scope(&ast);
+
+assert_eq!(scope.scope_type, ScopeType::Root);
+assert!(scope.sources.contains_key("t1"));
+assert_eq!(scope.subquery_scopes.len(), 1);
+
+let sub = &scope.subquery_scopes[0];
+assert!(sub.is_correlated);
+assert!(sub.external_columns.iter().any(|c| c.table.as_deref() == Some("t1")));
+
+// Find all columns referencing t1 in the root scope
+let t1_cols = find_all_in_scope(&scope, &|c| c.table.as_deref() == Some("t1"));
+assert!(!t1_cols.is_empty());
 ```

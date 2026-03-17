@@ -28,8 +28,13 @@ impl QuoteStyle {
         use crate::dialects::Dialect;
         match dialect {
             Dialect::Tsql | Dialect::Fabric => QuoteStyle::Bracket,
-            Dialect::Mysql | Dialect::BigQuery | Dialect::Hive | Dialect::Spark
-            | Dialect::Databricks | Dialect::Doris | Dialect::SingleStore
+            Dialect::Mysql
+            | Dialect::BigQuery
+            | Dialect::Hive
+            | Dialect::Spark
+            | Dialect::Databricks
+            | Dialect::Doris
+            | Dialect::SingleStore
             | Dialect::StarRocks => QuoteStyle::Backtick,
             // ANSI, Postgres, Oracle, Snowflake, Presto, Trino, etc.
             _ => QuoteStyle::DoubleQuote,
@@ -279,10 +284,7 @@ pub enum Expr {
         right: Box<Expr>,
     },
     /// A unary operation: `op expr`
-    UnaryOp {
-        op: UnaryOperator,
-        expr: Box<Expr>,
-    },
+    UnaryOp { op: UnaryOperator, expr: Box<Expr> },
     /// A function call: `name(args...)` with optional DISTINCT, ORDER BY, etc.
     Function {
         name: String,
@@ -325,10 +327,7 @@ pub enum Expr {
         right: Box<Expr>,
     },
     /// `expr IS [NOT] NULL`
-    IsNull {
-        expr: Box<Expr>,
-        negated: bool,
-    },
+    IsNull { expr: Box<Expr>, negated: bool },
     /// `expr IS [NOT] TRUE` / `expr IS [NOT] FALSE`
     IsBool {
         expr: Box<Expr>,
@@ -399,15 +398,9 @@ pub enum Expr {
         false_val: Option<Box<Expr>>,
     },
     /// `NULLIF(a, b)`
-    NullIf {
-        expr: Box<Expr>,
-        r#else: Box<Expr>,
-    },
+    NullIf { expr: Box<Expr>, r#else: Box<Expr> },
     /// `expr COLLATE collation`
-    Collate {
-        expr: Box<Expr>,
-        collation: String,
-    },
+    Collate { expr: Box<Expr>, collation: String },
     /// Parameter / placeholder: `$1`, `?`, `:name`
     Parameter(String),
     /// A type expression used in DDL contexts or CAST
@@ -417,15 +410,9 @@ pub enum Expr {
     /// Star expression `*`
     Star,
     /// Alias expression: `expr AS name`
-    Alias {
-        expr: Box<Expr>,
-        name: String,
-    },
+    Alias { expr: Box<Expr>, name: String },
     /// Array access: `expr[index]`
-    ArrayIndex {
-        expr: Box<Expr>,
-        index: Box<Expr>,
-    },
+    ArrayIndex { expr: Box<Expr>, index: Box<Expr> },
     /// JSON access: `expr->key` or `expr->>key`
     JsonAccess {
         expr: Box<Expr>,
@@ -473,8 +460,8 @@ pub enum WindowFrameKind {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum WindowFrameBound {
     CurrentRow,
-    Preceding(Option<Box<Expr>>),  // None = UNBOUNDED PRECEDING
-    Following(Option<Box<Expr>>),  // None = UNBOUNDED FOLLOWING
+    Preceding(Option<Box<Expr>>), // None = UNBOUNDED PRECEDING
+    Following(Option<Box<Expr>>), // None = UNBOUNDED FOLLOWING
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -751,8 +738,14 @@ pub enum DataType {
     BigInt,
     Float,
     Double,
-    Decimal { precision: Option<u32>, scale: Option<u32> },
-    Numeric { precision: Option<u32>, scale: Option<u32> },
+    Decimal {
+        precision: Option<u32>,
+        scale: Option<u32>,
+    },
+    Numeric {
+        precision: Option<u32>,
+        scale: Option<u32>,
+    },
     Real,
 
     // String
@@ -768,8 +761,13 @@ pub enum DataType {
 
     // Date/Time
     Date,
-    Time { precision: Option<u32> },
-    Timestamp { precision: Option<u32>, with_tz: bool },
+    Time {
+        precision: Option<u32>,
+    },
+    Timestamp {
+        precision: Option<u32>,
+        with_tz: bool,
+    },
     Interval,
     DateTime,
 
@@ -787,7 +785,10 @@ pub enum DataType {
 
     // Complex types
     Array(Option<Box<DataType>>),
-    Map { key: Box<DataType>, value: Box<DataType> },
+    Map {
+        key: Box<DataType>,
+        value: Box<DataType>,
+    },
     Struct(Vec<(String, DataType)>),
     Tuple(Vec<DataType>),
 
@@ -841,7 +842,9 @@ impl Expr {
                     f.walk(visitor);
                 }
             }
-            Expr::Between { expr, low, high, .. } => {
+            Expr::Between {
+                expr, low, high, ..
+            } => {
                 expr.walk(visitor);
                 low.walk(visitor);
                 high.walk(visitor);
@@ -890,7 +893,11 @@ impl Expr {
                     item.walk(visitor);
                 }
             }
-            Expr::If { condition, true_val, false_val } => {
+            Expr::If {
+                condition,
+                true_val,
+                false_val,
+            } => {
                 condition.walk(visitor);
                 true_val.walk(visitor);
                 if let Some(fv) = false_val {
@@ -984,7 +991,13 @@ impl Expr {
                 op,
                 expr: Box::new(expr.transform(func)),
             },
-            Expr::Function { name, args, distinct, filter, over } => Expr::Function {
+            Expr::Function {
+                name,
+                args,
+                distinct,
+                filter,
+                over,
+            } => Expr::Function {
                 name,
                 args: args.into_iter().map(|a| a.transform(func)).collect(),
                 distinct,
@@ -996,13 +1009,22 @@ impl Expr {
                 expr: Box::new(expr.transform(func)),
                 data_type,
             },
-            Expr::Between { expr, low, high, negated } => Expr::Between {
+            Expr::Between {
+                expr,
+                low,
+                high,
+                negated,
+            } => Expr::Between {
                 expr: Box::new(expr.transform(func)),
                 low: Box::new(low.transform(func)),
                 high: Box::new(high.transform(func)),
                 negated,
             },
-            Expr::Case { operand, when_clauses, else_clause } => Expr::Case {
+            Expr::Case {
+                operand,
+                when_clauses,
+                else_clause,
+            } => Expr::Case {
                 operand: operand.map(|o| Box::new(o.transform(func))),
                 when_clauses: when_clauses
                     .into_iter()
@@ -1010,7 +1032,11 @@ impl Expr {
                     .collect(),
                 else_clause: else_clause.map(|e| Box::new(e.transform(func))),
             },
-            Expr::IsBool { expr, value, negated } => Expr::IsBool {
+            Expr::IsBool {
+                expr,
+                value,
+                negated,
+            } => Expr::IsBool {
                 expr: Box::new(expr.transform(func)),
                 value,
                 negated,

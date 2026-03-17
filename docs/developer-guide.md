@@ -756,6 +756,53 @@ use sqlglot_rust::optimizer::unnest_subqueries::unnest_subqueries;
 let unnested = unnest_subqueries(stmt);
 ```
 
+### Scope Analysis
+
+Scope analysis builds a tree of `Scope` objects from a parsed SQL statement,
+tracking sources, column references, and correlations at each level. It is the
+foundation for qualify_columns, pushdown_predicates, annotate_types, and
+column lineage.
+
+```rust
+use sqlglot_rust::{parse, Dialect, build_scope};
+use sqlglot_rust::optimizer::scope_analysis::ScopeType;
+
+let ast = parse(
+    "WITH cte AS (SELECT id FROM t) \
+     SELECT cte.id FROM cte WHERE EXISTS (SELECT 1 FROM s WHERE s.fk = cte.id)",
+    Dialect::Ansi,
+).unwrap();
+let scope = build_scope(&ast);
+
+// Root scope sees cte as a source
+assert!(scope.sources.contains_key("cte"));
+assert_eq!(scope.cte_scopes.len(), 1);
+assert_eq!(scope.subquery_scopes.len(), 1);
+
+// The EXISTS subquery is correlated — it references outer table cte
+let sub = &scope.subquery_scopes[0];
+assert!(sub.is_correlated);
+assert!(sub.external_columns.iter().any(|c| c.table.as_deref() == Some("cte")));
+```
+
+| Concept | Description |
+| --- | --- |
+| **Root scope** | The outermost SELECT |
+| **CTE scope** | Each `WITH name AS (...)` body |
+| **Derived-table scope** | Each subquery in FROM |
+| **Subquery scope** | Each scalar, EXISTS, or IN subquery |
+| **Union scope** | Each branch of UNION / INTERSECT / EXCEPT |
+| **Correlation** | A column in a child scope referencing an outer source |
+| **`find_all_in_scope`** | Filter columns within a single scope (does not descend into children) |
+
+You can walk the full scope tree:
+
+```rust
+scope.walk(&mut |s| {
+    println!("{:?}: {} sources", s.scope_type, s.sources.len());
+});
+```
+
 ---
 
 ## Schema Management

@@ -1,6 +1,6 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
+use sqlglot_rust::{Dialect, generate, parse, transpile};
 use std::hint::black_box;
-use sqlglot_rust::{generate, parse, transpile, Dialect};
 
 fn bench_parse_simple(c: &mut Criterion) {
     c.bench_function("parse simple SELECT", |b| {
@@ -47,9 +47,7 @@ fn bench_roundtrip(c: &mut Criterion) {
 fn bench_transpile(c: &mut Criterion) {
     let sql = "SELECT CAST(x AS INT), SUBSTR(name, 1, 3) FROM users WHERE active = TRUE";
     c.bench_function("transpile Ansi -> Postgres", |b| {
-        b.iter(|| {
-            transpile(black_box(sql), Dialect::Ansi, Dialect::Postgres).unwrap()
-        })
+        b.iter(|| transpile(black_box(sql), Dialect::Ansi, Dialect::Postgres).unwrap())
     });
 }
 

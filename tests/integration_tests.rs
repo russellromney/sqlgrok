@@ -1,5 +1,5 @@
-use sqlglot_rust::{generate, parse, transpile, Dialect};
 use sqlglot_rust::schema::{MappingSchema, Schema, SchemaError, ensure_schema};
+use sqlglot_rust::{Dialect, generate, parse, transpile};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Basic roundtrip tests
@@ -298,7 +298,8 @@ fn test_find_tables() {
 #[test]
 fn test_schema_from_create_table() {
     // Parse a CREATE TABLE and use it to populate a schema
-    let sql = "CREATE TABLE products (id INT, name VARCHAR(100), price DECIMAL(10, 2), active BOOLEAN)";
+    let sql =
+        "CREATE TABLE products (id INT, name VARCHAR(100), price DECIMAL(10, 2), active BOOLEAN)";
     let ast = parse(sql, Dialect::Ansi).unwrap();
 
     let mut schema = MappingSchema::new(Dialect::Ansi);
@@ -342,7 +343,11 @@ fn test_schema_validates_query_columns() {
         )
         .unwrap();
 
-    let ast = parse("SELECT id, name, email FROM users WHERE id > 10", Dialect::Postgres).unwrap();
+    let ast = parse(
+        "SELECT id, name, email FROM users WHERE id > 10",
+        Dialect::Postgres,
+    )
+    .unwrap();
     if let sqlglot_rust::ast::Statement::Select(sel) = &ast {
         // Verify all selected columns exist in schema
         for item in &sel.columns {
@@ -390,12 +395,18 @@ fn test_schema_duplicate_and_replace() {
         .unwrap();
 
     // Duplicate should fail
-    let result = schema.add_table(&["t"], vec![("b".into(), sqlglot_rust::ast::DataType::Text)]);
+    let result = schema.add_table(
+        &["t"],
+        vec![("b".into(), sqlglot_rust::ast::DataType::Text)],
+    );
     assert!(matches!(result, Err(SchemaError::DuplicateTable(_))));
 
     // Replace should succeed
     schema
-        .replace_table(&["t"], vec![("b".into(), sqlglot_rust::ast::DataType::Text)])
+        .replace_table(
+            &["t"],
+            vec![("b".into(), sqlglot_rust::ast::DataType::Text)],
+        )
         .unwrap();
     assert!(schema.has_column(&["t"], "b"));
     assert!(!schema.has_column(&["t"], "a"));
