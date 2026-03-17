@@ -1,7 +1,8 @@
 /// Tests ported from Python sqlglot's `test_optimizer.py`.
 ///
-/// Covers constant folding (arithmetic, string concat, comparisons) and
-/// boolean simplification (AND/OR with TRUE/FALSE, double NOT, WHERE TRUE).
+/// Covers constant folding (arithmetic, string concat, comparisons),
+/// boolean simplification (AND/OR with TRUE/FALSE, double NOT, WHERE TRUE),
+/// and subquery unnesting / decorrelation (EXISTS/IN → JOINs).
 use sqlglot_rust::{generate, parse, Dialect};
 use sqlglot_rust::optimizer::optimize;
 
@@ -214,4 +215,116 @@ fn test_optimizer_preserves_cte() {
     validate_no_op(
         "WITH cte AS (SELECT 1 AS x) SELECT * FROM cte",
     );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Subquery unnesting – EXISTS → JOIN (via full optimize pipeline)
+// ═════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_optimize_exists_to_inner_join() {
+    let input = "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.id = a.id)";
+    let stmt = parse(input, Dialect::Ansi).unwrap();
+    let optimized = optimize(stmt).unwrap();
+    let output = generate(&optimized, Dialect::Ansi);
+    assert!(output.contains("INNER JOIN"), "optimize() should unnest EXISTS: {output}");
+    assert!(!output.contains("EXISTS"), "EXISTS should be removed: {output}");
+}
+
+#[test]
+fn test_optimize_not_exists_to_left_join() {
+    let input = "SELECT a.id FROM a WHERE NOT EXISTS (SELECT 1 FROM b WHERE b.id = a.id)";
+    let stmt = parse(input, Dialect::Ansi).unwrap();
+    let optimized = optimize(stmt).unwrap();
+    let output = generate(&optimized, Dialect::Ansi);
+    assert!(output.contains("LEFT JOIN"), "optimize() should unnest NOT EXISTS: {output}");
+    assert!(output.contains("IS NULL"), "Anti-join needs IS NULL check: {output}");
+}
+
+#[test]
+fn test_optimize_in_subquery_to_join() {
+    let input = "SELECT a.id FROM a WHERE a.id IN (SELECT b.id FROM b)";
+    let stmt = parse(input, Dialect::Ansi).unwrap();
+    let optimized = optimize(stmt).unwrap();
+    let output = generate(&optimized, Dialect::Ansi);
+    assert!(output.contains("INNER JOIN"), "optimize() should unnest IN: {output}");
+    assert!(!output.contains(" IN "), "IN should be removed: {output}");
+}
+
+#[test]
+fn test_optimize_not_in_subquery_to_left_join() {
+    let input = "SELECT a.id FROM a WHERE a.id NOT IN (SELECT b.id FROM b)";
+    let stmt = parse(input, Dialect::Ansi).unwrap();
+    let optimized = optimize(stmt).unwrap();
+    let output = generate(&optimized, Dialect::Ansi);
+    assert!(output.contains("LEFT JOIN"), "optimize() should unnest NOT IN: {output}");
+    assert!(output.contains("IS NULL"), "Anti-join needs IS NULL: {output}");
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Subquery unnesting – safety: uncorrelated and non-equality correlations
+// ═════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_optimize_uncorrelated_exists_unchanged() {
+    // No correlation → optimizer should leave EXISTS alone
+    let input = "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.x > 10)";
+    let stmt = parse(input, Dialect::Ansi).unwrap();
+    let optimized = optimize(stmt).unwrap();
+    let output = generate(&optimized, Dialect::Ansi);
+    assert!(output.contains("EXISTS"), "Uncorrelated EXISTS should remain: {output}");
+}
+
+#[test]
+fn test_optimize_non_eq_correlation_unchanged() {
+    // Non-equality correlation → unsafe to unnest
+    let input = "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.val < a.val AND b.id = a.id)";
+    let stmt = parse(input, Dialect::Ansi).unwrap();
+    let optimized = optimize(stmt).unwrap();
+    let output = generate(&optimized, Dialect::Ansi);
+    assert!(output.contains("EXISTS"), "Non-eq correlation should remain: {output}");
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Python sqlglot#7295 exact reproducer through full pipeline
+// ═════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_optimize_sqlglot_issue_7295_no_crash() {
+    // Exact reproducer from Python sqlglot#7295: correlated scalar subquery
+    // inside COALESCE in SELECT list with non-equality correlation.
+    // Must NOT crash and must NOT modify the query structure.
+    let input = "SELECT COALESCE((SELECT MAX(b.val) FROM t AS b WHERE b.val < a.val AND b.id = a.id), a.val) AS result FROM t AS a";
+    let stmt = parse(input, Dialect::Ansi).unwrap();
+    let optimized = optimize(stmt).unwrap();
+    let output = generate(&optimized, Dialect::Ansi);
+    assert!(!output.contains("JOIN"), "Issue #7295: should NOT add JOINs: {output}");
+    assert!(output.contains("COALESCE"), "COALESCE should remain: {output}");
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Combined optimizations: constant folding + boolean simplification + unnesting
+// ═════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_optimize_combined_bool_simplify_and_unnest() {
+    // TRUE AND EXISTS(...) → EXISTS is simplified to just EXISTS, then unnested
+    let input = "SELECT a.id FROM a WHERE TRUE AND EXISTS (SELECT 1 FROM b WHERE b.id = a.id)";
+    let stmt = parse(input, Dialect::Ansi).unwrap();
+    let optimized = optimize(stmt).unwrap();
+    let output = generate(&optimized, Dialect::Ansi);
+    assert!(output.contains("INNER JOIN"), "Should unnest after boolean simplification: {output}");
+    assert!(!output.contains("TRUE"), "TRUE should be simplified away: {output}");
+    assert!(!output.contains("EXISTS"), "EXISTS should be unnested: {output}");
+}
+
+#[test]
+fn test_optimize_preserves_existing_joins_with_unnest() {
+    // Query already has a join, and also has an EXISTS in WHERE → should add another join
+    let input = "SELECT a.id FROM a INNER JOIN c ON a.cid = c.id WHERE EXISTS (SELECT 1 FROM b WHERE b.id = a.id)";
+    let stmt = parse(input, Dialect::Ansi).unwrap();
+    let optimized = optimize(stmt).unwrap();
+    let output = generate(&optimized, Dialect::Ansi);
+    assert!(output.contains("a.cid = c.id"), "Original join should be preserved: {output}");
+    assert!(!output.contains("EXISTS"), "EXISTS should be unnested: {output}");
 }
