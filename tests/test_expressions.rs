@@ -318,3 +318,65 @@ fn test_case_expression_full() {
         "SELECT CASE x WHEN 1 THEN 'a' WHEN 2 THEN 'b' ELSE 'c' END FROM t"
     );
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ANY / ALL / SOME operator support (PQO-156)
+// ═════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_any_op_parse_roundtrip() {
+    let sql = "SELECT * FROM t WHERE id = ANY(ARRAY[1, 2, 3])";
+    let stmt = parse(sql, Dialect::Postgres).unwrap();
+    let out = generate(&stmt, Dialect::Postgres);
+    assert_eq!(out, "SELECT * FROM t WHERE id = ANY(ARRAY[1, 2, 3])");
+}
+
+#[test]
+fn test_all_op_parse_roundtrip() {
+    let sql = "SELECT * FROM t WHERE score > ALL(SELECT score FROM archive)";
+    let stmt = parse(sql, Dialect::Postgres).unwrap();
+    let out = generate(&stmt, Dialect::Postgres);
+    assert_eq!(
+        out,
+        "SELECT * FROM t WHERE score > ALL(SELECT score FROM archive)"
+    );
+}
+
+#[test]
+fn test_some_maps_to_any() {
+    let sql = "SELECT * FROM t WHERE x <> SOME(ARRAY[1])";
+    let stmt = parse(sql, Dialect::Postgres).unwrap();
+    let out = generate(&stmt, Dialect::Postgres);
+    // SOME is emitted as ANY (they are synonyms)
+    assert_eq!(out, "SELECT * FROM t WHERE x <> ANY(ARRAY[1])");
+}
+
+#[test]
+fn test_any_op_ast_shape() {
+    use sqlglot_rust::ast::BinaryOperator;
+    let sql = "SELECT * FROM t WHERE id = ANY(ARRAY[1])";
+    let stmt = parse(sql, Dialect::Postgres).unwrap();
+    if let Statement::Select(sel) = &stmt {
+        if let Some(Expr::AnyOp { op, .. }) = &sel.where_clause {
+            assert_eq!(*op, BinaryOperator::Eq);
+        } else {
+            panic!("Expected AnyOp in WHERE clause");
+        }
+    } else {
+        panic!("Expected SELECT statement");
+    }
+}
+
+#[test]
+fn test_all_comparison_ops_with_any() {
+    for op_str in &["=", "<>", "<", ">", "<=", ">="] {
+        let sql = format!("SELECT * FROM t WHERE x {} ANY(ARRAY[1])", op_str);
+        let stmt = parse(&sql, Dialect::Postgres).unwrap();
+        let out = generate(&stmt, Dialect::Postgres);
+        assert!(
+            out.contains(&format!("{} ANY(", op_str)),
+            "Failed for operator {}",
+            op_str
+        );
+    }
+}

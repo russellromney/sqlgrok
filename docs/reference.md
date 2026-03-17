@@ -298,6 +298,8 @@ pub struct AlterTableStatement {
 | `Between` | `{ expr, low, high, negated }` | `x BETWEEN 1 AND 10` |
 | `InList` | `{ expr, list, negated }` | `x IN (1, 2, 3)` |
 | `InSubquery` | `{ expr, subquery, negated }` | `x IN (SELECT ...)` |
+| `AnyOp` | `{ expr, op, right }` | `x = ANY(ARRAY[1, 2])`, `x = ANY(SELECT ...)` |
+| `AllOp` | `{ expr, op, right }` | `x > ALL(SELECT ...)` |
 | `IsNull` | `{ expr, negated }` | `x IS NULL`, `x IS NOT NULL` |
 | `Like` | `{ expr, pattern, negated, escape? }` | `name LIKE '%test%'` |
 | `ILike` | `{ expr, pattern, negated, escape? }` | `name ILIKE '%test%'` |

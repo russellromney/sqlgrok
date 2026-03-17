@@ -1593,12 +1593,42 @@ impl Parser {
 
             if let Some(op) = op {
                 self.advance();
-                let right = self.parse_addition()?;
-                left = Expr::BinaryOp {
-                    left: Box::new(left),
-                    op,
-                    right: Box::new(right),
-                };
+                if matches!(self.peek_type(), TokenType::Any | TokenType::Some) {
+                    self.advance();
+                    self.expect(TokenType::LParen)?;
+                    let right = if matches!(self.peek_type(), TokenType::Select | TokenType::With) {
+                        Expr::Subquery(Box::new(self.parse_statement_inner()?))
+                    } else {
+                        self.parse_expr()?
+                    };
+                    self.expect(TokenType::RParen)?;
+                    left = Expr::AnyOp {
+                        expr: Box::new(left),
+                        op,
+                        right: Box::new(right),
+                    };
+                } else if self.peek_type() == &TokenType::All {
+                    self.advance();
+                    self.expect(TokenType::LParen)?;
+                    let right = if matches!(self.peek_type(), TokenType::Select | TokenType::With) {
+                        Expr::Subquery(Box::new(self.parse_statement_inner()?))
+                    } else {
+                        self.parse_expr()?
+                    };
+                    self.expect(TokenType::RParen)?;
+                    left = Expr::AllOp {
+                        expr: Box::new(left),
+                        op,
+                        right: Box::new(right),
+                    };
+                } else {
+                    let right = self.parse_addition()?;
+                    left = Expr::BinaryOp {
+                        left: Box::new(left),
+                        op,
+                        right: Box::new(right),
+                    };
+                }
             } else if self.peek_type() == &TokenType::Is {
                 self.advance();
                 let negated = self.match_token(TokenType::Not);

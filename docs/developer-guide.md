@@ -108,7 +108,7 @@ SELECT 1; SELECT 2; INSERT INTO t VALUES (1)
 | **DDL** | `CREATE TABLE`, `CREATE TABLE ... AS SELECT`, `ALTER TABLE` (add/drop/rename column, add/drop constraint), `DROP TABLE`, `CREATE VIEW`, `DROP VIEW`, `TRUNCATE` |
 | **Transaction** | `BEGIN`, `COMMIT`, `ROLLBACK`, `SAVEPOINT`, `RELEASE SAVEPOINT`, `ROLLBACK TO` |
 | **Other** | `EXPLAIN [ANALYZE]`, `USE database` |
-| **Expressions** | Binary/unary ops, `BETWEEN`, `IN`, `LIKE`, `ILIKE`, `CASE`, `CAST`, `TRY_CAST`, `EXTRACT`, `EXISTS`, `COALESCE`, `IF`, `NULLIF`, `INTERVAL`, window functions, subqueries, array literals, JSON access (`->`, `->>`), parameters (`$1`, `?`, `:name`), lambdas |
+| **Expressions** | Binary/unary ops, `BETWEEN`, `IN`, `ANY`/`ALL`/`SOME`, `LIKE`, `ILIKE`, `CASE`, `CAST`, `TRY_CAST`, `EXTRACT`, `EXISTS`, `COALESCE`, `IF`, `NULLIF`, `INTERVAL`, window functions, subqueries, array literals, JSON access (`->`, `->>`), parameters (`$1`, `?`, `:name`), lambdas |
 
 ---
 
