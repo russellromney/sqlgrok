@@ -959,6 +959,29 @@ Accessed via `use sqlglot_rust::optimizer::optimize`.
 | **Constant Folding** | Evaluate compile-time expressions | `1 + 2` → `3` |
 | **Boolean Simplification** | Eliminate tautologies / contradictions | `TRUE AND x` → `x` |
 | **Dead Predicate Elimination** | Remove trivially-true WHERE clauses | `WHERE TRUE` → removed |
+| **Subquery Unnesting** | Decorrelate subqueries into JOINs | `WHERE EXISTS (… WHERE b.id = a.id)` → `INNER JOIN` |
+
+### Subquery Unnesting Details
+
+`unnest_subqueries` rewrites correlated subqueries in WHERE clauses into JOINs.
+
+Accessed via `use sqlglot_rust::optimizer::unnest_subqueries::unnest_subqueries`.
+
+| Function | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `unnest_subqueries` | `(stmt: Statement) -> Statement` | `Statement` | Decorrelate WHERE subqueries into JOINs |
+
+| Pattern | Rewrite |
+| --- | --- |
+| `WHERE EXISTS (SELECT … WHERE b.id = a.id)` | `INNER JOIN (SELECT DISTINCT …) ON a.id = _u0.id` |
+| `WHERE NOT EXISTS (…)` | `LEFT JOIN … WHERE _u0._sentinel IS NULL` |
+| `WHERE x IN (SELECT col FROM …)` | `INNER JOIN (SELECT DISTINCT col AS _col0 …)` |
+| `WHERE x NOT IN (SELECT col FROM …)` | `LEFT JOIN … WHERE _u0._col0 IS NULL` |
+
+The pass bails out (no-op) when:
+- No equality correlation exists in the subquery.
+- Non-equality correlations are present (e.g., `<`, `>`) — would need LATERAL.
+- The subquery is embedded in a SELECT-list function (e.g., `COALESCE`).
 
 **Example:**
 

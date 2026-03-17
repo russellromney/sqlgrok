@@ -39,6 +39,7 @@ the AST, optimizing queries, and serializing results.
 - [Query Optimization](#query-optimization)
   - [Constant Folding](#constant-folding)
   - [Boolean Simplification](#boolean-simplification)
+  - [Subquery Unnesting](#subquery-unnesting)
 - [Serialization (JSON Round-Tripping)](#serialization-json-round-tripping)
 - [Error Handling](#error-handling)
 - [SBOM Generation](#sbom-generation)
@@ -709,6 +710,46 @@ Tautologies and contradictions are eliminated:
 | `SELECT NOT TRUE` | `SELECT FALSE` | NOT constant |
 | `SELECT NOT FALSE` | `SELECT TRUE` | NOT constant |
 | `SELECT a FROM t WHERE TRUE` | `SELECT a FROM t` | WHERE TRUE removal |
+
+### Subquery Unnesting
+
+Correlated subqueries in WHERE clauses are rewritten into equivalent JOINs,
+which most query engines execute more efficiently.
+
+```rust
+use sqlglot_rust::{parse, generate, Dialect};
+use sqlglot_rust::optimizer::optimize;
+
+let stmt = parse(
+    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.id = a.id)",
+    Dialect::Ansi,
+).unwrap();
+let optimized = optimize(stmt).unwrap();
+let sql = generate(&optimized, Dialect::Ansi);
+// EXISTS is rewritten to INNER JOIN
+assert!(sql.contains("INNER JOIN"));
+```
+
+| Input | Output | Rule |
+| --- | --- | --- |
+| `WHERE EXISTS (SELECT … WHERE b.id = a.id)` | `INNER JOIN (SELECT DISTINCT …) ON …` | Semi-join |
+| `WHERE NOT EXISTS (SELECT … WHERE b.id = a.id)` | `LEFT JOIN … WHERE _u.col IS NULL` | Anti-join |
+| `WHERE x IN (SELECT col FROM …)` | `INNER JOIN (SELECT DISTINCT …)` | Semi-join |
+| `WHERE x NOT IN (SELECT col FROM …)` | `LEFT JOIN … WHERE _u.col IS NULL` | Anti-join |
+
+The pass is conservative and leaves the query unchanged when:
+
+- The subquery has no equality correlation predicates.
+- The subquery uses non-equality correlations (e.g., `b.val < a.val`) that would require LATERAL/APPLY.
+- The subquery is inside a function in the SELECT list (e.g., `COALESCE(...)`) rather than in a WHERE predicate.
+
+You can also call the pass directly:
+
+```rust
+use sqlglot_rust::optimizer::unnest_subqueries::unnest_subqueries;
+
+let unnested = unnest_subqueries(stmt);
+```
 
 ---
 
