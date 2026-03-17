@@ -1196,6 +1196,7 @@ Accessed via `use sqlglot_rust::optimizer::optimize`.
 | **Boolean Simplification** | Eliminate tautologies / contradictions | `TRUE AND x` → `x` |
 | **Dead Predicate Elimination** | Remove trivially-true WHERE clauses | `WHERE TRUE` → removed |
 | **Subquery Unnesting** | Decorrelate subqueries into JOINs | `WHERE EXISTS (… WHERE b.id = a.id)` → `INNER JOIN` |
+| **Qualify Columns** | Resolve and qualify column references | `SELECT col FROM t` → `SELECT t.col FROM t` |
 
 ### Subquery Unnesting Details
 
@@ -1233,6 +1234,60 @@ assert_eq!(generate(&opt, Dialect::Ansi), "SELECT 7");
 let stmt = parse("SELECT a FROM t WHERE TRUE AND x > 1", Dialect::Ansi).unwrap();
 let opt = optimize(stmt).unwrap();
 assert_eq!(generate(&opt, Dialect::Ansi), "SELECT a FROM t WHERE x > 1");
+```
+
+### Qualify Columns
+
+`qualify_columns` resolves column references against the schema, adds table qualifiers to
+unqualified columns, and expands wildcard selects (`*`, `t.*`) into explicit column lists.
+
+Accessed via `use sqlglot_rust::optimizer::qualify_columns::qualify_columns`.
+
+| Function | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `qualify_columns` | `(stmt: Statement, schema: &S) -> Statement` | `Statement` | Qualify column references and expand wildcards |
+
+The schema parameter must implement the `Schema` trait. The most common implementation
+is `MappingSchema` (see [Schema System](#schema-system)).
+
+| Transformation | Before | After |
+| --- | --- | --- |
+| Qualify unqualified column | `SELECT col FROM t` | `SELECT t.col FROM t` |
+| Expand `*` | `SELECT * FROM t` | `SELECT t.id, t.name FROM t` |
+| Expand `t.*` | `SELECT t.* FROM t` | `SELECT t.id, t.name FROM t` |
+| Qualify WHERE / GROUP BY / ORDER BY | `WHERE col = 1` | `WHERE t.col = 1` |
+| Qualify JOIN ON | `ON id = other_id` | `ON a.id = b.other_id` |
+| CTE column resolution | `WITH cte AS (...) SELECT col FROM cte` | `WITH cte AS (...) SELECT cte.col FROM cte` |
+| Derived table columns | `SELECT col FROM (SELECT ...) AS sub` | `SELECT sub.col FROM (SELECT ...) AS sub` |
+| Subquery in WHERE | `WHERE id IN (SELECT fk FROM t2)` | `WHERE t.id IN (SELECT t2.fk FROM t2)` |
+
+Ambiguous columns (present in multiple sources) are left unqualified.
+
+**Example:**
+
+```rust
+use sqlglot_rust::{parse, generate, Dialect};
+use sqlglot_rust::optimizer::qualify_columns::qualify_columns;
+use sqlglot_rust::schema::MappingSchema;
+
+let schema = MappingSchema::new()
+    .with_table(vec!["users"], vec!["id", "name", "email"])
+    .with_table(vec!["orders"], vec!["id", "user_id", "amount"]);
+
+let stmt = parse("SELECT name FROM users WHERE id = 1", Dialect::Ansi).unwrap();
+let qualified = qualify_columns(stmt, &schema);
+assert_eq!(
+    generate(&qualified, Dialect::Ansi),
+    "SELECT users.name FROM users WHERE users.id = 1"
+);
+
+// Expand wildcard
+let stmt = parse("SELECT * FROM users", Dialect::Ansi).unwrap();
+let qualified = qualify_columns(stmt, &schema);
+assert_eq!(
+    generate(&qualified, Dialect::Ansi),
+    "SELECT users.id, users.name, users.email FROM users"
+);
 ```
 
 ### Scope Analysis

@@ -1885,6 +1885,109 @@ impl Expr {
                 filter: filter.map(|f| Box::new(f.transform(func))),
                 over,
             },
+            Expr::InList {
+                expr,
+                list,
+                negated,
+            } => Expr::InList {
+                expr: Box::new(expr.transform(func)),
+                list: list.into_iter().map(|e| e.transform(func)).collect(),
+                negated,
+            },
+            Expr::InSubquery {
+                expr,
+                subquery,
+                negated,
+            } => Expr::InSubquery {
+                expr: Box::new(expr.transform(func)),
+                subquery, // Statement — not transformable via Expr func
+                negated,
+            },
+            Expr::IsNull { expr, negated } => Expr::IsNull {
+                expr: Box::new(expr.transform(func)),
+                negated,
+            },
+            Expr::Like {
+                expr,
+                pattern,
+                negated,
+                escape,
+            } => Expr::Like {
+                expr: Box::new(expr.transform(func)),
+                pattern: Box::new(pattern.transform(func)),
+                negated,
+                escape: escape.map(|e| Box::new(e.transform(func))),
+            },
+            Expr::ILike {
+                expr,
+                pattern,
+                negated,
+                escape,
+            } => Expr::ILike {
+                expr: Box::new(expr.transform(func)),
+                pattern: Box::new(pattern.transform(func)),
+                negated,
+                escape: escape.map(|e| Box::new(e.transform(func))),
+            },
+            Expr::TryCast { expr, data_type } => Expr::TryCast {
+                expr: Box::new(expr.transform(func)),
+                data_type,
+            },
+            Expr::Extract { field, expr } => Expr::Extract {
+                field,
+                expr: Box::new(expr.transform(func)),
+            },
+            Expr::Interval { value, unit } => Expr::Interval {
+                value: Box::new(value.transform(func)),
+                unit,
+            },
+            Expr::ArrayLiteral(elems) => {
+                Expr::ArrayLiteral(elems.into_iter().map(|e| e.transform(func)).collect())
+            }
+            Expr::Tuple(elems) => {
+                Expr::Tuple(elems.into_iter().map(|e| e.transform(func)).collect())
+            }
+            Expr::Coalesce(elems) => {
+                Expr::Coalesce(elems.into_iter().map(|e| e.transform(func)).collect())
+            }
+            Expr::If {
+                condition,
+                true_val,
+                false_val,
+            } => Expr::If {
+                condition: Box::new(condition.transform(func)),
+                true_val: Box::new(true_val.transform(func)),
+                false_val: false_val.map(|f| Box::new(f.transform(func))),
+            },
+            Expr::NullIf { expr, r#else } => Expr::NullIf {
+                expr: Box::new(expr.transform(func)),
+                r#else: Box::new(r#else.transform(func)),
+            },
+            Expr::Collate { expr, collation } => Expr::Collate {
+                expr: Box::new(expr.transform(func)),
+                collation,
+            },
+            Expr::Alias { expr, name } => Expr::Alias {
+                expr: Box::new(expr.transform(func)),
+                name,
+            },
+            Expr::ArrayIndex { expr, index } => Expr::ArrayIndex {
+                expr: Box::new(expr.transform(func)),
+                index: Box::new(index.transform(func)),
+            },
+            Expr::JsonAccess {
+                expr,
+                path,
+                as_text,
+            } => Expr::JsonAccess {
+                expr: Box::new(expr.transform(func)),
+                path: Box::new(path.transform(func)),
+                as_text,
+            },
+            Expr::Lambda { params, body } => Expr::Lambda {
+                params,
+                body: Box::new(body.transform(func)),
+            },
             other => other,
         };
         func(transformed)

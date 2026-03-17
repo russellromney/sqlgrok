@@ -366,3 +366,260 @@ fn test_optimize_preserves_existing_joins_with_unnest() {
         "EXISTS should be unnested: {output}"
     );
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// qualify_columns tests
+// ═══════════════════════════════════════════════════════════════════════
+
+use sqlglot_rust::ast::DataType;
+use sqlglot_rust::optimizer::qualify_columns::qualify_columns;
+use sqlglot_rust::schema::{MappingSchema, Schema};
+
+fn test_schema() -> MappingSchema {
+    let mut s = MappingSchema::new(Dialect::Ansi);
+    s.add_table(
+        &["users"],
+        vec![
+            ("id".to_string(), DataType::Int),
+            ("name".to_string(), DataType::Varchar(Some(255))),
+            ("email".to_string(), DataType::Text),
+            ("dept_id".to_string(), DataType::Int),
+        ],
+    )
+    .unwrap();
+    s.add_table(
+        &["orders"],
+        vec![
+            ("id".to_string(), DataType::Int),
+            ("user_id".to_string(), DataType::Int),
+            (
+                "amount".to_string(),
+                DataType::Decimal {
+                    precision: Some(10),
+                    scale: Some(2),
+                },
+            ),
+            ("status".to_string(), DataType::Varchar(Some(50))),
+        ],
+    )
+    .unwrap();
+    s.add_table(
+        &["departments"],
+        vec![
+            ("id".to_string(), DataType::Int),
+            ("dept_name".to_string(), DataType::Varchar(Some(100))),
+        ],
+    )
+    .unwrap();
+    s
+}
+
+fn qualify_sql(input: &str, schema: &MappingSchema) -> String {
+    let stmt = parse(input, Dialect::Ansi).unwrap();
+    let qualified = qualify_columns(stmt, schema);
+    generate(&qualified, Dialect::Ansi)
+}
+
+#[test]
+fn test_qc_expand_star_single_table() {
+    let s = test_schema();
+    assert_eq!(
+        qualify_sql("SELECT * FROM users", &s),
+        "SELECT id, name, email, dept_id FROM users"
+    );
+}
+
+#[test]
+fn test_qc_expand_star_multi_table() {
+    let s = test_schema();
+    let result = qualify_sql(
+        "SELECT * FROM users JOIN departments ON users.dept_id = departments.id",
+        &s,
+    );
+    assert_eq!(
+        result,
+        "SELECT id, name, email, dept_id, id, dept_name FROM users INNER JOIN departments ON users.dept_id = departments.id"
+    );
+}
+
+#[test]
+fn test_qc_expand_qualified_wildcard() {
+    let s = test_schema();
+    assert_eq!(
+        qualify_sql("SELECT users.* FROM users", &s),
+        "SELECT users.id, users.name, users.email, users.dept_id FROM users"
+    );
+}
+
+#[test]
+fn test_qc_qualify_single_source() {
+    let s = test_schema();
+    assert_eq!(
+        qualify_sql("SELECT id, name FROM users WHERE email = 'a@b.com'", &s),
+        "SELECT users.id, users.name FROM users WHERE users.email = 'a@b.com'"
+    );
+}
+
+#[test]
+fn test_qc_qualify_with_alias() {
+    let s = test_schema();
+    assert_eq!(
+        qualify_sql("SELECT id, name FROM users AS u", &s),
+        "SELECT u.id, u.name FROM users AS u"
+    );
+}
+
+#[test]
+fn test_qc_already_qualified_noop() {
+    let s = test_schema();
+    assert_eq!(
+        qualify_sql("SELECT users.id FROM users", &s),
+        "SELECT users.id FROM users"
+    );
+}
+
+#[test]
+fn test_qc_qualify_join_unique_columns() {
+    let s = test_schema();
+    assert_eq!(
+        qualify_sql(
+            "SELECT name, amount FROM users JOIN orders ON users.id = orders.user_id",
+            &s
+        ),
+        "SELECT users.name, orders.amount FROM users INNER JOIN orders ON users.id = orders.user_id"
+    );
+}
+
+#[test]
+fn test_qc_ambiguous_column_left_unqualified() {
+    let s = test_schema();
+    // 'id' exists in both — stays unqualified
+    assert_eq!(
+        qualify_sql(
+            "SELECT id FROM users JOIN orders ON users.id = orders.user_id",
+            &s
+        ),
+        "SELECT id FROM users INNER JOIN orders ON users.id = orders.user_id"
+    );
+}
+
+#[test]
+fn test_qc_qualify_where_order_group_having() {
+    let s = test_schema();
+    assert_eq!(
+        qualify_sql(
+            "SELECT status, COUNT(*) FROM orders WHERE amount > 100 GROUP BY status HAVING COUNT(*) > 5 ORDER BY status",
+            &s
+        ),
+        "SELECT orders.status, COUNT(*) FROM orders WHERE orders.amount > 100 GROUP BY orders.status HAVING COUNT(*) > 5 ORDER BY orders.status"
+    );
+}
+
+#[test]
+fn test_qc_cte_resolution() {
+    let s = test_schema();
+    assert_eq!(
+        qualify_sql(
+            "WITH active AS (SELECT id, name FROM users) SELECT id, name FROM active",
+            &s
+        ),
+        "WITH active AS (SELECT users.id, users.name FROM users) SELECT active.id, active.name FROM active"
+    );
+}
+
+#[test]
+fn test_qc_derived_table() {
+    let s = test_schema();
+    assert_eq!(
+        qualify_sql("SELECT sub.id FROM (SELECT id, name FROM users) AS sub", &s),
+        "SELECT sub.id FROM (SELECT users.id, users.name FROM users) AS sub"
+    );
+}
+
+#[test]
+fn test_qc_preserve_aliases() {
+    let s = test_schema();
+    assert_eq!(
+        qualify_sql("SELECT name AS user_name, email AS contact FROM users", &s),
+        "SELECT users.name AS user_name, users.email AS contact FROM users"
+    );
+}
+
+#[test]
+fn test_qc_three_table_join() {
+    let s = test_schema();
+    assert_eq!(
+        qualify_sql(
+            "SELECT name, amount, dept_name FROM users JOIN orders ON users.id = orders.user_id JOIN departments ON users.dept_id = departments.id",
+            &s
+        ),
+        "SELECT users.name, orders.amount, departments.dept_name FROM users INNER JOIN orders ON users.id = orders.user_id INNER JOIN departments ON users.dept_id = departments.id"
+    );
+}
+
+#[test]
+fn test_qc_unknown_table_passthrough() {
+    let s = test_schema();
+    // Table not in schema, columns pass through unchanged
+    assert_eq!(
+        qualify_sql("SELECT x, y FROM unknown_table", &s),
+        "SELECT x, y FROM unknown_table"
+    );
+}
+
+#[test]
+fn test_qc_subquery_in_where() {
+    let s = test_schema();
+    // Columns in the inner subquery should get qualified too
+    let result = qualify_sql(
+        "SELECT name FROM users WHERE id IN (SELECT user_id FROM orders)",
+        &s,
+    );
+    assert_eq!(
+        result,
+        "SELECT users.name FROM users WHERE users.id IN (SELECT orders.user_id FROM orders)"
+    );
+}
+
+#[test]
+fn test_qc_nested_cte_with_derived_table() {
+    let s = test_schema();
+    let result = qualify_sql(
+        "WITH cte AS (SELECT id, name FROM users) SELECT id FROM (SELECT id FROM cte) AS sub",
+        &s,
+    );
+    assert_eq!(
+        result,
+        "WITH cte AS (SELECT users.id, users.name FROM users) SELECT sub.id FROM (SELECT cte.id FROM cte) AS sub"
+    );
+}
+
+#[test]
+fn test_qc_non_select_passthrough() {
+    let s = test_schema();
+    // Non-SELECT statements pass through unchanged
+    assert_eq!(
+        qualify_sql("INSERT INTO users VALUES (1, 'a', 'b', 1)", &s),
+        "INSERT INTO users VALUES (1, 'a', 'b', 1)"
+    );
+}
+
+#[test]
+fn test_qc_mixed_qualified_unqualified() {
+    let s = test_schema();
+    assert_eq!(
+        qualify_sql("SELECT users.id, name FROM users", &s),
+        "SELECT users.id, users.name FROM users"
+    );
+}
+
+#[test]
+fn test_qc_qualify_join_on_clause() {
+    let s = test_schema();
+    // user_id is unique to orders, gets qualified
+    // id is ambiguous, stays unqualified
+    assert_eq!(
+        qualify_sql("SELECT name FROM users JOIN orders ON id = user_id", &s),
+        "SELECT users.name FROM users INNER JOIN orders ON id = orders.user_id"
+    );
+}

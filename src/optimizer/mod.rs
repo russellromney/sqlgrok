@@ -5,12 +5,14 @@
 //! - Boolean simplification (e.g., `TRUE AND x` → `x`)
 //! - Dead predicate elimination (e.g., `WHERE TRUE`)
 //! - Subquery unnesting / decorrelation (EXISTS, IN → JOINs)
+//! - Column qualification (qualify_columns — resolve `*`, add table qualifiers)
 //!
 //! Future optimizations:
 //! - Predicate pushdown
 //! - Join reordering
 //! - Column pruning
 
+pub mod qualify_columns;
 pub mod scope_analysis;
 pub mod unnest_subqueries;
 

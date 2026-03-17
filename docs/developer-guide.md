@@ -801,6 +801,41 @@ use sqlglot_rust::optimizer::unnest_subqueries::unnest_subqueries;
 let unnested = unnest_subqueries(stmt);
 ```
 
+### Qualify Columns
+
+`qualify_columns` resolves column references against a schema,
+adding table qualifiers to unqualified columns and expanding wildcards.
+
+```rust
+use sqlglot_rust::{parse, generate, Dialect};
+use sqlglot_rust::optimizer::qualify_columns::qualify_columns;
+use sqlglot_rust::schema::MappingSchema;
+
+let schema = MappingSchema::new()
+    .with_table(vec!["users"], vec!["id", "name", "email"])
+    .with_table(vec!["orders"], vec!["id", "user_id", "amount"]);
+
+let stmt = parse("SELECT * FROM users", Dialect::Ansi).unwrap();
+let qualified = qualify_columns(stmt, &schema);
+assert_eq!(
+    generate(&qualified, Dialect::Ansi),
+    "SELECT users.id, users.name, users.email FROM users"
+);
+```
+
+| Transformation | Before | After |
+| --- | --- | --- |
+| Qualify column | `SELECT col FROM t` | `SELECT t.col FROM t` |
+| Expand `*` | `SELECT * FROM t` | `SELECT t.id, t.name FROM t` |
+| Expand `t.*` | `SELECT t.* FROM t` | `SELECT t.id, t.name FROM t` |
+| Qualify WHERE | `WHERE col = 1` | `WHERE t.col = 1` |
+| Qualify JOIN ON | `ON id = fk` | `ON a.id = b.fk` |
+| CTE resolution | `WITH cte AS (...) SELECT col FROM cte` | `SELECT cte.col FROM cte` |
+| Subquery in WHERE | `WHERE id IN (SELECT fk FROM t2)` | `WHERE t.id IN (SELECT t2.fk FROM t2)` |
+
+Ambiguous columns (found in multiple sources) are left unqualified.
+The pass resolves columns through CTEs, derived tables, and nested subqueries.
+
 ### Scope Analysis
 
 Scope analysis builds a tree of `Scope` objects from a parsed SQL statement,
