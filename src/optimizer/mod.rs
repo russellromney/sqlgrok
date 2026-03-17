@@ -6,12 +6,14 @@
 //! - Dead predicate elimination (e.g., `WHERE TRUE`)
 //! - Subquery unnesting / decorrelation (EXISTS, IN → JOINs)
 //! - Column qualification (qualify_columns — resolve `*`, add table qualifiers)
+//! - Type annotation (annotate_types — infer SQL types for all AST nodes)
 //!
 //! Future optimizations:
 //! - Predicate pushdown
 //! - Join reordering
 //! - Column pruning
 
+pub mod annotate_types;
 pub mod qualify_columns;
 pub mod scope_analysis;
 pub mod unnest_subqueries;

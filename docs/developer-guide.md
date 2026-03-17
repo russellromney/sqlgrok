@@ -883,6 +883,49 @@ scope.walk(&mut |s| {
 });
 ```
 
+### Type Annotation (annotate_types)
+
+The `annotate_types` pass infers SQL data types for every expression node in the AST
+by combining schema column types, literal inference, function signatures, operator
+coercion rules, and CASE/COALESCE resolution.
+
+```rust
+use sqlglot_rust::{parse, Dialect, annotate_types};
+use sqlglot_rust::ast::DataType;
+use sqlglot_rust::schema::{MappingSchema, Schema};
+
+let mut schema = MappingSchema::new(Dialect::Ansi);
+schema.add_table(&["employees"], vec![
+    ("id".to_string(), DataType::Int),
+    ("name".to_string(), DataType::Varchar(Some(100))),
+    ("salary".to_string(), DataType::Double),
+]).unwrap();
+
+let stmt = parse("SELECT id, salary * 1.1, COUNT(*) FROM employees WHERE id > 5 GROUP BY id, salary", Dialect::Ansi).unwrap();
+let ann = annotate_types(&stmt, &schema);
+
+// Access types for individual expression nodes
+if let sqlglot_rust::Statement::Select(sel) = &stmt {
+    if let Some(sqlglot_rust::ast::SelectItem::Expr { expr, .. }) = sel.columns.first() {
+        assert_eq!(ann.get_type(expr), Some(&DataType::Int)); // id → Int
+    }
+}
+```
+
+| Concept | Description |
+| --- | --- |
+| **Literal inference** | `42` → `Int`, `3.14` → `Double`, `'text'` → `Varchar` |
+| **Column lookup** | Resolved from schema via table alias mapping |
+| **Operator coercion** | `Int + Double` → `Double`, comparisons → `Boolean` |
+| **Function signatures** | `COUNT(*)` → `BigInt`, `UPPER(x)` → `Varchar`, etc. |
+| **CASE/COALESCE** | Common (widest) type across branches |
+| **CAST** | Target data type |
+| **UDFs** | Resolved from `schema.add_udf(name, return_type)` |
+
+> **Note:** The returned `TypeAnnotations` uses raw pointer references, so the
+> `Statement` must not be moved after annotation. Always access the statement
+> by reference while using annotations.
+
 ---
 
 ## Schema Management

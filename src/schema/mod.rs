@@ -108,6 +108,14 @@ pub trait Schema {
 
     /// Get the dialect used for identifier normalization.
     fn dialect(&self) -> Dialect;
+
+    /// Get the return type of a registered UDF (user-defined function).
+    ///
+    /// Returns `None` by default. Implementations that support UDFs should
+    /// override this method.
+    fn get_udf_type(&self, _name: &str) -> Option<&DataType> {
+        None
+    }
 }
 
 /// Column metadata stored inside a [`MappingSchema`].
@@ -353,6 +361,11 @@ impl Schema for MappingSchema {
 
     fn dialect(&self) -> Dialect {
         self.dialect
+    }
+
+    fn get_udf_type(&self, name: &str) -> Option<&DataType> {
+        let key = normalize_identifier(name, self.dialect);
+        self.udf_types.get(&key)
     }
 }
 

@@ -54,6 +54,7 @@ Complete type and function reference for **sqlglot-rust**.
   - [SchemaError](#schemaerror)
 - [Optimizer](#optimizer)
   - [Scope Analysis](#scope-analysis)
+  - [Annotate Types](#annotate-types)
 
 ---
 
@@ -1187,6 +1188,7 @@ Accessed via `use sqlglot_rust::optimizer::optimize`.
 | `optimize` | `(stmt: Statement) -> Result<Statement>` | `Statement` | Apply all optimization passes |
 | `build_scope` | `(stmt: &Statement) -> Scope` | `Scope` | Build a scope tree from a parsed statement |
 | `find_all_in_scope` | `(scope: &Scope, predicate: &F) -> Vec<&ColumnRef>` | `Vec<&ColumnRef>` | Find columns matching a predicate within a single scope |
+| `annotate_types` | `(stmt: &Statement, schema: &S) -> TypeAnnotations` | `TypeAnnotations` | Infer SQL types for all expression nodes |
 
 ### Optimization Passes
 
@@ -1197,6 +1199,7 @@ Accessed via `use sqlglot_rust::optimizer::optimize`.
 | **Dead Predicate Elimination** | Remove trivially-true WHERE clauses | `WHERE TRUE` → removed |
 | **Subquery Unnesting** | Decorrelate subqueries into JOINs | `WHERE EXISTS (… WHERE b.id = a.id)` → `INNER JOIN` |
 | **Qualify Columns** | Resolve and qualify column references | `SELECT col FROM t` → `SELECT t.col FROM t` |
+| **Annotate Types** | Infer SQL types for all AST expression nodes | `Column(id)` → `Int`, `COUNT(*)` → `BigInt` |
 
 ### Subquery Unnesting Details
 
@@ -1348,4 +1351,99 @@ assert!(sub.external_columns.iter().any(|c| c.table.as_deref() == Some("t1")));
 // Find all columns referencing t1 in the root scope
 let t1_cols = find_all_in_scope(&scope, &|c| c.table.as_deref() == Some("t1"));
 assert!(!t1_cols.is_empty());
+```
+
+### Annotate Types
+
+`annotate_types` infers and propagates SQL data types across all AST expression nodes
+using schema metadata. It is the foundation for type-aware transpilation and validation.
+
+Accessed via `use sqlglot_rust::optimizer::annotate_types::{annotate_types, TypeAnnotations}`
+or the crate-level re-exports `use sqlglot_rust::{annotate_types, TypeAnnotations}`.
+
+| Function | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `annotate_types` | `(stmt: &Statement, schema: &S) -> TypeAnnotations` | `TypeAnnotations` | Annotate all expressions with inferred types |
+
+#### TypeAnnotations
+
+| Method | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `get_type` | `(&self, expr: &Expr) -> Option<&DataType>` | `Option<&DataType>` | Get the inferred type of an expression node |
+| `len` | `(&self) -> usize` | `usize` | Number of annotated nodes |
+| `is_empty` | `(&self) -> bool` | `bool` | Whether any annotations exist |
+
+> **Important:** `TypeAnnotations` stores raw pointer references. The statement must not be
+> moved or dropped while the annotations are in use. Work with the statement by reference
+> after calling `annotate_types`.
+
+#### Type Propagation Rules
+
+| Expression | Inferred Type | Rule |
+| --- | --- | --- |
+| `42` (integer literal) | `Int` / `BigInt` | Fits `i32` → `Int`, otherwise `BigInt` |
+| `3.14` (decimal literal) | `Double` | Contains `.`, `e`, or `E` |
+| `'hello'` (string literal) | `Varchar` | All string literals |
+| `TRUE` / `FALSE` | `Boolean` | Boolean literals |
+| `NULL` | `Null` | Null literal |
+| `Column(name)` | schema type | Looked up from `Schema` |
+| `a + b` (arithmetic) | coerced type | Wider of operand types |
+| `a > b` (comparison) | `Boolean` | All comparison operators |
+| `a AND b` (logical) | `Boolean` | Logical operators |
+| `a \|\| b` (concat) | `Varchar` | String concatenation |
+| `CAST(x AS T)` | `T` | Target type |
+| `CASE WHEN ... THEN a ELSE b END` | common type | Widest of all THEN/ELSE branches |
+| `COUNT(*)` | `BigInt` | Always BigInt |
+| `SUM(int_col)` | `BigInt` | Integer inputs → BigInt |
+| `SUM(decimal_col)` | `Decimal` | Preserves precision/scale |
+| `AVG(x)` | `Double` | Always Double |
+| `MIN(x)` / `MAX(x)` | input type | Same as argument type |
+| `UPPER(x)` / `LOWER(x)` | `Varchar` | String functions |
+| `LENGTH(x)` | `Int` | Returns integer |
+| `EXISTS (...)` | `Boolean` | Existence check |
+| `x BETWEEN a AND b` | `Boolean` | Boolean predicate |
+| `x IN (...)` | `Boolean` | Boolean predicate |
+| `x IS NULL` | `Boolean` | Boolean predicate |
+| `EXTRACT(YEAR FROM x)` | `Int` | Date part extraction |
+| `ROW_NUMBER()` / `RANK()` | `BigInt` | Window ranking |
+| `LEAD(x)` / `LAG(x)` | input type | Same as argument |
+| `JSON_EXTRACT(...)` | `Json` | JSON type |
+| `JSON_EXTRACT_SCALAR(...)` | `Varchar` | Text extraction |
+| UDF | registered type | From `schema.add_udf(name, type)` |
+
+#### Numeric Coercion Precedence
+
+Wider types supersede narrower ones in arithmetic expressions:
+
+```
+Boolean < TinyInt < SmallInt < Int < BigInt < Float/Real < Double < Decimal/Numeric
+```
+
+#### Example
+
+```rust
+use sqlglot_rust::{parse, Dialect, annotate_types};
+use sqlglot_rust::ast::DataType;
+use sqlglot_rust::schema::{MappingSchema, Schema};
+
+let mut schema = MappingSchema::new(Dialect::Ansi);
+schema.add_table(&["users"], vec![
+    ("id".to_string(), DataType::Int),
+    ("name".to_string(), DataType::Varchar(Some(255))),
+    ("salary".to_string(), DataType::Double),
+]).unwrap();
+
+let stmt = parse("SELECT id, name, salary * 1.1 FROM users WHERE id > 5", Dialect::Ansi).unwrap();
+let ann = annotate_types(&stmt, &schema);
+
+// Query types from the annotations
+if let sqlglot_rust::Statement::Select(sel) = &stmt {
+    for col in &sel.columns {
+        if let sqlglot_rust::ast::SelectItem::Expr { expr, .. } = col {
+            if let Some(dt) = ann.get_type(expr) {
+                println!("Column type: {:?}", dt);
+            }
+        }
+    }
+}
 ```

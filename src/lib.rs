@@ -43,6 +43,7 @@ pub use ast::{Expr, QuoteStyle, Statement};
 pub use dialects::Dialect;
 pub use errors::SqlglotError;
 pub use generator::{generate, generate_pretty};
+pub use optimizer::annotate_types::{TypeAnnotations, annotate_types};
 pub use optimizer::scope_analysis::{Scope, ScopeType, build_scope, find_all_in_scope};
 pub use parser::parse;
 
