@@ -276,7 +276,7 @@ The `VERSION` parameter is required and must be a full semantic version (e.g. `1
 
 ## Acknowledgements
 
-This project is inspired by and derived from [sqlglot](https://github.com/tobymao/sqlglot) by Toby Mao, licensed under the MIT License. The original sqlglot license is included in this repository as required by the MIT License terms. A copy of the original license can also be found [here](https://github.com/tobilg/polyglot/tree/main/licenses).
+This project is inspired by and derived from [sqlglot](https://github.com/tobymao/sqlglot) by Toby Mao, licensed under the MIT License. The original sqlglot license is included in this repository as required by the MIT License terms. A copy of the original license can also be found [in the polyglot repository](https://github.com/tobilg/polyglot/tree/main/licenses).
 
 ## License
 
@@ -284,7 +284,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 This project includes code and concepts derived from [sqlglot](https://github.com/tobymao/sqlglot), which is also licensed under the MIT License. The original copyright notice and permission notice are reproduced below:
 
-```
+```text
 MIT License
 
 Copyright (c) 2023 Toby Mao

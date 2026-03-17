@@ -981,6 +981,7 @@ Accessed via `use sqlglot_rust::optimizer::unnest_subqueries::unnest_subqueries`
 | `WHERE x NOT IN (SELECT col FROM …)` | `LEFT JOIN … WHERE _u0._col0 IS NULL` |
 
 The pass bails out (no-op) when:
+
 - No equality correlation exists in the subquery.
 - Non-equality correlations are present (e.g., `<`, `>`) — would need LATERAL.
 - The subquery is embedded in a SELECT-list function (e.g., `COALESCE`).
