@@ -1120,3 +1120,450 @@ fn test_top_distinct_tsql_roundtrip() {
         Dialect::Tsql,
     );
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Typed Function Expressions — comprehensive tests
+// ═════════════════════════════════════════════════════════════════════════════
+
+// ── Date/Time typed functions ──
+
+#[test]
+fn test_typed_date_trunc_identity() {
+    validate_identity("SELECT DATE_TRUNC('MONTH', created_at) FROM orders");
+}
+
+#[test]
+fn test_typed_date_trunc_to_tsql() {
+    validate_with_dialect(
+        "SELECT DATE_TRUNC('MONTH', created_at) FROM orders",
+        "SELECT DATETRUNC(MONTH, created_at) FROM orders",
+        Dialect::Postgres,
+        Dialect::Tsql,
+    );
+}
+
+#[test]
+fn test_typed_date_trunc_to_oracle() {
+    validate_with_dialect(
+        "SELECT DATE_TRUNC('MONTH', created_at) FROM orders",
+        "SELECT TRUNC(created_at, 'MONTH') FROM orders",
+        Dialect::Postgres,
+        Dialect::Oracle,
+    );
+}
+
+#[test]
+fn test_typed_current_timestamp_roundtrip() {
+    let cases = [
+        "SELECT CURRENT_TIMESTAMP()",
+        "SELECT COUNT(*) FROM t WHERE ts > CURRENT_TIMESTAMP()",
+    ];
+    for sql in &cases {
+        validate_identity(sql);
+    }
+}
+
+#[test]
+fn test_typed_year_month_day() {
+    // YEAR/MONTH/DAY → EXTRACT for non-TSQL
+    validate_with_dialect(
+        "SELECT YEAR(created_at) FROM t",
+        "SELECT EXTRACT(YEAR FROM created_at) FROM t",
+        Dialect::Ansi,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT MONTH(created_at) FROM t",
+        "SELECT EXTRACT(MONTH FROM created_at) FROM t",
+        Dialect::Ansi,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT DAY(created_at) FROM t",
+        "SELECT EXTRACT(DAY FROM created_at) FROM t",
+        Dialect::Ansi,
+        Dialect::Postgres,
+    );
+}
+
+#[test]
+fn test_typed_year_tsql_preserves() {
+    validate_with_dialect(
+        "SELECT YEAR(created_at) FROM t",
+        "SELECT YEAR(created_at) FROM t",
+        Dialect::Tsql,
+        Dialect::Tsql,
+    );
+}
+
+// ── String typed functions ──
+
+#[test]
+fn test_typed_upper_lower_identity() {
+    validate_identity("SELECT UPPER(name) FROM t");
+    validate_identity("SELECT LOWER(name) FROM t");
+}
+
+#[test]
+fn test_typed_trim_identity() {
+    validate_identity("SELECT TRIM(name) FROM t");
+}
+
+#[test]
+fn test_typed_length_cross_dialect() {
+    validate_with_dialect(
+        "SELECT LENGTH(name) FROM t",
+        "SELECT LEN(name) FROM t",
+        Dialect::Postgres,
+        Dialect::Tsql,
+    );
+    validate_with_dialect(
+        "SELECT LEN(name) FROM t",
+        "SELECT LENGTH(name) FROM t",
+        Dialect::Tsql,
+        Dialect::Postgres,
+    );
+}
+
+#[test]
+fn test_typed_substring_cross_dialect() {
+    validate_with_dialect(
+        "SELECT SUBSTRING(name, 1, 3) FROM t",
+        "SELECT SUBSTR(name, 1, 3) FROM t",
+        Dialect::Postgres,
+        Dialect::Mysql,
+    );
+    validate_with_dialect(
+        "SELECT SUBSTR(name, 1, 3) FROM t",
+        "SELECT SUBSTRING(name, 1, 3) FROM t",
+        Dialect::Mysql,
+        Dialect::Postgres,
+    );
+}
+
+#[test]
+fn test_typed_replace_identity() {
+    validate_identity("SELECT REPLACE(name, 'old', 'new') FROM t");
+}
+
+#[test]
+fn test_typed_reverse_identity() {
+    validate_identity("SELECT REVERSE(name) FROM t");
+}
+
+#[test]
+fn test_typed_left_right_identity() {
+    validate_identity("SELECT LEFT(name, 3) FROM t");
+    validate_identity("SELECT RIGHT(name, 3) FROM t");
+}
+
+#[test]
+fn test_typed_lpad_rpad_identity() {
+    validate_identity("SELECT LPAD(name, 10, '*') FROM t");
+    validate_identity("SELECT RPAD(name, 10) FROM t");
+}
+
+#[test]
+fn test_typed_concat_ws_identity() {
+    validate_identity("SELECT CONCAT_WS(', ', a, b, c) FROM t");
+}
+
+#[test]
+fn test_typed_split_cross_dialect() {
+    validate_with_dialect(
+        "SELECT SPLIT(name, ',') FROM t",
+        "SELECT STRING_SPLIT(name, ',') FROM t",
+        Dialect::Postgres,
+        Dialect::Tsql,
+    );
+}
+
+#[test]
+fn test_typed_initcap_identity() {
+    validate_identity("SELECT INITCAP(name) FROM t");
+}
+
+#[test]
+fn test_typed_regexp_like_identity() {
+    validate_identity("SELECT REGEXP_LIKE(name, '^A.*') FROM t");
+}
+
+#[test]
+fn test_typed_regexp_replace_identity() {
+    validate_identity("SELECT REGEXP_REPLACE(name, '[0-9]', 'X') FROM t");
+}
+
+// ── Aggregate typed functions ──
+
+#[test]
+fn test_typed_count_variations() {
+    validate_identity("SELECT COUNT(*) FROM t");
+    validate_identity("SELECT COUNT(a) FROM t");
+    validate_identity("SELECT COUNT(DISTINCT a) FROM t");
+}
+
+#[test]
+fn test_typed_sum_avg_min_max() {
+    validate_identity("SELECT SUM(amount) FROM t");
+    validate_identity("SELECT AVG(price) FROM t");
+    validate_identity("SELECT MIN(created_at) FROM t");
+    validate_identity("SELECT MAX(score) FROM t");
+}
+
+#[test]
+fn test_typed_sum_distinct() {
+    validate_identity("SELECT SUM(DISTINCT amount) FROM t");
+}
+
+#[test]
+fn test_typed_array_agg_cross_dialect() {
+    validate_with_dialect(
+        "SELECT ARRAY_AGG(name) FROM t",
+        "SELECT LIST(name) FROM t",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT ARRAY_AGG(name) FROM t",
+        "SELECT COLLECT_LIST(name) FROM t",
+        Dialect::Postgres,
+        Dialect::Hive,
+    );
+}
+
+#[test]
+fn test_typed_variance_stddev() {
+    validate_identity("SELECT VARIANCE(score) FROM t");
+    validate_identity("SELECT STDDEV(score) FROM t");
+}
+
+// ── Window typed functions ──
+
+#[test]
+fn test_typed_row_number_with_over() {
+    validate_identity("SELECT ROW_NUMBER() OVER (ORDER BY id) FROM t");
+}
+
+#[test]
+fn test_typed_rank_dense_rank() {
+    validate_identity("SELECT RANK() OVER (PARTITION BY dept ORDER BY salary) FROM t");
+    validate_identity("SELECT DENSE_RANK() OVER (ORDER BY score DESC) FROM t");
+}
+
+#[test]
+fn test_typed_ntile() {
+    validate_identity("SELECT NTILE(4) OVER (ORDER BY id) FROM t");
+}
+
+#[test]
+fn test_typed_lead_lag() {
+    validate_identity("SELECT LEAD(price, 1) OVER (ORDER BY date) FROM t");
+    validate_identity("SELECT LAG(price) OVER (ORDER BY date) FROM t");
+    validate_identity("SELECT LAG(price, 1, 0) OVER (PARTITION BY category ORDER BY date) FROM t");
+}
+
+#[test]
+fn test_typed_first_last_value() {
+    validate_identity("SELECT FIRST_VALUE(name) OVER (ORDER BY id) FROM t");
+    validate_identity("SELECT LAST_VALUE(name) OVER (ORDER BY id) FROM t");
+}
+
+#[test]
+fn test_typed_window_with_filter() {
+    validate_identity("SELECT COUNT(*) FILTER (WHERE active) FROM t");
+    validate_identity("SELECT SUM(amount) FILTER (WHERE status = 'paid') FROM orders");
+}
+
+// ── Math typed functions ──
+
+#[test]
+fn test_typed_math_functions_identity() {
+    let cases = [
+        "SELECT ABS(x) FROM t",
+        "SELECT CEIL(x) FROM t",
+        "SELECT FLOOR(x) FROM t",
+        "SELECT ROUND(x, 2) FROM t",
+        "SELECT SQRT(x) FROM t",
+        "SELECT LN(x) FROM t",
+        "SELECT LOG(x) FROM t",
+        "SELECT MOD(x, 3) FROM t",
+    ];
+    for sql in &cases {
+        validate_identity(sql);
+    }
+}
+
+#[test]
+fn test_typed_pow_cross_dialect() {
+    validate_with_dialect(
+        "SELECT POW(x, 2) FROM t",
+        "SELECT POWER(x, 2) FROM t",
+        Dialect::Postgres,
+        Dialect::Tsql,
+    );
+}
+
+#[test]
+fn test_typed_ceil_cross_dialect() {
+    validate_with_dialect(
+        "SELECT CEIL(x) FROM t",
+        "SELECT CEILING(x) FROM t",
+        Dialect::Postgres,
+        Dialect::Tsql,
+    );
+}
+
+#[test]
+fn test_typed_greatest_least() {
+    validate_identity("SELECT GREATEST(a, b, c) FROM t");
+    validate_identity("SELECT LEAST(a, b, c) FROM t");
+}
+
+// ── Array typed functions ──
+
+#[test]
+fn test_typed_array_size_cross_dialect() {
+    validate_with_dialect(
+        "SELECT ARRAY_SIZE(arr) FROM t",
+        "SELECT ARRAY_LENGTH(arr) FROM t",
+        Dialect::Snowflake,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT ARRAY_SIZE(arr) FROM t",
+        "SELECT SIZE(arr) FROM t",
+        Dialect::Snowflake,
+        Dialect::Hive,
+    );
+}
+
+#[test]
+fn test_typed_array_concat_cross_dialect() {
+    validate_with_dialect(
+        "SELECT ARRAY_CONCAT(a, b) FROM t",
+        "SELECT ARRAY_CAT(a, b) FROM t",
+        Dialect::BigQuery,
+        Dialect::Postgres,
+    );
+}
+
+#[test]
+fn test_typed_generate_series() {
+    validate_identity("SELECT GENERATE_SERIES(1, 10)");
+    validate_identity("SELECT GENERATE_SERIES(1, 100, 5)");
+}
+
+#[test]
+fn test_typed_flatten_identity() {
+    validate_identity("SELECT FLATTEN(arr) FROM t");
+}
+
+#[test]
+fn test_typed_explode_identity() {
+    validate_identity("SELECT EXPLODE(arr) FROM t");
+}
+
+// ── JSON typed functions ──
+
+#[test]
+fn test_typed_json_extract_cross_dialect() {
+    validate_with_dialect(
+        "SELECT JSON_EXTRACT(data, '$.name') FROM t",
+        "SELECT JSON_VALUE(data, '$.name') FROM t",
+        Dialect::Mysql,
+        Dialect::Tsql,
+    );
+}
+
+#[test]
+fn test_typed_json_extract_scalar_identity() {
+    validate_identity("SELECT JSON_EXTRACT_SCALAR(data, '$.name') FROM t");
+}
+
+#[test]
+fn test_typed_json_format_cross_dialect() {
+    validate_with_dialect(
+        "SELECT JSON_FORMAT(data) FROM t",
+        "SELECT TO_JSON_STRING(data) FROM t",
+        Dialect::Ansi,
+        Dialect::BigQuery,
+    );
+}
+
+// ── Conversion typed functions ──
+
+#[test]
+fn test_typed_hex_cross_dialect() {
+    validate_with_dialect(
+        "SELECT HEX(data) FROM t",
+        "SELECT TO_HEX(data) FROM t",
+        Dialect::Mysql,
+        Dialect::Presto,
+    );
+}
+
+#[test]
+fn test_typed_unhex_cross_dialect() {
+    validate_with_dialect(
+        "SELECT UNHEX(data) FROM t",
+        "SELECT FROM_HEX(data) FROM t",
+        Dialect::Mysql,
+        Dialect::Trino,
+    );
+}
+
+#[test]
+fn test_typed_md5_identity() {
+    validate_identity("SELECT MD5(password) FROM t");
+}
+
+#[test]
+fn test_typed_sha_cross_dialect() {
+    validate_with_dialect(
+        "SELECT SHA(data) FROM t",
+        "SELECT SHA1(data) FROM t",
+        Dialect::Postgres,
+        Dialect::Mysql,
+    );
+}
+
+// ── Generic function fallback ──
+
+#[test]
+fn test_generic_function_fallback() {
+    // Unrecognized functions should still work via Expr::Function
+    validate_identity("SELECT MY_CUSTOM_FUNC(a, b) FROM t");
+    validate_identity("SELECT SOME_UDF(x) FROM t");
+}
+
+// ── Complex expressions with typed functions ──
+
+#[test]
+fn test_typed_functions_in_complex_expressions() {
+    validate_identity("SELECT COUNT(*), SUM(amount), AVG(price) FROM orders GROUP BY category");
+    validate_identity(
+        "SELECT ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary DESC) AS rn FROM emp",
+    );
+    validate_identity("SELECT UPPER(SUBSTRING(name, 1, 1)) FROM t");
+    validate_identity("SELECT GREATEST(a, LEAST(b, c)) FROM t");
+    validate_identity("SELECT ROUND(AVG(score), 2) FROM t");
+}
+
+#[test]
+fn test_typed_functions_in_where_clause() {
+    validate_identity("SELECT * FROM t WHERE LENGTH(name) > 5");
+    validate_identity("SELECT * FROM t WHERE ABS(score) < 10");
+    validate_identity("SELECT * FROM t WHERE UPPER(status) = 'ACTIVE'");
+}
+
+#[test]
+fn test_typed_functions_nested() {
+    validate_identity("SELECT ROUND(SQRT(ABS(x)), 2) FROM t");
+    validate_identity("SELECT UPPER(REVERSE(TRIM(name))) FROM t");
+}
+
+#[test]
+fn test_typed_functions_with_aliases() {
+    validate_identity("SELECT COUNT(*) AS total, MAX(price) AS max_price FROM t");
+    validate_identity("SELECT ROW_NUMBER() OVER (ORDER BY id) AS rn FROM t");
+}

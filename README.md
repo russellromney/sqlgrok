@@ -7,6 +7,7 @@ A SQL parser, optimizer, and transpiler library written in Rust, inspired by Pyt
 - **Parse** SQL strings into a structured AST
 - **Generate** SQL from AST nodes
 - **Transpile** between 30 SQL dialects
+- **Typed function expressions** — 72+ functions across 8 categories with dialect-specific generation
 - **LIMIT / TOP / FETCH FIRST** transpilation across dialects
 - **Quoted identifier** preservation and cross-dialect conversion (`"id"` ↔ `` `id` `` ↔ `[id]`)
 - **Optimize** SQL queries (constant folding, boolean simplification, subquery unnesting)
@@ -72,6 +73,11 @@ The transpiler applies dialect-specific rewrite rules when converting between di
 | --- | --- |
 | Function name mapping | `NOW()` → `CURRENT_TIMESTAMP()`, `GETDATE()` |
 | `SUBSTR` ↔ `SUBSTRING` | Postgres uses `SUBSTRING`, MySQL uses `SUBSTR` |
+| `CEIL` → `CEILING` | T-SQL uses `CEILING` |
+| `POW` → `POWER` | T-SQL/Oracle use `POWER` |
+| `DATE_TRUNC` → `DATETRUNC`/`TRUNC` | T-SQL uses `DATETRUNC`, Oracle uses `TRUNC` |
+| `ARRAY_AGG` → `LIST`/`COLLECT_LIST` | DuckDB uses `LIST`, Hive/Spark use `COLLECT_LIST` |
+| `HEX`/`UNHEX` → `TO_HEX`/`FROM_HEX` | Presto/Trino naming convention |
 | `IFNULL` → `COALESCE` | MySQL `IFNULL` → ANSI `COALESCE` |
 | `IFNULL` → `ISNULL` | MySQL `IFNULL` → T-SQL `ISNULL` |
 | `NVL` → `COALESCE` | Oracle `NVL` → standard `COALESCE` |
@@ -169,6 +175,7 @@ assert_eq!(Dialect::from_str("sqlserver"), Some(Dialect::Tsql));
 - Unary operators (`NOT`, `-`, `+`)
 - Bitwise operators (`&`, `|`, `^`, `<<`, `>>`)
 - Function calls (with DISTINCT, FILTER, OVER support)
+- Typed function expressions (72+ functions: date/time, string, aggregate, array, JSON, window, math, conversion)
 - `BETWEEN`, `IN`, `IS NULL`, `LIKE`, `ILIKE`
 - `CASE ... WHEN ... THEN ... ELSE ... END`
 - `CAST`, `TRY_CAST`, PostgreSQL `::` cast
@@ -208,7 +215,7 @@ src/
 # Build
 cargo build
 
-# Run tests (244+ tests)
+# Run tests (500+ tests)
 cargo test
 
 # Run benchmarks

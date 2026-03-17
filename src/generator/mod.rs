@@ -7,8 +7,8 @@ use crate::dialects::Dialect;
 
 /// Generate a SQL string from a [`Statement`] AST for the given dialect.
 #[must_use]
-pub fn generate(statement: &Statement, _dialect: Dialect) -> String {
-    let mut generator = Generator::new();
+pub fn generate(statement: &Statement, dialect: Dialect) -> String {
+    let mut generator = Generator::with_dialect(dialect);
     generator.generate(statement)
 }
 

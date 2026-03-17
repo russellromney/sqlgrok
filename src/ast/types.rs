@@ -427,6 +427,15 @@ pub enum Expr {
     },
     /// `DEFAULT` keyword in INSERT/UPDATE contexts
     Default,
+    /// A typed function expression with semantic awareness.
+    /// Enables per-function, per-dialect code generation and transpilation.
+    TypedFunction {
+        func: TypedFunction,
+        /// FILTER (WHERE expr) clause on aggregate
+        filter: Option<Box<Expr>>,
+        /// OVER window specification for window functions
+        over: Option<WindowSpec>,
+    },
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -487,6 +496,816 @@ pub enum DateTimeField {
     Timezone,
     TimezoneHour,
     TimezoneMinute,
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Trim type
+// ═══════════════════════════════════════════════════════════════════════
+
+/// The type of TRIM operation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TrimType {
+    Leading,
+    Trailing,
+    Both,
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Typed function expressions
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Typed function variants enabling per-function transpilation rules,
+/// function signature validation, and dialect-specific code generation.
+///
+/// Each variant carries semantically typed arguments rather than a generic
+/// `Vec<Expr>`, allowing the generator to emit dialect-specific SQL.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum TypedFunction {
+    // ── Date/Time ──────────────────────────────────────────────────────
+    /// `DATE_ADD(expr, interval)` — add an interval to a date/timestamp
+    DateAdd {
+        expr: Box<Expr>,
+        interval: Box<Expr>,
+        unit: Option<DateTimeField>,
+    },
+    /// `DATE_DIFF(start, end)` — difference between two dates
+    DateDiff {
+        start: Box<Expr>,
+        end: Box<Expr>,
+        unit: Option<DateTimeField>,
+    },
+    /// `DATE_TRUNC(unit, expr)` — truncate to the given precision
+    DateTrunc {
+        unit: DateTimeField,
+        expr: Box<Expr>,
+    },
+    /// `DATE_SUB(expr, interval)` — subtract an interval from a date
+    DateSub {
+        expr: Box<Expr>,
+        interval: Box<Expr>,
+        unit: Option<DateTimeField>,
+    },
+    /// `CURRENT_DATE`
+    CurrentDate,
+    /// `CURRENT_TIMESTAMP` / `NOW()` / `GETDATE()`
+    CurrentTimestamp,
+    /// `STR_TO_TIME(expr, format)` / `TO_TIMESTAMP` / `PARSE_DATETIME`
+    StrToTime { expr: Box<Expr>, format: Box<Expr> },
+    /// `TIME_TO_STR(expr, format)` / `DATE_FORMAT` / `FORMAT_DATETIME`
+    TimeToStr { expr: Box<Expr>, format: Box<Expr> },
+    /// `TS_OR_DS_TO_DATE(expr)` — convert timestamp or date-string to date
+    TsOrDsToDate { expr: Box<Expr> },
+    /// `YEAR(expr)` — extract year from a date/timestamp
+    Year { expr: Box<Expr> },
+    /// `MONTH(expr)` — extract month from a date/timestamp
+    Month { expr: Box<Expr> },
+    /// `DAY(expr)` — extract day from a date/timestamp
+    Day { expr: Box<Expr> },
+
+    // ── String ─────────────────────────────────────────────────────────
+    /// `TRIM([LEADING|TRAILING|BOTH] [chars FROM] expr)`
+    Trim {
+        expr: Box<Expr>,
+        trim_type: TrimType,
+        trim_chars: Option<Box<Expr>>,
+    },
+    /// `SUBSTRING(expr, start [, length])` / `SUBSTR`
+    Substring {
+        expr: Box<Expr>,
+        start: Box<Expr>,
+        length: Option<Box<Expr>>,
+    },
+    /// `UPPER(expr)` / `UCASE`
+    Upper { expr: Box<Expr> },
+    /// `LOWER(expr)` / `LCASE`
+    Lower { expr: Box<Expr> },
+    /// `REGEXP_LIKE(expr, pattern [, flags])` / `~` (Postgres)
+    RegexpLike {
+        expr: Box<Expr>,
+        pattern: Box<Expr>,
+        flags: Option<Box<Expr>>,
+    },
+    /// `REGEXP_EXTRACT(expr, pattern [, group_index])`
+    RegexpExtract {
+        expr: Box<Expr>,
+        pattern: Box<Expr>,
+        group_index: Option<Box<Expr>>,
+    },
+    /// `REGEXP_REPLACE(expr, pattern, replacement [, flags])`
+    RegexpReplace {
+        expr: Box<Expr>,
+        pattern: Box<Expr>,
+        replacement: Box<Expr>,
+        flags: Option<Box<Expr>>,
+    },
+    /// `CONCAT_WS(separator, expr, ...)`
+    ConcatWs {
+        separator: Box<Expr>,
+        exprs: Vec<Expr>,
+    },
+    /// `SPLIT(expr, delimiter)` / `STRING_SPLIT`
+    Split {
+        expr: Box<Expr>,
+        delimiter: Box<Expr>,
+    },
+    /// `INITCAP(expr)` — capitalize first letter of each word
+    Initcap { expr: Box<Expr> },
+    /// `LENGTH(expr)` / `LEN`
+    Length { expr: Box<Expr> },
+    /// `REPLACE(expr, from, to)`
+    Replace {
+        expr: Box<Expr>,
+        from: Box<Expr>,
+        to: Box<Expr>,
+    },
+    /// `REVERSE(expr)`
+    Reverse { expr: Box<Expr> },
+    /// `LEFT(expr, n)`
+    Left { expr: Box<Expr>, n: Box<Expr> },
+    /// `RIGHT(expr, n)`
+    Right { expr: Box<Expr>, n: Box<Expr> },
+    /// `LPAD(expr, length [, pad])`
+    Lpad {
+        expr: Box<Expr>,
+        length: Box<Expr>,
+        pad: Option<Box<Expr>>,
+    },
+    /// `RPAD(expr, length [, pad])`
+    Rpad {
+        expr: Box<Expr>,
+        length: Box<Expr>,
+        pad: Option<Box<Expr>>,
+    },
+
+    // ── Aggregate ──────────────────────────────────────────────────────
+    /// `COUNT(expr)` or `COUNT(DISTINCT expr)` or `COUNT(*)`
+    Count { expr: Box<Expr>, distinct: bool },
+    /// `SUM([DISTINCT] expr)`
+    Sum { expr: Box<Expr>, distinct: bool },
+    /// `AVG([DISTINCT] expr)`
+    Avg { expr: Box<Expr>, distinct: bool },
+    /// `MIN(expr)`
+    Min { expr: Box<Expr> },
+    /// `MAX(expr)`
+    Max { expr: Box<Expr> },
+    /// `ARRAY_AGG([DISTINCT] expr)` / `LIST` / `COLLECT_LIST`
+    ArrayAgg { expr: Box<Expr>, distinct: bool },
+    /// `APPROX_DISTINCT(expr)` / `APPROX_COUNT_DISTINCT`
+    ApproxDistinct { expr: Box<Expr> },
+    /// `VARIANCE(expr)` / `VAR_SAMP`
+    Variance { expr: Box<Expr> },
+    /// `STDDEV(expr)` / `STDDEV_SAMP`
+    Stddev { expr: Box<Expr> },
+
+    // ── Array ──────────────────────────────────────────────────────────
+    /// `ARRAY_CONCAT(arr1, arr2)` / `ARRAY_CAT`
+    ArrayConcat { arrays: Vec<Expr> },
+    /// `ARRAY_CONTAINS(array, element)` / `ARRAY_POSITION`
+    ArrayContains {
+        array: Box<Expr>,
+        element: Box<Expr>,
+    },
+    /// `ARRAY_SIZE(expr)` / `ARRAY_LENGTH` / `CARDINALITY`
+    ArraySize { expr: Box<Expr> },
+    /// `EXPLODE(expr)` — Hive/Spark array expansion
+    Explode { expr: Box<Expr> },
+    /// `GENERATE_SERIES(start, stop [, step])`
+    GenerateSeries {
+        start: Box<Expr>,
+        stop: Box<Expr>,
+        step: Option<Box<Expr>>,
+    },
+    /// `FLATTEN(expr)` — flatten nested arrays
+    Flatten { expr: Box<Expr> },
+
+    // ── JSON ───────────────────────────────────────────────────────────
+    /// `JSON_EXTRACT(expr, path)` / `JSON_VALUE` / `->` (Postgres)
+    JSONExtract { expr: Box<Expr>, path: Box<Expr> },
+    /// `JSON_EXTRACT_SCALAR(expr, path)` / `->>`
+    JSONExtractScalar { expr: Box<Expr>, path: Box<Expr> },
+    /// `PARSE_JSON(expr)` / `JSON_PARSE`
+    ParseJSON { expr: Box<Expr> },
+    /// `JSON_FORMAT(expr)` / `TO_JSON`
+    JSONFormat { expr: Box<Expr> },
+
+    // ── Window ─────────────────────────────────────────────────────────
+    /// `ROW_NUMBER()`
+    RowNumber,
+    /// `RANK()`
+    Rank,
+    /// `DENSE_RANK()`
+    DenseRank,
+    /// `NTILE(n)`
+    NTile { n: Box<Expr> },
+    /// `LEAD(expr [, offset [, default]])`
+    Lead {
+        expr: Box<Expr>,
+        offset: Option<Box<Expr>>,
+        default: Option<Box<Expr>>,
+    },
+    /// `LAG(expr [, offset [, default]])`
+    Lag {
+        expr: Box<Expr>,
+        offset: Option<Box<Expr>>,
+        default: Option<Box<Expr>>,
+    },
+    /// `FIRST_VALUE(expr)`
+    FirstValue { expr: Box<Expr> },
+    /// `LAST_VALUE(expr)`
+    LastValue { expr: Box<Expr> },
+
+    // ── Math ───────────────────────────────────────────────────────────
+    /// `ABS(expr)`
+    Abs { expr: Box<Expr> },
+    /// `CEIL(expr)` / `CEILING`
+    Ceil { expr: Box<Expr> },
+    /// `FLOOR(expr)`
+    Floor { expr: Box<Expr> },
+    /// `ROUND(expr [, decimals])`
+    Round {
+        expr: Box<Expr>,
+        decimals: Option<Box<Expr>>,
+    },
+    /// `LOG(expr [, base])` — semantics vary by dialect
+    Log {
+        expr: Box<Expr>,
+        base: Option<Box<Expr>>,
+    },
+    /// `LN(expr)` — natural logarithm
+    Ln { expr: Box<Expr> },
+    /// `POW(base, exponent)` / `POWER`
+    Pow {
+        base: Box<Expr>,
+        exponent: Box<Expr>,
+    },
+    /// `SQRT(expr)`
+    Sqrt { expr: Box<Expr> },
+    /// `GREATEST(expr, ...)`
+    Greatest { exprs: Vec<Expr> },
+    /// `LEAST(expr, ...)`
+    Least { exprs: Vec<Expr> },
+    /// `MOD(a, b)` — modulo function
+    Mod { left: Box<Expr>, right: Box<Expr> },
+
+    // ── Conversion ─────────────────────────────────────────────────────
+    /// `HEX(expr)` / `TO_HEX`
+    Hex { expr: Box<Expr> },
+    /// `UNHEX(expr)` / `FROM_HEX`
+    Unhex { expr: Box<Expr> },
+    /// `MD5(expr)`
+    Md5 { expr: Box<Expr> },
+    /// `SHA(expr)` / `SHA1`
+    Sha { expr: Box<Expr> },
+    /// `SHA2(expr, bit_length)` — SHA-256/SHA-512
+    Sha2 {
+        expr: Box<Expr>,
+        bit_length: Box<Expr>,
+    },
+}
+
+impl TypedFunction {
+    /// Walk child expressions, calling `visitor` on each.
+    pub fn walk_children<F>(&self, visitor: &mut F)
+    where
+        F: FnMut(&Expr) -> bool,
+    {
+        match self {
+            // Date/Time
+            TypedFunction::DateAdd { expr, interval, .. }
+            | TypedFunction::DateSub { expr, interval, .. } => {
+                expr.walk(visitor);
+                interval.walk(visitor);
+            }
+            TypedFunction::DateDiff { start, end, .. } => {
+                start.walk(visitor);
+                end.walk(visitor);
+            }
+            TypedFunction::DateTrunc { expr, .. } => expr.walk(visitor),
+            TypedFunction::CurrentDate | TypedFunction::CurrentTimestamp => {}
+            TypedFunction::StrToTime { expr, format }
+            | TypedFunction::TimeToStr { expr, format } => {
+                expr.walk(visitor);
+                format.walk(visitor);
+            }
+            TypedFunction::TsOrDsToDate { expr }
+            | TypedFunction::Year { expr }
+            | TypedFunction::Month { expr }
+            | TypedFunction::Day { expr } => expr.walk(visitor),
+
+            // String
+            TypedFunction::Trim {
+                expr, trim_chars, ..
+            } => {
+                expr.walk(visitor);
+                if let Some(c) = trim_chars {
+                    c.walk(visitor);
+                }
+            }
+            TypedFunction::Substring {
+                expr,
+                start,
+                length,
+            } => {
+                expr.walk(visitor);
+                start.walk(visitor);
+                if let Some(l) = length {
+                    l.walk(visitor);
+                }
+            }
+            TypedFunction::Upper { expr }
+            | TypedFunction::Lower { expr }
+            | TypedFunction::Initcap { expr }
+            | TypedFunction::Length { expr }
+            | TypedFunction::Reverse { expr } => expr.walk(visitor),
+            TypedFunction::RegexpLike {
+                expr,
+                pattern,
+                flags,
+            } => {
+                expr.walk(visitor);
+                pattern.walk(visitor);
+                if let Some(f) = flags {
+                    f.walk(visitor);
+                }
+            }
+            TypedFunction::RegexpExtract {
+                expr,
+                pattern,
+                group_index,
+            } => {
+                expr.walk(visitor);
+                pattern.walk(visitor);
+                if let Some(g) = group_index {
+                    g.walk(visitor);
+                }
+            }
+            TypedFunction::RegexpReplace {
+                expr,
+                pattern,
+                replacement,
+                flags,
+            } => {
+                expr.walk(visitor);
+                pattern.walk(visitor);
+                replacement.walk(visitor);
+                if let Some(f) = flags {
+                    f.walk(visitor);
+                }
+            }
+            TypedFunction::ConcatWs { separator, exprs } => {
+                separator.walk(visitor);
+                for e in exprs {
+                    e.walk(visitor);
+                }
+            }
+            TypedFunction::Split { expr, delimiter } => {
+                expr.walk(visitor);
+                delimiter.walk(visitor);
+            }
+            TypedFunction::Replace { expr, from, to } => {
+                expr.walk(visitor);
+                from.walk(visitor);
+                to.walk(visitor);
+            }
+            TypedFunction::Left { expr, n } | TypedFunction::Right { expr, n } => {
+                expr.walk(visitor);
+                n.walk(visitor);
+            }
+            TypedFunction::Lpad { expr, length, pad }
+            | TypedFunction::Rpad { expr, length, pad } => {
+                expr.walk(visitor);
+                length.walk(visitor);
+                if let Some(p) = pad {
+                    p.walk(visitor);
+                }
+            }
+
+            // Aggregate
+            TypedFunction::Count { expr, .. }
+            | TypedFunction::Sum { expr, .. }
+            | TypedFunction::Avg { expr, .. }
+            | TypedFunction::Min { expr }
+            | TypedFunction::Max { expr }
+            | TypedFunction::ArrayAgg { expr, .. }
+            | TypedFunction::ApproxDistinct { expr }
+            | TypedFunction::Variance { expr }
+            | TypedFunction::Stddev { expr } => expr.walk(visitor),
+
+            // Array
+            TypedFunction::ArrayConcat { arrays } => {
+                for a in arrays {
+                    a.walk(visitor);
+                }
+            }
+            TypedFunction::ArrayContains { array, element } => {
+                array.walk(visitor);
+                element.walk(visitor);
+            }
+            TypedFunction::ArraySize { expr }
+            | TypedFunction::Explode { expr }
+            | TypedFunction::Flatten { expr } => expr.walk(visitor),
+            TypedFunction::GenerateSeries { start, stop, step } => {
+                start.walk(visitor);
+                stop.walk(visitor);
+                if let Some(s) = step {
+                    s.walk(visitor);
+                }
+            }
+
+            // JSON
+            TypedFunction::JSONExtract { expr, path }
+            | TypedFunction::JSONExtractScalar { expr, path } => {
+                expr.walk(visitor);
+                path.walk(visitor);
+            }
+            TypedFunction::ParseJSON { expr } | TypedFunction::JSONFormat { expr } => {
+                expr.walk(visitor)
+            }
+
+            // Window
+            TypedFunction::RowNumber | TypedFunction::Rank | TypedFunction::DenseRank => {}
+            TypedFunction::NTile { n } => n.walk(visitor),
+            TypedFunction::Lead {
+                expr,
+                offset,
+                default,
+            }
+            | TypedFunction::Lag {
+                expr,
+                offset,
+                default,
+            } => {
+                expr.walk(visitor);
+                if let Some(o) = offset {
+                    o.walk(visitor);
+                }
+                if let Some(d) = default {
+                    d.walk(visitor);
+                }
+            }
+            TypedFunction::FirstValue { expr } | TypedFunction::LastValue { expr } => {
+                expr.walk(visitor)
+            }
+
+            // Math
+            TypedFunction::Abs { expr }
+            | TypedFunction::Ceil { expr }
+            | TypedFunction::Floor { expr }
+            | TypedFunction::Ln { expr }
+            | TypedFunction::Sqrt { expr } => expr.walk(visitor),
+            TypedFunction::Round { expr, decimals } => {
+                expr.walk(visitor);
+                if let Some(d) = decimals {
+                    d.walk(visitor);
+                }
+            }
+            TypedFunction::Log { expr, base } => {
+                expr.walk(visitor);
+                if let Some(b) = base {
+                    b.walk(visitor);
+                }
+            }
+            TypedFunction::Pow { base, exponent } => {
+                base.walk(visitor);
+                exponent.walk(visitor);
+            }
+            TypedFunction::Greatest { exprs } | TypedFunction::Least { exprs } => {
+                for e in exprs {
+                    e.walk(visitor);
+                }
+            }
+            TypedFunction::Mod { left, right } => {
+                left.walk(visitor);
+                right.walk(visitor);
+            }
+
+            // Conversion
+            TypedFunction::Hex { expr }
+            | TypedFunction::Unhex { expr }
+            | TypedFunction::Md5 { expr }
+            | TypedFunction::Sha { expr } => expr.walk(visitor),
+            TypedFunction::Sha2 { expr, bit_length } => {
+                expr.walk(visitor);
+                bit_length.walk(visitor);
+            }
+        }
+    }
+
+    /// Transform child expressions, returning a new `TypedFunction`.
+    #[must_use]
+    pub fn transform_children<F>(self, func: &F) -> TypedFunction
+    where
+        F: Fn(Expr) -> Expr,
+    {
+        match self {
+            // Date/Time
+            TypedFunction::DateAdd {
+                expr,
+                interval,
+                unit,
+            } => TypedFunction::DateAdd {
+                expr: Box::new(expr.transform(func)),
+                interval: Box::new(interval.transform(func)),
+                unit,
+            },
+            TypedFunction::DateDiff { start, end, unit } => TypedFunction::DateDiff {
+                start: Box::new(start.transform(func)),
+                end: Box::new(end.transform(func)),
+                unit,
+            },
+            TypedFunction::DateTrunc { unit, expr } => TypedFunction::DateTrunc {
+                unit,
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::DateSub {
+                expr,
+                interval,
+                unit,
+            } => TypedFunction::DateSub {
+                expr: Box::new(expr.transform(func)),
+                interval: Box::new(interval.transform(func)),
+                unit,
+            },
+            TypedFunction::CurrentDate => TypedFunction::CurrentDate,
+            TypedFunction::CurrentTimestamp => TypedFunction::CurrentTimestamp,
+            TypedFunction::StrToTime { expr, format } => TypedFunction::StrToTime {
+                expr: Box::new(expr.transform(func)),
+                format: Box::new(format.transform(func)),
+            },
+            TypedFunction::TimeToStr { expr, format } => TypedFunction::TimeToStr {
+                expr: Box::new(expr.transform(func)),
+                format: Box::new(format.transform(func)),
+            },
+            TypedFunction::TsOrDsToDate { expr } => TypedFunction::TsOrDsToDate {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Year { expr } => TypedFunction::Year {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Month { expr } => TypedFunction::Month {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Day { expr } => TypedFunction::Day {
+                expr: Box::new(expr.transform(func)),
+            },
+
+            // String
+            TypedFunction::Trim {
+                expr,
+                trim_type,
+                trim_chars,
+            } => TypedFunction::Trim {
+                expr: Box::new(expr.transform(func)),
+                trim_type,
+                trim_chars: trim_chars.map(|c| Box::new(c.transform(func))),
+            },
+            TypedFunction::Substring {
+                expr,
+                start,
+                length,
+            } => TypedFunction::Substring {
+                expr: Box::new(expr.transform(func)),
+                start: Box::new(start.transform(func)),
+                length: length.map(|l| Box::new(l.transform(func))),
+            },
+            TypedFunction::Upper { expr } => TypedFunction::Upper {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Lower { expr } => TypedFunction::Lower {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::RegexpLike {
+                expr,
+                pattern,
+                flags,
+            } => TypedFunction::RegexpLike {
+                expr: Box::new(expr.transform(func)),
+                pattern: Box::new(pattern.transform(func)),
+                flags: flags.map(|f| Box::new(f.transform(func))),
+            },
+            TypedFunction::RegexpExtract {
+                expr,
+                pattern,
+                group_index,
+            } => TypedFunction::RegexpExtract {
+                expr: Box::new(expr.transform(func)),
+                pattern: Box::new(pattern.transform(func)),
+                group_index: group_index.map(|g| Box::new(g.transform(func))),
+            },
+            TypedFunction::RegexpReplace {
+                expr,
+                pattern,
+                replacement,
+                flags,
+            } => TypedFunction::RegexpReplace {
+                expr: Box::new(expr.transform(func)),
+                pattern: Box::new(pattern.transform(func)),
+                replacement: Box::new(replacement.transform(func)),
+                flags: flags.map(|f| Box::new(f.transform(func))),
+            },
+            TypedFunction::ConcatWs { separator, exprs } => TypedFunction::ConcatWs {
+                separator: Box::new(separator.transform(func)),
+                exprs: exprs.into_iter().map(|e| e.transform(func)).collect(),
+            },
+            TypedFunction::Split { expr, delimiter } => TypedFunction::Split {
+                expr: Box::new(expr.transform(func)),
+                delimiter: Box::new(delimiter.transform(func)),
+            },
+            TypedFunction::Initcap { expr } => TypedFunction::Initcap {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Length { expr } => TypedFunction::Length {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Replace { expr, from, to } => TypedFunction::Replace {
+                expr: Box::new(expr.transform(func)),
+                from: Box::new(from.transform(func)),
+                to: Box::new(to.transform(func)),
+            },
+            TypedFunction::Reverse { expr } => TypedFunction::Reverse {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Left { expr, n } => TypedFunction::Left {
+                expr: Box::new(expr.transform(func)),
+                n: Box::new(n.transform(func)),
+            },
+            TypedFunction::Right { expr, n } => TypedFunction::Right {
+                expr: Box::new(expr.transform(func)),
+                n: Box::new(n.transform(func)),
+            },
+            TypedFunction::Lpad { expr, length, pad } => TypedFunction::Lpad {
+                expr: Box::new(expr.transform(func)),
+                length: Box::new(length.transform(func)),
+                pad: pad.map(|p| Box::new(p.transform(func))),
+            },
+            TypedFunction::Rpad { expr, length, pad } => TypedFunction::Rpad {
+                expr: Box::new(expr.transform(func)),
+                length: Box::new(length.transform(func)),
+                pad: pad.map(|p| Box::new(p.transform(func))),
+            },
+
+            // Aggregate
+            TypedFunction::Count { expr, distinct } => TypedFunction::Count {
+                expr: Box::new(expr.transform(func)),
+                distinct,
+            },
+            TypedFunction::Sum { expr, distinct } => TypedFunction::Sum {
+                expr: Box::new(expr.transform(func)),
+                distinct,
+            },
+            TypedFunction::Avg { expr, distinct } => TypedFunction::Avg {
+                expr: Box::new(expr.transform(func)),
+                distinct,
+            },
+            TypedFunction::Min { expr } => TypedFunction::Min {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Max { expr } => TypedFunction::Max {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::ArrayAgg { expr, distinct } => TypedFunction::ArrayAgg {
+                expr: Box::new(expr.transform(func)),
+                distinct,
+            },
+            TypedFunction::ApproxDistinct { expr } => TypedFunction::ApproxDistinct {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Variance { expr } => TypedFunction::Variance {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Stddev { expr } => TypedFunction::Stddev {
+                expr: Box::new(expr.transform(func)),
+            },
+
+            // Array
+            TypedFunction::ArrayConcat { arrays } => TypedFunction::ArrayConcat {
+                arrays: arrays.into_iter().map(|a| a.transform(func)).collect(),
+            },
+            TypedFunction::ArrayContains { array, element } => TypedFunction::ArrayContains {
+                array: Box::new(array.transform(func)),
+                element: Box::new(element.transform(func)),
+            },
+            TypedFunction::ArraySize { expr } => TypedFunction::ArraySize {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Explode { expr } => TypedFunction::Explode {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::GenerateSeries { start, stop, step } => TypedFunction::GenerateSeries {
+                start: Box::new(start.transform(func)),
+                stop: Box::new(stop.transform(func)),
+                step: step.map(|s| Box::new(s.transform(func))),
+            },
+            TypedFunction::Flatten { expr } => TypedFunction::Flatten {
+                expr: Box::new(expr.transform(func)),
+            },
+
+            // JSON
+            TypedFunction::JSONExtract { expr, path } => TypedFunction::JSONExtract {
+                expr: Box::new(expr.transform(func)),
+                path: Box::new(path.transform(func)),
+            },
+            TypedFunction::JSONExtractScalar { expr, path } => TypedFunction::JSONExtractScalar {
+                expr: Box::new(expr.transform(func)),
+                path: Box::new(path.transform(func)),
+            },
+            TypedFunction::ParseJSON { expr } => TypedFunction::ParseJSON {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::JSONFormat { expr } => TypedFunction::JSONFormat {
+                expr: Box::new(expr.transform(func)),
+            },
+
+            // Window
+            TypedFunction::RowNumber => TypedFunction::RowNumber,
+            TypedFunction::Rank => TypedFunction::Rank,
+            TypedFunction::DenseRank => TypedFunction::DenseRank,
+            TypedFunction::NTile { n } => TypedFunction::NTile {
+                n: Box::new(n.transform(func)),
+            },
+            TypedFunction::Lead {
+                expr,
+                offset,
+                default,
+            } => TypedFunction::Lead {
+                expr: Box::new(expr.transform(func)),
+                offset: offset.map(|o| Box::new(o.transform(func))),
+                default: default.map(|d| Box::new(d.transform(func))),
+            },
+            TypedFunction::Lag {
+                expr,
+                offset,
+                default,
+            } => TypedFunction::Lag {
+                expr: Box::new(expr.transform(func)),
+                offset: offset.map(|o| Box::new(o.transform(func))),
+                default: default.map(|d| Box::new(d.transform(func))),
+            },
+            TypedFunction::FirstValue { expr } => TypedFunction::FirstValue {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::LastValue { expr } => TypedFunction::LastValue {
+                expr: Box::new(expr.transform(func)),
+            },
+
+            // Math
+            TypedFunction::Abs { expr } => TypedFunction::Abs {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Ceil { expr } => TypedFunction::Ceil {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Floor { expr } => TypedFunction::Floor {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Round { expr, decimals } => TypedFunction::Round {
+                expr: Box::new(expr.transform(func)),
+                decimals: decimals.map(|d| Box::new(d.transform(func))),
+            },
+            TypedFunction::Log { expr, base } => TypedFunction::Log {
+                expr: Box::new(expr.transform(func)),
+                base: base.map(|b| Box::new(b.transform(func))),
+            },
+            TypedFunction::Ln { expr } => TypedFunction::Ln {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Pow { base, exponent } => TypedFunction::Pow {
+                base: Box::new(base.transform(func)),
+                exponent: Box::new(exponent.transform(func)),
+            },
+            TypedFunction::Sqrt { expr } => TypedFunction::Sqrt {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Greatest { exprs } => TypedFunction::Greatest {
+                exprs: exprs.into_iter().map(|e| e.transform(func)).collect(),
+            },
+            TypedFunction::Least { exprs } => TypedFunction::Least {
+                exprs: exprs.into_iter().map(|e| e.transform(func)).collect(),
+            },
+            TypedFunction::Mod { left, right } => TypedFunction::Mod {
+                left: Box::new(left.transform(func)),
+                right: Box::new(right.transform(func)),
+            },
+
+            // Conversion
+            TypedFunction::Hex { expr } => TypedFunction::Hex {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Unhex { expr } => TypedFunction::Unhex {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Md5 { expr } => TypedFunction::Md5 {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Sha { expr } => TypedFunction::Sha {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Sha2 { expr, bit_length } => TypedFunction::Sha2 {
+                expr: Box::new(expr.transform(func)),
+                bit_length: Box::new(bit_length.transform(func)),
+            },
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -919,6 +1738,12 @@ impl Expr {
                 path.walk(visitor);
             }
             Expr::Lambda { body, .. } => body.walk(visitor),
+            Expr::TypedFunction { func, filter, .. } => {
+                func.walk_children(visitor);
+                if let Some(f) = filter {
+                    f.walk(visitor);
+                }
+            }
             // Leaf nodes
             Expr::Column { .. }
             | Expr::Number(_)
@@ -1050,6 +1875,15 @@ impl Expr {
                 expr: Box::new(expr.transform(func)),
                 op,
                 right: Box::new(right.transform(func)),
+            },
+            Expr::TypedFunction {
+                func: tf,
+                filter,
+                over,
+            } => Expr::TypedFunction {
+                func: tf.transform_children(func),
+                filter: filter.map(|f| Box::new(f.transform(func))),
+                over,
             },
             other => other,
         };

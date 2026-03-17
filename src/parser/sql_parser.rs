@@ -109,6 +109,9 @@ impl Parser {
                 | TokenType::View
                 | TokenType::Collate
                 | TokenType::Comment
+                | TokenType::Left
+                | TokenType::Right
+                | TokenType::Replace
         )
     }
 
@@ -1952,59 +1955,77 @@ impl Parser {
 
         // Check for window function: expr OVER (...)
         if self.match_token(TokenType::Over) {
-            if let Expr::Function {
-                name,
-                args,
-                distinct,
-                filter,
-                ..
-            } = expr
-            {
-                let spec = if self.match_token(TokenType::LParen) {
-                    let ws = self.parse_window_spec()?;
-                    self.expect(TokenType::RParen)?;
-                    ws
-                } else {
-                    // Named window reference
-                    let wref = self.expect_name()?;
-                    WindowSpec {
-                        window_ref: Some(wref),
-                        partition_by: vec![],
-                        order_by: vec![],
-                        frame: None,
-                    }
-                };
-                expr = Expr::Function {
+            let spec = if self.match_token(TokenType::LParen) {
+                let ws = self.parse_window_spec()?;
+                self.expect(TokenType::RParen)?;
+                ws
+            } else {
+                // Named window reference
+                let wref = self.expect_name()?;
+                WindowSpec {
+                    window_ref: Some(wref),
+                    partition_by: vec![],
+                    order_by: vec![],
+                    frame: None,
+                }
+            };
+            match expr {
+                Expr::Function {
                     name,
                     args,
                     distinct,
                     filter,
-                    over: Some(spec),
-                };
+                    ..
+                } => {
+                    expr = Expr::Function {
+                        name,
+                        args,
+                        distinct,
+                        filter,
+                        over: Some(spec),
+                    };
+                }
+                Expr::TypedFunction { func, filter, .. } => {
+                    expr = Expr::TypedFunction {
+                        func,
+                        filter,
+                        over: Some(spec),
+                    };
+                }
+                _ => {}
             }
         }
 
         // FILTER (WHERE ...) for aggregate functions
         if self.match_token(TokenType::Filter) {
-            if let Expr::Function {
-                name,
-                args,
-                distinct,
-                over,
-                ..
-            } = expr
-            {
-                self.expect(TokenType::LParen)?;
-                self.expect(TokenType::Where)?;
-                let filter_expr = self.parse_expr()?;
-                self.expect(TokenType::RParen)?;
-                expr = Expr::Function {
+            self.expect(TokenType::LParen)?;
+            self.expect(TokenType::Where)?;
+            let filter_expr = self.parse_expr()?;
+            self.expect(TokenType::RParen)?;
+            match expr {
+                Expr::Function {
                     name,
                     args,
                     distinct,
-                    filter: Some(Box::new(filter_expr)),
                     over,
-                };
+                    ..
+                } => {
+                    expr = Expr::Function {
+                        name,
+                        args,
+                        distinct,
+                        filter: Some(Box::new(filter_expr)),
+                        over,
+                    };
+                }
+                Expr::TypedFunction { func, over, .. } => {
+                    expr = Expr::TypedFunction {
+                        func,
+                        filter: Some(Box::new(filter_expr)),
+                        over,
+                    };
+                }
+                _ => {}
             }
         }
 
@@ -2313,13 +2334,18 @@ impl Parser {
                     };
                     self.expect(TokenType::RParen)?;
 
-                    Ok(Expr::Function {
-                        name,
-                        args,
-                        distinct,
-                        filter: None,
-                        over: None,
-                    })
+                    // Try to construct a typed function variant
+                    if let Some(typed) = Self::try_typed_function(&name, args.clone(), distinct) {
+                        Ok(typed)
+                    } else {
+                        Ok(Expr::Function {
+                            name,
+                            args,
+                            distinct,
+                            filter: None,
+                            over: None,
+                        })
+                    }
                 }
                 // Qualified column: table.column or table.*
                 else if self.match_token(TokenType::Dot) {
@@ -2432,6 +2458,655 @@ impl Parser {
                 self.pos = saved;
                 None
             }
+        }
+    }
+
+    /// Try to construct a typed function expression from a parsed function call.
+    /// Returns `None` if the function name is not recognized, falling back to
+    /// the generic `Expr::Function`.
+    fn try_typed_function(name: &str, args: Vec<Expr>, distinct: bool) -> Option<Expr> {
+        let upper = name.to_uppercase();
+        let tf = match upper.as_str() {
+            // ── Date/Time ──────────────────────────────────────────
+            "DATE_ADD" | "DATEADD" | "TIMESTAMPADD" => {
+                let mut it = args.into_iter();
+                let first = it.next()?;
+                let second = it.next()?;
+                let third = it.next();
+                // Handle DATEADD(unit, interval, expr) — TSQL/Snowflake arg order
+                if upper == "DATEADD" {
+                    if let Some(third_arg) = third {
+                        // 3-arg: DATEADD(unit, interval, expr)
+                        let unit = Self::expr_to_datetime_field(&first);
+                        TypedFunction::DateAdd {
+                            expr: Box::new(third_arg),
+                            interval: Box::new(second),
+                            unit,
+                        }
+                    } else {
+                        TypedFunction::DateAdd {
+                            expr: Box::new(first),
+                            interval: Box::new(second),
+                            unit: None,
+                        }
+                    }
+                } else {
+                    // DATE_ADD(expr, interval [, unit])
+                    let unit = third.as_ref().and_then(Self::expr_to_datetime_field);
+                    TypedFunction::DateAdd {
+                        expr: Box::new(first),
+                        interval: Box::new(second),
+                        unit,
+                    }
+                }
+            }
+            "DATE_DIFF" | "DATEDIFF" | "TIMESTAMPDIFF" => {
+                let mut it = args.into_iter();
+                let first = it.next()?;
+                let second = it.next()?;
+                let third = it.next();
+                if let Some(third_arg) = third {
+                    if upper == "DATEDIFF" {
+                        // DATEDIFF(unit, start, end) — TSQL/Snowflake
+                        let unit = Self::expr_to_datetime_field(&first);
+                        TypedFunction::DateDiff {
+                            start: Box::new(second),
+                            end: Box::new(third_arg),
+                            unit,
+                        }
+                    } else {
+                        let unit = Self::expr_to_datetime_field(&third_arg);
+                        TypedFunction::DateDiff {
+                            start: Box::new(first),
+                            end: Box::new(second),
+                            unit,
+                        }
+                    }
+                } else {
+                    TypedFunction::DateDiff {
+                        start: Box::new(first),
+                        end: Box::new(second),
+                        unit: None,
+                    }
+                }
+            }
+            "DATE_TRUNC" | "DATETRUNC" => {
+                let mut it = args.into_iter();
+                let first = it.next()?;
+                let second = it.next()?;
+                // DATE_TRUNC('unit', expr) or DATE_TRUNC(unit, expr)
+                let (unit, expr) = if let Some(u) = Self::expr_to_datetime_field(&first) {
+                    (u, second)
+                } else if let Some(u) = Self::expr_to_datetime_field(&second) {
+                    (u, first)
+                } else {
+                    // Default: first = unit string, second = expr
+                    return None;
+                };
+                TypedFunction::DateTrunc {
+                    unit,
+                    expr: Box::new(expr),
+                }
+            }
+            "DATE_SUB" | "DATESUB" => {
+                let mut it = args.into_iter();
+                let first = it.next()?;
+                let second = it.next()?;
+                let third = it.next();
+                let unit = third.as_ref().and_then(Self::expr_to_datetime_field);
+                TypedFunction::DateSub {
+                    expr: Box::new(first),
+                    interval: Box::new(second),
+                    unit,
+                }
+            }
+            "CURRENT_DATE" => TypedFunction::CurrentDate,
+            "CURRENT_TIMESTAMP" | "NOW" | "GETDATE" | "SYSDATE" => TypedFunction::CurrentTimestamp,
+            "STR_TO_TIME" | "STR_TO_DATE" | "TO_TIMESTAMP" | "PARSE_TIMESTAMP"
+            | "PARSE_DATETIME" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let format = it.next()?;
+                TypedFunction::StrToTime {
+                    expr: Box::new(expr),
+                    format: Box::new(format),
+                }
+            }
+            "TIME_TO_STR" | "DATE_FORMAT" | "FORMAT_TIMESTAMP" | "FORMAT_DATETIME" | "TO_CHAR" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let format = it.next()?;
+                TypedFunction::TimeToStr {
+                    expr: Box::new(expr),
+                    format: Box::new(format),
+                }
+            }
+            "TS_OR_DS_TO_DATE" => {
+                let mut it = args.into_iter();
+                TypedFunction::TsOrDsToDate {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "YEAR" => {
+                let mut it = args.into_iter();
+                TypedFunction::Year {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "MONTH" => {
+                let mut it = args.into_iter();
+                TypedFunction::Month {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "DAY" | "DAYOFMONTH" => {
+                let mut it = args.into_iter();
+                TypedFunction::Day {
+                    expr: Box::new(it.next()?),
+                }
+            }
+
+            // ── String ─────────────────────────────────────────────
+            "TRIM" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                TypedFunction::Trim {
+                    expr: Box::new(expr),
+                    trim_type: TrimType::Both,
+                    trim_chars: None,
+                }
+            }
+            "LTRIM" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                TypedFunction::Trim {
+                    expr: Box::new(expr),
+                    trim_type: TrimType::Leading,
+                    trim_chars: None,
+                }
+            }
+            "RTRIM" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                TypedFunction::Trim {
+                    expr: Box::new(expr),
+                    trim_type: TrimType::Trailing,
+                    trim_chars: None,
+                }
+            }
+            "SUBSTRING" | "SUBSTR" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let start = it.next()?;
+                let length = it.next();
+                TypedFunction::Substring {
+                    expr: Box::new(expr),
+                    start: Box::new(start),
+                    length: length.map(Box::new),
+                }
+            }
+            "UPPER" | "UCASE" => {
+                let mut it = args.into_iter();
+                TypedFunction::Upper {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "LOWER" | "LCASE" => {
+                let mut it = args.into_iter();
+                TypedFunction::Lower {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "REGEXP_LIKE" | "RLIKE" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let pattern = it.next()?;
+                let flags = it.next();
+                TypedFunction::RegexpLike {
+                    expr: Box::new(expr),
+                    pattern: Box::new(pattern),
+                    flags: flags.map(Box::new),
+                }
+            }
+            "REGEXP_EXTRACT" | "REGEXP_SUBSTR" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let pattern = it.next()?;
+                let group_index = it.next();
+                TypedFunction::RegexpExtract {
+                    expr: Box::new(expr),
+                    pattern: Box::new(pattern),
+                    group_index: group_index.map(Box::new),
+                }
+            }
+            "REGEXP_REPLACE" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let pattern = it.next()?;
+                let replacement = it.next()?;
+                let flags = it.next();
+                TypedFunction::RegexpReplace {
+                    expr: Box::new(expr),
+                    pattern: Box::new(pattern),
+                    replacement: Box::new(replacement),
+                    flags: flags.map(Box::new),
+                }
+            }
+            "CONCAT_WS" => {
+                let mut it = args.into_iter();
+                let separator = it.next()?;
+                let exprs: Vec<Expr> = it.collect();
+                TypedFunction::ConcatWs {
+                    separator: Box::new(separator),
+                    exprs,
+                }
+            }
+            "SPLIT" | "STRING_SPLIT" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let delimiter = it.next()?;
+                TypedFunction::Split {
+                    expr: Box::new(expr),
+                    delimiter: Box::new(delimiter),
+                }
+            }
+            "INITCAP" => {
+                let mut it = args.into_iter();
+                TypedFunction::Initcap {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "LENGTH" | "LEN" | "CHAR_LENGTH" | "CHARACTER_LENGTH" => {
+                let mut it = args.into_iter();
+                TypedFunction::Length {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "REPLACE" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let from = it.next()?;
+                let to = it.next()?;
+                TypedFunction::Replace {
+                    expr: Box::new(expr),
+                    from: Box::new(from),
+                    to: Box::new(to),
+                }
+            }
+            "REVERSE" => {
+                let mut it = args.into_iter();
+                TypedFunction::Reverse {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "LEFT" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let n = it.next()?;
+                TypedFunction::Left {
+                    expr: Box::new(expr),
+                    n: Box::new(n),
+                }
+            }
+            "RIGHT" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let n = it.next()?;
+                TypedFunction::Right {
+                    expr: Box::new(expr),
+                    n: Box::new(n),
+                }
+            }
+            "LPAD" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let length = it.next()?;
+                let pad = it.next();
+                TypedFunction::Lpad {
+                    expr: Box::new(expr),
+                    length: Box::new(length),
+                    pad: pad.map(Box::new),
+                }
+            }
+            "RPAD" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let length = it.next()?;
+                let pad = it.next();
+                TypedFunction::Rpad {
+                    expr: Box::new(expr),
+                    length: Box::new(length),
+                    pad: pad.map(Box::new),
+                }
+            }
+
+            // ── Aggregate ──────────────────────────────────────────
+            "COUNT" => {
+                let mut it = args.into_iter();
+                let expr = it.next().unwrap_or(Expr::Wildcard);
+                TypedFunction::Count {
+                    expr: Box::new(expr),
+                    distinct,
+                }
+            }
+            "SUM" => {
+                let mut it = args.into_iter();
+                TypedFunction::Sum {
+                    expr: Box::new(it.next()?),
+                    distinct,
+                }
+            }
+            "AVG" => {
+                let mut it = args.into_iter();
+                TypedFunction::Avg {
+                    expr: Box::new(it.next()?),
+                    distinct,
+                }
+            }
+            "MIN" => {
+                let mut it = args.into_iter();
+                TypedFunction::Min {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "MAX" => {
+                let mut it = args.into_iter();
+                TypedFunction::Max {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "ARRAY_AGG" | "LIST" | "COLLECT_LIST" => {
+                let mut it = args.into_iter();
+                TypedFunction::ArrayAgg {
+                    expr: Box::new(it.next()?),
+                    distinct,
+                }
+            }
+            "APPROX_DISTINCT" | "APPROX_COUNT_DISTINCT" => {
+                let mut it = args.into_iter();
+                TypedFunction::ApproxDistinct {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "VARIANCE" | "VAR_SAMP" | "VAR" => {
+                let mut it = args.into_iter();
+                TypedFunction::Variance {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "STDDEV" | "STDDEV_SAMP" => {
+                let mut it = args.into_iter();
+                TypedFunction::Stddev {
+                    expr: Box::new(it.next()?),
+                }
+            }
+
+            // ── Array ──────────────────────────────────────────────
+            "ARRAY_CONCAT" | "ARRAY_CAT" => TypedFunction::ArrayConcat { arrays: args },
+            "ARRAY_CONTAINS" => {
+                let mut it = args.into_iter();
+                let array = it.next()?;
+                let element = it.next()?;
+                TypedFunction::ArrayContains {
+                    array: Box::new(array),
+                    element: Box::new(element),
+                }
+            }
+            "ARRAY_SIZE" | "ARRAY_LENGTH" | "CARDINALITY" => {
+                let mut it = args.into_iter();
+                TypedFunction::ArraySize {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "EXPLODE" => {
+                let mut it = args.into_iter();
+                TypedFunction::Explode {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "GENERATE_SERIES" | "SEQUENCE" => {
+                let mut it = args.into_iter();
+                let start = it.next()?;
+                let stop = it.next()?;
+                let step = it.next();
+                TypedFunction::GenerateSeries {
+                    start: Box::new(start),
+                    stop: Box::new(stop),
+                    step: step.map(Box::new),
+                }
+            }
+            "FLATTEN" => {
+                let mut it = args.into_iter();
+                TypedFunction::Flatten {
+                    expr: Box::new(it.next()?),
+                }
+            }
+
+            // ── JSON ───────────────────────────────────────────────
+            "JSON_EXTRACT" | "JSON_VALUE" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let path = it.next()?;
+                TypedFunction::JSONExtract {
+                    expr: Box::new(expr),
+                    path: Box::new(path),
+                }
+            }
+            "JSON_EXTRACT_SCALAR" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let path = it.next()?;
+                TypedFunction::JSONExtractScalar {
+                    expr: Box::new(expr),
+                    path: Box::new(path),
+                }
+            }
+            "PARSE_JSON" | "JSON_PARSE" => {
+                let mut it = args.into_iter();
+                TypedFunction::ParseJSON {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "JSON_FORMAT" | "TO_JSON" | "TO_JSON_STRING" => {
+                let mut it = args.into_iter();
+                TypedFunction::JSONFormat {
+                    expr: Box::new(it.next()?),
+                }
+            }
+
+            // ── Window ─────────────────────────────────────────────
+            "ROW_NUMBER" => TypedFunction::RowNumber,
+            "RANK" => TypedFunction::Rank,
+            "DENSE_RANK" => TypedFunction::DenseRank,
+            "NTILE" => {
+                let mut it = args.into_iter();
+                TypedFunction::NTile {
+                    n: Box::new(it.next()?),
+                }
+            }
+            "LEAD" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let offset = it.next();
+                let default = it.next();
+                TypedFunction::Lead {
+                    expr: Box::new(expr),
+                    offset: offset.map(Box::new),
+                    default: default.map(Box::new),
+                }
+            }
+            "LAG" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let offset = it.next();
+                let default = it.next();
+                TypedFunction::Lag {
+                    expr: Box::new(expr),
+                    offset: offset.map(Box::new),
+                    default: default.map(Box::new),
+                }
+            }
+            "FIRST_VALUE" => {
+                let mut it = args.into_iter();
+                TypedFunction::FirstValue {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "LAST_VALUE" => {
+                let mut it = args.into_iter();
+                TypedFunction::LastValue {
+                    expr: Box::new(it.next()?),
+                }
+            }
+
+            // ── Math ───────────────────────────────────────────────
+            "ABS" => {
+                let mut it = args.into_iter();
+                TypedFunction::Abs {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "CEIL" | "CEILING" => {
+                let mut it = args.into_iter();
+                TypedFunction::Ceil {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "FLOOR" => {
+                let mut it = args.into_iter();
+                TypedFunction::Floor {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "ROUND" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let decimals = it.next();
+                TypedFunction::Round {
+                    expr: Box::new(expr),
+                    decimals: decimals.map(Box::new),
+                }
+            }
+            "LOG" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let base = it.next();
+                TypedFunction::Log {
+                    expr: Box::new(expr),
+                    base: base.map(Box::new),
+                }
+            }
+            "LN" => {
+                let mut it = args.into_iter();
+                TypedFunction::Ln {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "POW" | "POWER" => {
+                let mut it = args.into_iter();
+                let base = it.next()?;
+                let exponent = it.next()?;
+                TypedFunction::Pow {
+                    base: Box::new(base),
+                    exponent: Box::new(exponent),
+                }
+            }
+            "SQRT" => {
+                let mut it = args.into_iter();
+                TypedFunction::Sqrt {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "GREATEST" => TypedFunction::Greatest { exprs: args },
+            "LEAST" => TypedFunction::Least { exprs: args },
+            "MOD" => {
+                let mut it = args.into_iter();
+                let left = it.next()?;
+                let right = it.next()?;
+                TypedFunction::Mod {
+                    left: Box::new(left),
+                    right: Box::new(right),
+                }
+            }
+
+            // ── Conversion ─────────────────────────────────────────
+            "HEX" | "TO_HEX" => {
+                let mut it = args.into_iter();
+                TypedFunction::Hex {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "UNHEX" | "FROM_HEX" => {
+                let mut it = args.into_iter();
+                TypedFunction::Unhex {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "MD5" => {
+                let mut it = args.into_iter();
+                TypedFunction::Md5 {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "SHA" | "SHA1" => {
+                let mut it = args.into_iter();
+                TypedFunction::Sha {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "SHA2" | "SHA256" | "SHA512" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let bit_length = it.next().unwrap_or(Expr::Number("256".to_string()));
+                TypedFunction::Sha2 {
+                    expr: Box::new(expr),
+                    bit_length: Box::new(bit_length),
+                }
+            }
+
+            // Not a recognized typed function
+            _ => return None,
+        };
+
+        Some(Expr::TypedFunction {
+            func: tf,
+            filter: None,
+            over: None,
+        })
+    }
+
+    /// Try to extract a DateTimeField from a column-name expression.
+    fn expr_to_datetime_field(expr: &Expr) -> Option<DateTimeField> {
+        match expr {
+            Expr::Column {
+                name, table: None, ..
+            } => match name.to_uppercase().as_str() {
+                "YEAR" => Some(DateTimeField::Year),
+                "QUARTER" => Some(DateTimeField::Quarter),
+                "MONTH" => Some(DateTimeField::Month),
+                "WEEK" => Some(DateTimeField::Week),
+                "DAY" => Some(DateTimeField::Day),
+                "HOUR" => Some(DateTimeField::Hour),
+                "MINUTE" => Some(DateTimeField::Minute),
+                "SECOND" => Some(DateTimeField::Second),
+                "MILLISECOND" => Some(DateTimeField::Millisecond),
+                "MICROSECOND" => Some(DateTimeField::Microsecond),
+                _ => None,
+            },
+            Expr::StringLiteral(s) => match s.to_uppercase().as_str() {
+                "YEAR" => Some(DateTimeField::Year),
+                "QUARTER" => Some(DateTimeField::Quarter),
+                "MONTH" => Some(DateTimeField::Month),
+                "WEEK" => Some(DateTimeField::Week),
+                "DAY" => Some(DateTimeField::Day),
+                "HOUR" => Some(DateTimeField::Hour),
+                "MINUTE" => Some(DateTimeField::Minute),
+                "SECOND" => Some(DateTimeField::Second),
+                "MILLISECOND" => Some(DateTimeField::Millisecond),
+                "MICROSECOND" => Some(DateTimeField::Microsecond),
+                _ => None,
+            },
+            _ => None,
         }
     }
 
@@ -2653,10 +3328,14 @@ mod tests {
         match stmt {
             Statement::Select(sel) => {
                 if let SelectItem::Expr { expr, .. } = &sel.columns[0] {
-                    if let Expr::Function { over, .. } = expr {
-                        assert!(over.is_some());
-                    } else {
-                        panic!("Expected function");
+                    match expr {
+                        Expr::TypedFunction { over, .. } => {
+                            assert!(over.is_some());
+                        }
+                        Expr::Function { over, .. } => {
+                            assert!(over.is_some());
+                        }
+                        _ => panic!("Expected function"),
                     }
                 }
             }

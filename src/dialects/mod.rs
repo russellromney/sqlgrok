@@ -410,6 +410,15 @@ fn transform_expr(expr: Expr, target: Dialect) -> Expr {
                 over,
             }
         }
+        // Recurse into typed function child expressions
+        Expr::TypedFunction { func, filter, over } => {
+            let transformed_func = func.transform_children(&|e| transform_expr(e, target));
+            Expr::TypedFunction {
+                func: transformed_func,
+                filter: filter.map(|f| Box::new(transform_expr(*f, target))),
+                over,
+            }
+        }
         // ILIKE → LOWER(expr) LIKE LOWER(pattern) for non-supporting dialects
         Expr::ILike {
             expr,
@@ -417,17 +426,17 @@ fn transform_expr(expr: Expr, target: Dialect) -> Expr {
             negated,
             escape,
         } if !supports_ilike(target) => Expr::Like {
-            expr: Box::new(Expr::Function {
-                name: "LOWER".to_string(),
-                args: vec![transform_expr(*expr, target)],
-                distinct: false,
+            expr: Box::new(Expr::TypedFunction {
+                func: TypedFunction::Lower {
+                    expr: Box::new(transform_expr(*expr, target)),
+                },
                 filter: None,
                 over: None,
             }),
-            pattern: Box::new(Expr::Function {
-                name: "LOWER".to_string(),
-                args: vec![transform_expr(*pattern, target)],
-                distinct: false,
+            pattern: Box::new(Expr::TypedFunction {
+                func: TypedFunction::Lower {
+                    expr: Box::new(transform_expr(*pattern, target)),
+                },
                 filter: None,
                 over: None,
             }),
@@ -763,6 +772,11 @@ fn transform_quotes(expr: Expr, target: Dialect) -> Expr {
                 .map(|a| transform_quotes(a, target))
                 .collect(),
             distinct,
+            filter: filter.map(|f| Box::new(transform_quotes(*f, target))),
+            over,
+        },
+        Expr::TypedFunction { func, filter, over } => Expr::TypedFunction {
+            func: func.transform_children(&|e| transform_quotes(e, target)),
             filter: filter.map(|f| Box::new(transform_quotes(*f, target))),
             over,
         },

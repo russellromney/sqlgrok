@@ -301,6 +301,7 @@ pub struct AlterTableStatement {
 | `BinaryOp` | `{ left, op, right }` | `a + b`, `x AND y` |
 | `UnaryOp` | `{ op, expr }` | `-x`, `NOT a`, `~b` |
 | `Function` | `{ name, args, distinct, filter?, over? }` | `COUNT(DISTINCT x)`, `SUM(a) OVER (...)` |
+| `TypedFunction` | `{ func: TypedFunction, filter?, over? }` | `SUBSTRING(x, 1, 3)`, `DATE_TRUNC('month', d)` |
 | `Between` | `{ expr, low, high, negated }` | `x BETWEEN 1 AND 10` |
 | `InList` | `{ expr, list, negated }` | `x IN (1, 2, 3)` |
 | `InSubquery` | `{ expr, subquery, negated }` | `x IN (SELECT ...)` |
@@ -364,6 +365,160 @@ assert!(Expr::Number("1".into()).is_literal());
 assert!(Expr::Boolean(false).is_literal());
 assert!(!Expr::Null.is_literal());
 ```
+
+---
+
+## TypedFunction Enum
+
+Typed function variants enable per-function transpilation rules and dialect-specific code generation.
+Each variant carries semantically typed arguments rather than a generic `Vec<Expr>`.
+
+When a recognized function name is parsed (e.g., `SUBSTRING`, `NOW`, `COUNT`), the parser creates
+`Expr::TypedFunction { func, filter, over }` instead of a generic `Expr::Function`. This allows
+the generator to emit the correct SQL for each target dialect without relying on string-based
+function renaming.
+
+### TypedFunction Variants
+
+#### Date/Time
+
+| Variant | Fields | SQL |
+| --- | --- | --- |
+| `DateAdd` | `{ expr, interval, unit? }` | `DATE_ADD(d, INTERVAL 1 DAY)` |
+| `DateDiff` | `{ start, end, unit? }` | `DATE_DIFF(d1, d2)` |
+| `DateTrunc` | `{ unit, expr }` | `DATE_TRUNC('month', d)` |
+| `DateSub` | `{ expr, interval, unit? }` | `DATE_SUB(d, INTERVAL 1 DAY)` |
+| `CurrentDate` | — | `CURRENT_DATE` |
+| `CurrentTimestamp` | — | `CURRENT_TIMESTAMP` / `NOW()` / `GETDATE()` |
+| `StrToTime` | `{ expr, format }` | `STR_TO_TIME(s, fmt)` |
+| `TimeToStr` | `{ expr, format }` | `TIME_TO_STR(t, fmt)` |
+| `TsOrDsToDate` | `{ expr }` | `TS_OR_DS_TO_DATE(expr)` |
+| `Year` | `{ expr }` | `YEAR(d)` |
+| `Month` | `{ expr }` | `MONTH(d)` |
+| `Day` | `{ expr }` | `DAY(d)` |
+
+#### String
+
+| Variant | Fields | SQL |
+| --- | --- | --- |
+| `Trim` | `{ expr, trim_type, trim_chars? }` | `TRIM(LEADING 'x' FROM s)` |
+| `Substring` | `{ expr, start, length? }` | `SUBSTRING(s, 1, 3)` / `SUBSTR(s, 1, 3)` |
+| `Upper` | `{ expr }` | `UPPER(s)` |
+| `Lower` | `{ expr }` | `LOWER(s)` |
+| `RegexpLike` | `{ expr, pattern, flags? }` | `REGEXP_LIKE(s, '^A')` |
+| `RegexpExtract` | `{ expr, pattern, group_index? }` | `REGEXP_EXTRACT(s, '(\\d+)')` |
+| `RegexpReplace` | `{ expr, pattern, replacement, flags? }` | `REGEXP_REPLACE(s, '\\d', 'X')` |
+| `ConcatWs` | `{ separator, exprs }` | `CONCAT_WS(',', a, b, c)` |
+| `Split` | `{ expr, delimiter }` | `SPLIT(s, ',')` |
+| `Initcap` | `{ expr }` | `INITCAP(s)` |
+| `Length` | `{ expr }` | `LENGTH(s)` / `LEN(s)` |
+| `Replace` | `{ expr, from, to }` | `REPLACE(s, 'old', 'new')` |
+| `Reverse` | `{ expr }` | `REVERSE(s)` |
+| `Left` | `{ expr, n }` | `LEFT(s, 3)` |
+| `Right` | `{ expr, n }` | `RIGHT(s, 3)` |
+| `Lpad` | `{ expr, length, pad? }` | `LPAD(s, 10, '0')` |
+| `Rpad` | `{ expr, length, pad? }` | `RPAD(s, 10, '0')` |
+
+#### Aggregate
+
+| Variant | Fields | SQL |
+| --- | --- | --- |
+| `Count` | `{ expr, distinct }` | `COUNT(*)`, `COUNT(DISTINCT x)` |
+| `Sum` | `{ expr, distinct }` | `SUM(x)`, `SUM(DISTINCT x)` |
+| `Avg` | `{ expr, distinct }` | `AVG(x)` |
+| `Min` | `{ expr }` | `MIN(x)` |
+| `Max` | `{ expr }` | `MAX(x)` |
+| `ArrayAgg` | `{ expr, distinct }` | `ARRAY_AGG(x)` / `LIST(x)` / `COLLECT_LIST(x)` |
+| `ApproxDistinct` | `{ expr }` | `APPROX_DISTINCT(x)` |
+| `Variance` | `{ expr }` | `VARIANCE(x)` / `VAR_SAMP(x)` |
+| `Stddev` | `{ expr }` | `STDDEV(x)` / `STDDEV_SAMP(x)` |
+
+#### Array
+
+| Variant | Fields | SQL |
+| --- | --- | --- |
+| `ArrayConcat` | `{ arrays }` | `ARRAY_CONCAT(a, b)` |
+| `ArrayContains` | `{ array, element }` | `ARRAY_CONTAINS(arr, 1)` |
+| `ArraySize` | `{ expr }` | `ARRAY_SIZE(arr)` / `ARRAY_LENGTH(arr)` |
+| `Explode` | `{ expr }` | `EXPLODE(arr)` |
+| `GenerateSeries` | `{ start, stop, step? }` | `GENERATE_SERIES(1, 10)` |
+| `Flatten` | `{ expr }` | `FLATTEN(arr)` |
+
+#### JSON
+
+| Variant | Fields | SQL |
+| --- | --- | --- |
+| `JSONExtract` | `{ expr, path }` | `JSON_EXTRACT(doc, '$.key')` |
+| `JSONExtractScalar` | `{ expr, path }` | `JSON_EXTRACT_SCALAR(doc, '$.key')` |
+| `ParseJSON` | `{ expr }` | `PARSE_JSON(s)` |
+| `JSONFormat` | `{ expr }` | `JSON_FORMAT(obj)` / `TO_JSON(obj)` |
+
+#### Window
+
+| Variant | Fields | SQL |
+| --- | --- | --- |
+| `RowNumber` | — | `ROW_NUMBER()` |
+| `Rank` | — | `RANK()` |
+| `DenseRank` | — | `DENSE_RANK()` |
+| `NTile` | `{ n }` | `NTILE(4)` |
+| `Lead` | `{ expr, offset?, default? }` | `LEAD(x, 1, 0)` |
+| `Lag` | `{ expr, offset?, default? }` | `LAG(x, 1, 0)` |
+| `FirstValue` | `{ expr }` | `FIRST_VALUE(x)` |
+| `LastValue` | `{ expr }` | `LAST_VALUE(x)` |
+
+#### Math
+
+| Variant | Fields | SQL |
+| --- | --- | --- |
+| `Abs` | `{ expr }` | `ABS(x)` |
+| `Ceil` | `{ expr }` | `CEIL(x)` / `CEILING(x)` |
+| `Floor` | `{ expr }` | `FLOOR(x)` |
+| `Round` | `{ expr, decimals? }` | `ROUND(x, 2)` |
+| `Log` | `{ expr, base? }` | `LOG(x)` |
+| `Ln` | `{ expr }` | `LN(x)` |
+| `Pow` | `{ base, exponent }` | `POW(x, 2)` / `POWER(x, 2)` |
+| `Sqrt` | `{ expr }` | `SQRT(x)` |
+| `Greatest` | `{ exprs }` | `GREATEST(a, b, c)` |
+| `Least` | `{ exprs }` | `LEAST(a, b, c)` |
+| `Mod` | `{ left, right }` | `MOD(a, b)` |
+
+#### Conversion
+
+| Variant | Fields | SQL |
+| --- | --- | --- |
+| `Hex` | `{ expr }` | `HEX(x)` / `TO_HEX(x)` |
+| `Unhex` | `{ expr }` | `UNHEX(x)` / `FROM_HEX(x)` |
+| `Md5` | `{ expr }` | `MD5(x)` |
+| `Sha` | `{ expr }` | `SHA(x)` / `SHA1(x)` |
+| `Sha2` | `{ expr, bit_length }` | `SHA2(x, 256)` |
+
+### TrimType Enum
+
+```rust
+pub enum TrimType {
+    Leading,
+    Trailing,
+    Both,
+}
+```
+
+### Dialect-Specific Function Generation
+
+The generator emits different SQL for each `TypedFunction` variant depending on the target dialect:
+
+| TypedFunction | ANSI / Default | T-SQL | MySQL | Oracle | Hive/Spark | Presto/Trino |
+| --- | --- | --- | --- | --- | --- | --- |
+| `CurrentTimestamp` | `CURRENT_TIMESTAMP()` | `GETDATE()` | `NOW()` | `CURRENT_TIMESTAMP()` | `CURRENT_TIMESTAMP()` | `CURRENT_TIMESTAMP()` |
+| `Substring` | `SUBSTRING(x, a, b)` | `SUBSTRING(x, a, b)` | `SUBSTR(x, a, b)` | `SUBSTR(x, a, b)` | `SUBSTR(x, a, b)` | `SUBSTRING(x, a, b)` |
+| `Length` | `LENGTH(x)` | `LEN(x)` | `LENGTH(x)` | `LENGTH(x)` | `LENGTH(x)` | `LENGTH(x)` |
+| `DateTrunc` | `DATE_TRUNC('m', d)` | `DATETRUNC(m, d)` | `DATE_TRUNC('m', d)` | `TRUNC(d, 'm')` | `DATE_TRUNC('m', d)` | `DATE_TRUNC('m', d)` |
+| `Ceil` | `CEIL(x)` | `CEILING(x)` | `CEIL(x)` | `CEIL(x)` | `CEIL(x)` | `CEIL(x)` |
+| `Pow` | `POW(x, n)` | `POWER(x, n)` | `POW(x, n)` | `POWER(x, n)` | `POW(x, n)` | `POW(x, n)` |
+| `ArrayAgg` | `ARRAY_AGG(x)` | `ARRAY_AGG(x)` | `ARRAY_AGG(x)` | `ARRAY_AGG(x)` | `COLLECT_LIST(x)` | `ARRAY_AGG(x)` |
+| `Hex` | `HEX(x)` | `HEX(x)` | `HEX(x)` | `HEX(x)` | `HEX(x)` | `TO_HEX(x)` |
+| `Unhex` | `UNHEX(x)` | `UNHEX(x)` | `UNHEX(x)` | `UNHEX(x)` | `UNHEX(x)` | `FROM_HEX(x)` |
+| `Sha` | `SHA(x)` | `SHA(x)` | `SHA(x)` | `SHA(x)` | `SHA(x)` | `SHA1(x)` |
+| `JSONFormat` | `JSON_FORMAT(x)` | `JSON_FORMAT(x)` | `JSON_FORMAT(x)` | `JSON_FORMAT(x)` | `JSON_FORMAT(x)` | `TO_JSON(x)` |
 
 ---
 
@@ -851,17 +1006,28 @@ assert_eq!(Dialect::all().len(), 30);
 
 ### Function Mapping Matrix
 
-Transformations applied automatically during transpilation:
+Transformations applied automatically during transpilation via typed function expressions:
 
 | Source Function | Target Dialects | Mapped To |
 | --- | --- | --- |
 | `NOW()` | BigQuery, Snowflake, ANSI, Hive, Spark, Presto, Trino, ClickHouse | `CURRENT_TIMESTAMP()` |
 | `NOW()` | T-SQL | `GETDATE()` |
-| `GETDATE()` | PostgreSQL, MySQL | `NOW()` |
+| `GETDATE()` | PostgreSQL, DuckDB, SQLite, Redshift | `NOW()` |
 | `GETDATE()` | BigQuery, ANSI | `CURRENT_TIMESTAMP()` |
-| `SUBSTRING(x, a, b)` | MySQL, SQLite | `SUBSTR(x, a, b)` |
-| `SUBSTR(x, a, b)` | PostgreSQL, DuckDB, ANSI | `SUBSTRING(x, a, b)` |
-| `LEN(x)` | PostgreSQL, MySQL, SQLite, DuckDB | `LENGTH(x)` |
+| `SUBSTRING(x, a, b)` | MySQL, SQLite, Oracle, Hive, Spark, Databricks | `SUBSTR(x, a, b)` |
+| `SUBSTR(x, a, b)` | PostgreSQL, DuckDB, ANSI, Presto, Trino | `SUBSTRING(x, a, b)` |
+| `LEN(x)` | PostgreSQL, MySQL, SQLite, DuckDB, ANSI | `LENGTH(x)` |
+| `LENGTH(x)` | T-SQL | `LEN(x)` |
+| `CEIL(x)` | T-SQL | `CEILING(x)` |
+| `POW(x, n)` | T-SQL, Oracle | `POWER(x, n)` |
+| `DATE_TRUNC(u, d)` | T-SQL | `DATETRUNC(u, d)` |
+| `DATE_TRUNC(u, d)` | Oracle | `TRUNC(d, u)` |
+| `ARRAY_AGG(x)` | DuckDB | `LIST(x)` |
+| `ARRAY_AGG(x)` | Hive, Spark, Databricks | `COLLECT_LIST(x)` |
+| `HEX(x)` | Presto, Trino | `TO_HEX(x)` |
+| `UNHEX(x)` | Presto, Trino | `FROM_HEX(x)` |
+| `SHA(x)` | Presto, Trino | `SHA1(x)` |
+| `JSON_FORMAT(x)` | Presto, Trino | `TO_JSON(x)` |
 | `IFNULL(a, b)` | PostgreSQL, ANSI, DuckDB | `COALESCE(a, b)` |
 | `IFNULL(a, b)` | T-SQL | `ISNULL(a, b)` |
 

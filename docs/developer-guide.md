@@ -275,6 +275,10 @@ SELECT SUBSTR(x, 1, 3); SELECT NOW()
 Below are common function transformations. Each row shows a transpile call
 with its input, source dialect, target dialect, and the resulting SQL.
 
+Recognized functions are parsed into **Typed Function Expressions** (see
+[TypedFunction Enum](reference.md#typedfunction-enum) in the reference) which
+enables the generator to emit the correct syntax for each target dialect.
+
 | Input SQL | From | To | Output SQL |
 | --- | --- | --- | --- |
 | `SELECT NOW()` | PostgreSQL | BigQuery | `SELECT CURRENT_TIMESTAMP()` |
@@ -286,8 +290,49 @@ with its input, source dialect, target dialect, and the resulting SQL.
 | `SELECT SUBSTR(x, 1, 3) FROM t` | MySQL | PostgreSQL | `SELECT SUBSTRING(x, 1, 3) FROM t` |
 | `SELECT LEN(name) FROM t` | BigQuery | PostgreSQL | `SELECT LENGTH(name) FROM t` |
 | `SELECT LEN(x) FROM t` | BigQuery | MySQL | `SELECT LENGTH(x) FROM t` |
+| `SELECT CEIL(x)` | ANSI | T-SQL | `SELECT CEILING(x)` |
+| `SELECT POW(x, 2)` | MySQL | T-SQL | `SELECT POWER(x, 2)` |
+| `SELECT DATE_TRUNC('month', d)` | PostgreSQL | T-SQL | `SELECT DATETRUNC(month, d)` |
+| `SELECT ARRAY_AGG(x)` | PostgreSQL | DuckDB | `SELECT LIST(x)` |
+| `SELECT HEX(x)` | MySQL | Presto | `SELECT TO_HEX(x)` |
 | `SELECT IFNULL(a, b) FROM t` | MySQL | PostgreSQL | `SELECT COALESCE(a, b) FROM t` |
 | `SELECT IFNULL(a, b) FROM t` | MySQL | T-SQL | `SELECT ISNULL(a, b) FROM t` |
+
+### Typed Function Expressions
+
+When the parser encounters a recognized function name (72+ functions across 8
+categories), it creates `Expr::TypedFunction` instead of the generic
+`Expr::Function`. This provides:
+
+- **Dialect-specific SQL generation** — the generator emits the correct function
+  name and argument order for each target dialect without string-based rewriting
+- **Semantic argument types** — each function variant carries typed fields
+  (e.g., `Substring { expr, start, length }`) rather than a generic argument list
+- **Proper AST traversal** — `walk()` and `transform()` recurse into typed
+  function children
+
+Unrecognized functions fall back to the generic `Expr::Function` with
+string-based name and argument list, preserving backward compatibility.
+
+```rust
+use sqlglot_rust::{parse, Dialect, ast::types::Expr};
+
+let stmt = parse("SELECT SUBSTRING(name, 1, 3) FROM users", Dialect::Ansi).unwrap();
+
+// The parser creates a TypedFunction variant:
+// Expr::TypedFunction {
+//     func: TypedFunction::Substring { expr: Column("name"), start: 1, length: Some(3) },
+//     filter: None,
+//     over: None,
+// }
+```
+
+**Categories** (72 variants):
+Date/Time (12), String (17), Aggregate (9), Array (6), JSON (4),
+Window (8), Math (11), Conversion (5)
+
+See the [TypedFunction Enum](reference.md#typedfunction-enum) in the API reference
+for the complete variant list and dialect-specific generation rules.
 
 ### Data Type Mapping Examples
 

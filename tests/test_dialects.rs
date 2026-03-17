@@ -568,16 +568,28 @@ fn test_create_table_identity_each_dialect() {
 
 #[test]
 fn test_same_dialect_noop() {
-    let queries = [
+    // Typed functions normalize to the canonical name for the target dialect.
+    // SUBSTR → SUBSTRING (ANSI canonical), NOW → CURRENT_TIMESTAMP (ANSI canonical).
+    // Non-typed functions like IFNULL are still preserved via generic Function.
+    assert_transpile(
         "SELECT SUBSTR(x, 1, 3) FROM t",
+        "SELECT SUBSTRING(x, 1, 3) FROM t",
+        Dialect::Ansi,
+        Dialect::Ansi,
+    );
+    assert_transpile(
         "SELECT NOW()",
+        "SELECT CURRENT_TIMESTAMP()",
+        Dialect::Ansi,
+        Dialect::Ansi,
+    );
+    assert_transpile(
         "SELECT LEN(x) FROM t",
-        "SELECT IFNULL(a, b) FROM t",
-    ];
-    for sql in &queries {
-        // Parse with Ansi, generate with Ansi – function names should be preserved
-        assert_identity(sql, Dialect::Ansi);
-    }
+        "SELECT LENGTH(x) FROM t",
+        Dialect::Ansi,
+        Dialect::Ansi,
+    );
+    assert_identity("SELECT IFNULL(a, b) FROM t", Dialect::Ansi);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::dialects::Dialect;
 
 /// SQL code generator that converts an AST into a SQL string.
 ///
@@ -10,6 +11,8 @@ pub struct Generator {
     /// When true, emit formatted SQL with indentation and newlines.
     pretty: bool,
     indent: usize,
+    /// Target dialect for dialect-specific generation (typed functions).
+    dialect: Option<Dialect>,
 }
 
 impl Generator {
@@ -19,6 +22,7 @@ impl Generator {
             output: String::new(),
             pretty: false,
             indent: 0,
+            dialect: None,
         }
     }
 
@@ -29,6 +33,18 @@ impl Generator {
             output: String::new(),
             pretty: true,
             indent: 0,
+            dialect: None,
+        }
+    }
+
+    /// Create a generator targeting a specific dialect.
+    #[must_use]
+    pub fn with_dialect(dialect: Dialect) -> Self {
+        Self {
+            output: String::new(),
+            pretty: false,
+            indent: 0,
+            dialect: Some(dialect),
         }
     }
 
@@ -1604,6 +1620,36 @@ impl Generator {
                 self.write(" -> ");
                 self.gen_expr(body);
             }
+            Expr::TypedFunction { func, filter, over } => {
+                self.gen_typed_function(func);
+
+                if let Some(filter_expr) = filter {
+                    self.write(" ");
+                    self.write_keyword("FILTER (WHERE ");
+                    self.gen_expr(filter_expr);
+                    self.write(")");
+                }
+                if let Some(spec) = over {
+                    self.write(" ");
+                    self.write_keyword("OVER ");
+                    if let Some(wref) = &spec.window_ref {
+                        if spec.partition_by.is_empty()
+                            && spec.order_by.is_empty()
+                            && spec.frame.is_none()
+                        {
+                            self.write(wref);
+                        } else {
+                            self.write("(");
+                            self.gen_window_spec(spec);
+                            self.write(")");
+                        }
+                    } else {
+                        self.write("(");
+                        self.gen_window_spec(spec);
+                        self.write(")");
+                    }
+                }
+            }
         }
     }
 
@@ -1705,6 +1751,847 @@ impl Generator {
             DateTimeField::TimezoneMinute => "TIMEZONE_MINUTE",
         };
         self.write(name);
+    }
+
+    /// Generate SQL for a typed function expression.
+    fn gen_typed_function(&mut self, func: &TypedFunction) {
+        let dialect = self.dialect;
+        let is_tsql = matches!(dialect, Some(Dialect::Tsql) | Some(Dialect::Fabric));
+        let is_mysql = matches!(
+            dialect,
+            Some(Dialect::Mysql)
+                | Some(Dialect::SingleStore)
+                | Some(Dialect::Doris)
+                | Some(Dialect::StarRocks)
+        );
+        let is_bigquery = matches!(dialect, Some(Dialect::BigQuery));
+        let is_snowflake = matches!(dialect, Some(Dialect::Snowflake));
+        let is_oracle = matches!(dialect, Some(Dialect::Oracle));
+        let is_hive_family = matches!(
+            dialect,
+            Some(Dialect::Hive) | Some(Dialect::Spark) | Some(Dialect::Databricks)
+        );
+
+        match func {
+            // ── Date/Time ──────────────────────────────────────────────
+            TypedFunction::DateAdd {
+                expr,
+                interval,
+                unit,
+            } => {
+                if is_tsql || is_snowflake {
+                    self.write_keyword("DATEADD(");
+                    if let Some(u) = unit {
+                        self.gen_datetime_field(u);
+                    } else {
+                        self.write_keyword("DAY");
+                    }
+                    self.write(", ");
+                    self.gen_expr(interval);
+                    self.write(", ");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else if is_bigquery {
+                    self.write_keyword("DATE_ADD(");
+                    self.gen_expr(expr);
+                    self.write(", ");
+                    self.write_keyword("INTERVAL ");
+                    self.gen_expr(interval);
+                    self.write(" ");
+                    if let Some(u) = unit {
+                        self.gen_datetime_field(u);
+                    } else {
+                        self.write_keyword("DAY");
+                    }
+                    self.write(")");
+                } else {
+                    self.write_keyword("DATE_ADD(");
+                    self.gen_expr(expr);
+                    self.write(", ");
+                    self.gen_expr(interval);
+                    if let Some(u) = unit {
+                        self.write(", ");
+                        self.gen_datetime_field(u);
+                    }
+                    self.write(")");
+                }
+            }
+            TypedFunction::DateDiff { start, end, unit } => {
+                if is_tsql || is_snowflake {
+                    self.write_keyword("DATEDIFF(");
+                    if let Some(u) = unit {
+                        self.gen_datetime_field(u);
+                    } else {
+                        self.write_keyword("DAY");
+                    }
+                    self.write(", ");
+                    self.gen_expr(start);
+                    self.write(", ");
+                    self.gen_expr(end);
+                    self.write(")");
+                } else if is_bigquery {
+                    self.write_keyword("DATE_DIFF(");
+                    self.gen_expr(end);
+                    self.write(", ");
+                    self.gen_expr(start);
+                    self.write(", ");
+                    if let Some(u) = unit {
+                        self.gen_datetime_field(u);
+                    } else {
+                        self.write_keyword("DAY");
+                    }
+                    self.write(")");
+                } else {
+                    self.write_keyword("DATEDIFF(");
+                    self.gen_expr(start);
+                    self.write(", ");
+                    self.gen_expr(end);
+                    if let Some(u) = unit {
+                        self.write(", ");
+                        self.gen_datetime_field(u);
+                    }
+                    self.write(")");
+                }
+            }
+            TypedFunction::DateTrunc { unit, expr } => {
+                if is_tsql {
+                    self.write_keyword("DATETRUNC(");
+                    self.gen_datetime_field(unit);
+                    self.write(", ");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else if is_oracle {
+                    self.write_keyword("TRUNC(");
+                    self.gen_expr(expr);
+                    self.write(", '");
+                    self.gen_datetime_field(unit);
+                    self.write("')");
+                } else {
+                    self.write_keyword("DATE_TRUNC(");
+                    self.write("'");
+                    self.gen_datetime_field(unit);
+                    self.write("'");
+                    self.write(", ");
+                    self.gen_expr(expr);
+                    self.write(")");
+                }
+            }
+            TypedFunction::DateSub {
+                expr,
+                interval,
+                unit,
+            } => {
+                if is_tsql || is_snowflake {
+                    self.write_keyword("DATEADD(");
+                    if let Some(u) = unit {
+                        self.gen_datetime_field(u);
+                    } else {
+                        self.write_keyword("DAY");
+                    }
+                    self.write(", -(");
+                    self.gen_expr(interval);
+                    self.write("), ");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else if is_bigquery {
+                    self.write_keyword("DATE_SUB(");
+                    self.gen_expr(expr);
+                    self.write(", ");
+                    self.write_keyword("INTERVAL ");
+                    self.gen_expr(interval);
+                    self.write(" ");
+                    if let Some(u) = unit {
+                        self.gen_datetime_field(u);
+                    } else {
+                        self.write_keyword("DAY");
+                    }
+                    self.write(")");
+                } else {
+                    self.write_keyword("DATE_SUB(");
+                    self.gen_expr(expr);
+                    self.write(", ");
+                    self.gen_expr(interval);
+                    if let Some(u) = unit {
+                        self.write(", ");
+                        self.gen_datetime_field(u);
+                    }
+                    self.write(")");
+                }
+            }
+            TypedFunction::CurrentDate => {
+                if is_tsql {
+                    self.write_keyword("CAST(GETDATE() AS DATE)");
+                } else if is_mysql || is_hive_family {
+                    self.write_keyword("CURRENT_DATE()");
+                } else {
+                    self.write_keyword("CURRENT_DATE");
+                }
+            }
+            TypedFunction::CurrentTimestamp => {
+                if is_tsql {
+                    self.write_keyword("GETDATE()");
+                } else if is_mysql
+                    || matches!(
+                        dialect,
+                        Some(Dialect::Postgres)
+                            | Some(Dialect::DuckDb)
+                            | Some(Dialect::Sqlite)
+                            | Some(Dialect::Redshift)
+                    )
+                {
+                    self.write_keyword("NOW()");
+                } else {
+                    self.write_keyword("CURRENT_TIMESTAMP()");
+                }
+            }
+            TypedFunction::StrToTime { expr, format } => {
+                if is_mysql {
+                    self.write_keyword("STR_TO_DATE(");
+                } else if is_bigquery {
+                    self.write_keyword("PARSE_TIMESTAMP(");
+                } else {
+                    self.write_keyword("TO_TIMESTAMP(");
+                }
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(format);
+                self.write(")");
+            }
+            TypedFunction::TimeToStr { expr, format } => {
+                if is_mysql {
+                    self.write_keyword("DATE_FORMAT(");
+                } else if is_bigquery {
+                    self.write_keyword("FORMAT_TIMESTAMP(");
+                } else if is_tsql {
+                    self.write_keyword("FORMAT(");
+                } else {
+                    self.write_keyword("TO_CHAR(");
+                }
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(format);
+                self.write(")");
+            }
+            TypedFunction::TsOrDsToDate { expr } => {
+                if is_mysql {
+                    self.write_keyword("DATE(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else {
+                    self.write_keyword("CAST(");
+                    self.gen_expr(expr);
+                    self.write(" ");
+                    self.write_keyword("AS DATE)");
+                }
+            }
+            TypedFunction::Year { expr } => {
+                if is_tsql {
+                    self.write_keyword("YEAR(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else {
+                    self.write_keyword("EXTRACT(YEAR FROM ");
+                    self.gen_expr(expr);
+                    self.write(")");
+                }
+            }
+            TypedFunction::Month { expr } => {
+                if is_tsql {
+                    self.write_keyword("MONTH(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else {
+                    self.write_keyword("EXTRACT(MONTH FROM ");
+                    self.gen_expr(expr);
+                    self.write(")");
+                }
+            }
+            TypedFunction::Day { expr } => {
+                if is_tsql {
+                    self.write_keyword("DAY(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else {
+                    self.write_keyword("EXTRACT(DAY FROM ");
+                    self.gen_expr(expr);
+                    self.write(")");
+                }
+            }
+
+            // ── String ─────────────────────────────────────────────────
+            TypedFunction::Trim {
+                expr,
+                trim_type,
+                trim_chars,
+            } => {
+                self.write_keyword("TRIM(");
+                match trim_type {
+                    TrimType::Leading => self.write_keyword("LEADING "),
+                    TrimType::Trailing => self.write_keyword("TRAILING "),
+                    TrimType::Both => {} // BOTH is default
+                }
+                if let Some(chars) = trim_chars {
+                    self.gen_expr(chars);
+                    self.write(" ");
+                    self.write_keyword("FROM ");
+                }
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Substring {
+                expr,
+                start,
+                length,
+            } => {
+                let name = if is_oracle
+                    || is_hive_family
+                    || is_mysql
+                    || matches!(
+                        dialect,
+                        Some(Dialect::Sqlite)
+                            | Some(Dialect::Doris)
+                            | Some(Dialect::SingleStore)
+                            | Some(Dialect::StarRocks)
+                    ) {
+                    "SUBSTR"
+                } else {
+                    "SUBSTRING"
+                };
+                self.write_keyword(name);
+                self.write("(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(start);
+                if let Some(l) = length {
+                    self.write(", ");
+                    self.gen_expr(l);
+                }
+                self.write(")");
+            }
+            TypedFunction::Upper { expr } => {
+                self.write_keyword("UPPER(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Lower { expr } => {
+                self.write_keyword("LOWER(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::RegexpLike {
+                expr,
+                pattern,
+                flags,
+            } => {
+                self.write_keyword("REGEXP_LIKE(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(pattern);
+                if let Some(f) = flags {
+                    self.write(", ");
+                    self.gen_expr(f);
+                }
+                self.write(")");
+            }
+            TypedFunction::RegexpExtract {
+                expr,
+                pattern,
+                group_index,
+            } => {
+                if is_bigquery || is_hive_family {
+                    self.write_keyword("REGEXP_EXTRACT(");
+                } else {
+                    self.write_keyword("REGEXP_SUBSTR(");
+                }
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(pattern);
+                if let Some(g) = group_index {
+                    self.write(", ");
+                    self.gen_expr(g);
+                }
+                self.write(")");
+            }
+            TypedFunction::RegexpReplace {
+                expr,
+                pattern,
+                replacement,
+                flags,
+            } => {
+                self.write_keyword("REGEXP_REPLACE(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(pattern);
+                self.write(", ");
+                self.gen_expr(replacement);
+                if let Some(f) = flags {
+                    self.write(", ");
+                    self.gen_expr(f);
+                }
+                self.write(")");
+            }
+            TypedFunction::ConcatWs { separator, exprs } => {
+                self.write_keyword("CONCAT_WS(");
+                self.gen_expr(separator);
+                for e in exprs {
+                    self.write(", ");
+                    self.gen_expr(e);
+                }
+                self.write(")");
+            }
+            TypedFunction::Split { expr, delimiter } => {
+                if is_tsql {
+                    self.write_keyword("STRING_SPLIT(");
+                } else {
+                    self.write_keyword("SPLIT(");
+                }
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(delimiter);
+                self.write(")");
+            }
+            TypedFunction::Initcap { expr } => {
+                self.write_keyword("INITCAP(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Length { expr } => {
+                let name = if is_tsql || is_bigquery || is_snowflake {
+                    "LEN"
+                } else {
+                    "LENGTH"
+                };
+                self.write_keyword(name);
+                self.write("(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Replace { expr, from, to } => {
+                self.write_keyword("REPLACE(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(from);
+                self.write(", ");
+                self.gen_expr(to);
+                self.write(")");
+            }
+            TypedFunction::Reverse { expr } => {
+                self.write_keyword("REVERSE(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Left { expr, n } => {
+                self.write_keyword("LEFT(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(n);
+                self.write(")");
+            }
+            TypedFunction::Right { expr, n } => {
+                self.write_keyword("RIGHT(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(n);
+                self.write(")");
+            }
+            TypedFunction::Lpad { expr, length, pad } => {
+                self.write_keyword("LPAD(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(length);
+                if let Some(p) = pad {
+                    self.write(", ");
+                    self.gen_expr(p);
+                }
+                self.write(")");
+            }
+            TypedFunction::Rpad { expr, length, pad } => {
+                self.write_keyword("RPAD(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(length);
+                if let Some(p) = pad {
+                    self.write(", ");
+                    self.gen_expr(p);
+                }
+                self.write(")");
+            }
+
+            // ── Aggregate ──────────────────────────────────────────────
+            TypedFunction::Count { expr, distinct } => {
+                self.write_keyword("COUNT(");
+                if *distinct {
+                    self.write_keyword("DISTINCT ");
+                }
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Sum { expr, distinct } => {
+                self.write_keyword("SUM(");
+                if *distinct {
+                    self.write_keyword("DISTINCT ");
+                }
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Avg { expr, distinct } => {
+                self.write_keyword("AVG(");
+                if *distinct {
+                    self.write_keyword("DISTINCT ");
+                }
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Min { expr } => {
+                self.write_keyword("MIN(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Max { expr } => {
+                self.write_keyword("MAX(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::ArrayAgg { expr, distinct } => {
+                let name = if matches!(dialect, Some(Dialect::DuckDb)) {
+                    "LIST"
+                } else if is_hive_family {
+                    "COLLECT_LIST"
+                } else {
+                    "ARRAY_AGG"
+                };
+                self.write_keyword(name);
+                self.write("(");
+                if *distinct {
+                    self.write_keyword("DISTINCT ");
+                }
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::ApproxDistinct { expr } => {
+                let name = if is_hive_family
+                    || matches!(
+                        dialect,
+                        Some(Dialect::Presto) | Some(Dialect::Trino) | Some(Dialect::Athena)
+                    ) {
+                    "APPROX_DISTINCT"
+                } else {
+                    "APPROX_COUNT_DISTINCT"
+                };
+                self.write_keyword(name);
+                self.write("(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Variance { expr } => {
+                let name = if is_tsql || is_oracle {
+                    "VAR"
+                } else {
+                    "VARIANCE"
+                };
+                self.write_keyword(name);
+                self.write("(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Stddev { expr } => {
+                self.write_keyword("STDDEV(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+
+            // ── Array ──────────────────────────────────────────────────
+            TypedFunction::ArrayConcat { arrays } => {
+                let name = if matches!(
+                    dialect,
+                    Some(Dialect::Postgres) | Some(Dialect::Redshift) | Some(Dialect::DuckDb)
+                ) {
+                    "ARRAY_CAT"
+                } else {
+                    "ARRAY_CONCAT"
+                };
+                self.write_keyword(name);
+                self.write("(");
+                self.gen_expr_list(arrays);
+                self.write(")");
+            }
+            TypedFunction::ArrayContains { array, element } => {
+                self.write_keyword("ARRAY_CONTAINS(");
+                self.gen_expr(array);
+                self.write(", ");
+                self.gen_expr(element);
+                self.write(")");
+            }
+            TypedFunction::ArraySize { expr } => {
+                let name = if matches!(dialect, Some(Dialect::Postgres) | Some(Dialect::Redshift)) {
+                    "ARRAY_LENGTH"
+                } else if is_hive_family {
+                    "SIZE"
+                } else {
+                    "ARRAY_SIZE"
+                };
+                self.write_keyword(name);
+                self.write("(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Explode { expr } => {
+                self.write_keyword("EXPLODE(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::GenerateSeries { start, stop, step } => {
+                self.write_keyword("GENERATE_SERIES(");
+                self.gen_expr(start);
+                self.write(", ");
+                self.gen_expr(stop);
+                if let Some(s) = step {
+                    self.write(", ");
+                    self.gen_expr(s);
+                }
+                self.write(")");
+            }
+            TypedFunction::Flatten { expr } => {
+                self.write_keyword("FLATTEN(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+
+            // ── JSON ───────────────────────────────────────────────────
+            TypedFunction::JSONExtract { expr, path } => {
+                if is_tsql {
+                    self.write_keyword("JSON_VALUE(");
+                } else {
+                    self.write_keyword("JSON_EXTRACT(");
+                }
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(path);
+                self.write(")");
+            }
+            TypedFunction::JSONExtractScalar { expr, path } => {
+                if is_bigquery {
+                    self.write_keyword("JSON_EXTRACT_SCALAR(");
+                } else if is_tsql {
+                    self.write_keyword("JSON_VALUE(");
+                } else {
+                    self.write_keyword("JSON_EXTRACT_SCALAR(");
+                }
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(path);
+                self.write(")");
+            }
+            TypedFunction::ParseJSON { expr } => {
+                if is_snowflake {
+                    self.write_keyword("PARSE_JSON(");
+                } else if is_bigquery {
+                    self.write_keyword("JSON_PARSE(");
+                } else {
+                    self.write_keyword("PARSE_JSON(");
+                }
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::JSONFormat { expr } => {
+                if is_bigquery {
+                    self.write_keyword("TO_JSON_STRING(");
+                } else {
+                    self.write_keyword("JSON_FORMAT(");
+                }
+                self.gen_expr(expr);
+                self.write(")");
+            }
+
+            // ── Window ─────────────────────────────────────────────────
+            TypedFunction::RowNumber => self.write_keyword("ROW_NUMBER()"),
+            TypedFunction::Rank => self.write_keyword("RANK()"),
+            TypedFunction::DenseRank => self.write_keyword("DENSE_RANK()"),
+            TypedFunction::NTile { n } => {
+                self.write_keyword("NTILE(");
+                self.gen_expr(n);
+                self.write(")");
+            }
+            TypedFunction::Lead {
+                expr,
+                offset,
+                default,
+            } => {
+                self.write_keyword("LEAD(");
+                self.gen_expr(expr);
+                if let Some(o) = offset {
+                    self.write(", ");
+                    self.gen_expr(o);
+                }
+                if let Some(d) = default {
+                    self.write(", ");
+                    self.gen_expr(d);
+                }
+                self.write(")");
+            }
+            TypedFunction::Lag {
+                expr,
+                offset,
+                default,
+            } => {
+                self.write_keyword("LAG(");
+                self.gen_expr(expr);
+                if let Some(o) = offset {
+                    self.write(", ");
+                    self.gen_expr(o);
+                }
+                if let Some(d) = default {
+                    self.write(", ");
+                    self.gen_expr(d);
+                }
+                self.write(")");
+            }
+            TypedFunction::FirstValue { expr } => {
+                self.write_keyword("FIRST_VALUE(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::LastValue { expr } => {
+                self.write_keyword("LAST_VALUE(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+
+            // ── Math ───────────────────────────────────────────────────
+            TypedFunction::Abs { expr } => {
+                self.write_keyword("ABS(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Ceil { expr } => {
+                let name = if is_tsql { "CEILING" } else { "CEIL" };
+                self.write_keyword(name);
+                self.write("(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Floor { expr } => {
+                self.write_keyword("FLOOR(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Round { expr, decimals } => {
+                self.write_keyword("ROUND(");
+                self.gen_expr(expr);
+                if let Some(d) = decimals {
+                    self.write(", ");
+                    self.gen_expr(d);
+                }
+                self.write(")");
+            }
+            TypedFunction::Log { expr, base } => {
+                if let Some(b) = base {
+                    self.write_keyword("LOG(");
+                    if matches!(dialect, Some(Dialect::Postgres) | Some(Dialect::DuckDb)) {
+                        // Postgres: LOG(base, expr)
+                        self.gen_expr(b);
+                        self.write(", ");
+                        self.gen_expr(expr);
+                    } else {
+                        // Most: LOG(expr, base)
+                        self.gen_expr(expr);
+                        self.write(", ");
+                        self.gen_expr(b);
+                    }
+                    self.write(")");
+                } else {
+                    // LOG(expr) — ln in Postgres, log10 in most others
+                    self.write_keyword("LOG(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                }
+            }
+            TypedFunction::Ln { expr } => {
+                self.write_keyword("LN(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Pow { base, exponent } => {
+                let name = if is_tsql || is_oracle { "POWER" } else { "POW" };
+                self.write_keyword(name);
+                self.write("(");
+                self.gen_expr(base);
+                self.write(", ");
+                self.gen_expr(exponent);
+                self.write(")");
+            }
+            TypedFunction::Sqrt { expr } => {
+                self.write_keyword("SQRT(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Greatest { exprs } => {
+                self.write_keyword("GREATEST(");
+                self.gen_expr_list(exprs);
+                self.write(")");
+            }
+            TypedFunction::Least { exprs } => {
+                self.write_keyword("LEAST(");
+                self.gen_expr_list(exprs);
+                self.write(")");
+            }
+            TypedFunction::Mod { left, right } => {
+                self.write_keyword("MOD(");
+                self.gen_expr(left);
+                self.write(", ");
+                self.gen_expr(right);
+                self.write(")");
+            }
+
+            // ── Conversion ─────────────────────────────────────────────
+            TypedFunction::Hex { expr } => {
+                let name = if matches!(
+                    dialect,
+                    Some(Dialect::Presto) | Some(Dialect::Trino) | Some(Dialect::Athena)
+                ) {
+                    "TO_HEX"
+                } else {
+                    "HEX"
+                };
+                self.write_keyword(name);
+                self.write("(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Unhex { expr } => {
+                let name = if matches!(
+                    dialect,
+                    Some(Dialect::Presto) | Some(Dialect::Trino) | Some(Dialect::Athena)
+                ) {
+                    "FROM_HEX"
+                } else {
+                    "UNHEX"
+                };
+                self.write_keyword(name);
+                self.write("(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Md5 { expr } => {
+                self.write_keyword("MD5(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Sha { expr } => {
+                let name = if is_mysql { "SHA1" } else { "SHA" };
+                self.write_keyword(name);
+                self.write("(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::Sha2 { expr, bit_length } => {
+                self.write_keyword("SHA2(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(bit_length);
+                self.write(")");
+            }
+        }
     }
 }
 
