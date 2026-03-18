@@ -51,6 +51,11 @@ the AST, optimizing queries, and serializing results.
   - [Constant Folding](#constant-folding)
   - [Boolean Simplification](#boolean-simplification)
   - [Subquery Unnesting](#subquery-unnesting)
+  - [Predicate Pushdown](#predicate-pushdown)
+  - [Qualify Columns](#qualify-columns)
+  - [Scope Analysis](#scope-analysis)
+  - [Type Annotation (annotate_types)](#type-annotation-annotate_types)
+  - [Column Lineage](#column-lineage)
 - [Serialization (JSON Round-Tripping)](#serialization-json-round-tripping)
 - [Error Handling](#error-handling)
 - [SBOM Generation](#sbom-generation)
@@ -1192,6 +1197,115 @@ if let sqlglot_rust::Statement::Select(sel) = &stmt {
 > **Note:** The returned `TypeAnnotations` uses raw pointer references, so the
 > `Statement` must not be moved after annotation. Always access the statement
 > by reference while using annotations.
+
+### Column Lineage
+
+Column lineage tracking traces how data flows from source columns through query
+transformations to output columns. This is essential for data governance, impact
+analysis, and understanding complex query pipelines.
+
+```rust
+use sqlglot_rust::{parse, Dialect};
+use sqlglot_rust::optimizer::lineage::{lineage, lineage_sql, LineageConfig};
+use sqlglot_rust::schema::MappingSchema;
+
+// Set up schema
+let mut schema = MappingSchema::new(Dialect::Ansi);
+schema.add_table(&["employees"], vec![
+    ("id".to_string(), sqlglot_rust::ast::DataType::Int),
+    ("name".to_string(), sqlglot_rust::ast::DataType::Varchar(Some(100))),
+    ("salary".to_string(), sqlglot_rust::ast::DataType::Double),
+]).unwrap();
+
+// Build lineage for a specific output column
+let sql = "SELECT id, salary * 1.1 AS adjusted_salary FROM employees";
+let config = LineageConfig::new(Dialect::Ansi);
+
+let graph = lineage_sql("adjusted_salary", sql, &schema, &config).unwrap();
+
+// The root node is the output column
+assert_eq!(graph.node.name, "adjusted_salary");
+
+// Get all source tables in the lineage
+let sources = graph.source_tables();
+assert!(sources.contains(&"employees".to_string()));
+
+// Generate DOT format for visualization
+let dot = graph.to_dot();
+println!("{}", dot);
+```
+
+**Lineage Graph Output Example:**
+
+For `SELECT a + b AS sum FROM t`, the lineage graph for column `sum` would be:
+
+```text
+LineageNode {
+    name: "sum",
+    downstream: [
+        LineageNode { name: "a", source_name: Some("t") },
+        LineageNode { name: "b", source_name: Some("t") },
+    ]
+}
+```
+
+| Feature | Description |
+| --- | --- |
+| **Simple columns** | `SELECT a FROM t` → traces `a` to `t.a` |
+| **Aliased expressions** | `SELECT a + b AS sum FROM t` → traces `sum` to both `t.a` and `t.b` |
+| **CTEs** | Traces through CTE definitions to underlying sources |
+| **Derived tables** | Traces through subqueries in FROM clause |
+| **JOINs** | Tracks columns from multiple joined tables |
+| **UNIONs** | Creates branches for each UNION operand |
+| **Functions** | `SUM(a)` → traces to the column arguments |
+| **CASE expressions** | Traces all branches of CASE expressions |
+
+**Visualization:**
+
+```rust
+// Generate DOT format (for Graphviz)
+let dot = graph.to_dot();
+// Output: digraph lineage { rankdir=BT; n0 [label="sum"]; n1 [label="t.a"]; ... }
+
+// Generate Mermaid diagram
+let mermaid = graph.to_mermaid();
+// Output: flowchart BT\n  n0["sum"]\n  n1["t.a"]\n  ...
+```
+
+**Walking the Lineage:**
+
+```rust
+// Walk all nodes
+graph.node.walk(&mut |node| {
+    println!("Node: {} (source: {:?})", node.name, node.source_name);
+});
+
+// Iterate with standard iterator
+for node in graph.node.iter() {
+    println!("{}: depth {}", node.name, node.depth);
+}
+
+// Get leaf nodes (source columns)
+let source_cols = graph.source_columns();
+```
+
+**External Sources:**
+
+For multi-query lineage (e.g., analyzing views), you can provide external source
+definitions:
+
+```rust
+use std::collections::HashMap;
+
+let mut sources = HashMap::new();
+sources.insert("view1".to_string(), "SELECT a, b FROM base_table".to_string());
+
+let config = LineageConfig::new(Dialect::Ansi)
+    .with_sources(sources)
+    .with_trim_qualifiers(false); // Keep table qualifiers in output names
+
+let graph = lineage_sql("a", "SELECT a FROM view1", &schema, &config).unwrap();
+```
 
 ---
 
