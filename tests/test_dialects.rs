@@ -1984,3 +1984,75 @@ fn test_top_parenthesized_tsql_to_postgres() {
         Dialect::Postgres,
     );
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// PIVOT / UNPIVOT – cross-dialect identity
+// ═════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_pivot_identity_tsql() {
+    assert_identity(
+        "SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2', 'Q3', 'Q4')) AS pvt",
+        Dialect::Tsql,
+    );
+}
+
+#[test]
+fn test_pivot_identity_snowflake() {
+    assert_identity(
+        "SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2', 'Q3'))",
+        Dialect::Snowflake,
+    );
+}
+
+#[test]
+fn test_pivot_identity_bigquery() {
+    assert_identity(
+        "SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1' AS q1, 'Q2' AS q2))",
+        Dialect::BigQuery,
+    );
+}
+
+#[test]
+fn test_pivot_identity_oracle() {
+    assert_identity(
+        "SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2'))",
+        Dialect::Oracle,
+    );
+}
+
+#[test]
+fn test_unpivot_identity_tsql() {
+    assert_identity(
+        "SELECT * FROM quarterly UNPIVOT (amount FOR quarter IN (Q1, Q2, Q3, Q4)) AS unpvt",
+        Dialect::Tsql,
+    );
+}
+
+#[test]
+fn test_unpivot_identity_snowflake() {
+    assert_identity(
+        "SELECT * FROM quarterly UNPIVOT (amount FOR quarter IN (Q1, Q2, Q3, Q4))",
+        Dialect::Snowflake,
+    );
+}
+
+#[test]
+fn test_pivot_transpile_tsql_to_snowflake() {
+    assert_transpile(
+        "SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2')) AS pvt",
+        "SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2')) AS pvt",
+        Dialect::Tsql,
+        Dialect::Snowflake,
+    );
+}
+
+#[test]
+fn test_unpivot_transpile_tsql_to_snowflake() {
+    assert_transpile(
+        "SELECT * FROM quarterly UNPIVOT (amount FOR quarter IN (Q1, Q2)) AS unpvt",
+        "SELECT * FROM quarterly UNPIVOT (amount FOR quarter IN (Q1, Q2)) AS unpvt",
+        Dialect::Tsql,
+        Dialect::Snowflake,
+    );
+}

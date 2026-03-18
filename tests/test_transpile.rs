@@ -1567,3 +1567,75 @@ fn test_typed_functions_with_aliases() {
     validate_identity("SELECT COUNT(*) AS total, MAX(price) AS max_price FROM t");
     validate_identity("SELECT ROW_NUMBER() OVER (ORDER BY id) AS rn FROM t");
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// PIVOT / UNPIVOT
+// ═════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_pivot_basic() {
+    validate_identity(
+        "SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2', 'Q3', 'Q4'))",
+    );
+}
+
+#[test]
+fn test_pivot_with_alias() {
+    validate_identity(
+        "SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2', 'Q3', 'Q4')) AS pvt",
+    );
+}
+
+#[test]
+fn test_pivot_with_aliased_values() {
+    validate_identity(
+        "SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1' AS q1, 'Q2' AS q2))",
+    );
+}
+
+#[test]
+fn test_pivot_with_count() {
+    validate_identity(
+        "SELECT * FROM orders PIVOT (COUNT(*) FOR status IN ('open', 'closed', 'pending'))",
+    );
+}
+
+#[test]
+fn test_pivot_subquery_source() {
+    validate_identity(
+        "SELECT * FROM (SELECT * FROM sales) AS s PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2'))",
+    );
+}
+
+#[test]
+fn test_unpivot_basic() {
+    validate_identity("SELECT * FROM quarterly UNPIVOT (amount FOR quarter IN (Q1, Q2, Q3, Q4))");
+}
+
+#[test]
+fn test_unpivot_with_alias() {
+    validate_identity(
+        "SELECT * FROM quarterly UNPIVOT (amount FOR quarter IN (Q1, Q2, Q3, Q4)) AS unpvt",
+    );
+}
+
+#[test]
+fn test_unpivot_with_aliased_columns() {
+    validate_identity(
+        "SELECT * FROM quarterly UNPIVOT (amount FOR quarter IN (Q1 AS q1, Q2 AS q2))",
+    );
+}
+
+#[test]
+fn test_pivot_with_where() {
+    validate_identity(
+        "SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2')) AS pvt WHERE pvt.Q1 > 100",
+    );
+}
+
+#[test]
+fn test_pivot_with_join() {
+    validate_identity(
+        "SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2')) AS pvt INNER JOIN regions ON pvt.region_id = regions.id",
+    );
+}

@@ -109,6 +109,13 @@ fn collect_source_columns<S: Schema>(
         TableSource::Lateral { source: inner } => {
             collect_source_columns(inner, schema, dialect, cte_columns, source_map);
         }
+        TableSource::Pivot { source, alias, .. } | TableSource::Unpivot { source, alias, .. } => {
+            collect_source_columns(source, schema, dialect, cte_columns, source_map);
+            if let Some(alias) = alias {
+                let norm_alias = normalize_identifier(alias, dialect);
+                source_map.insert(norm_alias, SourceColumns { columns: vec![] });
+            }
+        }
         TableSource::Unnest { alias, .. } => {
             if let Some(alias) = alias {
                 let norm_alias = normalize_identifier(alias, dialect);
@@ -229,6 +236,13 @@ fn source_key_for(source: &TableSource, dialect: Dialect) -> String {
             .map(|a| normalize_identifier(a, dialect))
             .unwrap_or_default(),
         TableSource::Lateral { source } => source_key_for(source, dialect),
+        TableSource::Pivot { source, alias, .. } | TableSource::Unpivot { source, alias, .. } => {
+            if let Some(a) = alias {
+                normalize_identifier(a, dialect)
+            } else {
+                source_key_for(source, dialect)
+            }
+        }
         TableSource::Unnest { alias, .. } | TableSource::TableFunction { alias, .. } => alias
             .as_deref()
             .map(|a| normalize_identifier(a, dialect))
@@ -392,6 +406,9 @@ fn qualify_table_source<S: Schema>(
         }
         TableSource::Lateral { source: inner } => {
             qualify_table_source(inner, schema, dialect, cte_columns);
+        }
+        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
+            qualify_table_source(source, schema, dialect, cte_columns);
         }
         _ => {}
     }

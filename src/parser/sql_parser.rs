@@ -86,6 +86,24 @@ impl Parser {
         }
     }
 
+    /// Expect a keyword by string value, returning an error if not found.
+    fn expect_keyword(&mut self, keyword: &str) -> Result<()> {
+        if self.check_keyword(keyword) {
+            self.advance();
+            Ok(())
+        } else {
+            let token = self.peek().clone();
+            Err(SqlglotError::ParserError {
+                message: format!(
+                    "Expected keyword '{keyword}', got '{value}' at line {line} col {col}",
+                    value = token.value,
+                    line = token.line,
+                    col = token.col
+                ),
+            })
+        }
+    }
+
     /// Helper to check if current token is an identifier or keyword that can serve as a name.
     fn is_name_token(&self) -> bool {
         matches!(
@@ -115,6 +133,8 @@ impl Parser {
                 | TokenType::Cube
                 | TokenType::Rollup
                 | TokenType::Grouping
+                | TokenType::Pivot
+                | TokenType::Unpivot
                 | TokenType::Sets
         )
     }
@@ -553,6 +573,8 @@ impl Parser {
                     | "INTO"
                     | "SET"
                     | "RETURNING"
+                    | "PIVOT"
+                    | "UNPIVOT"
             ) {
                 return Ok(Some(self.advance().value.clone()));
             }
@@ -561,6 +583,12 @@ impl Parser {
     }
 
     fn parse_table_source(&mut self) -> Result<TableSource> {
+        let source = self.parse_base_table_source()?;
+        // Check for trailing PIVOT / UNPIVOT
+        self.parse_pivot_or_unpivot(source)
+    }
+
+    fn parse_base_table_source(&mut self) -> Result<TableSource> {
         // LATERAL
         if self.match_token(TokenType::Lateral) {
             let source = self.parse_table_source()?;
@@ -620,6 +648,63 @@ impl Parser {
         }
 
         Ok(TableSource::Table(table_ref))
+    }
+
+    /// After parsing a base table source, check if PIVOT or UNPIVOT follows.
+    fn parse_pivot_or_unpivot(&mut self, source: TableSource) -> Result<TableSource> {
+        if self.match_token(TokenType::Pivot) {
+            self.expect(TokenType::LParen)?;
+            let aggregate = self.parse_expr()?;
+            self.expect_keyword("FOR")?;
+            let for_column = self.expect_name()?;
+            self.expect(TokenType::In)?;
+            self.expect(TokenType::LParen)?;
+            let in_values = self.parse_pivot_values()?;
+            self.expect(TokenType::RParen)?;
+            self.expect(TokenType::RParen)?;
+            let alias = self.parse_optional_alias()?;
+            return Ok(TableSource::Pivot {
+                source: Box::new(source),
+                aggregate: Box::new(aggregate),
+                for_column,
+                in_values,
+                alias,
+            });
+        }
+        if self.match_token(TokenType::Unpivot) {
+            self.expect(TokenType::LParen)?;
+            let value_column = self.expect_name()?;
+            self.expect_keyword("FOR")?;
+            let for_column = self.expect_name()?;
+            self.expect(TokenType::In)?;
+            self.expect(TokenType::LParen)?;
+            let in_columns = self.parse_pivot_values()?;
+            self.expect(TokenType::RParen)?;
+            self.expect(TokenType::RParen)?;
+            let alias = self.parse_optional_alias()?;
+            return Ok(TableSource::Unpivot {
+                source: Box::new(source),
+                value_column,
+                for_column,
+                in_columns,
+                alias,
+            });
+        }
+        Ok(source)
+    }
+
+    /// Parse comma-separated pivot values, each optionally aliased.
+    fn parse_pivot_values(&mut self) -> Result<Vec<PivotValue>> {
+        let mut values = Vec::new();
+        loop {
+            let value = self.parse_expr()?;
+            let alias = self.parse_optional_alias()?;
+            values.push(PivotValue { value, alias });
+            if !self.match_token(TokenType::Comma) {
+                break;
+            }
+        }
+        Ok(values)
     }
 
     fn parse_table_ref(&mut self) -> Result<TableRef> {

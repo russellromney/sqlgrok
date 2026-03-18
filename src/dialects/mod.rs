@@ -835,6 +835,9 @@ fn transform_quotes_in_table_source(source: &mut TableSource, target: Dialect) {
         TableSource::Subquery { .. } => {}
         TableSource::TableFunction { .. } => {}
         TableSource::Lateral { source } => transform_quotes_in_table_source(source, target),
+        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
+            transform_quotes_in_table_source(source, target);
+        }
         TableSource::Unnest { .. } => {}
     }
 }

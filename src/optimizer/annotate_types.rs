@@ -291,6 +291,9 @@ fn register_table_source<S: Schema>(source: &TableSource, ctx: &mut AnnotationCo
             let _ = alias;
         }
         TableSource::Lateral { source } => register_table_source(source, ctx),
+        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
+            register_table_source(source, ctx);
+        }
         TableSource::Unnest { .. } => {}
     }
 }

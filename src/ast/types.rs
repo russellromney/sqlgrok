@@ -199,6 +199,29 @@ pub enum TableSource {
         alias: Option<String>,
         with_offset: bool,
     },
+    /// PIVOT (aggregate FOR column IN (values))
+    Pivot {
+        source: Box<TableSource>,
+        aggregate: Box<Expr>,
+        for_column: String,
+        in_values: Vec<PivotValue>,
+        alias: Option<String>,
+    },
+    /// UNPIVOT (value_column FOR name_column IN (columns))
+    Unpivot {
+        source: Box<TableSource>,
+        value_column: String,
+        for_column: String,
+        in_columns: Vec<PivotValue>,
+        alias: Option<String>,
+    },
+}
+
+/// A value/column in a PIVOT IN list, optionally aliased.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PivotValue {
+    pub value: Expr,
+    pub alias: Option<String>,
 }
 
 /// A reference to a table.
@@ -2077,6 +2100,9 @@ fn collect_table_refs_from_source<'a>(source: &'a TableSource, tables: &mut Vec<
         TableSource::Subquery { .. } => {}
         TableSource::TableFunction { .. } => {}
         TableSource::Lateral { source } => collect_table_refs_from_source(source, tables),
+        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
+            collect_table_refs_from_source(source, tables);
+        }
         TableSource::Unnest { .. } => {}
     }
 }

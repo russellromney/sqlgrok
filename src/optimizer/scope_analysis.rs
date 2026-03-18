@@ -387,6 +387,21 @@ fn process_table_source(source: &TableSource, scope: &mut Scope) {
         TableSource::Lateral { source } => {
             process_table_source(source, scope);
         }
+        TableSource::Pivot { source, alias, .. } | TableSource::Unpivot { source, alias, .. } => {
+            process_table_source(source, scope);
+            if let Some(alias) = alias {
+                scope.sources.insert(
+                    alias.clone(),
+                    Source::Table(TableRef {
+                        catalog: None,
+                        schema: None,
+                        name: alias.clone(),
+                        alias: None,
+                        name_quote_style: QuoteStyle::None,
+                    }),
+                );
+            }
+        }
         TableSource::Unnest { alias, .. } => {
             if let Some(alias) = alias {
                 scope.sources.insert(

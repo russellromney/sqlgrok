@@ -551,8 +551,27 @@ pub enum TableSource {
     TableFunction { name: String, args: Vec<Expr>, alias: Option<String> },
     Lateral { source: Box<TableSource> },
     Unnest { expr: Box<Expr>, alias: Option<String>, with_offset: bool },
+    Pivot { source: Box<TableSource>, aggregate: Box<Expr>, for_column: String, in_values: Vec<PivotValue>, alias: Option<String> },
+    Unpivot { source: Box<TableSource>, value_column: String, for_column: String, in_columns: Vec<PivotValue>, alias: Option<String> },
+}
+
+pub struct PivotValue {
+    pub value: Expr,
+    pub alias: Option<String>,
 }
 ```
+
+**PIVOT** rotates rows into columns using an aggregate function:
+```sql
+SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2', 'Q3')) AS pvt
+```
+
+**UNPIVOT** rotates columns back into rows:
+```sql
+SELECT * FROM quarterly UNPIVOT (amount FOR quarter IN (Q1, Q2, Q3, Q4)) AS unpvt
+```
+
+Pivot values/columns may include aliases (`'Q1' AS q1`). Supported in T-SQL, Oracle, Snowflake, BigQuery, Spark, and other dialects.
 
 ### TableRef
 

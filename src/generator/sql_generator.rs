@@ -398,6 +398,72 @@ impl Generator {
                     self.write_keyword("WITH OFFSET");
                 }
             }
+            TableSource::Pivot {
+                source,
+                aggregate,
+                for_column,
+                in_values,
+                alias,
+            } => {
+                self.gen_table_source(source);
+                self.write(" ");
+                self.write_keyword("PIVOT");
+                self.write(" (");
+                self.gen_expr(aggregate);
+                self.write(" ");
+                self.write_keyword("FOR ");
+                self.write(for_column);
+                self.write(" ");
+                self.write_keyword("IN ");
+                self.write("(");
+                self.gen_pivot_values(in_values);
+                self.write("))");
+                if let Some(alias) = alias {
+                    self.write(" ");
+                    self.write_keyword("AS ");
+                    self.write(alias);
+                }
+            }
+            TableSource::Unpivot {
+                source,
+                value_column,
+                for_column,
+                in_columns,
+                alias,
+            } => {
+                self.gen_table_source(source);
+                self.write(" ");
+                self.write_keyword("UNPIVOT");
+                self.write(" (");
+                self.write(value_column);
+                self.write(" ");
+                self.write_keyword("FOR ");
+                self.write(for_column);
+                self.write(" ");
+                self.write_keyword("IN ");
+                self.write("(");
+                self.gen_pivot_values(in_columns);
+                self.write("))");
+                if let Some(alias) = alias {
+                    self.write(" ");
+                    self.write_keyword("AS ");
+                    self.write(alias);
+                }
+            }
+        }
+    }
+
+    fn gen_pivot_values(&mut self, values: &[PivotValue]) {
+        for (i, pv) in values.iter().enumerate() {
+            if i > 0 {
+                self.write(", ");
+            }
+            self.gen_expr(&pv.value);
+            if let Some(alias) = &pv.alias {
+                self.write(" ");
+                self.write_keyword("AS ");
+                self.write(alias);
+            }
         }
     }
 
