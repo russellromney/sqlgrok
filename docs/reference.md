@@ -64,6 +64,11 @@ Complete type and function reference for **sqlglot-rust**.
   - [Scope Analysis](#scope-analysis)
   - [Annotate Types](#annotate-types)
   - [Column Lineage](#column-lineage)
+- [Query Planner](#query-planner)
+  - [Plan / StepId](#plan--stepid)
+  - [Step Enum](#step-enum)
+  - [Projection](#projection)
+  - [Visualization (Mermaid / DOT)](#visualization-mermaid--dot)
 - [AST Diff](#ast-diff)
   - [ChangeAction Enum](#changeaction-enum)
   - [AstNode Enum](#astnode-enum)
@@ -1873,6 +1878,97 @@ assert!(sources.contains(&"orders".to_string()));
 
 // Generate visualization
 println!("{}", graph.to_mermaid());
+```
+
+## Query Planner
+
+The planner module generates a logical execution plan (a DAG of steps) from a parsed SQL AST. This sits between the optimizer and the executor, providing a structured representation of how a query should be executed.
+
+### Plan / StepId
+
+```rust
+use sqlglot_rust::planner::{plan, Plan, StepId};
+use sqlglot_rust::{parse, Dialect};
+
+let ast = parse("SELECT a, b FROM t WHERE a > 1 ORDER BY b", Dialect::Ansi).unwrap();
+let p = plan(&ast).unwrap();
+
+// Inspect the plan
+println!("Steps: {}", p.len());
+println!("Root: {:?}", p.root());
+println!("{p}"); // Display shows all steps and dependencies
+```
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `plan(&Statement)` | `Result<Plan>` | Build a plan from a parsed statement |
+| `Plan::root()` | `StepId` | The root step that produces the final result |
+| `Plan::steps()` | `&[Step]` | All steps in topological order |
+| `Plan::get(StepId)` | `Option<&Step>` | Look up a step by ID |
+| `Plan::len()` | `usize` | Number of steps |
+| `Plan::is_empty()` | `bool` | Whether the plan has zero steps |
+| `Plan::to_mermaid()` | `String` | Render as Mermaid flowchart |
+| `Plan::to_dot()` | `String` | Render as DOT (Graphviz) digraph |
+
+### Step Enum
+
+Each step in the plan represents a logical operation.
+
+| Variant | Description | Dependencies |
+|---------|-------------|--------------|
+| `Scan` | Full table scan with optional filter pushdown | None (leaf) |
+| `Filter` | WHERE / HAVING predicate evaluation | 1 input |
+| `Project` | SELECT list evaluation | 1 input |
+| `Aggregate` | GROUP BY + aggregate functions | 1 input |
+| `Sort` | ORDER BY | 1 input |
+| `Join` | Join two inputs (INNER, LEFT, RIGHT, FULL, CROSS) | 2 inputs |
+| `Limit` | LIMIT / OFFSET | 1 input |
+| `SetOperation` | UNION / INTERSECT / EXCEPT | 2 inputs |
+| `Distinct` | DISTINCT elimination | 1 input |
+
+All steps have:
+- `dependencies()` → `&[StepId]` — IDs of input steps
+- `projections()` → `&[Projection]` — output column projections
+- `kind()` → `&str` — human-readable step type name
+
+### Projection
+
+```rust
+pub struct Projection {
+    pub expr: Expr,           // The expression being projected
+    pub alias: Option<String>, // Output alias (if any)
+}
+```
+
+### Visualization (Mermaid / DOT)
+
+```rust
+use sqlglot_rust::planner::plan;
+use sqlglot_rust::{parse, Dialect};
+
+let ast = parse(
+    "SELECT a, SUM(b) FROM t JOIN u ON t.id = u.id WHERE a > 0 GROUP BY a ORDER BY a",
+    Dialect::Ansi,
+).unwrap();
+let p = plan(&ast).unwrap();
+
+// Mermaid flowchart (for docs, GitHub, etc.)
+println!("{}", p.to_mermaid());
+// graph TD
+//     step_0["Scan(t)"]
+//     step_1["Scan(u)"]
+//     step_0 --> step_2
+//     step_1 --> step_2
+//     step_2["Join(Inner)"]
+//     ...
+
+// DOT / Graphviz digraph
+println!("{}", p.to_dot());
+// digraph plan {
+//     rankdir=BT;
+//     step_0 [label="Scan(t)"];
+//     ...
+// }
 ```
 
 ## AST Diff

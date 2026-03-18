@@ -57,6 +57,10 @@ the AST, optimizing queries, and serializing results.
   - [Scope Analysis](#scope-analysis)
   - [Type Annotation (annotate_types)](#type-annotation-annotate_types)
   - [Column Lineage](#column-lineage)
+- [Query Planner](#query-planner)
+  - [Building a Plan](#building-a-plan)
+  - [Inspecting Steps](#inspecting-steps)
+  - [Visualization](#visualization)
 - [Serialization (JSON Round-Tripping)](#serialization-json-round-tripping)
 - [Error Handling](#error-handling)
 - [SBOM Generation](#sbom-generation)
@@ -1365,6 +1369,76 @@ let config = LineageConfig::new(Dialect::Ansi)
     .with_trim_qualifiers(false); // Keep table qualifiers in output names
 
 let graph = lineage_sql("a", "SELECT a FROM view1", &schema, &config).unwrap();
+```
+
+---
+
+## Query Planner
+
+The planner module generates a logical execution plan from a parsed (and optionally optimized) SQL AST. The plan is a directed acyclic graph (DAG) of steps that represents how a query should be executed.
+
+### Building a Plan
+
+```rust
+use sqlglot_rust::{parse, Dialect};
+use sqlglot_rust::planner::plan;
+
+let ast = parse("SELECT a, b FROM t WHERE a > 1 ORDER BY b", Dialect::Ansi).unwrap();
+let p = plan(&ast).unwrap();
+
+println!("Plan has {} steps", p.len());
+println!("{p}");
+```
+
+For best results, optimize the AST first:
+
+```rust
+use sqlglot_rust::{parse, Dialect};
+use sqlglot_rust::optimizer::optimize;
+use sqlglot_rust::planner::plan;
+
+let ast = parse("SELECT a FROM t WHERE 1 = 1 AND a > 0", Dialect::Ansi).unwrap();
+let optimized = optimize(ast).unwrap();
+let p = plan(&optimized).unwrap();
+```
+
+### Inspecting Steps
+
+Each step in the plan has a type, dependencies, and projections:
+
+```rust
+use sqlglot_rust::{parse, Dialect};
+use sqlglot_rust::planner::{plan, Step};
+
+let ast = parse(
+    "SELECT a, SUM(b) FROM t JOIN u ON t.id = u.id GROUP BY a",
+    Dialect::Ansi,
+).unwrap();
+let p = plan(&ast).unwrap();
+
+for (i, step) in p.steps().iter().enumerate() {
+    println!("Step {i}: {} (depends on {:?})", step.kind(), step.dependencies());
+}
+```
+
+Step types: `Scan`, `Filter`, `Project`, `Aggregate`, `Sort`, `Join`, `Limit`, `SetOperation`, `Distinct`.
+
+### Visualization
+
+Plans can be rendered as Mermaid or Graphviz DOT:
+
+```rust
+use sqlglot_rust::{parse, Dialect};
+use sqlglot_rust::planner::plan;
+
+let ast = parse("SELECT a FROM t WHERE a > 1", Dialect::Ansi).unwrap();
+let p = plan(&ast).unwrap();
+
+// Mermaid flowchart (embed in Markdown docs)
+println!("{}", p.to_mermaid());
+
+// Graphviz DOT (render with `dot -Tpng`)
+println!("{}", p.to_dot());
 ```
 
 ---
