@@ -5,15 +5,16 @@
 //! - Boolean simplification (e.g., `TRUE AND x` → `x`)
 //! - Dead predicate elimination (e.g., `WHERE TRUE`)
 //! - Subquery unnesting / decorrelation (EXISTS, IN → JOINs)
+//! - Predicate pushdown (WHERE → derived tables / JOIN ON)
 //! - Column qualification (qualify_columns — resolve `*`, add table qualifiers)
 //! - Type annotation (annotate_types — infer SQL types for all AST nodes)
 //!
 //! Future optimizations:
-//! - Predicate pushdown
 //! - Join reordering
 //! - Column pruning
 
 pub mod annotate_types;
+pub mod pushdown_predicates;
 pub mod qualify_columns;
 pub mod scope_analysis;
 pub mod unnest_subqueries;
@@ -27,6 +28,7 @@ pub fn optimize(statement: Statement) -> Result<Statement> {
     stmt = fold_constants(stmt);
     stmt = simplify_booleans(stmt);
     stmt = unnest_subqueries::unnest_subqueries(stmt);
+    stmt = pushdown_predicates::pushdown_predicates(stmt);
     Ok(stmt)
 }
 

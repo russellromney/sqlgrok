@@ -801,6 +801,41 @@ use sqlglot_rust::optimizer::unnest_subqueries::unnest_subqueries;
 let unnested = unnest_subqueries(stmt);
 ```
 
+### Predicate Pushdown
+
+The `pushdown_predicates` pass moves WHERE conditions from outer queries into
+derived tables and JOIN conditions where possible, reducing the data processed
+by inner queries.
+
+```rust
+use sqlglot_rust::{parse, generate, Dialect};
+use sqlglot_rust::pushdown_predicates;
+
+let stmt = parse(
+    "SELECT sub.id FROM (SELECT id, name FROM t) AS sub WHERE sub.id > 5",
+    Dialect::Ansi,
+).unwrap();
+let pushed = pushdown_predicates(stmt);
+let sql = generate(&pushed, Dialect::Ansi);
+assert_eq!(sql, "SELECT sub.id FROM (SELECT id, name FROM t WHERE id > 5) AS sub");
+```
+
+| Input | Output | Rule |
+| --- | --- | --- |
+| `SELECT … FROM (SELECT … FROM t) AS s WHERE s.x > 5` | `SELECT … FROM (SELECT … FROM t WHERE x > 5) AS s` | Push into derived table |
+| `SELECT … FROM a JOIN b ON … WHERE b.x > 10` | `SELECT … FROM a JOIN b ON … AND b.x > 10` | Push into JOIN ON |
+| `WHERE a.x > 5 AND b.y = 10` | Splits: each conjunct pushed independently | AND splitting |
+
+The pass does **not** push predicates when:
+
+- The target has `LIMIT`, `OFFSET`, or `FETCH FIRST` (would change result set).
+- The target has `DISTINCT` (pushdown could change deduplication behavior).
+- The target's SELECT list contains window functions.
+- The predicate contains aggregate functions, window functions, or subqueries.
+- The predicate uses non-deterministic functions (`RAND`, `RANDOM`, etc.).
+- The predicate references columns from multiple sources (cross-table join predicates).
+- The JOIN is `LEFT`, `RIGHT`, or `FULL` (pushdown changes outer join semantics).
+
 ### Qualify Columns
 
 `qualify_columns` resolves column references against a schema,
