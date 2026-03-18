@@ -34,7 +34,8 @@ fn main() {
     println!();
     for row in &result.rows {
         for val in row {
-            print!("{val:<15}");
+            let s = val.to_string();
+            print!("{s:<15}");
         }
         println!();
     }
@@ -46,6 +47,6 @@ fn main() {
         &tables,
     ).unwrap();
     for row in &result.rows {
-        println!("  {} — ${:.0}", row[0], row[1]);
+        println!("  {} — ${}", row[0], row[1]);
     }
 }
