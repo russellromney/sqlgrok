@@ -14,6 +14,7 @@ Complete type and function reference for **sqlglot-rust**.
   - [InsertStatement](#insertstatement)
   - [UpdateStatement](#updatestatement)
   - [DeleteStatement](#deletestatement)
+  - [MergeStatement](#mergestatement)
   - [CreateTableStatement](#createtablestatement)
   - [AlterTableStatement](#altertablestatement)
   - [Other Statements](#other-statements)
@@ -101,6 +102,7 @@ pub enum Statement {
     Insert(InsertStatement),
     Update(UpdateStatement),
     Delete(DeleteStatement),
+    Merge(MergeStatement),
     CreateTable(CreateTableStatement),
     DropTable(DropTableStatement),
     SetOperation(SetOperationStatement),
@@ -239,6 +241,75 @@ pub struct DeleteStatement {
 ```rust
 let stmt = parse("DELETE FROM users WHERE id = 1", Dialect::Ansi).unwrap();
 // => Statement::Delete(DeleteStatement { table: "users", where_clause: Some(...) })
+```
+
+### MergeStatement
+
+```rust
+pub struct MergeStatement {
+    pub target: TableRef,
+    pub source: TableSource,
+    pub on: Expr,
+    pub clauses: Vec<MergeClause>,
+    pub output: Vec<SelectItem>,
+}
+
+pub struct MergeClause {
+    pub kind: MergeClauseKind,
+    pub condition: Option<Expr>,
+    pub action: MergeAction,
+}
+
+pub enum MergeClauseKind {
+    Matched,
+    NotMatched,
+    NotMatchedBySource,
+}
+
+pub enum MergeAction {
+    Update(Vec<(String, Expr)>),
+    Insert { columns: Vec<String>, values: Vec<Expr> },
+    InsertRow,
+    Delete,
+}
+```
+
+| Field | Description |
+| --- | --- |
+| `target` | Target table for the MERGE |
+| `source` | Source table/subquery (`USING` clause) |
+| `on` | Join condition (`ON` clause) |
+| `clauses` | One or more `WHEN MATCHED` / `WHEN NOT MATCHED` clauses |
+| `output` | T-SQL `OUTPUT` clause items |
+
+**Supported dialect extensions:**
+- `WHEN NOT MATCHED BY SOURCE` (T-SQL)
+- `INSERT ROW` (BigQuery)
+- `OUTPUT` clause (T-SQL)
+- Multiple `WHEN` clauses with `AND` conditions
+
+**Example:**
+
+```rust
+use sqlglot_rust::{parse, generate, transpile, Dialect};
+
+// Parse a standard MERGE statement
+let stmt = parse(
+    "MERGE INTO target AS t USING source AS s ON t.id = s.id \
+     WHEN MATCHED THEN UPDATE SET t.name = s.name \
+     WHEN NOT MATCHED THEN INSERT (id, name) VALUES (s.id, s.name)",
+    Dialect::Ansi,
+).unwrap();
+
+// Roundtrip back to SQL
+let sql = generate(&stmt, Dialect::Ansi);
+
+// Transpile to another dialect
+let snowflake_sql = transpile(
+    "MERGE INTO dst USING src ON dst.id = src.id WHEN MATCHED THEN DELETE",
+    Dialect::Ansi,
+    Dialect::Snowflake,
+).unwrap();
 ```
 
 ### CreateTableStatement

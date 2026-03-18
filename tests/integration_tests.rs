@@ -593,3 +593,121 @@ fn test_transpile_grouping_sets_across_dialects() {
         );
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// MERGE statement tests
+// ═══════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_roundtrip_merge_basic() {
+    let sql = "MERGE INTO target AS t USING source AS s ON t.id = s.id WHEN MATCHED THEN UPDATE SET t.name = s.name WHEN NOT MATCHED THEN INSERT (id, name) VALUES (s.id, s.name)";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_merge_with_delete() {
+    let sql = "MERGE INTO target USING source ON target.id = source.id WHEN MATCHED THEN DELETE";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_merge_multiple_when_clauses() {
+    let sql = "MERGE INTO inventory AS inv USING shipments AS s ON inv.product_id = s.product_id WHEN MATCHED AND s.quantity > 0 THEN UPDATE SET inv.quantity = inv.quantity + s.quantity WHEN MATCHED AND s.quantity = 0 THEN DELETE WHEN NOT MATCHED THEN INSERT (product_id, quantity) VALUES (s.product_id, s.quantity)";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_merge_not_matched_by_source() {
+    // T-SQL extension: WHEN NOT MATCHED BY SOURCE
+    let sql = "MERGE INTO target USING source ON target.id = source.id WHEN NOT MATCHED BY SOURCE THEN DELETE";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_merge_insert_row() {
+    // BigQuery extension: INSERT ROW
+    let sql = "MERGE INTO target USING source ON target.id = source.id WHEN NOT MATCHED THEN INSERT ROW";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_merge_subquery_source() {
+    let sql = "MERGE INTO target USING (SELECT id, name FROM staging) AS s ON target.id = s.id WHEN MATCHED THEN UPDATE SET target.name = s.name";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let output = generate(&ast, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_roundtrip_merge_without_into() {
+    // MERGE without INTO keyword (both forms should work)
+    let sql = "MERGE INTO target USING source ON target.id = source.id WHEN MATCHED THEN DELETE";
+    let ast_with = parse(sql, Dialect::Ansi).unwrap();
+    let sql_without = "MERGE target USING source ON target.id = source.id WHEN MATCHED THEN DELETE";
+    let ast_without = parse(sql_without, Dialect::Ansi).unwrap();
+    // Both parse the same and generate with INTO
+    let output_with = generate(&ast_with, Dialect::Ansi);
+    let output_without = generate(&ast_without, Dialect::Ansi);
+    assert_eq!(output_with, output_without);
+}
+
+#[test]
+fn test_merge_ast_structure() {
+    let sql = "MERGE INTO dst USING src ON dst.id = src.id WHEN MATCHED THEN UPDATE SET dst.val = src.val WHEN NOT MATCHED THEN INSERT (id, val) VALUES (src.id, src.val)";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    match &ast {
+        sqlglot_rust::Statement::Merge(m) => {
+            assert_eq!(m.target.name, "dst");
+            assert_eq!(m.clauses.len(), 2);
+            assert_eq!(m.clauses[0].kind, sqlglot_rust::MergeClauseKind::Matched);
+            assert_eq!(
+                m.clauses[1].kind,
+                sqlglot_rust::MergeClauseKind::NotMatched
+            );
+        }
+        other => panic!("Expected Merge statement, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_merge_serialization() {
+    let sql = "MERGE INTO target USING source ON target.id = source.id WHEN MATCHED THEN UPDATE SET target.name = source.name";
+    let ast = parse(sql, Dialect::Ansi).unwrap();
+    let json = serde_json::to_string(&ast).unwrap();
+    let deserialized: sqlglot_rust::Statement = serde_json::from_str(&json).unwrap();
+    let output = generate(&deserialized, Dialect::Ansi);
+    assert_eq!(output, sql);
+}
+
+#[test]
+fn test_merge_transpile_across_dialects() {
+    let sql = "MERGE INTO target USING source ON target.id = source.id WHEN MATCHED THEN UPDATE SET target.name = source.name WHEN NOT MATCHED THEN INSERT (id, name) VALUES (source.id, source.name)";
+    for dialect in &[
+        Dialect::Ansi,
+        Dialect::Snowflake,
+        Dialect::BigQuery,
+        Dialect::Tsql,
+        Dialect::Spark,
+        Dialect::Databricks,
+        Dialect::Postgres,
+    ] {
+        let result = transpile(sql, Dialect::Ansi, *dialect)
+            .unwrap_or_else(|e| panic!("Transpile to {:?} failed: {}", dialect, e));
+        assert!(
+            result.contains("MERGE INTO"),
+            "MERGE INTO should be present in {:?} output: {}",
+            dialect,
+            result
+        );
+    }
+}

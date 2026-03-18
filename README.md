@@ -158,6 +158,7 @@ assert_eq!(Dialect::from_str("sqlserver"), Some(Dialect::Tsql));
 - `INSERT INTO ... VALUES` / `INSERT INTO ... SELECT`
 - `UPDATE ... SET ... WHERE` (with RETURNING)
 - `DELETE FROM ... WHERE` (with USING)
+- `MERGE INTO ... USING ... WHEN MATCHED / WHEN NOT MATCHED` (with dialect extensions)
 - `CREATE TABLE` (with constraints, IF NOT EXISTS, TEMPORARY, AS SELECT)
 - `DROP TABLE` (with IF EXISTS)
 - `ALTER TABLE` (ADD COLUMN, DROP COLUMN, RENAME COLUMN, RENAME TO, ALTER TYPE)

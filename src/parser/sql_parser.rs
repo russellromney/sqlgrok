@@ -233,6 +233,7 @@ impl Parser {
             TokenType::Insert => self.parse_insert().map(Statement::Insert),
             TokenType::Update => self.parse_update().map(Statement::Update),
             TokenType::Delete => self.parse_delete().map(Statement::Delete),
+            TokenType::Merge => self.parse_merge().map(Statement::Merge),
             TokenType::Create => self.parse_create(),
             TokenType::Drop => self.parse_drop(),
             TokenType::Alter => self.parse_alter_table().map(Statement::AlterTable),
@@ -1180,6 +1181,140 @@ impl Parser {
             where_clause,
             returning,
         })
+    }
+
+    // ── MERGE ───────────────────────────────────────────────────────
+
+    fn parse_merge(&mut self) -> Result<MergeStatement> {
+        self.expect(TokenType::Merge)?;
+        let _ = self.match_token(TokenType::Into);
+        let target = self.parse_table_ref()?;
+
+        self.expect(TokenType::Using)?;
+        let source = self.parse_table_source()?;
+
+        self.expect(TokenType::On)?;
+        let on = self.parse_expr()?;
+
+        let mut clauses = Vec::new();
+        while self.match_token(TokenType::When) {
+            clauses.push(self.parse_merge_clause()?);
+        }
+
+        if clauses.is_empty() {
+            return Err(SqlglotError::ParserError {
+                message: "MERGE requires at least one WHEN clause".into(),
+            });
+        }
+
+        // OUTPUT clause (T-SQL extension)
+        let output = if self.match_keyword("OUTPUT") {
+            self.parse_select_items()?
+        } else {
+            vec![]
+        };
+
+        Ok(MergeStatement {
+            target,
+            source,
+            on,
+            clauses,
+            output,
+        })
+    }
+
+    fn parse_merge_clause(&mut self) -> Result<MergeClause> {
+        let kind = if self.match_token(TokenType::Not) {
+            self.expect(TokenType::Matched)?;
+            if self.match_keyword("BY") {
+                if self.match_keyword("SOURCE") {
+                    MergeClauseKind::NotMatchedBySource
+                } else {
+                    // BY TARGET is the default / explicit form
+                    let _ = self.match_keyword("TARGET");
+                    MergeClauseKind::NotMatched
+                }
+            } else {
+                MergeClauseKind::NotMatched
+            }
+        } else {
+            self.expect(TokenType::Matched)?;
+            MergeClauseKind::Matched
+        };
+
+        let condition = if self.match_token(TokenType::And) {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
+
+        self.expect(TokenType::Then)?;
+
+        let action = self.parse_merge_action(&kind)?;
+
+        Ok(MergeClause {
+            kind,
+            condition,
+            action,
+        })
+    }
+
+    fn parse_merge_action(&mut self, kind: &MergeClauseKind) -> Result<MergeAction> {
+        if self.match_token(TokenType::Update) {
+            self.expect(TokenType::Set)?;
+            let mut assignments = Vec::new();
+            loop {
+                let mut col = self.expect_name()?;
+                // Support dotted column names like target.col
+                while self.match_token(TokenType::Dot) {
+                    col.push('.');
+                    col.push_str(&self.expect_name()?);
+                }
+                self.expect(TokenType::Eq)?;
+                let val = self.parse_expr()?;
+                assignments.push((col, val));
+                if !self.match_token(TokenType::Comma) {
+                    break;
+                }
+            }
+            Ok(MergeAction::Update(assignments))
+        } else if self.match_token(TokenType::Insert) {
+            // INSERT ROW (BigQuery)
+            if self.match_keyword("ROW") {
+                return Ok(MergeAction::InsertRow);
+            }
+
+            let columns = if self.match_token(TokenType::LParen) {
+                let mut cols = vec![self.expect_name()?];
+                while self.match_token(TokenType::Comma) {
+                    cols.push(self.expect_name()?);
+                }
+                self.expect(TokenType::RParen)?;
+                cols
+            } else {
+                vec![]
+            };
+
+            self.expect(TokenType::Values)?;
+            self.expect(TokenType::LParen)?;
+            let values = self.parse_expr_list()?;
+            self.expect(TokenType::RParen)?;
+
+            Ok(MergeAction::Insert { columns, values })
+        } else if self.match_token(TokenType::Delete) {
+            Ok(MergeAction::Delete)
+        } else {
+            Err(SqlglotError::ParserError {
+                message: format!(
+                    "Expected UPDATE, INSERT, or DELETE after WHEN {} THEN",
+                    match kind {
+                        MergeClauseKind::Matched => "MATCHED",
+                        MergeClauseKind::NotMatched => "NOT MATCHED",
+                        MergeClauseKind::NotMatchedBySource => "NOT MATCHED BY SOURCE",
+                    }
+                ),
+            })
+        }
     }
 
     // ── CREATE ──────────────────────────────────────────────────────

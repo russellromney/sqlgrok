@@ -79,6 +79,8 @@ pub enum Statement {
     Explain(ExplainStatement),
     /// USE database
     Use(UseStatement),
+    /// MERGE INTO ... USING ... WHEN MATCHED / WHEN NOT MATCHED
+    Merge(MergeStatement),
     /// Raw / passthrough expression (for expressions that don't fit a specific statement type)
     Expression(Expr),
 }
@@ -1431,6 +1433,61 @@ pub struct DeleteStatement {
     pub using: Option<FromClause>,
     pub where_clause: Option<Expr>,
     pub returning: Vec<SelectItem>,
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MERGE statement
+// ═══════════════════════════════════════════════════════════════════════
+
+/// A MERGE (UPSERT) statement.
+///
+/// MERGE INTO target USING source ON condition
+///   WHEN MATCHED THEN UPDATE SET ...
+///   WHEN NOT MATCHED THEN INSERT ...
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MergeStatement {
+    pub target: TableRef,
+    pub source: TableSource,
+    pub on: Expr,
+    pub clauses: Vec<MergeClause>,
+    /// OUTPUT clause (T-SQL extension)
+    pub output: Vec<SelectItem>,
+}
+
+/// A single WHEN MATCHED / WHEN NOT MATCHED clause in a MERGE statement.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MergeClause {
+    pub kind: MergeClauseKind,
+    /// Optional additional condition: WHEN MATCHED AND <condition>
+    pub condition: Option<Expr>,
+    pub action: MergeAction,
+}
+
+/// The kind of WHEN clause in a MERGE statement.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MergeClauseKind {
+    /// WHEN MATCHED
+    Matched,
+    /// WHEN NOT MATCHED (BY TARGET) — standard SQL and most dialects
+    NotMatched,
+    /// WHEN NOT MATCHED BY SOURCE — T-SQL extension
+    NotMatchedBySource,
+}
+
+/// The action to take in a MERGE WHEN clause.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum MergeAction {
+    /// UPDATE SET col = val, ...
+    Update(Vec<(String, Expr)>),
+    /// INSERT (columns) VALUES (values)
+    Insert {
+        columns: Vec<String>,
+        values: Vec<Expr>,
+    },
+    /// INSERT ROW (BigQuery)
+    InsertRow,
+    /// DELETE
+    Delete,
 }
 
 // ═══════════════════════════════════════════════════════════════════════
