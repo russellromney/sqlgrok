@@ -3,7 +3,8 @@ use sqlglot_rust::optimizer::optimize;
 ///
 /// Covers constant folding (arithmetic, string concat, comparisons),
 /// boolean simplification (AND/OR with TRUE/FALSE, double NOT, WHERE TRUE),
-/// and subquery unnesting / decorrelation (EXISTS/IN → JOINs).
+/// subquery unnesting / decorrelation (EXISTS/IN → JOINs),
+/// and predicate pushdown (WHERE → derived tables / JOINs).
 use sqlglot_rust::{Dialect, generate, parse};
 
 /// Parse → optimise → generate, compare with expected output.
@@ -621,5 +622,249 @@ fn test_qc_qualify_join_on_clause() {
     assert_eq!(
         qualify_sql("SELECT name FROM users JOIN orders ON id = user_id", &s),
         "SELECT users.name FROM users INNER JOIN orders ON id = orders.user_id"
+    );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Predicate Pushdown – derived table pushdown
+// (from Python test_optimizer.py::test_pushdown_predicates)
+// ═════════════════════════════════════════════════════════════════════════════
+
+use sqlglot_rust::pushdown_predicates;
+
+/// Parse → pushdown_predicates → generate, compare with expected output.
+fn validate_pushdown(input: &str, expected: &str) {
+    let stmt = parse(input, Dialect::Ansi)
+        .unwrap_or_else(|e| panic!("Parse failed for '{}': {}", input, e));
+    let pushed = pushdown_predicates(stmt);
+    let output = generate(&pushed, Dialect::Ansi);
+    assert_eq!(output, expected, "\n  Input: {}", input);
+}
+
+/// Ensures the pushdown output equals the original (i.e. no-op).
+fn validate_pushdown_no_op(sql: &str) {
+    validate_pushdown(sql, sql);
+}
+
+// ── Push into derived tables ─────────────────────────────────────────
+
+#[test]
+fn test_pushdown_into_derived_table() {
+    validate_pushdown(
+        "SELECT sub.id FROM (SELECT id, name FROM t) AS sub WHERE sub.id > 5",
+        "SELECT sub.id FROM (SELECT id, name FROM t WHERE id > 5) AS sub",
+    );
+}
+
+#[test]
+fn test_pushdown_into_derived_table_equality() {
+    validate_pushdown(
+        "SELECT sub.name FROM (SELECT id, name FROM t) AS sub WHERE sub.name = 'foo'",
+        "SELECT sub.name FROM (SELECT id, name FROM t WHERE name = 'foo') AS sub",
+    );
+}
+
+#[test]
+fn test_pushdown_multiple_predicates_same_derived_table() {
+    validate_pushdown(
+        "SELECT sub.id FROM (SELECT id, name FROM t) AS sub WHERE sub.id > 5 AND sub.name = 'a'",
+        "SELECT sub.id FROM (SELECT id, name FROM t WHERE id > 5 AND name = 'a') AS sub",
+    );
+}
+
+#[test]
+fn test_pushdown_derived_table_with_existing_where() {
+    validate_pushdown(
+        "SELECT sub.id FROM (SELECT id, name FROM t WHERE name <> 'del') AS sub WHERE sub.id > 5",
+        "SELECT sub.id FROM (SELECT id, name FROM t WHERE name <> 'del' AND id > 5) AS sub",
+    );
+}
+
+// ── Push into JOIN ON ────────────────────────────────────────────────
+
+#[test]
+fn test_pushdown_into_inner_join_on() {
+    validate_pushdown(
+        "SELECT a.id FROM a INNER JOIN b ON a.id = b.aid WHERE b.x > 10",
+        "SELECT a.id FROM a INNER JOIN b ON a.id = b.aid AND b.x > 10",
+    );
+}
+
+#[test]
+fn test_pushdown_split_predicates_to_different_joins() {
+    // b.y = 10 should go to the JOIN ON, a.x > 5 stays in WHERE
+    // (a is the FROM table, not a join target)
+    validate_pushdown(
+        "SELECT a.id FROM a INNER JOIN b ON a.id = b.aid WHERE a.x > 5 AND b.y = 10",
+        "SELECT a.id FROM a INNER JOIN b ON a.id = b.aid AND b.y = 10 WHERE a.x > 5",
+    );
+}
+
+// ── Safety: no push through LIMIT ────────────────────────────────────
+
+#[test]
+fn test_pushdown_blocked_by_limit() {
+    validate_pushdown_no_op(
+        "SELECT sub.id FROM (SELECT id FROM t LIMIT 10) AS sub WHERE sub.id > 5",
+    );
+}
+
+// ── Safety: no push through OFFSET ───────────────────────────────────
+
+#[test]
+fn test_pushdown_blocked_by_offset() {
+    validate_pushdown_no_op(
+        "SELECT sub.id FROM (SELECT id FROM t OFFSET 5) AS sub WHERE sub.id > 5",
+    );
+}
+
+// ── Safety: no push through DISTINCT ─────────────────────────────────
+
+#[test]
+fn test_pushdown_blocked_by_distinct() {
+    validate_pushdown_no_op(
+        "SELECT sub.id FROM (SELECT DISTINCT id FROM t) AS sub WHERE sub.id > 5",
+    );
+}
+
+// ── Safety: no push into LEFT/RIGHT/FULL JOINs ──────────────────────
+
+#[test]
+fn test_pushdown_blocked_by_left_join() {
+    validate_pushdown_no_op(
+        "SELECT a.id FROM a LEFT JOIN b ON a.id = b.aid WHERE b.x > 10",
+    );
+}
+
+#[test]
+fn test_pushdown_blocked_by_right_join() {
+    validate_pushdown_no_op(
+        "SELECT a.id FROM a RIGHT JOIN b ON a.id = b.aid WHERE b.x > 10",
+    );
+}
+
+#[test]
+fn test_pushdown_blocked_by_full_join() {
+    validate_pushdown_no_op(
+        "SELECT a.id FROM a FULL JOIN b ON a.id = b.aid WHERE b.x > 10",
+    );
+}
+
+// ── Safety: aggregate predicates not pushed ──────────────────────────
+
+#[test]
+fn test_pushdown_blocked_by_aggregate_in_predicate() {
+    validate_pushdown_no_op(
+        "SELECT sub.x FROM (SELECT x FROM t) AS sub WHERE COUNT(*) > 5",
+    );
+}
+
+// ── Safety: window function predicates not pushed ────────────────────
+
+#[test]
+fn test_pushdown_blocked_by_window_in_predicate() {
+    validate_pushdown_no_op(
+        "SELECT sub.x FROM (SELECT x FROM t) AS sub WHERE ROW_NUMBER() OVER () > 1",
+    );
+}
+
+// ── Safety: subquery predicates not pushed ───────────────────────────
+
+#[test]
+fn test_pushdown_blocked_by_subquery_in_predicate() {
+    validate_pushdown_no_op(
+        "SELECT sub.x FROM (SELECT x FROM t) AS sub WHERE sub.x IN (SELECT y FROM t2)",
+    );
+}
+
+// ── Safety: cross-table predicates not pushed ────────────────────────
+
+#[test]
+fn test_pushdown_blocked_by_cross_table_predicate() {
+    validate_pushdown_no_op(
+        "SELECT a.id FROM a INNER JOIN b ON a.id = b.aid WHERE a.x = b.y",
+    );
+}
+
+// ── Safety: unqualified columns stay unchanged ───────────────────────
+
+#[test]
+fn test_pushdown_unqualified_columns_no_op() {
+    validate_pushdown_no_op("SELECT id FROM t WHERE id > 5");
+}
+
+// ── Safety: no push through window functions in derived table ────────
+
+#[test]
+fn test_pushdown_blocked_by_window_in_derived_table() {
+    validate_pushdown_no_op(
+        "SELECT sub.rn FROM (SELECT ROW_NUMBER() OVER (ORDER BY id) AS rn FROM t) AS sub WHERE sub.rn > 5",
+    );
+}
+
+// ── No-op: plain query without derived tables or joins ───────────────
+
+#[test]
+fn test_pushdown_plain_query_no_op() {
+    validate_pushdown_no_op("SELECT a, b FROM t WHERE a > 1");
+}
+
+// ── Integration: pushdown through full optimize pipeline ─────────────
+
+#[test]
+fn test_optimize_with_pushdown_derived_table() {
+    let input = "SELECT sub.id FROM (SELECT id, name FROM t) AS sub WHERE sub.id > 5";
+    let stmt = parse(input, Dialect::Ansi).unwrap();
+    let optimized = optimize(stmt).unwrap();
+    let output = generate(&optimized, Dialect::Ansi);
+    assert!(
+        output.contains("WHERE id > 5) AS sub"),
+        "Predicate should be pushed into derived table: {output}"
+    );
+    assert!(
+        !output.contains("WHERE sub.id > 5"),
+        "Outer WHERE should be removed: {output}"
+    );
+}
+
+#[test]
+fn test_optimize_with_pushdown_join_on() {
+    let input = "SELECT a.id FROM a INNER JOIN b ON a.id = b.aid WHERE b.x > 10";
+    let stmt = parse(input, Dialect::Ansi).unwrap();
+    let optimized = optimize(stmt).unwrap();
+    let output = generate(&optimized, Dialect::Ansi);
+    assert!(
+        output.contains("a.id = b.aid AND b.x > 10"),
+        "Predicate should be moved to JOIN ON: {output}"
+    );
+}
+
+// ── AND conjunction splitting ────────────────────────────────────────
+
+#[test]
+fn test_pushdown_and_splitting_partial() {
+    // One predicate pushable (b.y = 10 → JOIN), one not (literal stays)
+    validate_pushdown(
+        "SELECT a.id FROM a INNER JOIN b ON a.id = b.aid WHERE b.y = 10 AND 1 = 1",
+        "SELECT a.id FROM a INNER JOIN b ON a.id = b.aid AND b.y = 10 WHERE 1 = 1",
+    );
+}
+
+// ── Non-deterministic function ───────────────────────────────────────
+
+#[test]
+fn test_pushdown_blocked_by_nondeterministic() {
+    validate_pushdown_no_op(
+        "SELECT sub.x FROM (SELECT x FROM t) AS sub WHERE RANDOM() > 0.5",
+    );
+}
+
+// ── Non-SELECT statements pass through ───────────────────────────────
+
+#[test]
+fn test_pushdown_non_select_passthrough() {
+    validate_pushdown(
+        "INSERT INTO users VALUES (1, 'a', 'b', 1)",
+        "INSERT INTO users VALUES (1, 'a', 'b', 1)",
     );
 }
