@@ -29,6 +29,12 @@ the AST, optimizing queries, and serializing results.
   - [Matching Statement Types](#matching-statement-types)
   - [Inspecting a SELECT](#inspecting-a-select)
   - [Constructing Expressions](#constructing-expressions)
+- [Expression Builder API](#expression-builder-api)
+  - [SELECT Builder](#select-builder)
+  - [Condition Builder](#condition-builder)
+  - [Expression Factory Functions](#expression-factory-functions)
+  - [Comparison and Arithmetic Helpers](#comparison-and-arithmetic-helpers)
+  - [Statement Mutation Methods](#statement-mutation-methods)
 - [Traversal and Search](#traversal-and-search)
   - [Walking the Tree](#walking-the-tree)
   - [Finding Nodes](#finding-nodes)
@@ -520,6 +526,232 @@ println!("{}", expr.sql());
 
 ```text
 price * quantity
+```
+
+---
+
+## Expression Builder API
+
+The Expression Builder API provides a fluent, ergonomic way to construct SQL
+queries programmatically without manually assembling AST enum variants.
+
+### SELECT Builder
+
+Build SELECT queries using method chaining:
+
+```rust
+use sqlglot_rust::builder::{select, select_all, select_distinct};
+use sqlglot_rust::{generate, Dialect};
+
+// Basic SELECT
+let query = select(&["a", "b", "c"])
+    .from("users")
+    .where_clause("active = true")
+    .order_by(&["created_at DESC"])
+    .limit(10)
+    .build();
+
+let sql = generate(&query, Dialect::Postgres);
+// => SELECT a, b, c FROM users WHERE active = true ORDER BY created_at DESC LIMIT 10
+
+// SELECT with JOINs
+let query = select(&["u.name", "COUNT(o.id) AS order_count"])
+    .from("users")
+    .left_join("orders", "u.id = o.user_id")
+    .where_clause("u.active = true")
+    .group_by(&["u.name"])
+    .having("COUNT(o.id) > 0")
+    .build();
+
+// SELECT DISTINCT
+let query = select_distinct(&["category"])
+    .from("products")
+    .build();
+
+// SELECT *
+let query = select_all()
+    .from("users")
+    .build();
+```
+
+**SelectBuilder Methods:**
+
+| Method | Description |
+| --- | --- |
+| `columns(&[&str])` | Add columns to SELECT list |
+| `column_expr(Expr, Option<&str>)` | Add expression with optional alias |
+| `all()` | Add wildcard (*) |
+| `all_from(&str)` | Add qualified wildcard (table.*) |
+| `distinct()` | Enable DISTINCT |
+| `from(&str)` | Set FROM table |
+| `from_table(TableRef)` | Set FROM with TableRef |
+| `from_subquery(Statement, &str)` | Set FROM subquery with alias |
+| `join(&str, &str)` | INNER JOIN table ON condition |
+| `left_join(&str, &str)` | LEFT JOIN |
+| `right_join(&str, &str)` | RIGHT JOIN |
+| `full_join(&str, &str)` | FULL JOIN |
+| `cross_join(&str)` | CROSS JOIN |
+| `where_clause(&str)` | Set WHERE condition |
+| `and_where(&str)` | Add to WHERE with AND |
+| `or_where(&str)` | Add to WHERE with OR |
+| `group_by(&[&str])` | Set GROUP BY |
+| `having(&str)` | Set HAVING clause |
+| `order_by(&[&str])` | Set ORDER BY |
+| `limit(i64)` | Set LIMIT |
+| `offset(i64)` | Set OFFSET |
+| `top(i64)` | Set TOP (T-SQL) |
+| `qualify(&str)` | Set QUALIFY (BigQuery/Snowflake) |
+| `build()` | Build Statement |
+| `build_select()` | Build SelectStatement |
+
+### Condition Builder
+
+Build complex conditions with AND/OR/NOT:
+
+```rust
+use sqlglot_rust::builder::condition;
+
+// Build: x = 1 AND y = 2 OR z = 3
+let cond = condition("x = 1")
+    .and("y = 2")
+    .or("z = 3")
+    .build();
+
+// Negate a condition
+let negated = condition("status = 'active'")
+    .not()
+    .build();
+```
+
+### Expression Factory Functions
+
+Create expressions without manual AST construction:
+
+```rust
+use sqlglot_rust::builder::*;
+use sqlglot_rust::ast::DataType;
+
+// Column reference
+let col = column("name", Some("users"));  // users.name
+
+// Table reference
+let tbl = table("users", Some("public"));  // public.users
+
+// Literals
+let num = literal(42);
+let s = string_literal("hello");
+let b = boolean(true);
+let n = null();
+
+// CAST expression
+let casted = cast(column("id", None), DataType::BigInt);
+
+// Functions
+let count = func("COUNT", vec![column("id", None)]);
+let count_distinct = func_distinct("COUNT", vec![column("user_id", None)]);
+
+// Logical combinations
+let cond1 = eq(column("x", None), literal(1));
+let cond2 = eq(column("y", None), literal(2));
+let combined_and = and_all(vec![cond1.clone(), cond2.clone()]);
+let combined_or = or_all(vec![cond1, cond2]);
+
+// Subqueries and EXISTS
+let inner = select(&["id"]).from("users").where_clause("active = true").build();
+let sub = subquery(inner.clone());
+let exists_check = exists(inner, false);
+
+// Aliases
+let aliased = alias(column("first_name", None), "name");
+
+// Wildcards
+let star_expr = star();
+let qualified = qualified_star("users");
+```
+
+### Comparison and Arithmetic Helpers
+
+Shorthand functions for common operations:
+
+```rust
+use sqlglot_rust::builder::*;
+
+// Comparisons
+let e = eq(column("a", None), literal(1));      // a = 1
+let e = neq(column("a", None), literal(1));     // a <> 1
+let e = lt(column("a", None), literal(10));     // a < 10
+let e = lte(column("a", None), literal(10));    // a <= 10
+let e = gt(column("a", None), literal(0));      // a > 0
+let e = gte(column("a", None), literal(0));     // a >= 0
+
+// NULL checks
+let e = is_null(column("deleted_at", None));        // deleted_at IS NULL
+let e = is_not_null(column("created_at", None));    // created_at IS NOT NULL
+
+// BETWEEN
+let e = between(column("age", None), literal(18), literal(65));
+
+// IN list
+let e = in_list(column("status", None), vec![
+    string_literal("active"),
+    string_literal("pending"),
+]);
+
+// IN subquery
+let sub = select(&["id"]).from("active_users").build();
+let e = in_subquery(column("user_id", None), sub);
+
+// LIKE
+let e = like(column("name", None), string_literal("%john%"));
+
+// Arithmetic
+let e = add(column("price", None), literal(10));    // price + 10
+let e = sub(column("total", None), literal(5));     // total - 5
+let e = mul(column("qty", None), column("price", None));  // qty * price
+let e = div(column("amount", None), literal(100));  // amount / 100
+
+// NOT
+let e = not(eq(column("active", None), boolean(true)));
+```
+
+### Statement Mutation Methods
+
+Modify existing statements after construction:
+
+```rust
+use sqlglot_rust::builder::select;
+use sqlglot_rust::ast::JoinType;
+
+let mut stmt = select(&["a"]).from("table1").build_select();
+
+// Add more columns
+stmt.add_select("b");
+stmt.add_select("c AS column_c");
+
+// Add WHERE conditions (combined with AND)
+stmt.add_where("x > 1");
+stmt.add_where("y < 10");
+
+// Add JOINs
+stmt.add_join("table2", "table1.id = table2.t1_id", JoinType::Inner);
+stmt.add_join("table3", "table2.id = table3.t2_id", JoinType::Left);
+
+// Wrap as subquery
+let subquery_source = stmt.as_subquery("sub");
+```
+
+### Parsing Helpers
+
+Parse SQL fragments into expressions:
+
+```rust
+use sqlglot_rust::builder::{parse_expr, parse_condition};
+
+// Parse an expression
+let expr = parse_expr("x + y * 2").unwrap();
+
+// Parse a condition
+let cond = parse_condition("a > 1 AND b < 10").unwrap();
 ```
 
 ---

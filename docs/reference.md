@@ -9,6 +9,12 @@ Complete type and function reference for **sqlglot-rust**.
 ## Table of Contents
 
 - [Top-Level Functions](#top-level-functions)
+- [Expression Builder API](#expression-builder-api)
+  - [Factory Functions](#factory-functions)
+  - [Comparison Functions](#comparison-functions)
+  - [Arithmetic Functions](#arithmetic-functions)
+  - [SelectBuilder](#selectbuilder)
+  - [ConditionBuilder](#conditionbuilder)
 - [Statement Enum](#statement-enum)
   - [SelectStatement](#selectstatement)
   - [InsertStatement](#insertstatement)
@@ -91,6 +97,150 @@ let pretty = generate_pretty(&ast, Dialect::Ansi);
 let out = transpile("SELECT NOW()", Dialect::Postgres, Dialect::Tsql).unwrap();
 assert_eq!(out, "SELECT GETDATE()");
 ```
+
+---
+
+## Expression Builder API
+
+Fluent API for programmatic SQL construction. All functions are re-exported from `sqlglot_rust::builder`.
+
+### Factory Functions
+
+| Function | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `column` | `(name: &str, table: Option<&str>) -> Expr` | `Expr::Column` | Create column reference |
+| `table` | `(name: &str, schema: Option<&str>) -> TableRef` | `TableRef` | Create table reference |
+| `table_full` | `(name: &str, schema: Option<&str>, catalog: Option<&str>) -> TableRef` | `TableRef` | Create fully-qualified table reference |
+| `literal` | `<T: ToString>(value: T) -> Expr` | `Expr::Number` | Create numeric literal |
+| `string_literal` | `(value: &str) -> Expr` | `Expr::StringLiteral` | Create string literal |
+| `boolean` | `(value: bool) -> Expr` | `Expr::Boolean` | Create boolean literal |
+| `null` | `() -> Expr` | `Expr::Null` | Create NULL literal |
+| `cast` | `(expr: Expr, data_type: DataType) -> Expr` | `Expr::Cast` | Create CAST expression |
+| `func` | `(name: &str, args: Vec<Expr>) -> Expr` | `Expr::Function` | Create function call |
+| `func_distinct` | `(name: &str, args: Vec<Expr>) -> Expr` | `Expr::Function` | Create function call with DISTINCT |
+| `star` | `() -> Expr` | `Expr::Star` | Create wildcard (*) |
+| `qualified_star` | `(table: &str) -> Expr` | `Expr::QualifiedWildcard` | Create table.* wildcard |
+| `subquery` | `(stmt: Statement) -> Expr` | `Expr::Subquery` | Create scalar subquery |
+| `exists` | `(stmt: Statement, negated: bool) -> Expr` | `Expr::Exists` | Create EXISTS expression |
+| `alias` | `(expr: Expr, name: &str) -> Expr` | `Expr::Alias` | Create aliased expression |
+| `not` | `(expr: Expr) -> Expr` | `Expr::UnaryOp` | Negate expression with NOT |
+| `and_all` | `<I: IntoIterator<Item=Expr>>(conditions: I) -> Option<Expr>` | `Option<Expr>` | Combine with AND |
+| `or_all` | `<I: IntoIterator<Item=Expr>>(conditions: I) -> Option<Expr>` | `Option<Expr>` | Combine with OR |
+
+### Comparison Functions
+
+| Function | Signature | Description |
+| --- | --- | --- |
+| `eq` | `(left: Expr, right: Expr) -> Expr` | Equality (=) |
+| `neq` | `(left: Expr, right: Expr) -> Expr` | Inequality (<>) |
+| `lt` | `(left: Expr, right: Expr) -> Expr` | Less than (<) |
+| `lte` | `(left: Expr, right: Expr) -> Expr` | Less than or equal (<=) |
+| `gt` | `(left: Expr, right: Expr) -> Expr` | Greater than (>) |
+| `gte` | `(left: Expr, right: Expr) -> Expr` | Greater than or equal (>=) |
+| `is_null` | `(expr: Expr) -> Expr` | IS NULL check |
+| `is_not_null` | `(expr: Expr) -> Expr` | IS NOT NULL check |
+| `between` | `(expr: Expr, low: Expr, high: Expr) -> Expr` | BETWEEN expression |
+| `in_list` | `(expr: Expr, list: Vec<Expr>) -> Expr` | IN list expression |
+| `not_in_list` | `(expr: Expr, list: Vec<Expr>) -> Expr` | NOT IN list expression |
+| `in_subquery` | `(expr: Expr, query: Statement) -> Expr` | IN subquery expression |
+| `like` | `(expr: Expr, pattern: Expr) -> Expr` | LIKE expression |
+
+### Arithmetic Functions
+
+| Function | Signature | Description |
+| --- | --- | --- |
+| `add` | `(left: Expr, right: Expr) -> Expr` | Addition (+) |
+| `sub` | `(left: Expr, right: Expr) -> Expr` | Subtraction (-) |
+| `mul` | `(left: Expr, right: Expr) -> Expr` | Multiplication (*) |
+| `div` | `(left: Expr, right: Expr) -> Expr` | Division (/) |
+
+### Parse Functions
+
+| Function | Signature | Description |
+| --- | --- | --- |
+| `parse_expr` | `(sql: &str) -> Option<Expr>` | Parse expression (ANSI dialect) |
+| `parse_expr_dialect` | `(sql: &str, dialect: Dialect) -> Option<Expr>` | Parse expression with dialect |
+| `parse_condition` | `(sql: &str) -> Option<Expr>` | Parse WHERE condition (ANSI) |
+| `parse_condition_dialect` | `(sql: &str, dialect: Dialect) -> Option<Expr>` | Parse condition with dialect |
+
+### SelectBuilder
+
+```rust
+pub struct SelectBuilder { ... }
+```
+
+Create via `select(&[&str])`, `select_all()`, or `select_distinct(&[&str])`.
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `dialect(Dialect)` | `Self` | Set parsing dialect |
+| `columns(&[&str])` | `Self` | Add columns to SELECT |
+| `column_expr(Expr, Option<&str>)` | `Self` | Add expression with alias |
+| `all()` | `Self` | Add * wildcard |
+| `all_from(&str)` | `Self` | Add table.* wildcard |
+| `distinct()` | `Self` | Enable DISTINCT |
+| `from(&str)` | `Self` | Set FROM table |
+| `from_table(TableRef)` | `Self` | Set FROM with TableRef |
+| `from_subquery(Statement, &str)` | `Self` | Set FROM subquery |
+| `join(&str, &str)` | `Self` | INNER JOIN |
+| `left_join(&str, &str)` | `Self` | LEFT JOIN |
+| `right_join(&str, &str)` | `Self` | RIGHT JOIN |
+| `full_join(&str, &str)` | `Self` | FULL JOIN |
+| `cross_join(&str)` | `Self` | CROSS JOIN |
+| `join_using(&str, &[&str], JoinType)` | `Self` | JOIN with USING |
+| `join_subquery(Statement, &str, &str, JoinType)` | `Self` | JOIN subquery |
+| `where_clause(&str)` | `Self` | Set WHERE |
+| `where_expr(Expr)` | `Self` | Set WHERE from Expr |
+| `and_where(&str)` | `Self` | AND to WHERE |
+| `or_where(&str)` | `Self` | OR to WHERE |
+| `group_by(&[&str])` | `Self` | Set GROUP BY |
+| `add_group_by(&str)` | `Self` | Add to GROUP BY |
+| `having(&str)` | `Self` | Set HAVING |
+| `order_by(&[&str])` | `Self` | Set ORDER BY |
+| `add_order_by(&str)` | `Self` | Add to ORDER BY |
+| `add_order_by_expr(Expr, bool, Option<bool>)` | `Self` | Add ORDER BY with options |
+| `limit(i64)` | `Self` | Set LIMIT |
+| `limit_expr(Expr)` | `Self` | Set LIMIT from Expr |
+| `offset(i64)` | `Self` | Set OFFSET |
+| `offset_expr(Expr)` | `Self` | Set OFFSET from Expr |
+| `top(i64)` | `Self` | Set TOP (T-SQL) |
+| `qualify(&str)` | `Self` | Set QUALIFY |
+| `build()` | `Statement` | Build final Statement |
+| `build_select()` | `SelectStatement` | Build SelectStatement |
+
+### ConditionBuilder
+
+```rust
+pub struct ConditionBuilder { ... }
+```
+
+Create via `condition(&str)` or `condition_dialect(&str, Dialect)`.
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `and(&str)` | `Self` | Add AND condition |
+| `and_expr(Option<Expr>)` | `Self` | Add AND with Expr |
+| `or(&str)` | `Self` | Add OR condition |
+| `or_expr(Option<Expr>)` | `Self` | Add OR with Expr |
+| `not()` | `Self` | Negate entire condition |
+| `build()` | `Option<Expr>` | Build final Expr |
+
+### SelectStatement Mutation Methods
+
+Methods added to `SelectStatement` for in-place modification:
+
+| Method | Signature | Description |
+| --- | --- | --- |
+| `add_select` | `(&mut self, expr: &str)` | Add column to SELECT |
+| `add_select_dialect` | `(&mut self, expr: &str, dialect: Dialect)` | Add with dialect |
+| `add_select_expr` | `(&mut self, expr: Expr, alias: Option<&str>)` | Add Expr to SELECT |
+| `add_where` | `(&mut self, condition: &str)` | AND to WHERE |
+| `add_where_dialect` | `(&mut self, condition: &str, dialect: Dialect)` | AND with dialect |
+| `add_where_expr` | `(&mut self, expr: Expr)` | AND Expr to WHERE |
+| `add_join` | `(&mut self, table: &str, on: &str, join_type: JoinType)` | Add JOIN |
+| `add_join_dialect` | `(&mut self, table: &str, on: &str, join_type: JoinType, dialect: Dialect)` | Add with dialect |
+| `add_join_subquery` | `(&mut self, query: Statement, alias: &str, on: &str, join_type: JoinType)` | JOIN subquery |
+| `as_subquery` | `(self, alias: &str) -> TableSource` | Wrap as subquery |
 
 ---
 
