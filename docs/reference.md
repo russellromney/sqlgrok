@@ -62,6 +62,7 @@ Complete type and function reference for **sqlglot-rust**.
 - [Optimizer](#optimizer)
   - [Scope Analysis](#scope-analysis)
   - [Annotate Types](#annotate-types)
+  - [Column Lineage](#column-lineage)
 
 ---
 
@@ -1689,4 +1690,114 @@ if let sqlglot_rust::Statement::Select(sel) = &stmt {
         }
     }
 }
+```
+
+### Column Lineage
+
+Column lineage tracking traces data flow from source columns through query
+transformations to output columns. Essential for data governance, impact
+analysis, and compliance.
+
+Accessed via `use sqlglot_rust::optimizer::lineage::{lineage, lineage_sql, LineageConfig, LineageError, LineageGraph, LineageNode}`
+or the crate-level re-exports `use sqlglot_rust::{lineage, lineage_sql, LineageConfig, LineageError, LineageGraph, LineageNode}`.
+
+| Function | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `lineage` | `(column: &str, stmt: &Statement, schema: &MappingSchema, config: &LineageConfig) -> LineageResult<LineageGraph>` | `LineageGraph` | Build lineage for a column in a parsed statement |
+| `lineage_sql` | `(column: &str, sql: &str, schema: &MappingSchema, config: &LineageConfig) -> LineageResult<LineageGraph>` | `LineageGraph` | Parse SQL and build lineage in one call |
+
+#### LineageConfig
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `dialect` | `Dialect` | `Ansi` | SQL dialect for parsing and identifier normalization |
+| `trim_qualifiers` | `bool` | `true` | Remove table qualifiers from output node names |
+| `sources` | `HashMap<String, String>` | `{}` | External source definitions (view name → SQL) |
+
+| Method | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `new` | `(dialect: Dialect) -> LineageConfig` | `LineageConfig` | Create config with specified dialect |
+| `with_sources` | `(self, sources: HashMap<String, String>) -> LineageConfig` | `LineageConfig` | Add external source definitions |
+| `with_trim_qualifiers` | `(self, trim: bool) -> LineageConfig` | `LineageConfig` | Set qualifier trimming |
+
+#### LineageNode
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name` | `String` | Column/expression name (e.g., "a", "SUM(b)") |
+| `expression` | `Option<Expr>` | The AST expression this node represents |
+| `source_name` | `Option<String>` | Source table/CTE/subquery name |
+| `source` | `Option<Expr>` | Reference to source AST |
+| `downstream` | `Vec<LineageNode>` | Child nodes (upstream lineage sources) |
+| `alias` | `Option<String>` | Alias if this is an aliased expression |
+| `depth` | `usize` | Depth in the lineage graph (0 = root) |
+
+| Method | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `new` | `(name: String) -> LineageNode` | `LineageNode` | Create a new lineage node |
+| `with_source` | `(self, source_name: String) -> LineageNode` | `LineageNode` | Set source name |
+| `with_expression` | `(self, expr: Expr) -> LineageNode` | `LineageNode` | Set expression |
+| `with_depth` | `(self, depth: usize) -> LineageNode` | `LineageNode` | Set depth |
+| `walk` | `(&self, visitor: &mut F)` | `()` | Pre-order traversal of all nodes |
+| `iter` | `(&self) -> LineageIterator` | `LineageIterator` | Iterate over all nodes |
+| `source_columns` | `(&self) -> Vec<&LineageNode>` | `Vec<&LineageNode>` | Get leaf nodes (source columns) |
+| `source_tables` | `(&self) -> Vec<String>` | `Vec<String>` | Get all source table names |
+| `to_dot` | `(&self) -> String` | `String` | Generate DOT format for Graphviz |
+| `to_mermaid` | `(&self) -> String` | `String` | Generate Mermaid diagram |
+
+#### LineageGraph
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `node` | `LineageNode` | Root node (the target output column) |
+| `sql` | `Option<String>` | Original SQL (if using `lineage_sql`) |
+| `dialect` | `Dialect` | Dialect used for analysis |
+
+| Method | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `new` | `(node: LineageNode, dialect: Dialect) -> LineageGraph` | `LineageGraph` | Create a new graph |
+| `source_tables` | `(&self) -> Vec<String>` | `Vec<String>` | Get all source table names |
+| `source_columns` | `(&self) -> Vec<&LineageNode>` | `Vec<&LineageNode>` | Get leaf nodes |
+| `to_dot` | `(&self) -> String` | `String` | Generate DOT format |
+| `to_mermaid` | `(&self) -> String` | `String` | Generate Mermaid diagram |
+
+#### LineageError
+
+| Variant | Description |
+| --- | --- |
+| `ColumnNotFound(String)` | Target column not found in output columns |
+| `AmbiguousColumn(String)` | Ambiguous column reference (multiple sources) |
+| `InvalidQuery(String)` | Query structure not supported for lineage |
+| `ParseError(String)` | SQL parsing failed |
+
+#### Example
+
+```rust
+use sqlglot_rust::{parse, Dialect};
+use sqlglot_rust::optimizer::lineage::{lineage_sql, LineageConfig};
+use sqlglot_rust::schema::MappingSchema;
+use sqlglot_rust::ast::DataType;
+
+let mut schema = MappingSchema::new(Dialect::Ansi);
+schema.add_table(&["orders"], vec![
+    ("id".to_string(), DataType::Int),
+    ("user_id".to_string(), DataType::Int),
+    ("amount".to_string(), DataType::Double),
+]).unwrap();
+
+let config = LineageConfig::new(Dialect::Ansi);
+let sql = "WITH totals AS (SELECT user_id, SUM(amount) AS total FROM orders GROUP BY user_id) \
+           SELECT user_id, total FROM totals";
+
+let graph = lineage_sql("total", sql, &schema, &config).unwrap();
+
+// Root node is the output column
+assert_eq!(graph.node.name, "total");
+
+// Get source tables
+let sources = graph.source_tables();
+assert!(sources.contains(&"orders".to_string()));
+
+// Generate visualization
+println!("{}", graph.to_mermaid());
 ```

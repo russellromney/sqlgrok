@@ -8,12 +8,14 @@
 //! - Predicate pushdown (WHERE → derived tables / JOIN ON)
 //! - Column qualification (qualify_columns — resolve `*`, add table qualifiers)
 //! - Type annotation (annotate_types — infer SQL types for all AST nodes)
+//! - Column lineage (lineage — trace data flow from source to output columns)
 //!
 //! Future optimizations:
 //! - Join reordering
 //! - Column pruning
 
 pub mod annotate_types;
+pub mod lineage;
 pub mod pushdown_predicates;
 pub mod qualify_columns;
 pub mod scope_analysis;
