@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use sqlglot_rust::executor::{execute, Table, Value};
+use sqlglot_rust::executor::{Table, Value, execute};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Test helpers
@@ -169,11 +169,7 @@ fn test_where_equals() {
 #[test]
 fn test_where_greater_than() {
     let tables = sample_tables();
-    let result = execute(
-        "SELECT name FROM employees WHERE salary > 90000",
-        &tables,
-    )
-    .unwrap();
+    let result = execute("SELECT name FROM employees WHERE salary > 90000", &tables).unwrap();
     assert_eq!(result.row_count(), 2); // Alice (100k), Bob (95k)
 }
 
@@ -214,11 +210,7 @@ fn test_where_between() {
 #[test]
 fn test_where_in_list() {
     let tables = sample_tables();
-    let result = execute(
-        "SELECT name FROM employees WHERE id IN (1, 3, 5)",
-        &tables,
-    )
-    .unwrap();
+    let result = execute("SELECT name FROM employees WHERE id IN (1, 3, 5)", &tables).unwrap();
     assert_eq!(result.row_count(), 3);
 }
 
@@ -248,11 +240,7 @@ fn test_where_is_not_null() {
 #[test]
 fn test_where_like() {
     let tables = sample_tables();
-    let result = execute(
-        "SELECT name FROM employees WHERE name LIKE 'A%'",
-        &tables,
-    )
-    .unwrap();
+    let result = execute("SELECT name FROM employees WHERE name LIKE 'A%'", &tables).unwrap();
     assert_eq!(result.row_count(), 1);
     assert_eq!(result.rows[0][0], Value::String("Alice".to_string()));
 }
@@ -332,11 +320,7 @@ fn test_full_join() {
             ],
         ),
     );
-    let result = execute(
-        "SELECT a.val, b.val FROM a FULL JOIN b ON a.id = b.id",
-        &t,
-    )
-    .unwrap();
+    let result = execute("SELECT a.val, b.val FROM a FULL JOIN b ON a.id = b.id", &t).unwrap();
     assert_eq!(result.row_count(), 3); // (a1,NULL), (a2,b2), (NULL,b3)
 }
 
@@ -405,15 +389,9 @@ fn test_group_by() {
     .unwrap();
     assert_eq!(result.row_count(), 3);
     // Engineering: 2, Marketing: 1, Sales: 2
-    assert_eq!(
-        result.rows[0][0],
-        Value::String("Engineering".to_string())
-    );
+    assert_eq!(result.rows[0][0], Value::String("Engineering".to_string()));
     assert_eq!(result.rows[0][1], Value::Int(2));
-    assert_eq!(
-        result.rows[1][0],
-        Value::String("Marketing".to_string())
-    );
+    assert_eq!(result.rows[1][0], Value::String("Marketing".to_string()));
     assert_eq!(result.rows[1][1], Value::Int(1));
     assert_eq!(result.rows[2][0], Value::String("Sales".to_string()));
     assert_eq!(result.rows[2][1], Value::Int(2));
@@ -429,10 +407,7 @@ fn test_group_by_sum() {
     .unwrap();
     assert_eq!(result.row_count(), 3);
     // Marketing: 90k, Sales: 155k, Engineering: 195k
-    assert_eq!(
-        result.rows[0][0],
-        Value::String("Marketing".to_string())
-    );
+    assert_eq!(result.rows[0][0], Value::String("Marketing".to_string()));
     assert_eq!(result.rows[0][1], Value::Float(90000.0));
 }
 
@@ -460,10 +435,7 @@ fn test_order_by_asc() {
     )
     .unwrap();
     assert_eq!(result.rows[0][0], Value::String("Dave".to_string())); // 75k
-    assert_eq!(
-        result.rows[4][0],
-        Value::String("Alice".to_string())
-    ); // 100k
+    assert_eq!(result.rows[4][0], Value::String("Alice".to_string())); // 100k
 }
 
 #[test]
@@ -474,10 +446,7 @@ fn test_order_by_desc() {
         &tables,
     )
     .unwrap();
-    assert_eq!(
-        result.rows[0][0],
-        Value::String("Alice".to_string())
-    ); // 100k
+    assert_eq!(result.rows[0][0], Value::String("Alice".to_string())); // 100k
     assert_eq!(result.rows[4][0], Value::String("Dave".to_string())); // 75k
 }
 
@@ -715,11 +684,7 @@ fn test_case_expression() {
 #[test]
 fn test_arithmetic_expressions() {
     let tables = sample_tables();
-    let result = execute(
-        "SELECT salary * 2 FROM employees WHERE id = 1",
-        &tables,
-    )
-    .unwrap();
+    let result = execute("SELECT salary * 2 FROM employees WHERE id = 1", &tables).unwrap();
     // 100000.0 * 2 = 200000.0
     assert_eq!(result.rows[0][0], Value::Float(200000.0));
 }
@@ -746,7 +711,11 @@ fn test_int_float_comparison() {
         "t".to_string(),
         Table::from_rows(
             vec!["a"],
-            vec![vec![Value::Int(1)], vec![Value::Int(2)], vec![Value::Int(3)]],
+            vec![
+                vec![Value::Int(1)],
+                vec![Value::Int(2)],
+                vec![Value::Int(3)],
+            ],
         ),
     );
     let result = execute("SELECT a FROM t WHERE a > 1.5", &tables).unwrap();
@@ -771,10 +740,7 @@ fn test_empty_table() {
 #[test]
 fn test_count_empty_table() {
     let mut tables = HashMap::new();
-    tables.insert(
-        "empty".to_string(),
-        Table::from_rows(vec!["a"], vec![]),
-    );
+    tables.insert("empty".to_string(), Table::from_rows(vec!["a"], vec![]));
     let result = execute("SELECT COUNT(*) FROM empty", &tables).unwrap();
     assert_eq!(result.rows[0][0], Value::Int(0));
 }
@@ -786,11 +752,7 @@ fn test_aggregate_with_null() {
         "t".to_string(),
         Table::from_rows(
             vec!["a"],
-            vec![
-                vec![Value::Int(1)],
-                vec![Value::Null],
-                vec![Value::Int(3)],
-            ],
+            vec![vec![Value::Int(1)], vec![Value::Null], vec![Value::Int(3)]],
         ),
     );
 

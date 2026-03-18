@@ -38,10 +38,7 @@ impl<'a> ExecutionContext<'a> {
             Statement::Expression(expr) => {
                 let row = RowContext::empty();
                 let val = eval::eval_expr(expr, &row, self.tables, &self.ctes)?;
-                Ok(ResultSet::new(
-                    vec!["result".to_string()],
-                    vec![vec![val]],
-                ))
+                Ok(ResultSet::new(vec!["result".to_string()], vec![vec![val]]))
             }
             _ => Err(SqlglotError::Internal(
                 "Only SELECT and SET OPERATION statements can be executed".to_string(),
@@ -201,11 +198,7 @@ impl<'a> ExecutionContext<'a> {
 
     // ── JOINs ────────────────────────────────────────────────────────
 
-    fn execute_join(
-        &self,
-        left_rows: &[RowContext],
-        join: &JoinClause,
-    ) -> Result<Vec<RowContext>> {
+    fn execute_join(&self, left_rows: &[RowContext], join: &JoinClause) -> Result<Vec<RowContext>> {
         let right_rows = self.resolve_table_source(&join.table)?;
 
         match join.join_type {
@@ -222,11 +215,7 @@ impl<'a> ExecutionContext<'a> {
         }
     }
 
-    fn cross_join(
-        &self,
-        left: &[RowContext],
-        right: &[RowContext],
-    ) -> Result<Vec<RowContext>> {
+    fn cross_join(&self, left: &[RowContext], right: &[RowContext]) -> Result<Vec<RowContext>> {
         let mut result = Vec::with_capacity(left.len() * right.len());
         for l in left {
             for r in right {
@@ -359,11 +348,7 @@ impl<'a> ExecutionContext<'a> {
         Ok(result)
     }
 
-    fn natural_join(
-        &self,
-        left: &[RowContext],
-        right: &[RowContext],
-    ) -> Result<Vec<RowContext>> {
+    fn natural_join(&self, left: &[RowContext], right: &[RowContext]) -> Result<Vec<RowContext>> {
         let left_cols: Vec<String> = left
             .first()
             .map(|l| {
@@ -445,11 +430,7 @@ impl<'a> ExecutionContext<'a> {
 
     // ── GROUP BY ─────────────────────────────────────────────────────
 
-    fn group_rows(
-        &self,
-        rows: &[RowContext],
-        group_by: &[Expr],
-    ) -> Result<Vec<Vec<RowContext>>> {
+    fn group_rows(&self, rows: &[RowContext], group_by: &[Expr]) -> Result<Vec<Vec<RowContext>>> {
         let mut groups: HashMap<Vec<Value>, Vec<RowContext>> = HashMap::new();
         let mut order = Vec::new();
 
@@ -535,12 +516,7 @@ impl<'a> ExecutionContext<'a> {
                         }
                     }
                     SelectItem::Expr { expr, .. } => {
-                        values.push(eval::eval_expr_group(
-                            expr,
-                            group,
-                            self.tables,
-                            &self.ctes,
-                        )?);
+                        values.push(eval::eval_expr_group(expr, group, self.tables, &self.ctes)?);
                     }
                 }
             }
@@ -579,11 +555,7 @@ impl<'a> ExecutionContext<'a> {
 
     // ── ORDER BY ─────────────────────────────────────────────────────
 
-    fn sort_result(
-        &self,
-        result: &mut ResultSet,
-        order_by: &[OrderByItem],
-    ) -> Result<()> {
+    fn sort_result(&self, result: &mut ResultSet, order_by: &[OrderByItem]) -> Result<()> {
         let row_contexts: Vec<RowContext> = result
             .rows
             .iter()
@@ -616,9 +588,7 @@ impl<'a> ExecutionContext<'a> {
             for (i, item) in order_by.iter().enumerate() {
                 let va = &sort_keys[a][i];
                 let vb = &sort_keys[b][i];
-                let cmp = va
-                    .partial_cmp(vb)
-                    .unwrap_or(std::cmp::Ordering::Equal);
+                let cmp = va.partial_cmp(vb).unwrap_or(std::cmp::Ordering::Equal);
                 let cmp = if item.ascending { cmp } else { cmp.reverse() };
                 if cmp != std::cmp::Ordering::Equal {
                     return cmp;
@@ -678,10 +648,7 @@ impl<'a> ExecutionContext<'a> {
 
     // ── Set operations ───────────────────────────────────────────────
 
-    fn execute_set_operation(
-        &mut self,
-        set_op: &SetOperationStatement,
-    ) -> Result<ResultSet> {
+    fn execute_set_operation(&mut self, set_op: &SetOperationStatement) -> Result<ResultSet> {
         let left_result = self.execute(&set_op.left)?;
         let right_result = self.execute(&set_op.right)?;
 
@@ -698,8 +665,7 @@ impl<'a> ExecutionContext<'a> {
                 all_rows
             }
             SetOperationType::Intersect => {
-                let right_set: HashSet<Vec<Value>> =
-                    right_result.rows.into_iter().collect();
+                let right_set: HashSet<Vec<Value>> = right_result.rows.into_iter().collect();
                 let mut result: Vec<Vec<Value>> = left_result
                     .rows
                     .into_iter()
@@ -712,8 +678,7 @@ impl<'a> ExecutionContext<'a> {
                 result
             }
             SetOperationType::Except => {
-                let right_set: HashSet<Vec<Value>> =
-                    right_result.rows.into_iter().collect();
+                let right_set: HashSet<Vec<Value>> = right_result.rows.into_iter().collect();
                 let mut result: Vec<Vec<Value>> = left_result
                     .rows
                     .into_iter()

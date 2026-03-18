@@ -107,6 +107,24 @@ use sqlglot_rust::ast::{find_columns, find_tables, SelectItem};
 
 ---
 
+## Installing the CLI
+
+The CLI is an optional binary. Install it with:
+
+```bash
+cargo install sqlglot-rust --features cli
+```
+
+This provides the `sqlglot` command with `transpile`, `parse`, and `format` subcommands.
+
+Verify the installation:
+
+```bash
+echo "SELECT 1" | sqlglot transpile --read mysql --write postgres
+```
+
+---
+
 ## Next Steps
 
 - **[Developer Guide](developer-guide.md)** — Parsing, generating, transpiling,

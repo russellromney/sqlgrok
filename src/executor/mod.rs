@@ -275,13 +275,7 @@ impl fmt::Display for ResultSet {
             let cells: Vec<String> = row
                 .iter()
                 .enumerate()
-                .map(|(i, v)| {
-                    format!(
-                        "{:width$}",
-                        v,
-                        width = widths.get(i).copied().unwrap_or(0)
-                    )
-                })
+                .map(|(i, v)| format!("{:width$}", v, width = widths.get(i).copied().unwrap_or(0)))
                 .collect();
             writeln!(f, "{}", cells.join(" | "))?;
         }
