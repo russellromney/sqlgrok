@@ -17,6 +17,20 @@ pub fn parse(sql: &str, _dialect: Dialect) -> Result<Statement> {
     parser.parse_statement()
 }
 
+/// Parse a SQL string into a [`Statement`] AST, preserving SQL comments.
+///
+/// Comments are attached to the nearest AST node and survive through
+/// transformation and generation.
+///
+/// # Errors
+///
+/// Returns a [`SqlglotError`](crate::errors::SqlglotError) if the input
+/// is not valid SQL.
+pub fn parse_with_comments(sql: &str, _dialect: Dialect) -> Result<Statement> {
+    let mut parser = Parser::new_with_comments(sql)?;
+    parser.parse_statement()
+}
+
 /// Parse a SQL string containing multiple statements separated by semicolons.
 ///
 /// # Errors
@@ -24,5 +38,15 @@ pub fn parse(sql: &str, _dialect: Dialect) -> Result<Statement> {
 /// Returns a [`SqlglotError`](crate::errors::SqlglotError) if parsing fails.
 pub fn parse_statements(sql: &str, _dialect: Dialect) -> Result<Vec<Statement>> {
     let mut parser = Parser::new(sql)?;
+    parser.parse_statements()
+}
+
+/// Parse multiple semicolon-separated SQL statements, preserving comments.
+///
+/// # Errors
+///
+/// Returns a [`SqlglotError`](crate::errors::SqlglotError) if parsing fails.
+pub fn parse_statements_with_comments(sql: &str, _dialect: Dialect) -> Result<Vec<Statement>> {
+    let mut parser = Parser::new_with_comments(sql)?;
     parser.parse_statements()
 }

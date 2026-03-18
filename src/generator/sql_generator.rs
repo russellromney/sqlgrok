@@ -125,23 +125,109 @@ impl Generator {
     // Statements
     // ══════════════════════════════════════════════════════════════
 
+    /// Emit comment strings, each on its own line.
+    /// MySQL hash comments (`#`) are converted to standard `--` comments
+    /// when the target dialect is not MySQL.
+    fn gen_comments(&mut self, comments: &[String]) {
+        for comment in comments {
+            let normalized = self.normalize_comment(comment);
+            self.write(&normalized);
+            self.newline_or_space();
+        }
+    }
+
+    /// Normalize a comment for the target dialect.
+    /// Converts MySQL `#` comments to `--` when targeting non-MySQL dialects.
+    fn normalize_comment(&self, comment: &str) -> String {
+        if comment.starts_with('#') {
+            let is_mysql_target = matches!(
+                self.dialect,
+                Some(
+                    Dialect::Mysql
+                        | Dialect::Doris
+                        | Dialect::SingleStore
+                        | Dialect::StarRocks
+                )
+            );
+            if !is_mysql_target {
+                return format!("--{}", &comment[1..]);
+            }
+        }
+        comment.to_string()
+    }
+
+    /// Emit a newline in pretty mode or a space in compact mode.
+    fn newline_or_space(&mut self) {
+        if self.pretty {
+            self.output.push('\n');
+            for _ in 0..self.indent {
+                self.output.push_str("  ");
+            }
+        } else {
+            self.output.push('\n');
+        }
+    }
+
     fn gen_statement(&mut self, statement: &Statement) {
+        // Emit leading comments for statements that carry them.
         match statement {
-            Statement::Select(s) => self.gen_select(s),
-            Statement::Insert(s) => self.gen_insert(s),
-            Statement::Update(s) => self.gen_update(s),
-            Statement::Delete(s) => self.gen_delete(s),
-            Statement::CreateTable(s) => self.gen_create_table(s),
-            Statement::DropTable(s) => self.gen_drop_table(s),
-            Statement::SetOperation(s) => self.gen_set_operation(s),
-            Statement::AlterTable(s) => self.gen_alter_table(s),
-            Statement::CreateView(s) => self.gen_create_view(s),
-            Statement::DropView(s) => self.gen_drop_view(s),
-            Statement::Truncate(s) => self.gen_truncate(s),
+            Statement::Select(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_select(s);
+            }
+            Statement::Insert(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_insert(s);
+            }
+            Statement::Update(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_update(s);
+            }
+            Statement::Delete(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_delete(s);
+            }
+            Statement::CreateTable(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_create_table(s);
+            }
+            Statement::DropTable(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_drop_table(s);
+            }
+            Statement::SetOperation(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_set_operation(s);
+            }
+            Statement::AlterTable(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_alter_table(s);
+            }
+            Statement::CreateView(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_create_view(s);
+            }
+            Statement::DropView(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_drop_view(s);
+            }
+            Statement::Truncate(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_truncate(s);
+            }
             Statement::Transaction(s) => self.gen_transaction(s),
-            Statement::Explain(s) => self.gen_explain(s),
-            Statement::Use(s) => self.gen_use(s),
-            Statement::Merge(s) => self.gen_merge(s),
+            Statement::Explain(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_explain(s);
+            }
+            Statement::Use(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_use(s);
+            }
+            Statement::Merge(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_merge(s);
+            }
             Statement::Expression(e) => self.gen_expr(e),
         }
     }
@@ -1848,6 +1934,14 @@ impl Generator {
                         self.write(")");
                     }
                 }
+            }
+            Expr::Commented { expr, comments } => {
+                for comment in comments {
+                    let normalized = self.normalize_comment(comment);
+                    self.write(&normalized);
+                    self.write(" ");
+                }
+                self.gen_expr(expr);
             }
         }
     }

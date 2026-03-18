@@ -681,6 +681,7 @@ mod tests {
     fn test_is_pushable_rejects_subquery() {
         let expr = Expr::Exists {
             subquery: Box::new(Statement::Select(SelectStatement {
+                comments: vec![],
                 ctes: vec![],
                 distinct: false,
                 top: None,

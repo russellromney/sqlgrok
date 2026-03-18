@@ -13,6 +13,7 @@ the AST, optimizing queries, and serializing results.
 - [Parsing SQL](#parsing-sql)
   - [Single Statement](#single-statement)
   - [Multiple Statements](#multiple-statements)
+  - [Parsing with Comments](#parsing-with-comments)
   - [What Can Be Parsed](#what-can-be-parsed)
 - [Generating SQL](#generating-sql)
   - [Compact Output](#compact-output)
@@ -20,6 +21,7 @@ the AST, optimizing queries, and serializing results.
 - [Transpiling Between Dialects](#transpiling-between-dialects)
   - [Single Statement Transpilation](#single-statement-transpilation)
   - [Multi-Statement Transpilation](#multi-statement-transpilation)
+  - [Transpiling with Comments](#transpiling-with-comments)
   - [Function Mapping Examples](#function-mapping-examples)
   - [Data Type Mapping Examples](#data-type-mapping-examples)
   - [Time Format Mapping](#time-format-mapping)
@@ -124,6 +126,52 @@ SELECT 1; SELECT 2; INSERT INTO t VALUES (1)
 ```
 
 **Output:** A `Vec` of three `Statement` values — two `Select` and one `Insert`.
+
+### Parsing with Comments
+
+By default, `parse` strips SQL comments. Use `parse_with_comments` or
+`parse_statements_with_comments` to preserve them on the AST.
+
+```rust
+use sqlglot_rust::{parse_with_comments, generate, Dialect, Statement};
+
+let stmt = parse_with_comments(
+    "-- fetch active users\nSELECT * FROM users WHERE active = TRUE",
+    Dialect::Ansi,
+).unwrap();
+
+// Comments are attached to the statement struct
+if let Statement::Select(ref s) = stmt {
+    assert_eq!(s.comments, vec!["-- fetch active users"]);
+}
+
+// generate() emits attached comments before the statement
+let sql = generate(&stmt, Dialect::Ansi);
+assert!(sql.starts_with("-- fetch active users"));
+```
+
+Supported comment syntaxes:
+
+| Syntax | Example | Recognized By |
+| --- | --- | --- |
+| Line comment | `-- text` | All dialects |
+| Block comment | `/* text */` | All dialects |
+| Hash comment | `# text` | MySQL, Doris, SingleStore, StarRocks |
+
+When transpiling to a dialect that does not support `#` comments, they are
+automatically converted to `--` style.
+
+For multiple statements:
+
+```rust
+use sqlglot_rust::{parse_statements_with_comments, Dialect};
+
+let stmts = parse_statements_with_comments(
+    "-- first\nSELECT 1; -- second\nSELECT 2",
+    Dialect::Ansi,
+).unwrap();
+assert_eq!(stmts.len(), 2);
+```
 
 ### What Can Be Parsed
 
@@ -292,6 +340,26 @@ SELECT SUBSTR(x, 1, 3); SELECT NOW()
 | ----- | --------------------------- |
 | `[0]` | `SELECT SUBSTRING(x, 1, 3)` |
 | `[1]` | `SELECT NOW()`              |
+
+### Transpiling with Comments
+
+Use `transpile_with_comments` to preserve comments through a dialect conversion
+in one call:
+
+```rust
+use sqlglot_rust::{transpile_with_comments, Dialect};
+
+let sql = transpile_with_comments(
+    "-- user lookup\nSELECT NOW()",
+    Dialect::Postgres,
+    Dialect::Tsql,
+).unwrap();
+assert!(sql.contains("-- user lookup"));
+assert!(sql.contains("GETDATE()"));
+```
+
+MySQL `#` comments are normalized to `--` when the target dialect does not
+support hash comments.
 
 ### Function Mapping Examples
 
