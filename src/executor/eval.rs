@@ -50,9 +50,7 @@ pub(crate) fn expr_contains_aggregate(expr: &Expr) -> bool {
             when_clauses,
             else_clause,
         } => {
-            operand
-                .as_ref()
-                .is_some_and(|o| expr_contains_aggregate(o))
+            operand.as_ref().is_some_and(|o| expr_contains_aggregate(o))
                 || when_clauses
                     .iter()
                     .any(|(w, t)| expr_contains_aggregate(w) || expr_contains_aggregate(t))
@@ -88,15 +86,13 @@ fn eval_expr_impl(
 
         Expr::Number(s) => {
             if s.contains('.') {
-                Ok(Value::Float(
-                    s.parse()
-                        .map_err(|_| SqlglotError::Internal(format!("Invalid number: {s}")))?,
-                ))
+                Ok(Value::Float(s.parse().map_err(|_| {
+                    SqlglotError::Internal(format!("Invalid number: {s}"))
+                })?))
             } else {
-                Ok(Value::Int(
-                    s.parse()
-                        .map_err(|_| SqlglotError::Internal(format!("Invalid integer: {s}")))?,
-                ))
+                Ok(Value::Int(s.parse().map_err(|_| {
+                    SqlglotError::Internal(format!("Invalid integer: {s}"))
+                })?))
             }
         }
 
@@ -201,10 +197,7 @@ fn eval_expr_impl(
         } => {
             let v = eval_expr_impl(expr, row, group, tables, ctes)?;
             let result = execute_subquery(subquery, tables, ctes)?;
-            let found = result
-                .rows
-                .iter()
-                .any(|r| !r.is_empty() && r[0] == v);
+            let found = result.rows.iter().any(|r| !r.is_empty() && r[0] == v);
             Ok(Value::Boolean(if *negated { !found } else { found }))
         }
 
@@ -305,11 +298,7 @@ fn eval_expr_impl(
         Expr::NullIf { expr, r#else } => {
             let v = eval_expr_impl(expr, row, group, tables, ctes)?;
             let e = eval_expr_impl(r#else, row, group, tables, ctes)?;
-            if v == e {
-                Ok(Value::Null)
-            } else {
-                Ok(v)
-            }
+            if v == e { Ok(Value::Null) } else { Ok(v) }
         }
 
         // ── Cast ─────────────────────────────────────────────────────
@@ -333,10 +322,7 @@ fn eval_expr_impl(
                 .unwrap_or(Value::Null))
         }
 
-        Expr::Exists {
-            subquery,
-            negated,
-        } => {
+        Expr::Exists { subquery, negated } => {
             let result = execute_subquery(subquery, tables, ctes)?;
             let exists = !result.rows.is_empty();
             Ok(Value::Boolean(if *negated { !exists } else { exists }))
@@ -912,11 +898,9 @@ fn eval_scalar_fn(
                 .map_or(String::new(), |v| v.to_string_val().trim().to_string()),
         )),
         "LTRIM" => Ok(Value::String(
-            evaluated
-                .first()
-                .map_or(String::new(), |v| {
-                    v.to_string_val().trim_start().to_string()
-                }),
+            evaluated.first().map_or(String::new(), |v| {
+                v.to_string_val().trim_start().to_string()
+            }),
         )),
         "RTRIM" => Ok(Value::String(
             evaluated
@@ -938,14 +922,14 @@ fn eval_scalar_fn(
                 .unwrap_or_default();
             let n = evaluated.get(1).and_then(|v| v.to_i64()).unwrap_or(0) as usize;
             let len = s.chars().count();
-            Ok(Value::String(s.chars().skip(len.saturating_sub(n)).collect()))
+            Ok(Value::String(
+                s.chars().skip(len.saturating_sub(n)).collect(),
+            ))
         }
         "REVERSE" => Ok(Value::String(
             evaluated
                 .first()
-                .map_or(String::new(), |v| {
-                    v.to_string_val().chars().rev().collect()
-                }),
+                .map_or(String::new(), |v| v.to_string_val().chars().rev().collect()),
         )),
         "LPAD" => {
             let s = evaluated
@@ -998,9 +982,7 @@ fn eval_scalar_fn(
             .first()
             .and_then(|v| v.to_f64())
             .map_or(Value::Null, |f| Value::Float(f.log2()))),
-        _ => Err(SqlglotError::Internal(format!(
-            "Unknown function: {name}"
-        ))),
+        _ => Err(SqlglotError::Internal(format!("Unknown function: {name}"))),
     }
 }
 
@@ -1019,8 +1001,12 @@ fn eval_typed_fn(
     let ev = |e: &Expr| eval_expr_impl(e, row, group, tables, ctes);
 
     match func {
-        TypedFunction::Upper { expr } => Ok(Value::String(ev(expr)?.to_string_val().to_uppercase())),
-        TypedFunction::Lower { expr } => Ok(Value::String(ev(expr)?.to_string_val().to_lowercase())),
+        TypedFunction::Upper { expr } => {
+            Ok(Value::String(ev(expr)?.to_string_val().to_uppercase()))
+        }
+        TypedFunction::Lower { expr } => {
+            Ok(Value::String(ev(expr)?.to_string_val().to_lowercase()))
+        }
         TypedFunction::Length { expr } => Ok(Value::Int(ev(expr)?.to_string_val().len() as i64)),
         TypedFunction::Reverse { expr } => Ok(Value::String(
             ev(expr)?.to_string_val().chars().rev().collect(),
@@ -1031,7 +1017,11 @@ fn eval_typed_fn(
             let t = ev(to)?.to_string_val();
             Ok(Value::String(s.replace(&f, &t)))
         }
-        TypedFunction::Substring { expr, start, length } => {
+        TypedFunction::Substring {
+            expr,
+            start,
+            length,
+        } => {
             let s = ev(expr)?.to_string_val();
             let st = ev(start)?.to_i64().unwrap_or(1) as usize;
             let start_idx = st.saturating_sub(1);
@@ -1054,20 +1044,24 @@ fn eval_typed_fn(
             let s = ev(expr)?.to_string_val();
             let count = ev(n)?.to_i64().unwrap_or(0) as usize;
             let len = s.chars().count();
-            Ok(Value::String(s.chars().skip(len.saturating_sub(count)).collect()))
+            Ok(Value::String(
+                s.chars().skip(len.saturating_sub(count)).collect(),
+            ))
         }
         TypedFunction::Abs { expr } => match ev(expr)? {
             Value::Int(i) => Ok(Value::Int(i.abs())),
             Value::Float(f) => Ok(Value::Float(f.abs())),
             Value::Null => Ok(Value::Null),
-            v => Err(SqlglotError::Internal(format!("ABS requires numeric: {v:?}"))),
+            v => Err(SqlglotError::Internal(format!(
+                "ABS requires numeric: {v:?}"
+            ))),
         },
-        TypedFunction::Ceil { expr } => {
-            Ok(ev(expr)?.to_f64().map_or(Value::Null, |f| Value::Int(f.ceil() as i64)))
-        }
-        TypedFunction::Floor { expr } => {
-            Ok(ev(expr)?.to_f64().map_or(Value::Null, |f| Value::Int(f.floor() as i64)))
-        }
+        TypedFunction::Ceil { expr } => Ok(ev(expr)?
+            .to_f64()
+            .map_or(Value::Null, |f| Value::Int(f.ceil() as i64))),
+        TypedFunction::Floor { expr } => Ok(ev(expr)?
+            .to_f64()
+            .map_or(Value::Null, |f| Value::Int(f.floor() as i64))),
         TypedFunction::Round { expr, decimals } => {
             let d = decimals
                 .as_ref()
@@ -1083,9 +1077,9 @@ fn eval_typed_fn(
                 None => Ok(Value::Null),
             }
         }
-        TypedFunction::Sqrt { expr } => {
-            Ok(ev(expr)?.to_f64().map_or(Value::Null, |f| Value::Float(f.sqrt())))
-        }
+        TypedFunction::Sqrt { expr } => Ok(ev(expr)?
+            .to_f64()
+            .map_or(Value::Null, |f| Value::Float(f.sqrt()))),
         TypedFunction::Pow { base, exponent } => {
             let b = ev(base)?.to_f64();
             let e = ev(exponent)?.to_f64();
@@ -1094,9 +1088,9 @@ fn eval_typed_fn(
                 _ => Ok(Value::Null),
             }
         }
-        TypedFunction::Ln { expr } => {
-            Ok(ev(expr)?.to_f64().map_or(Value::Null, |f| Value::Float(f.ln())))
-        }
+        TypedFunction::Ln { expr } => Ok(ev(expr)?
+            .to_f64()
+            .map_or(Value::Null, |f| Value::Float(f.ln()))),
         TypedFunction::Log { expr, base } => {
             let val = ev(expr)?.to_f64();
             let b = base
@@ -1233,16 +1227,18 @@ fn cast_value(val: &Value, data_type: &DataType) -> Result<Value> {
         return Ok(Value::Null);
     }
     match data_type {
-        DataType::Int | DataType::BigInt | DataType::SmallInt | DataType::TinyInt => {
-            val.to_i64()
-                .map(Value::Int)
-                .ok_or_else(|| SqlglotError::Internal(format!("Cannot cast {val:?} to integer")))
-        }
-        DataType::Float | DataType::Double | DataType::Real | DataType::Decimal { .. } | DataType::Numeric { .. } => {
-            val.to_f64()
-                .map(Value::Float)
-                .ok_or_else(|| SqlglotError::Internal(format!("Cannot cast {val:?} to float")))
-        }
+        DataType::Int | DataType::BigInt | DataType::SmallInt | DataType::TinyInt => val
+            .to_i64()
+            .map(Value::Int)
+            .ok_or_else(|| SqlglotError::Internal(format!("Cannot cast {val:?} to integer"))),
+        DataType::Float
+        | DataType::Double
+        | DataType::Real
+        | DataType::Decimal { .. }
+        | DataType::Numeric { .. } => val
+            .to_f64()
+            .map(Value::Float)
+            .ok_or_else(|| SqlglotError::Internal(format!("Cannot cast {val:?} to float"))),
         DataType::Varchar(_) | DataType::Char(_) | DataType::Text | DataType::String => {
             Ok(Value::String(val.to_string_val()))
         }

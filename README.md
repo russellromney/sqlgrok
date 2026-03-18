@@ -7,6 +7,7 @@ A SQL parser, optimizer, and transpiler library written in Rust, inspired by Pyt
 - **Parse** SQL strings into a structured AST
 - **Generate** SQL from AST nodes
 - **Transpile** between 30 SQL dialects
+- **CLI** — command-line interface for transpiling, parsing, and formatting SQL
 - **Expression Builder API** — fluent builders for programmatic SQL construction
 - **Typed function expressions** — 72+ functions across 8 categories with dialect-specific generation
 - **LIMIT / TOP / FETCH FIRST** transpilation across dialects
@@ -226,6 +227,61 @@ fn main() {
 - Set operations (UNION, INTERSECT, EXCEPT with ALL)
 - Parenthesized sub-expressions and subqueries
 
+## CLI
+
+The CLI is built with the `cli` feature flag and provides three commands:
+
+### Install
+
+```bash
+cargo install sqlglot-rust --features cli
+```
+
+### Transpile
+
+Transpile SQL between dialects:
+
+```bash
+# From stdin
+echo "SELECT CAST(x AS INT) FROM t" | sqlglot transpile --read mysql --write postgres
+
+# With pretty-printing
+echo "SELECT a, b FROM t WHERE x > 1" | sqlglot transpile --pretty
+
+# With optimizer
+echo "SELECT * FROM t WHERE 1 = 1 AND a > 5" | sqlglot transpile --optimize
+
+# From file to file
+sqlglot transpile --read mysql --write postgres --input query.sql --output result.sql
+```
+
+### Parse
+
+Parse SQL and output the AST as JSON:
+
+```bash
+echo "SELECT a FROM t" | sqlglot parse --pretty
+```
+
+### Format
+
+Pretty-print SQL:
+
+```bash
+echo "select a,b from t where x>1" | sqlglot format
+```
+
+### Options
+
+| Option | Description |
+| --- | --- |
+| `--read <dialect>` | Source dialect (default: ansi) |
+| `--write <dialect>` | Target dialect (default: ansi) |
+| `--pretty` | Pretty-print output |
+| `--input <file>` | Read from file instead of stdin |
+| `--output <file>` | Write to file instead of stdout |
+| `--optimize` | Run optimizer before generation (transpile only) |
+
 ## Documentation
 
 - **[Installation](docs/installation.md)** — Dependency setup and verification
@@ -237,6 +293,7 @@ fn main() {
 ```text
 src/
 ├── ast/          # AST node definitions (~40 expression types, 15 statement types)
+├── bin/          # CLI binary (sqlglot) — feature-gated behind "cli"
 ├── tokens/       # Token types (~200+ variants) and tokenizer
 ├── parser/       # Recursive-descent SQL parser
 ├── generator/    # SQL code generator
@@ -255,8 +312,14 @@ src/
 # Build
 cargo build
 
+# Build with CLI
+cargo build --features cli
+
 # Run tests (500+ tests)
 cargo test
+
+# Run CLI tests
+cargo test --features cli --test test_cli
 
 # Run benchmarks
 cargo bench
