@@ -46,7 +46,7 @@ jobs:
     name: build-${{ matrix.artifact }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -175,21 +175,21 @@ jobs:
       # ── Upload all artefacts ────────────────────────────────────────
       - name: Upload tarball
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: tarball-${{ matrix.artifact }}
           path: ${{ steps.tarball.outputs.path }}
 
       - name: Upload deb
         if: always() && matrix.pkg_deb && steps.deb.outputs.path != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: deb-${{ matrix.artifact }}
           path: ${{ steps.deb.outputs.path }}
 
       - name: Upload rpm
         if: always() && matrix.pkg_rpm && steps.rpm.outputs.path != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: rpm-${{ matrix.artifact }}
           path: ${{ steps.rpm.outputs.path }}
@@ -202,10 +202,10 @@ jobs:
     runs-on: ubuntu-latest
     name: github-release
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download all artefacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: artefacts/
           merge-multiple: true
@@ -214,7 +214,7 @@ jobs:
         run: find artefacts/ -type f | sort
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
           files: |
@@ -230,10 +230,10 @@ jobs:
     runs-on: ubuntu-latest
     name: homebrew-formula
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download all tarballs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: artefacts/
           pattern: tarball-*
@@ -272,7 +272,7 @@ jobs:
           cat sqlglot.rb
 
       - name: Upload formula artefact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: homebrew-formula
           path: sqlglot.rb

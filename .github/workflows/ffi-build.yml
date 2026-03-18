@@ -34,7 +34,7 @@ jobs:
     name: ${{ matrix.artifact }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -97,7 +97,7 @@ jobs:
           tar czf "$STAGING.tar.gz" "$STAGING"
 
       - name: Upload artefact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sqlglot-ffi-${{ matrix.artifact }}
           path: sqlglot-ffi-${{ matrix.artifact }}.tar.gz
@@ -108,10 +108,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download linux-amd64 artefact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: sqlglot-ffi-linux-amd64
 
