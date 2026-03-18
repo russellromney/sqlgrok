@@ -53,6 +53,11 @@ Complete type and function reference for **sqlglot-rust**.
   - [Data Type Mapping Matrix](#data-type-mapping-matrix)
   - [Identifier Quote Styles by Dialect](#identifier-quote-styles-by-dialect)
   - [Time Format Mapping](#time-format-mapping)
+- [Custom Dialect Plugins](#custom-dialect-plugins)
+  - [DialectPlugin Trait](#dialectplugin-trait)
+  - [DialectRegistry](#dialectregistry)
+  - [DialectRef Enum](#dialectref-enum)
+  - [Plugin-Aware Functions](#plugin-aware-functions)
 - [Error Types](#error-types)
 - [Free Functions (ast module)](#free-functions-ast-module)
 - [Schema System](#schema-system)
@@ -1372,6 +1377,98 @@ T-SQL's `CONVERT` function uses numeric style codes instead of format patterns. 
 | 103 | dd/mm/yyyy (British) | 17/03/2026 |
 | 120 | yyyy-mm-dd hh:mi:ss (ODBC) | 2026-03-17 22:15:30 |
 | 126 | yyyy-mm-ddThh:mi:ss.mmm (ISO8601) | 2026-03-17T22:15:30.123 |
+
+---
+
+## Custom Dialect Plugins
+
+The plugin system (`sqlglot_rust::dialects::plugin`) provides extensibility for
+custom SQL dialects without modifying the library source.
+
+### DialectPlugin Trait
+
+```rust
+pub trait DialectPlugin: Send + Sync {
+    fn name(&self) -> &str;
+    fn quote_style(&self) -> Option<QuoteStyle>;
+    fn supports_ilike(&self) -> Option<bool>;
+    fn map_function_name(&self, name: &str) -> Option<String>;
+    fn map_data_type(&self, data_type: &DataType) -> Option<DataType>;
+    fn transform_expr(&self, expr: &Expr) -> Option<Expr>;
+    fn transform_statement(&self, statement: &Statement) -> Option<Statement>;
+}
+```
+
+All methods except `name()` have default implementations that return `None`
+(fall through to built-in logic). Implementations must be `Send + Sync`.
+
+| Method | Return | Meaning of `None` |
+| --- | --- | --- |
+| `name()` | `&str` | *(required)* |
+| `quote_style()` | `Option<QuoteStyle>` | Use double-quote |
+| `supports_ilike()` | `Option<bool>` | Assume false |
+| `map_function_name(name)` | `Option<String>` | Keep original name |
+| `map_data_type(dt)` | `Option<DataType>` | Keep original type |
+| `transform_expr(expr)` | `Option<Expr>` | Use default transform |
+| `transform_statement(stmt)` | `Option<Statement>` | Use default transform |
+
+### DialectRegistry
+
+Thread-safe global singleton for custom dialect registration.
+
+```rust
+pub struct DialectRegistry { /* ... */ }
+
+impl DialectRegistry {
+    pub fn global() -> &'static DialectRegistry;
+    pub fn register<P: DialectPlugin + 'static>(&self, plugin: P);
+    pub fn get(&self, name: &str) -> Option<Arc<dyn DialectPlugin>>;
+    pub fn unregister(&self, name: &str) -> bool;
+    pub fn registered_names(&self) -> Vec<String>;
+}
+```
+
+| Method | Description |
+| --- | --- |
+| `global()` | Returns the singleton registry |
+| `register(plugin)` | Registers a plugin (replaces if name exists) |
+| `get(name)` | Case-insensitive lookup |
+| `unregister(name)` | Remove by name; returns `true` if found |
+| `registered_names()` | All registered custom dialect names |
+
+### DialectRef Enum
+
+Unified handle for built-in and custom dialects:
+
+```rust
+pub enum DialectRef {
+    BuiltIn(Dialect),
+    Custom(String),
+}
+```
+
+| Constructor | Description |
+| --- | --- |
+| `DialectRef::from(Dialect::Postgres)` | Built-in dialect |
+| `DialectRef::custom("acme")` | Custom dialect (case-insensitive) |
+
+| Method | Signature | Description |
+| --- | --- | --- |
+| `as_builtin()` | `-> Option<Dialect>` | Extract built-in variant |
+| `as_plugin()` | `-> Option<Arc<dyn DialectPlugin>>` | Look up custom plugin |
+| `quote_style()` | `-> QuoteStyle` | Resolved quote style |
+| `supports_ilike()` | `-> bool` | Resolved ILIKE support |
+| `map_function_name(name)` | `-> String` | Resolved function name |
+| `map_data_type(dt)` | `-> DataType` | Resolved data type |
+
+### Plugin-Aware Functions
+
+| Function | Signature | Description |
+| --- | --- | --- |
+| `register_dialect(plugin)` | `<P: DialectPlugin + 'static>(P)` | Convenience registration |
+| `resolve_dialect(name)` | `(&str) -> Option<DialectRef>` | Resolve name to built-in or custom |
+| `transpile_ext(sql, read, write)` | `(&str, &DialectRef, &DialectRef) -> Result<String>` | Plugin-aware transpile |
+| `transpile_statements_ext(sql, read, write)` | `(&str, &DialectRef, &DialectRef) -> Result<Vec<String>>` | Plugin-aware multi-statement transpile |
 
 ---
 

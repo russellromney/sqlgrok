@@ -26,6 +26,13 @@ the AST, optimizing queries, and serializing results.
   - [ILIKE Rewriting](#ilike-rewriting)
   - [Identifier Quoting](#identifier-quoting)
   - [LIMIT / TOP / FETCH FIRST](#limit--top--fetch-first)
+- [Custom Dialect Plugins](#custom-dialect-plugins)
+  - [Implementing a Custom Dialect](#implementing-a-custom-dialect)
+  - [Registering and Using a Custom Dialect](#registering-and-using-a-custom-dialect)
+  - [DialectRef](#dialectref)
+  - [resolve_dialect](#resolve_dialect)
+  - [Extension Points](#extension-points)
+  - [Registry API](#registry-api)
 - [Working with the AST](#working-with-the-ast)
   - [Matching Statement Types](#matching-statement-types)
   - [Inspecting a SELECT](#inspecting-a-select)
@@ -470,6 +477,114 @@ Row-limit syntax is translated between dialect conventions:
 | `SELECT * FROM t LIMIT 10` | ANSI | T-SQL | `SELECT TOP 10 * FROM t` |
 | `SELECT * FROM t LIMIT 10` | ANSI | Oracle | `SELECT * FROM t FETCH FIRST 10 ROWS ONLY` |
 | `SELECT TOP 10 * FROM t` | T-SQL | ANSI | `SELECT * FROM t LIMIT 10` |
+
+---
+
+## Custom Dialect Plugins
+
+The plugin system allows external code to define and register custom SQL
+dialects without modifying the library source. This is useful for proprietary
+SQL extensions, internal database engines, or experimental dialects.
+
+### Implementing a Custom Dialect
+
+Implement the `DialectPlugin` trait — only override the methods you need:
+
+```rust
+use sqlglot_rust::DialectPlugin;
+use sqlglot_rust::ast::{DataType, Expr, QuoteStyle};
+
+struct AcmeDialect;
+
+impl DialectPlugin for AcmeDialect {
+    fn name(&self) -> &str { "acme" }
+
+    fn quote_style(&self) -> Option<QuoteStyle> {
+        Some(QuoteStyle::Backtick)
+    }
+
+    fn supports_ilike(&self) -> Option<bool> {
+        Some(true)
+    }
+
+    fn map_function_name(&self, name: &str) -> Option<String> {
+        match name.to_uppercase().as_str() {
+            "NOW" => Some("ACME_TIMESTAMP".to_string()),
+            "LENGTH" => Some("ACME_LEN".to_string()),
+            _ => None, // fall through to default
+        }
+    }
+
+    fn map_data_type(&self, dt: &DataType) -> Option<DataType> {
+        match dt {
+            DataType::Text => Some(DataType::Varchar(Some(65535))),
+            _ => None,
+        }
+    }
+}
+```
+
+### Registering and Using a Custom Dialect
+
+```rust
+use sqlglot_rust::{register_dialect, DialectRef, Dialect};
+use sqlglot_rust::dialects::plugin::transpile_ext;
+
+// Register the custom dialect globally (once)
+register_dialect(AcmeDialect);
+
+// Use it in the transpile pipeline via DialectRef
+let result = transpile_ext(
+    "SELECT NOW(), LENGTH(name) FROM users",
+    &DialectRef::from(Dialect::Ansi),   // read as ANSI
+    &DialectRef::custom("acme"),        // write as custom "acme"
+).unwrap();
+assert_eq!(result, "SELECT ACME_TIMESTAMP(), ACME_LEN(name) FROM users");
+```
+
+### DialectRef
+
+`DialectRef` is a unified handle for both built-in and custom dialects:
+
+| Variant | Description |
+| --- | --- |
+| `DialectRef::BuiltIn(Dialect::Postgres)` | References a built-in dialect |
+| `DialectRef::custom("acme")` | References a registered custom dialect |
+
+You can convert any `Dialect` into a `DialectRef` with `DialectRef::from(dialect)`.
+
+### resolve_dialect
+
+Look up a dialect by name, checking built-in dialects first, then the custom registry:
+
+```rust
+use sqlglot_rust::{resolve_dialect, DialectRef, Dialect};
+
+assert_eq!(resolve_dialect("postgres"), Some(DialectRef::from(Dialect::Postgres)));
+assert_eq!(resolve_dialect("acme"), Some(DialectRef::custom("acme")));
+assert_eq!(resolve_dialect("unknown"), None);
+```
+
+### Extension Points
+
+| Method | Purpose | Default |
+| --- | --- | --- |
+| `name()` | Canonical dialect name (required) | — |
+| `quote_style()` | Identifier quoting convention | `None` (double-quote) |
+| `supports_ilike()` | Native ILIKE support | `None` (false) |
+| `map_function_name(name)` | Rename functions | `None` (keep original) |
+| `map_data_type(dt)` | Remap data types | `None` (keep original) |
+| `transform_expr(expr)` | Custom expression transform | `None` (fallthrough) |
+| `transform_statement(stmt)` | Custom statement transform | `None` (fallthrough) |
+
+### Registry API
+
+| Function | Description |
+| --- | --- |
+| `register_dialect(plugin)` | Register a plugin globally |
+| `DialectRegistry::global().get(name)` | Look up a plugin by name |
+| `DialectRegistry::global().unregister(name)` | Remove a plugin |
+| `DialectRegistry::global().registered_names()` | List all registered custom dialect names |
 
 ---
 
