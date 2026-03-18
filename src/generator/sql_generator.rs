@@ -141,6 +141,7 @@ impl Generator {
             Statement::Transaction(s) => self.gen_transaction(s),
             Statement::Explain(s) => self.gen_explain(s),
             Statement::Use(s) => self.gen_use(s),
+            Statement::Merge(s) => self.gen_merge(s),
             Statement::Expression(e) => self.gen_expr(e),
         }
     }
@@ -784,6 +785,121 @@ impl Generator {
                     self.write(", ");
                 }
                 self.gen_select_item(item);
+            }
+        }
+    }
+
+    // ── CREATE TABLE ────────────────────────────────────────────
+
+    // ── MERGE ───────────────────────────────────────────────────
+
+    fn gen_merge(&mut self, merge: &MergeStatement) {
+        self.write_keyword("MERGE INTO ");
+        self.gen_table_ref(&merge.target);
+
+        self.sep();
+        self.write_keyword("USING ");
+        self.gen_table_source(&merge.source);
+
+        self.sep();
+        self.write_keyword("ON");
+        if self.pretty {
+            self.indent_up();
+            self.newline();
+            self.gen_expr(&merge.on);
+            self.indent_down();
+        } else {
+            self.write(" ");
+            self.gen_expr(&merge.on);
+        }
+
+        for clause in &merge.clauses {
+            self.sep();
+            self.gen_merge_clause(clause);
+        }
+
+        if !merge.output.is_empty() {
+            self.sep();
+            self.write_keyword("OUTPUT ");
+            for (i, item) in merge.output.iter().enumerate() {
+                if i > 0 {
+                    self.write(", ");
+                }
+                self.gen_select_item(item);
+            }
+        }
+    }
+
+    fn gen_merge_clause(&mut self, clause: &MergeClause) {
+        self.write_keyword("WHEN ");
+        match &clause.kind {
+            MergeClauseKind::Matched => self.write_keyword("MATCHED"),
+            MergeClauseKind::NotMatched => self.write_keyword("NOT MATCHED"),
+            MergeClauseKind::NotMatchedBySource => {
+                self.write_keyword("NOT MATCHED BY SOURCE")
+            }
+        }
+
+        if let Some(cond) = &clause.condition {
+            self.write_keyword(" AND ");
+            self.gen_expr(cond);
+        }
+
+        self.write_keyword(" THEN");
+
+        match &clause.action {
+            MergeAction::Update(assignments) => {
+                self.sep();
+                self.write_keyword("UPDATE SET");
+                if self.pretty {
+                    self.indent_up();
+                    for (i, (col, val)) in assignments.iter().enumerate() {
+                        self.newline();
+                        self.write(col);
+                        self.write(" = ");
+                        self.gen_expr(val);
+                        if i < assignments.len() - 1 {
+                            self.write(",");
+                        }
+                    }
+                    self.indent_down();
+                } else {
+                    self.write(" ");
+                    for (i, (col, val)) in assignments.iter().enumerate() {
+                        if i > 0 {
+                            self.write(", ");
+                        }
+                        self.write(col);
+                        self.write(" = ");
+                        self.gen_expr(val);
+                    }
+                }
+            }
+            MergeAction::Insert { columns, values } => {
+                self.sep();
+                self.write_keyword("INSERT");
+                if !columns.is_empty() {
+                    self.write(" (");
+                    self.write(&columns.join(", "));
+                    self.write(")");
+                }
+                self.write_keyword(" VALUES");
+                self.write(" (");
+                for (i, val) in values.iter().enumerate() {
+                    if i > 0 {
+                        self.write(", ");
+                    }
+                    self.gen_expr(val);
+                }
+                self.write(")");
+            }
+            MergeAction::InsertRow => {
+                self.sep();
+                self.write_keyword("INSERT ROW");
+            }
+            MergeAction::Delete => {
+                self.sep();
+                self.write_keyword("DELETE");
             }
         }
     }

@@ -39,7 +39,7 @@ pub mod parser;
 pub mod schema;
 pub mod tokens;
 
-pub use ast::{Expr, QuoteStyle, Statement};
+pub use ast::{Expr, MergeClauseKind, QuoteStyle, Statement};
 pub use dialects::Dialect;
 pub use errors::SqlglotError;
 pub use generator::{generate, generate_pretty};
