@@ -634,7 +634,8 @@ fn test_roundtrip_merge_not_matched_by_source() {
 #[test]
 fn test_roundtrip_merge_insert_row() {
     // BigQuery extension: INSERT ROW
-    let sql = "MERGE INTO target USING source ON target.id = source.id WHEN NOT MATCHED THEN INSERT ROW";
+    let sql =
+        "MERGE INTO target USING source ON target.id = source.id WHEN NOT MATCHED THEN INSERT ROW";
     let ast = parse(sql, Dialect::Ansi).unwrap();
     let output = generate(&ast, Dialect::Ansi);
     assert_eq!(output, sql);
@@ -670,10 +671,7 @@ fn test_merge_ast_structure() {
             assert_eq!(m.target.name, "dst");
             assert_eq!(m.clauses.len(), 2);
             assert_eq!(m.clauses[0].kind, sqlglot_rust::MergeClauseKind::Matched);
-            assert_eq!(
-                m.clauses[1].kind,
-                sqlglot_rust::MergeClauseKind::NotMatched
-            );
+            assert_eq!(m.clauses[1].kind, sqlglot_rust::MergeClauseKind::NotMatched);
         }
         other => panic!("Expected Merge statement, got {:?}", other),
     }

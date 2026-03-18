@@ -13,6 +13,7 @@
 //! - Window functions, CAST, EXTRACT, EXISTS
 //! - Pretty-print SQL output
 //! - AST traversal (walk, find, transform)
+//! - AST diff for semantic SQL comparison
 //!
 //! ## Quick Start
 //!
@@ -33,6 +34,7 @@
 pub mod ast;
 pub mod builder;
 pub mod dialects;
+pub mod diff;
 pub mod errors;
 pub mod generator;
 pub mod optimizer;
@@ -42,28 +44,72 @@ pub mod tokens;
 
 pub use ast::{Expr, MergeClauseKind, QuoteStyle, Statement};
 pub use builder::{
-    // Expression factory functions
-    column, table, table_full, literal, string_literal, boolean, null,
-    // Operators and expressions
-    cast, and_all, or_all, not, func, func_distinct,
-    // Comparison helpers
-    eq, neq, lt, lte, gt, gte, is_null, is_not_null, between, in_list, not_in_list, in_subquery, like,
+    ConditionBuilder,
+    SelectBuilder,
     // Arithmetic helpers
-    add, sub, mul, div,
-    // Other helpers
-    star, qualified_star, subquery, exists, alias,
-    // Parse helpers
-    parse_expr, parse_expr_dialect, parse_condition, parse_condition_dialect,
+    add,
+    alias,
+    and_all,
+    between,
+    boolean,
+    // Operators and expressions
+    cast,
+    // Expression factory functions
+    column,
     // Builders
-    condition, condition_dialect, select, select_all, select_distinct,
-    ConditionBuilder, SelectBuilder,
+    condition,
+    condition_dialect,
+    div,
+    // Comparison helpers
+    eq,
+    exists,
+    func,
+    func_distinct,
+    gt,
+    gte,
+    in_list,
+    in_subquery,
+    is_not_null,
+    is_null,
+    like,
+    literal,
+    lt,
+    lte,
+    mul,
+    neq,
+    not,
+    not_in_list,
+    null,
+    or_all,
+    parse_condition,
+    parse_condition_dialect,
+    // Parse helpers
+    parse_expr,
+    parse_expr_dialect,
+    qualified_star,
+    select,
+    select_all,
+    select_distinct,
+    // Other helpers
+    star,
+    string_literal,
+    sub,
+    subquery,
+    table,
+    table_full,
 };
 pub use dialects::Dialect;
-pub use dialects::time::{TimeFormatStyle, format_time, format_time_dialect, format_time_with_warnings, FormatConversionResult, TsqlStyleCode};
+pub use dialects::time::{
+    FormatConversionResult, TimeFormatStyle, TsqlStyleCode, format_time, format_time_dialect,
+    format_time_with_warnings,
+};
+pub use diff::{AstNode, ChangeAction, diff as diff_ast, diff_sql};
 pub use errors::SqlglotError;
 pub use generator::{generate, generate_pretty};
 pub use optimizer::annotate_types::{TypeAnnotations, annotate_types};
-pub use optimizer::lineage::{lineage, lineage_sql, LineageConfig, LineageError, LineageGraph, LineageNode};
+pub use optimizer::lineage::{
+    LineageConfig, LineageError, LineageGraph, LineageNode, lineage, lineage_sql,
+};
 pub use optimizer::pushdown_predicates::pushdown_predicates;
 pub use optimizer::scope_analysis::{Scope, ScopeType, build_scope, find_all_in_scope};
 pub use parser::parse;

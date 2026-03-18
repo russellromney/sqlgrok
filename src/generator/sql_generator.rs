@@ -835,9 +835,7 @@ impl Generator {
         match &clause.kind {
             MergeClauseKind::Matched => self.write_keyword("MATCHED"),
             MergeClauseKind::NotMatched => self.write_keyword("NOT MATCHED"),
-            MergeClauseKind::NotMatchedBySource => {
-                self.write_keyword("NOT MATCHED BY SOURCE")
-            }
+            MergeClauseKind::NotMatchedBySource => self.write_keyword("NOT MATCHED BY SOURCE"),
         }
 
         if let Some(cond) = &clause.condition {

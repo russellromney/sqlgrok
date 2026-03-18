@@ -534,7 +534,7 @@ fn transform_format_expr(expr: Expr, target: Dialect) -> Expr {
         Expr::StringLiteral(s) => {
             let detected_source = detect_format_style(s);
             let target_style = time::TimeFormatStyle::for_dialect(target);
-            
+
             // Only convert if styles differ
             if detected_source != target_style {
                 let converted = time::format_time(s, detected_source, target_style);

@@ -731,32 +731,24 @@ fn test_pushdown_blocked_by_distinct() {
 
 #[test]
 fn test_pushdown_blocked_by_left_join() {
-    validate_pushdown_no_op(
-        "SELECT a.id FROM a LEFT JOIN b ON a.id = b.aid WHERE b.x > 10",
-    );
+    validate_pushdown_no_op("SELECT a.id FROM a LEFT JOIN b ON a.id = b.aid WHERE b.x > 10");
 }
 
 #[test]
 fn test_pushdown_blocked_by_right_join() {
-    validate_pushdown_no_op(
-        "SELECT a.id FROM a RIGHT JOIN b ON a.id = b.aid WHERE b.x > 10",
-    );
+    validate_pushdown_no_op("SELECT a.id FROM a RIGHT JOIN b ON a.id = b.aid WHERE b.x > 10");
 }
 
 #[test]
 fn test_pushdown_blocked_by_full_join() {
-    validate_pushdown_no_op(
-        "SELECT a.id FROM a FULL JOIN b ON a.id = b.aid WHERE b.x > 10",
-    );
+    validate_pushdown_no_op("SELECT a.id FROM a FULL JOIN b ON a.id = b.aid WHERE b.x > 10");
 }
 
 // ── Safety: aggregate predicates not pushed ──────────────────────────
 
 #[test]
 fn test_pushdown_blocked_by_aggregate_in_predicate() {
-    validate_pushdown_no_op(
-        "SELECT sub.x FROM (SELECT x FROM t) AS sub WHERE COUNT(*) > 5",
-    );
+    validate_pushdown_no_op("SELECT sub.x FROM (SELECT x FROM t) AS sub WHERE COUNT(*) > 5");
 }
 
 // ── Safety: window function predicates not pushed ────────────────────
@@ -781,9 +773,7 @@ fn test_pushdown_blocked_by_subquery_in_predicate() {
 
 #[test]
 fn test_pushdown_blocked_by_cross_table_predicate() {
-    validate_pushdown_no_op(
-        "SELECT a.id FROM a INNER JOIN b ON a.id = b.aid WHERE a.x = b.y",
-    );
+    validate_pushdown_no_op("SELECT a.id FROM a INNER JOIN b ON a.id = b.aid WHERE a.x = b.y");
 }
 
 // ── Safety: unqualified columns stay unchanged ───────────────────────
@@ -854,9 +844,7 @@ fn test_pushdown_and_splitting_partial() {
 
 #[test]
 fn test_pushdown_blocked_by_nondeterministic() {
-    validate_pushdown_no_op(
-        "SELECT sub.x FROM (SELECT x FROM t) AS sub WHERE RANDOM() > 0.5",
-    );
+    validate_pushdown_no_op("SELECT sub.x FROM (SELECT x FROM t) AS sub WHERE RANDOM() > 0.5");
 }
 
 // ── Non-SELECT statements pass through ───────────────────────────────

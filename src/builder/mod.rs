@@ -878,7 +878,9 @@ impl SelectBuilder {
     pub fn columns(mut self, cols: &[&str]) -> Self {
         for col in cols {
             if let Some(expr) = parse_expr_dialect(col, self.dialect) {
-                self.statement.columns.push(SelectItem::Expr { expr, alias: None });
+                self.statement
+                    .columns
+                    .push(SelectItem::Expr { expr, alias: None });
             }
         }
         self
@@ -904,9 +906,9 @@ impl SelectBuilder {
     /// Add a qualified wildcard (table.*) to the SELECT list.
     #[must_use]
     pub fn all_from(mut self, table: &str) -> Self {
-        self.statement
-            .columns
-            .push(SelectItem::QualifiedWildcard { table: table.to_string() });
+        self.statement.columns.push(SelectItem::QualifiedWildcard {
+            table: table.to_string(),
+        });
         self
     }
 
@@ -1123,7 +1125,12 @@ impl SelectBuilder {
 
     /// Add an ORDER BY item with explicit direction.
     #[must_use]
-    pub fn add_order_by_expr(mut self, expr: Expr, ascending: bool, nulls_first: Option<bool>) -> Self {
+    pub fn add_order_by_expr(
+        mut self,
+        expr: Expr,
+        ascending: bool,
+        nulls_first: Option<bool>,
+    ) -> Self {
         self.statement.order_by.push(OrderByItem {
             expr,
             ascending,
@@ -1437,7 +1444,9 @@ mod tests {
     #[test]
     fn test_column() {
         let col = column("name", None);
-        assert!(matches!(col, Expr::Column { name, table, .. } if name == "name" && table.is_none()));
+        assert!(
+            matches!(col, Expr::Column { name, table, .. } if name == "name" && table.is_none())
+        );
 
         let qualified = column("id", Some("users"));
         assert!(matches!(qualified, Expr::Column { name, table, .. }
@@ -1467,7 +1476,13 @@ mod tests {
     fn test_cast() {
         let col = column("id", None);
         let casted = cast(col, DataType::BigInt);
-        assert!(matches!(casted, Expr::Cast { data_type: DataType::BigInt, .. }));
+        assert!(matches!(
+            casted,
+            Expr::Cast {
+                data_type: DataType::BigInt,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -1476,7 +1491,13 @@ mod tests {
         let cond2 = eq(column("y", None), literal(2));
 
         let combined = and_all(vec![cond1, cond2]).unwrap();
-        assert!(matches!(combined, Expr::BinaryOp { op: BinaryOperator::And, .. }));
+        assert!(matches!(
+            combined,
+            Expr::BinaryOp {
+                op: BinaryOperator::And,
+                ..
+            }
+        ));
 
         // Empty returns None
         assert!(and_all(Vec::<Expr>::new()).is_none());
@@ -1488,19 +1509,37 @@ mod tests {
         let cond2 = eq(column("y", None), literal(2));
 
         let combined = or_all(vec![cond1, cond2]).unwrap();
-        assert!(matches!(combined, Expr::BinaryOp { op: BinaryOperator::Or, .. }));
+        assert!(matches!(
+            combined,
+            Expr::BinaryOp {
+                op: BinaryOperator::Or,
+                ..
+            }
+        ));
     }
 
     #[test]
     fn test_parse_expr() {
         let expr = parse_expr("x + 1").unwrap();
-        assert!(matches!(expr, Expr::BinaryOp { op: BinaryOperator::Plus, .. }));
+        assert!(matches!(
+            expr,
+            Expr::BinaryOp {
+                op: BinaryOperator::Plus,
+                ..
+            }
+        ));
     }
 
     #[test]
     fn test_parse_condition() {
         let cond = parse_condition("x > 1 AND y < 10").unwrap();
-        assert!(matches!(cond, Expr::BinaryOp { op: BinaryOperator::And, .. }));
+        assert!(matches!(
+            cond,
+            Expr::BinaryOp {
+                op: BinaryOperator::And,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -1512,7 +1551,13 @@ mod tests {
     #[test]
     fn test_condition_builder_not() {
         let cond = condition("x = 1").not().build().unwrap();
-        assert!(matches!(cond, Expr::UnaryOp { op: crate::ast::UnaryOperator::Not, .. }));
+        assert!(matches!(
+            cond,
+            Expr::UnaryOp {
+                op: crate::ast::UnaryOperator::Not,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -1618,25 +1663,61 @@ mod tests {
     #[test]
     fn test_comparison_helpers() {
         let e = eq(column("a", None), literal(1));
-        assert!(matches!(e, Expr::BinaryOp { op: BinaryOperator::Eq, .. }));
+        assert!(matches!(
+            e,
+            Expr::BinaryOp {
+                op: BinaryOperator::Eq,
+                ..
+            }
+        ));
 
         let e = neq(column("a", None), literal(1));
-        assert!(matches!(e, Expr::BinaryOp { op: BinaryOperator::Neq, .. }));
+        assert!(matches!(
+            e,
+            Expr::BinaryOp {
+                op: BinaryOperator::Neq,
+                ..
+            }
+        ));
 
         let e = lt(column("a", None), literal(1));
-        assert!(matches!(e, Expr::BinaryOp { op: BinaryOperator::Lt, .. }));
+        assert!(matches!(
+            e,
+            Expr::BinaryOp {
+                op: BinaryOperator::Lt,
+                ..
+            }
+        ));
 
         let e = gt(column("a", None), literal(1));
-        assert!(matches!(e, Expr::BinaryOp { op: BinaryOperator::Gt, .. }));
+        assert!(matches!(
+            e,
+            Expr::BinaryOp {
+                op: BinaryOperator::Gt,
+                ..
+            }
+        ));
     }
 
     #[test]
     fn test_arithmetic_helpers() {
         let e = add(column("a", None), literal(1));
-        assert!(matches!(e, Expr::BinaryOp { op: BinaryOperator::Plus, .. }));
+        assert!(matches!(
+            e,
+            Expr::BinaryOp {
+                op: BinaryOperator::Plus,
+                ..
+            }
+        ));
 
         let e = mul(column("a", None), literal(2));
-        assert!(matches!(e, Expr::BinaryOp { op: BinaryOperator::Multiply, .. }));
+        assert!(matches!(
+            e,
+            Expr::BinaryOp {
+                op: BinaryOperator::Multiply,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -1656,7 +1737,10 @@ mod tests {
 
     #[test]
     fn test_in_list() {
-        let e = in_list(column("status", None), vec![string_literal("active"), string_literal("pending")]);
+        let e = in_list(
+            column("status", None),
+            vec![string_literal("active"), string_literal("pending")],
+        );
         assert!(matches!(e, Expr::InList { negated: false, .. }));
     }
 
@@ -1729,7 +1813,10 @@ mod tests {
 
     #[test]
     fn test_subquery_in_from() {
-        let inner = select(&["id", "name"]).from("users").where_clause("active = true").build();
+        let inner = select(&["id", "name"])
+            .from("users")
+            .where_clause("active = true")
+            .build();
         let outer = select(&["*"]).from_subquery(inner, "active_users").build();
 
         let sql = generate(&outer, Dialect::Ansi);

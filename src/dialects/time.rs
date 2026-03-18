@@ -17,8 +17,8 @@
 //! use sqlglot_rust::dialects::time::{format_time, TimeFormatStyle};
 //!
 //! // Convert MySQL format to PostgreSQL format
-//! let pg_format = format_time("%Y-%m-%d %H:%i:%s", 
-//!     TimeFormatStyle::Mysql, 
+//! let pg_format = format_time("%Y-%m-%d %H:%i:%s",
+//!     TimeFormatStyle::Mysql,
 //!     TimeFormatStyle::Postgres);
 //! assert_eq!(pg_format, "YYYY-MM-DD HH24:MI:SS");
 //! ```
@@ -56,10 +56,9 @@ impl TimeFormatStyle {
             }
 
             // MySQL family
-            Dialect::Mysql
-            | Dialect::Doris
-            | Dialect::SingleStore
-            | Dialect::StarRocks => TimeFormatStyle::Mysql,
+            Dialect::Mysql | Dialect::Doris | Dialect::SingleStore | Dialect::StarRocks => {
+                TimeFormatStyle::Mysql
+            }
 
             // Postgres family
             Dialect::Postgres
@@ -86,9 +85,11 @@ impl TimeFormatStyle {
             Dialect::ClickHouse => TimeFormatStyle::ClickHouse,
 
             // Others - default to strftime
-            Dialect::Dremio | Dialect::Drill | Dialect::Druid | Dialect::Tableau | Dialect::Prql => {
-                TimeFormatStyle::Strftime
-            }
+            Dialect::Dremio
+            | Dialect::Drill
+            | Dialect::Druid
+            | Dialect::Tableau
+            | Dialect::Prql => TimeFormatStyle::Strftime,
         }
     }
 }
@@ -130,7 +131,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
     vec![
         // ── Year ───────────────────────────────────────────────────────
         FormatMapping {
-            strftime: "%Y",      // 4-digit year
+            strftime: "%Y", // 4-digit year
             mysql: "%Y",
             postgres: "YYYY",
             snowflake: "YYYY",
@@ -139,7 +140,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
             clickhouse: "%Y",
         },
         FormatMapping {
-            strftime: "%y",      // 2-digit year
+            strftime: "%y", // 2-digit year
             mysql: "%y",
             postgres: "YY",
             snowflake: "YY",
@@ -149,7 +150,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
         },
         // ── Month ──────────────────────────────────────────────────────
         FormatMapping {
-            strftime: "%m",      // Month as zero-padded decimal (01-12)
+            strftime: "%m", // Month as zero-padded decimal (01-12)
             mysql: "%m",
             postgres: "MM",
             snowflake: "MM",
@@ -158,7 +159,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
             clickhouse: "%m",
         },
         FormatMapping {
-            strftime: "%b",      // Abbreviated month name (Jan, Feb, ...)
+            strftime: "%b", // Abbreviated month name (Jan, Feb, ...)
             mysql: "%b",
             postgres: "Mon",
             snowflake: "MON",
@@ -167,7 +168,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
             clickhouse: "%b",
         },
         FormatMapping {
-            strftime: "%B",      // Full month name
+            strftime: "%B", // Full month name
             mysql: "%M",
             postgres: "Month",
             snowflake: "MMMM",
@@ -177,7 +178,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
         },
         // ── Day ────────────────────────────────────────────────────────
         FormatMapping {
-            strftime: "%d",      // Day of month as zero-padded decimal (01-31)
+            strftime: "%d", // Day of month as zero-padded decimal (01-31)
             mysql: "%d",
             postgres: "DD",
             snowflake: "DD",
@@ -186,26 +187,26 @@ fn build_format_mappings() -> Vec<FormatMapping> {
             clickhouse: "%d",
         },
         FormatMapping {
-            strftime: "%e",      // Day of month as space-padded decimal
+            strftime: "%e", // Day of month as space-padded decimal
             mysql: "%e",
             postgres: "FMDD",
-            snowflake: "DD",     // Snowflake doesn't have space-padded
+            snowflake: "DD", // Snowflake doesn't have space-padded
             java: "d",
             tsql: "d",
             clickhouse: "%e",
         },
         FormatMapping {
-            strftime: "%j",      // Day of year (001-366)
+            strftime: "%j", // Day of year (001-366)
             mysql: "%j",
             postgres: "DDD",
             snowflake: "DDD",
             java: "DDD",
-            tsql: "",            // T-SQL doesn't have direct equivalent
+            tsql: "", // T-SQL doesn't have direct equivalent
             clickhouse: "%j",
         },
         // ── Weekday ────────────────────────────────────────────────────
         FormatMapping {
-            strftime: "%a",      // Abbreviated weekday name
+            strftime: "%a", // Abbreviated weekday name
             mysql: "%a",
             postgres: "Dy",
             snowflake: "DY",
@@ -214,16 +215,16 @@ fn build_format_mappings() -> Vec<FormatMapping> {
             clickhouse: "%a",
         },
         FormatMapping {
-            strftime: "%A",      // Full weekday name
+            strftime: "%A", // Full weekday name
             mysql: "%W",
             postgres: "Day",
-            snowflake: "DY",     // Snowflake uses uppercase abbreviated
+            snowflake: "DY", // Snowflake uses uppercase abbreviated
             java: "EEEE",
             tsql: "dddd",
             clickhouse: "%A",
         },
         FormatMapping {
-            strftime: "%w",      // Weekday as number (0=Sunday, 6=Saturday)
+            strftime: "%w", // Weekday as number (0=Sunday, 6=Saturday)
             mysql: "%w",
             postgres: "D",
             snowflake: "D",
@@ -232,7 +233,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
             clickhouse: "%w",
         },
         FormatMapping {
-            strftime: "%u",      // Weekday as number (1=Monday, 7=Sunday)
+            strftime: "%u", // Weekday as number (1=Monday, 7=Sunday)
             mysql: "%u",
             postgres: "ID",
             snowflake: "ID",
@@ -242,8 +243,8 @@ fn build_format_mappings() -> Vec<FormatMapping> {
         },
         // ── Week ───────────────────────────────────────────────────────
         FormatMapping {
-            strftime: "%W",      // Week number of year (Monday as first day)
-            mysql: "%v",         // MySQL uses %v for ISO week
+            strftime: "%W", // Week number of year (Monday as first day)
+            mysql: "%v",    // MySQL uses %v for ISO week
             postgres: "IW",
             snowflake: "WW",
             java: "ww",
@@ -251,7 +252,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
             clickhouse: "%V",
         },
         FormatMapping {
-            strftime: "%U",      // Week number of year (Sunday as first day)
+            strftime: "%U", // Week number of year (Sunday as first day)
             mysql: "%U",
             postgres: "WW",
             snowflake: "WW",
@@ -261,7 +262,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
         },
         // ── Hour ───────────────────────────────────────────────────────
         FormatMapping {
-            strftime: "%H",      // Hour (24-hour) as zero-padded decimal (00-23)
+            strftime: "%H", // Hour (24-hour) as zero-padded decimal (00-23)
             mysql: "%H",
             postgres: "HH24",
             snowflake: "HH24",
@@ -270,7 +271,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
             clickhouse: "%H",
         },
         FormatMapping {
-            strftime: "%I",      // Hour (12-hour) as zero-padded decimal (01-12)
+            strftime: "%I", // Hour (12-hour) as zero-padded decimal (01-12)
             mysql: "%h",
             postgres: "HH12",
             snowflake: "HH12",
@@ -280,8 +281,8 @@ fn build_format_mappings() -> Vec<FormatMapping> {
         },
         // ── Minute ─────────────────────────────────────────────────────
         FormatMapping {
-            strftime: "%M",      // Minute as zero-padded decimal (00-59)
-            mysql: "%i",         // NOTE: MySQL uses %i for minutes!
+            strftime: "%M", // Minute as zero-padded decimal (00-59)
+            mysql: "%i",    // NOTE: MySQL uses %i for minutes!
             postgres: "MI",
             snowflake: "MI",
             java: "mm",
@@ -290,7 +291,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
         },
         // ── Second ─────────────────────────────────────────────────────
         FormatMapping {
-            strftime: "%S",      // Second as zero-padded decimal (00-59)
+            strftime: "%S", // Second as zero-padded decimal (00-59)
             mysql: "%s",
             postgres: "SS",
             snowflake: "SS",
@@ -300,9 +301,9 @@ fn build_format_mappings() -> Vec<FormatMapping> {
         },
         // ── Fractional seconds ─────────────────────────────────────────
         FormatMapping {
-            strftime: "%f",      // Microseconds (6 digits)
+            strftime: "%f", // Microseconds (6 digits)
             mysql: "%f",
-            postgres: "US",      // Microseconds
+            postgres: "US", // Microseconds
             snowflake: "FF6",
             java: "SSSSSS",
             tsql: "ffffff",
@@ -310,7 +311,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
         },
         // ── AM/PM ──────────────────────────────────────────────────────
         FormatMapping {
-            strftime: "%p",      // AM or PM
+            strftime: "%p", // AM or PM
             mysql: "%p",
             postgres: "AM",
             snowflake: "AM",
@@ -320,8 +321,8 @@ fn build_format_mappings() -> Vec<FormatMapping> {
         },
         // ── Timezone ───────────────────────────────────────────────────
         FormatMapping {
-            strftime: "%z",      // UTC offset as +HHMM or -HHMM
-            mysql: "",           // MySQL doesn't support timezone in format
+            strftime: "%z", // UTC offset as +HHMM or -HHMM
+            mysql: "",      // MySQL doesn't support timezone in format
             postgres: "OF",
             snowflake: "TZH:TZM",
             java: "Z",
@@ -329,7 +330,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
             clickhouse: "%z",
         },
         FormatMapping {
-            strftime: "%Z",      // Timezone name
+            strftime: "%Z", // Timezone name
             mysql: "",
             postgres: "TZ",
             snowflake: "TZR",
@@ -339,9 +340,9 @@ fn build_format_mappings() -> Vec<FormatMapping> {
         },
         // ── Special ────────────────────────────────────────────────────
         FormatMapping {
-            strftime: "%%",      // Literal %
+            strftime: "%%", // Literal %
             mysql: "%%",
-            postgres: "",        // Postgres doesn't need escaping
+            postgres: "", // Postgres doesn't need escaping
             snowflake: "",
             java: "",
             tsql: "",
@@ -407,17 +408,23 @@ pub fn format_time(format_str: &str, source: TimeFormatStyle, target: TimeFormat
 
     // Use the appropriate parser based on source style
     match source {
-        TimeFormatStyle::Strftime
-        | TimeFormatStyle::Mysql
-        | TimeFormatStyle::ClickHouse => convert_strftime_style(format_str, source, target),
+        TimeFormatStyle::Strftime | TimeFormatStyle::Mysql | TimeFormatStyle::ClickHouse => {
+            convert_strftime_style(format_str, source, target)
+        }
         TimeFormatStyle::Postgres => convert_postgres_style(format_str, target),
         TimeFormatStyle::Snowflake => convert_snowflake_style(format_str, target),
-        TimeFormatStyle::Java | TimeFormatStyle::Tsql => convert_java_style(format_str, source, target),
+        TimeFormatStyle::Java | TimeFormatStyle::Tsql => {
+            convert_java_style(format_str, source, target)
+        }
     }
 }
 
 /// Convert a format string from strftime-style (%, MySQL, ClickHouse) to target.
-fn convert_strftime_style(format_str: &str, source: TimeFormatStyle, target: TimeFormatStyle) -> String {
+fn convert_strftime_style(
+    format_str: &str,
+    source: TimeFormatStyle,
+    target: TimeFormatStyle,
+) -> String {
     let mappings = get_format_mappings();
     let mut result = String::with_capacity(format_str.len() * 2);
     let mut chars = format_str.chars().peekable();
@@ -427,10 +434,10 @@ fn convert_strftime_style(format_str: &str, source: TimeFormatStyle, target: Tim
             if let Some(&next) = chars.peek() {
                 chars.next();
                 let spec = format!("%{}", next);
-                
+
                 // Find matching mapping
                 let mapped = mappings.iter().find(|m| m.get(source) == spec);
-                
+
                 if let Some(mapping) = mapped {
                     let target_spec = mapping.get(target);
                     if target_spec.is_empty() {
@@ -464,9 +471,8 @@ fn convert_postgres_style(format_str: &str, target: TimeFormatStyle) -> String {
 
     // Postgres specifiers to check, ordered by length (longest first)
     let pg_specifiers: &[&str] = &[
-        "YYYY", "MMMM", "Month", "Mon", "MM", "DDD", "DD", "Day", "Dy", "D",
-        "HH24", "HH12", "HH", "MI", "SS", "US", "AM", "PM", "TZH:TZM", "TZR",
-        "TZ", "OF", "IW", "WW", "YY", "ID", "FMDD",
+        "YYYY", "MMMM", "Month", "Mon", "MM", "DDD", "DD", "Day", "Dy", "D", "HH24", "HH12", "HH",
+        "MI", "SS", "US", "AM", "PM", "TZH:TZM", "TZR", "TZ", "OF", "IW", "WW", "YY", "ID", "FMDD",
     ];
 
     while i < chars.len() {
@@ -475,12 +481,14 @@ fn convert_postgres_style(format_str: &str, target: TimeFormatStyle) -> String {
 
         // Try to match longest specifier first
         for spec in pg_specifiers {
-            if remaining.starts_with(spec) || remaining.to_uppercase().starts_with(&spec.to_uppercase()) {
+            if remaining.starts_with(spec)
+                || remaining.to_uppercase().starts_with(&spec.to_uppercase())
+            {
                 // Find the mapping
-                let mapping = mappings.iter().find(|m|
-                    m.postgres.eq_ignore_ascii_case(spec)
-                );
-                
+                let mapping = mappings
+                    .iter()
+                    .find(|m| m.postgres.eq_ignore_ascii_case(spec));
+
                 if let Some(m) = mapping {
                     let target_spec = m.get(target);
                     if !target_spec.is_empty() {
@@ -529,9 +537,8 @@ fn convert_snowflake_style(format_str: &str, target: TimeFormatStyle) -> String 
 
     // Snowflake specifiers (similar to Postgres but with some differences)
     let sf_specifiers: &[&str] = &[
-        "YYYY", "MMMM", "MON", "MM", "DDD", "DD", "DY", "D",
-        "HH24", "HH12", "HH", "MI", "SS", "FF6", "FF3", "FF",
-        "AM", "PM", "TZH:TZM", "TZR", "WW", "YY", "ID",
+        "YYYY", "MMMM", "MON", "MM", "DDD", "DD", "DY", "D", "HH24", "HH12", "HH", "MI", "SS",
+        "FF6", "FF3", "FF", "AM", "PM", "TZH:TZM", "TZR", "WW", "YY", "ID",
     ];
 
     while i < chars.len() {
@@ -539,11 +546,13 @@ fn convert_snowflake_style(format_str: &str, target: TimeFormatStyle) -> String 
         let mut matched = false;
 
         for spec in sf_specifiers {
-            if remaining.starts_with(spec) || remaining.to_uppercase().starts_with(&spec.to_uppercase()) {
-                let mapping = mappings.iter().find(|m| 
-                    m.snowflake.eq_ignore_ascii_case(spec)
-                );
-                
+            if remaining.starts_with(spec)
+                || remaining.to_uppercase().starts_with(&spec.to_uppercase())
+            {
+                let mapping = mappings
+                    .iter()
+                    .find(|m| m.snowflake.eq_ignore_ascii_case(spec));
+
                 if let Some(m) = mapping {
                     let target_spec = m.get(target);
                     if !target_spec.is_empty() {
@@ -584,7 +593,11 @@ fn convert_snowflake_style(format_str: &str, target: TimeFormatStyle) -> String 
 }
 
 /// Convert a format string from Java/T-SQL style to target.
-fn convert_java_style(format_str: &str, source: TimeFormatStyle, target: TimeFormatStyle) -> String {
+fn convert_java_style(
+    format_str: &str,
+    source: TimeFormatStyle,
+    target: TimeFormatStyle,
+) -> String {
     let mappings = get_format_mappings();
     let mut result = String::with_capacity(format_str.len() * 2);
     let chars: Vec<char> = format_str.chars().collect();
@@ -592,15 +605,8 @@ fn convert_java_style(format_str: &str, source: TimeFormatStyle, target: TimeFor
 
     // Java DateTimeFormatter patterns
     let java_specifiers: &[&str] = &[
-        "yyyy", "YYYY", "yy", "YY",
-        "MMMM", "MMM", "MM", "M",
-        "dd", "d", "DDD",
-        "EEEE", "EEE", "e", "u",
-        "HH", "hh", "H", "h",
-        "mm", "m",
-        "ss", "s",
-        "SSSSSS", "SSS", "SS", "S",
-        "a", "Z", "z",
+        "yyyy", "YYYY", "yy", "YY", "MMMM", "MMM", "MM", "M", "dd", "d", "DDD", "EEEE", "EEE", "e",
+        "u", "HH", "hh", "H", "h", "mm", "m", "ss", "s", "SSSSSS", "SSS", "SS", "S", "a", "Z", "z",
         "ww",
     ];
 
@@ -629,7 +635,7 @@ fn convert_java_style(format_str: &str, source: TimeFormatStyle, target: TimeFor
                     let src_spec = m.get(source);
                     src_spec == *spec
                 });
-                
+
                 if let Some(m) = mapping {
                     let target_spec = m.get(target);
                     if !target_spec.is_empty() {
@@ -684,7 +690,11 @@ fn convert_java_style(format_str: &str, source: TimeFormatStyle, target: TimeFor
 /// assert_eq!(result, "YYYY-MM-DD HH24:MI:SS");
 /// ```
 #[must_use]
-pub fn format_time_dialect(format_str: &str, source_dialect: Dialect, target_dialect: Dialect) -> String {
+pub fn format_time_dialect(
+    format_str: &str,
+    source_dialect: Dialect,
+    target_dialect: Dialect,
+) -> String {
     let source_style = TimeFormatStyle::for_dialect(source_dialect);
     let target_style = TimeFormatStyle::for_dialect(target_dialect);
     format_time(format_str, source_style, target_style)
@@ -858,15 +868,27 @@ mod tests {
     #[test]
     fn test_strftime_to_postgres() {
         assert_eq!(
-            format_time("%Y-%m-%d", TimeFormatStyle::Strftime, TimeFormatStyle::Postgres),
+            format_time(
+                "%Y-%m-%d",
+                TimeFormatStyle::Strftime,
+                TimeFormatStyle::Postgres
+            ),
             "YYYY-MM-DD"
         );
         assert_eq!(
-            format_time("%H:%M:%S", TimeFormatStyle::Strftime, TimeFormatStyle::Postgres),
+            format_time(
+                "%H:%M:%S",
+                TimeFormatStyle::Strftime,
+                TimeFormatStyle::Postgres
+            ),
             "HH24:MI:SS"
         );
         assert_eq!(
-            format_time("%Y-%m-%d %H:%M:%S", TimeFormatStyle::Strftime, TimeFormatStyle::Postgres),
+            format_time(
+                "%Y-%m-%d %H:%M:%S",
+                TimeFormatStyle::Strftime,
+                TimeFormatStyle::Postgres
+            ),
             "YYYY-MM-DD HH24:MI:SS"
         );
     }
@@ -875,7 +897,11 @@ mod tests {
     fn test_mysql_to_postgres() {
         // MySQL uses %i for minutes
         assert_eq!(
-            format_time("%Y-%m-%d %H:%i:%s", TimeFormatStyle::Mysql, TimeFormatStyle::Postgres),
+            format_time(
+                "%Y-%m-%d %H:%i:%s",
+                TimeFormatStyle::Mysql,
+                TimeFormatStyle::Postgres
+            ),
             "YYYY-MM-DD HH24:MI:SS"
         );
     }
@@ -883,7 +909,11 @@ mod tests {
     #[test]
     fn test_postgres_to_mysql() {
         assert_eq!(
-            format_time("YYYY-MM-DD HH24:MI:SS", TimeFormatStyle::Postgres, TimeFormatStyle::Mysql),
+            format_time(
+                "YYYY-MM-DD HH24:MI:SS",
+                TimeFormatStyle::Postgres,
+                TimeFormatStyle::Mysql
+            ),
             "%Y-%m-%d %H:%i:%s"
         );
     }
@@ -891,7 +921,11 @@ mod tests {
     #[test]
     fn test_postgres_to_strftime() {
         assert_eq!(
-            format_time("YYYY-MM-DD", TimeFormatStyle::Postgres, TimeFormatStyle::Strftime),
+            format_time(
+                "YYYY-MM-DD",
+                TimeFormatStyle::Postgres,
+                TimeFormatStyle::Strftime
+            ),
             "%Y-%m-%d"
         );
     }
@@ -911,7 +945,11 @@ mod tests {
     #[test]
     fn test_java_to_strftime() {
         assert_eq!(
-            format_time("yyyy-MM-dd", TimeFormatStyle::Java, TimeFormatStyle::Strftime),
+            format_time(
+                "yyyy-MM-dd",
+                TimeFormatStyle::Java,
+                TimeFormatStyle::Strftime
+            ),
             "%Y-%m-%d"
         );
         assert_eq!(
@@ -923,7 +961,11 @@ mod tests {
     #[test]
     fn test_strftime_to_snowflake() {
         assert_eq!(
-            format_time("%Y-%m-%d", TimeFormatStyle::Strftime, TimeFormatStyle::Snowflake),
+            format_time(
+                "%Y-%m-%d",
+                TimeFormatStyle::Strftime,
+                TimeFormatStyle::Snowflake
+            ),
             "YYYY-MM-DD"
         );
     }
@@ -953,27 +995,45 @@ mod tests {
     fn test_literal_preservation() {
         // Literal characters should be preserved
         assert_eq!(
-            format_time("%Y/%m/%d", TimeFormatStyle::Strftime, TimeFormatStyle::Postgres),
+            format_time(
+                "%Y/%m/%d",
+                TimeFormatStyle::Strftime,
+                TimeFormatStyle::Postgres
+            ),
             "YYYY/MM/DD"
         );
         assert_eq!(
-            format_time("%Y at %H:%M", TimeFormatStyle::Strftime, TimeFormatStyle::Postgres),
+            format_time(
+                "%Y at %H:%M",
+                TimeFormatStyle::Strftime,
+                TimeFormatStyle::Postgres
+            ),
             "YYYY at HH24:MI"
         );
     }
 
     #[test]
     fn test_tsql_style_codes() {
-        assert_eq!(TsqlStyleCode::OdbcCanonical.to_format_pattern(), "%Y-%m-%d %H:%M:%S");
+        assert_eq!(
+            TsqlStyleCode::OdbcCanonical.to_format_pattern(),
+            "%Y-%m-%d %H:%M:%S"
+        );
         assert_eq!(TsqlStyleCode::UsaDate.to_format_pattern(), "%m/%d/%Y");
-        assert_eq!(TsqlStyleCode::from_code(120), Some(TsqlStyleCode::OdbcCanonical));
+        assert_eq!(
+            TsqlStyleCode::from_code(120),
+            Some(TsqlStyleCode::OdbcCanonical)
+        );
         assert_eq!(TsqlStyleCode::from_code(999), None);
     }
 
     #[test]
     fn test_12hour_format() {
         assert_eq!(
-            format_time("%I:%M %p", TimeFormatStyle::Strftime, TimeFormatStyle::Postgres),
+            format_time(
+                "%I:%M %p",
+                TimeFormatStyle::Strftime,
+                TimeFormatStyle::Postgres
+            ),
             "HH12:MI AM"
         );
     }
@@ -981,7 +1041,11 @@ mod tests {
     #[test]
     fn test_month_names() {
         assert_eq!(
-            format_time("%b %d, %Y", TimeFormatStyle::Strftime, TimeFormatStyle::Postgres),
+            format_time(
+                "%b %d, %Y",
+                TimeFormatStyle::Strftime,
+                TimeFormatStyle::Postgres
+            ),
             "Mon DD, YYYY"
         );
         assert_eq!(
@@ -992,10 +1056,25 @@ mod tests {
 
     #[test]
     fn test_format_style_for_dialect() {
-        assert_eq!(TimeFormatStyle::for_dialect(Dialect::Mysql), TimeFormatStyle::Mysql);
-        assert_eq!(TimeFormatStyle::for_dialect(Dialect::Postgres), TimeFormatStyle::Postgres);
-        assert_eq!(TimeFormatStyle::for_dialect(Dialect::Spark), TimeFormatStyle::Java);
-        assert_eq!(TimeFormatStyle::for_dialect(Dialect::Snowflake), TimeFormatStyle::Snowflake);
-        assert_eq!(TimeFormatStyle::for_dialect(Dialect::BigQuery), TimeFormatStyle::Strftime);
+        assert_eq!(
+            TimeFormatStyle::for_dialect(Dialect::Mysql),
+            TimeFormatStyle::Mysql
+        );
+        assert_eq!(
+            TimeFormatStyle::for_dialect(Dialect::Postgres),
+            TimeFormatStyle::Postgres
+        );
+        assert_eq!(
+            TimeFormatStyle::for_dialect(Dialect::Spark),
+            TimeFormatStyle::Java
+        );
+        assert_eq!(
+            TimeFormatStyle::for_dialect(Dialect::Snowflake),
+            TimeFormatStyle::Snowflake
+        );
+        assert_eq!(
+            TimeFormatStyle::for_dialect(Dialect::BigQuery),
+            TimeFormatStyle::Strftime
+        );
     }
 }

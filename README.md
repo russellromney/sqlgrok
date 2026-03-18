@@ -15,6 +15,7 @@ A SQL parser, optimizer, and transpiler library written in Rust, inspired by Pyt
 - **Scope analysis** — track query scopes, sources, columns, and correlations across nested queries
 - **Schema management** — dialect-aware table/column registration and type lookup
 - **AST traversal** — walk, find, transform expressions
+- **AST Diff** — semantic comparison of SQL statements with structural change detection
 - CTEs, subqueries, set operations (UNION / INTERSECT / EXCEPT)
 - Window functions with frames and filters
 - CAST, TRY_CAST, EXTRACT, INTERVAL, EXISTS, ANY/ALL/SOME

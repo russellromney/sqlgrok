@@ -64,6 +64,9 @@ Complete type and function reference for **sqlglot-rust**.
   - [Scope Analysis](#scope-analysis)
   - [Annotate Types](#annotate-types)
   - [Column Lineage](#column-lineage)
+- [AST Diff](#ast-diff)
+  - [ChangeAction Enum](#changeaction-enum)
+  - [AstNode Enum](#astnode-enum)
 
 ---
 
@@ -1865,4 +1868,73 @@ assert!(sources.contains(&"orders".to_string()));
 
 // Generate visualization
 println!("{}", graph.to_mermaid());
+```
+
+## AST Diff
+
+Semantic comparison of SQL expression trees. Computes structured differences between two
+parsed AST statements using a tree edit distance algorithm inspired by the Change Distiller
+approach from Python sqlglot's `diff.py`.
+
+Accessed via `use sqlglot_rust::diff::{diff, diff_sql, ChangeAction, AstNode}` or the
+re-exported `use sqlglot_rust::{diff_ast, diff_sql, ChangeAction, AstNode}`.
+
+| Function | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `diff` | `(source: &Statement, target: &Statement) -> Vec<ChangeAction>` | `Vec<ChangeAction>` | Compute semantic diff between two parsed ASTs |
+| `diff_sql` | `(source_sql: &str, target_sql: &str, dialect: Dialect) -> Result<Vec<ChangeAction>>` | `Result<Vec<ChangeAction>>` | Parse two SQL strings and compute their diff |
+
+### ChangeAction Enum
+
+| Variant | Fields | Description |
+| --- | --- | --- |
+| `Remove` | `(AstNode)` | A node present in source that was removed |
+| `Insert` | `(AstNode)` | A node inserted into target that was not in source |
+| `Keep` | `(AstNode, AstNode)` | A node structurally identical in both trees |
+| `Move` | `(AstNode, AstNode)` | A node moved to a different position in the tree |
+| `Update` | `(AstNode, AstNode)` | A node in source replaced by a different node in target |
+
+### AstNode Enum
+
+Wraps AST nodes of different types for uniform diff output.
+
+| Variant | Description |
+| --- | --- |
+| `Statement(Box<Statement>)` | A full SQL statement |
+| `Expr(Expr)` | An expression node |
+| `SelectItem(SelectItem)` | A SELECT list item |
+| `JoinClause(JoinClause)` | A JOIN clause |
+| `OrderByItem(OrderByItem)` | An ORDER BY item |
+| `Cte(Box<Cte>)` | A Common Table Expression |
+| `ColumnDef(ColumnDef)` | A column definition (DDL) |
+| `TableConstraint(TableConstraint)` | A table constraint (DDL) |
+
+**Example:**
+
+```rust
+use sqlglot_rust::{parse, Dialect};
+use sqlglot_rust::diff::{diff, diff_sql, ChangeAction};
+
+// Diff two parsed ASTs
+let source = parse("SELECT a, b FROM t WHERE a > 1", Dialect::Ansi).unwrap();
+let target = parse("SELECT a, c FROM t WHERE a > 2", Dialect::Ansi).unwrap();
+let changes = diff(&source, &target);
+
+for change in &changes {
+    match change {
+        ChangeAction::Keep(s, _t) => println!("  kept: {s}"),
+        ChangeAction::Insert(n) => println!("+ insert: {n}"),
+        ChangeAction::Remove(n) => println!("- remove: {n}"),
+        ChangeAction::Update(s, t) => println!("~ update: {s} -> {t}"),
+        ChangeAction::Move(s, t) => println!("⇄ move: {s} -> {t}"),
+    }
+}
+
+// Or diff directly from SQL strings
+let changes = diff_sql(
+    "SELECT a FROM t",
+    "SELECT a, b FROM t",
+    Dialect::Ansi,
+).unwrap();
+assert!(changes.iter().any(|c| matches!(c, ChangeAction::Insert(_))));
 ```

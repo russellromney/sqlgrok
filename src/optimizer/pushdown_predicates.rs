@@ -104,11 +104,7 @@ fn pushdown_select(mut sel: SelectStatement) -> SelectStatement {
 // ═══════════════════════════════════════════════════════════════════════
 
 /// Try to push a predicate into a table source. Returns true if pushed.
-fn try_push_into_source(
-    source: &mut TableSource,
-    pred: &Expr,
-    tables: &HashSet<String>,
-) -> bool {
+fn try_push_into_source(source: &mut TableSource, pred: &Expr, tables: &HashSet<String>) -> bool {
     match source {
         TableSource::Subquery { query, alias } => {
             let alias_name = match alias {
@@ -157,11 +153,7 @@ fn try_push_into_source(
 
 /// Try to push a predicate into a JOIN's ON condition.
 /// Only safe for INNER and CROSS joins.
-fn try_push_into_join(
-    join: &mut JoinClause,
-    pred: &Expr,
-    tables: &HashSet<String>,
-) -> bool {
+fn try_push_into_join(join: &mut JoinClause, pred: &Expr, tables: &HashSet<String>) -> bool {
     // Only push into inner joins — pushing into LEFT/RIGHT/FULL
     // changes semantics.
     if !matches!(join.join_type, JoinType::Inner | JoinType::Cross) {
@@ -267,10 +259,7 @@ fn conjoin(predicates: Vec<Expr>) -> Option<Expr> {
 fn referenced_tables(expr: &Expr) -> HashSet<String> {
     let mut tables = HashSet::new();
     expr.walk(&mut |e| {
-        if let Expr::Column {
-            table: Some(t), ..
-        } = e
-        {
+        if let Expr::Column { table: Some(t), .. } = e {
             tables.insert(t.clone());
         }
         true
@@ -303,12 +292,7 @@ fn is_pushable(expr: &Expr) -> bool {
                 false
             }
             // Window functions (have OVER clause)
-            Expr::Function {
-                over: Some(_), ..
-            }
-            | Expr::TypedFunction {
-                over: Some(_), ..
-            } => {
+            Expr::Function { over: Some(_), .. } | Expr::TypedFunction { over: Some(_), .. } => {
                 safe = false;
                 false
             }
@@ -356,12 +340,7 @@ fn contains_window_function(expr: &Expr) -> bool {
             return false;
         }
         match e {
-            Expr::Function {
-                over: Some(_), ..
-            }
-            | Expr::TypedFunction {
-                over: Some(_), ..
-            } => {
+            Expr::Function { over: Some(_), .. } | Expr::TypedFunction { over: Some(_), .. } => {
                 has_window = true;
                 false
             }
@@ -374,25 +353,46 @@ fn contains_window_function(expr: &Expr) -> bool {
 fn is_aggregate_function(name: &str) -> bool {
     matches!(
         name.to_uppercase().as_str(),
-        "COUNT" | "SUM" | "AVG" | "MIN" | "MAX" | "GROUP_CONCAT"
-            | "STRING_AGG" | "ARRAY_AGG" | "LISTAGG"
-            | "STDDEV" | "STDDEV_POP" | "STDDEV_SAMP"
-            | "VARIANCE" | "VAR_POP" | "VAR_SAMP"
-            | "EVERY" | "ANY_VALUE" | "SOME"
-            | "BIT_AND" | "BIT_OR" | "BIT_XOR"
-            | "BOOL_AND" | "BOOL_OR"
-            | "CORR" | "COVAR_POP" | "COVAR_SAMP"
-            | "REGR_SLOPE" | "REGR_INTERCEPT"
-            | "PERCENTILE_CONT" | "PERCENTILE_DISC"
-            | "APPROX_COUNT_DISTINCT" | "HLL_COUNT" | "APPROX_DISTINCT"
+        "COUNT"
+            | "SUM"
+            | "AVG"
+            | "MIN"
+            | "MAX"
+            | "GROUP_CONCAT"
+            | "STRING_AGG"
+            | "ARRAY_AGG"
+            | "LISTAGG"
+            | "STDDEV"
+            | "STDDEV_POP"
+            | "STDDEV_SAMP"
+            | "VARIANCE"
+            | "VAR_POP"
+            | "VAR_SAMP"
+            | "EVERY"
+            | "ANY_VALUE"
+            | "SOME"
+            | "BIT_AND"
+            | "BIT_OR"
+            | "BIT_XOR"
+            | "BOOL_AND"
+            | "BOOL_OR"
+            | "CORR"
+            | "COVAR_POP"
+            | "COVAR_SAMP"
+            | "REGR_SLOPE"
+            | "REGR_INTERCEPT"
+            | "PERCENTILE_CONT"
+            | "PERCENTILE_DISC"
+            | "APPROX_COUNT_DISTINCT"
+            | "HLL_COUNT"
+            | "APPROX_DISTINCT"
     )
 }
 
 fn is_nondeterministic(name: &str) -> bool {
     matches!(
         name.to_uppercase().as_str(),
-        "RAND" | "RANDOM" | "UUID" | "NEWID" | "GEN_RANDOM_UUID"
-            | "SYSDATE" | "SYSTIMESTAMP"
+        "RAND" | "RANDOM" | "UUID" | "NEWID" | "GEN_RANDOM_UUID" | "SYSDATE" | "SYSTIMESTAMP"
     )
 }
 
@@ -517,7 +517,13 @@ fn build_column_map(sel: &SelectStatement) -> std::collections::HashMap<&str, Ex
     for item in &sel.columns {
         match item {
             SelectItem::Expr {
-                expr: Expr::Column { name, table, quote_style, table_quote_style },
+                expr:
+                    Expr::Column {
+                        name,
+                        table,
+                        quote_style,
+                        table_quote_style,
+                    },
                 alias,
             } => {
                 let output_name = alias.as_deref().unwrap_or(name.as_str());

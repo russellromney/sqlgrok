@@ -207,9 +207,7 @@ impl LineageNode {
     /// Iterate over all nodes in the lineage graph.
     #[must_use]
     pub fn iter(&self) -> LineageIterator<'_> {
-        LineageIterator {
-            stack: vec![self],
-        }
+        LineageIterator { stack: vec![self] }
     }
 
     /// Get all source columns (leaf nodes) in this lineage.
@@ -237,10 +235,10 @@ impl LineageNode {
         let mut dot = String::from("digraph lineage {\n");
         dot.push_str("  rankdir=BT;\n");
         dot.push_str("  node [shape=box];\n");
-        
+
         let mut node_id = 0;
         let mut node_ids = HashMap::new();
-        
+
         // First pass: assign IDs and create nodes
         self.walk(&mut |node| {
             let id = format!("n{}", node_id);
@@ -253,7 +251,7 @@ impl LineageNode {
             node_ids.insert(node as *const _ as usize, id);
             node_id += 1;
         });
-        
+
         // Second pass: create edges
         self.walk(&mut |node| {
             let parent_id = node_ids.get(&(node as *const _ as usize)).unwrap();
@@ -262,7 +260,7 @@ impl LineageNode {
                 dot.push_str(&format!("  {} -> {};\n", child_id, parent_id));
             }
         });
-        
+
         dot.push_str("}\n");
         dot
     }
@@ -271,10 +269,10 @@ impl LineageNode {
     #[must_use]
     pub fn to_mermaid(&self) -> String {
         let mut mermaid = String::from("flowchart BT\n");
-        
+
         let mut node_id = 0;
         let mut node_ids = HashMap::new();
-        
+
         // First pass: assign IDs and create nodes
         self.walk(&mut |node| {
             let id = format!("n{}", node_id);
@@ -287,7 +285,7 @@ impl LineageNode {
             node_ids.insert(node as *const _ as usize, id);
             node_id += 1;
         });
-        
+
         // Second pass: create edges
         self.walk(&mut |node| {
             let parent_id = node_ids.get(&(node as *const _ as usize)).unwrap();
@@ -296,7 +294,7 @@ impl LineageNode {
                 mermaid.push_str(&format!("  {} --> {}\n", child_id, parent_id));
             }
         });
-        
+
         mermaid
     }
 }
@@ -508,11 +506,12 @@ pub fn lineage(
 ) -> LineageResult<LineageGraph> {
     // Parse external sources if provided
     let mut ctx = LineageContext::new(schema, config);
-    
+
     for (name, sql) in &config.sources {
         match crate::parser::parse(sql, config.dialect) {
             Ok(stmt) => {
-                ctx.external_sources.insert(normalize_name(name, config.dialect), stmt);
+                ctx.external_sources
+                    .insert(normalize_name(name, config.dialect), stmt);
             }
             Err(e) => return Err(LineageError::ParseError(e.to_string())),
         }
@@ -520,7 +519,7 @@ pub fn lineage(
 
     // Build lineage for the target column
     let node = build_lineage_for_column(column, statement, &mut ctx)?;
-    
+
     Ok(LineageGraph::new(node, config.dialect))
 }
 
@@ -549,7 +548,7 @@ pub fn lineage_sql(
 ) -> LineageResult<LineageGraph> {
     let statement = crate::parser::parse(sql, config.dialect)
         .map_err(|e| LineageError::ParseError(e.to_string()))?;
-    
+
     let mut graph = lineage(column, &statement, schema, config)?;
     graph.sql = Some(sql.to_string());
     Ok(graph)
@@ -607,14 +606,15 @@ fn build_lineage_for_select_column(
 
     // Find the target column in the SELECT list
     let (col_name, table_qual) = parse_column_ref(column);
-    
+
     for item in &sel.columns {
         match item {
             SelectItem::Expr { expr, alias } => {
-                let item_name = alias.as_ref().map(String::as_str).unwrap_or_else(|| {
-                    expr_output_name(expr)
-                });
-                
+                let item_name = alias
+                    .as_ref()
+                    .map(String::as_str)
+                    .unwrap_or_else(|| expr_output_name(expr));
+
                 if matches_column_name(item_name, &col_name) {
                     return build_lineage_for_expr(expr, alias.clone(), ctx);
                 }
@@ -625,9 +625,10 @@ fn build_lineage_for_select_column(
                     if let Some(cols) = &source_info.columns {
                         for col_item in cols {
                             if let SelectItem::Expr { expr, alias } = col_item {
-                                let item_name = alias.as_ref().map(String::as_str).unwrap_or_else(|| {
-                                    expr_output_name(expr)
-                                });
+                                let item_name = alias
+                                    .as_ref()
+                                    .map(String::as_str)
+                                    .unwrap_or_else(|| expr_output_name(expr));
                                 if matches_column_name(item_name, &col_name) {
                                     return build_lineage_for_expr(expr, alias.clone(), ctx);
                                 }
@@ -636,7 +637,10 @@ fn build_lineage_for_select_column(
                     } else if source_info.kind == SourceKind::Table {
                         // Check schema for table columns
                         if let Ok(schema_cols) = ctx.schema.column_names(&[&source_name]) {
-                            if schema_cols.iter().any(|c| matches_column_name(c, &col_name)) {
+                            if schema_cols
+                                .iter()
+                                .any(|c| matches_column_name(c, &col_name))
+                            {
                                 // Found in schema
                                 let mut node = LineageNode::new(col_name.clone())
                                     .with_source(source_name.clone())
@@ -654,15 +658,19 @@ fn build_lineage_for_select_column(
                 }
             }
             SelectItem::QualifiedWildcard { table } => {
-                if table_qual.as_ref().is_some_and(|t| matches_column_name(t, table)) {
+                if table_qual
+                    .as_ref()
+                    .is_some_and(|t| matches_column_name(t, table))
+                {
                     // Check if column exists in this table
                     if let Some(source_info) = ctx.sources.get(table).cloned() {
                         if let Some(cols) = &source_info.columns {
                             for col_item in cols {
                                 if let SelectItem::Expr { expr, alias } = col_item {
-                                    let item_name = alias.as_ref().map(String::as_str).unwrap_or_else(|| {
-                                        expr_output_name(expr)
-                                    });
+                                    let item_name = alias
+                                        .as_ref()
+                                        .map(String::as_str)
+                                        .unwrap_or_else(|| expr_output_name(expr));
                                     if matches_column_name(item_name, &col_name) {
                                         return build_lineage_for_expr(expr, alias.clone(), ctx);
                                     }
@@ -685,16 +693,16 @@ fn build_lineage_for_set_operation(
     ctx: &mut LineageContext,
 ) -> LineageResult<LineageNode> {
     let mut root = LineageNode::new(column.to_string()).with_depth(ctx.depth);
-    
+
     // Build lineage from both branches
     let mut child_ctx = ctx.with_depth(ctx.depth + 1);
-    
+
     let left_lineage = build_lineage_for_column(column, &set_op.left, &mut child_ctx)?;
     let right_lineage = build_lineage_for_column(column, &set_op.right, &mut child_ctx)?;
-    
+
     root.downstream.push(left_lineage);
     root.downstream.push(right_lineage);
-    
+
     Ok(root)
 }
 
@@ -704,25 +712,27 @@ fn build_lineage_for_expr(
     alias: Option<String>,
     ctx: &mut LineageContext,
 ) -> LineageResult<LineageNode> {
-    let name = alias.clone().unwrap_or_else(|| expr_to_name(expr, ctx.config.trim_qualifiers));
+    let name = alias
+        .clone()
+        .unwrap_or_else(|| expr_to_name(expr, ctx.config.trim_qualifiers));
     let mut node = LineageNode::new(name.clone())
         .with_expression(expr.clone())
         .with_depth(ctx.depth);
-    
+
     if let Some(a) = alias {
         node.alias = Some(a);
     }
 
     // Collect column references from the expression
     let columns = collect_expr_columns(expr);
-    
+
     let mut child_ctx = ctx.with_depth(ctx.depth + 1);
-    
+
     for col_ref in columns {
         let child_node = resolve_column_lineage(&col_ref, &mut child_ctx)?;
         node.downstream.push(child_node);
     }
-    
+
     Ok(node)
 }
 
@@ -736,11 +746,11 @@ fn resolve_column_lineage(
     } else {
         col.qualified_name()
     };
-    
+
     // If table qualifier is provided, look up in that source
     if let Some(ref table) = col.table {
         let normalized_table = normalize_name(table, ctx.config.dialect);
-        
+
         if let Some(source_info) = ctx.sources.get(&normalized_table).cloned() {
             match source_info.kind {
                 SourceKind::Table => {
@@ -775,7 +785,7 @@ fn resolve_column_lineage(
             }
         }
     }
-    
+
     // No table qualifier - search all sources
     for (source_name, source_info) in ctx.sources.clone() {
         match source_info.kind {
@@ -808,7 +818,7 @@ fn resolve_column_lineage(
             SourceKind::External => {}
         }
     }
-    
+
     // Column not found in any known source - treat as external/unknown
     let node = LineageNode::new(name).with_depth(ctx.depth);
     Ok(node)
@@ -916,7 +926,7 @@ impl ColumnReference {
 /// Collect all column references from an expression.
 fn collect_expr_columns(expr: &Expr) -> Vec<ColumnReference> {
     let mut columns = Vec::new();
-    
+
     expr.walk(&mut |e| {
         if let Expr::Column { table, name, .. } = e {
             columns.push(ColumnReference {
@@ -926,9 +936,12 @@ fn collect_expr_columns(expr: &Expr) -> Vec<ColumnReference> {
             return false; // Don't recurse into column nodes
         }
         // Don't descend into subqueries
-        !matches!(e, Expr::Subquery(_) | Expr::Exists { .. } | Expr::InSubquery { .. })
+        !matches!(
+            e,
+            Expr::Subquery(_) | Expr::Exists { .. } | Expr::InSubquery { .. }
+        )
     });
-    
+
     columns
 }
 
@@ -996,9 +1009,10 @@ fn normalize_name(name: &str, dialect: Dialect) -> String {
 fn select_item_has_column(item: &SelectItem, name: &str) -> bool {
     match item {
         SelectItem::Expr { expr, alias } => {
-            let item_name = alias.as_ref().map(String::as_str).unwrap_or_else(|| {
-                expr_output_name(expr)
-            });
+            let item_name = alias
+                .as_ref()
+                .map(String::as_str)
+                .unwrap_or_else(|| expr_output_name(expr));
             matches_column_name(item_name, name)
         }
         SelectItem::Wildcard => true, // Could match any column
@@ -1036,30 +1050,42 @@ mod tests {
 
     fn test_schema() -> MappingSchema {
         let mut schema = MappingSchema::new(Dialect::Ansi);
-        schema.add_table(
-            &["t"],
-            vec![
-                ("a".to_string(), DataType::Int),
-                ("b".to_string(), DataType::Int),
-                ("c".to_string(), DataType::Int),
-            ],
-        ).unwrap();
-        schema.add_table(
-            &["users"],
-            vec![
-                ("id".to_string(), DataType::Int),
-                ("name".to_string(), DataType::Varchar(Some(255))),
-                ("email".to_string(), DataType::Text),
-            ],
-        ).unwrap();
-        schema.add_table(
-            &["orders"],
-            vec![
-                ("id".to_string(), DataType::Int),
-                ("user_id".to_string(), DataType::Int),
-                ("amount".to_string(), DataType::Decimal { precision: Some(10), scale: Some(2) }),
-            ],
-        ).unwrap();
+        schema
+            .add_table(
+                &["t"],
+                vec![
+                    ("a".to_string(), DataType::Int),
+                    ("b".to_string(), DataType::Int),
+                    ("c".to_string(), DataType::Int),
+                ],
+            )
+            .unwrap();
+        schema
+            .add_table(
+                &["users"],
+                vec![
+                    ("id".to_string(), DataType::Int),
+                    ("name".to_string(), DataType::Varchar(Some(255))),
+                    ("email".to_string(), DataType::Text),
+                ],
+            )
+            .unwrap();
+        schema
+            .add_table(
+                &["orders"],
+                vec![
+                    ("id".to_string(), DataType::Int),
+                    ("user_id".to_string(), DataType::Int),
+                    (
+                        "amount".to_string(),
+                        DataType::Decimal {
+                            precision: Some(10),
+                            scale: Some(2),
+                        },
+                    ),
+                ],
+            )
+            .unwrap();
         schema
     }
 
@@ -1069,9 +1095,9 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("a", &ast, &schema, &config).unwrap();
-        
+
         assert_eq!(graph.node.name, "a");
         assert_eq!(graph.node.depth, 0);
         // The root column depends on t.a
@@ -1085,9 +1111,9 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("col_a", &ast, &schema, &config).unwrap();
-        
+
         assert_eq!(graph.node.name, "col_a");
         assert_eq!(graph.node.alias, Some("col_a".to_string()));
     }
@@ -1098,9 +1124,9 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("sum", &ast, &schema, &config).unwrap();
-        
+
         assert_eq!(graph.node.name, "sum");
         // The sum depends on both a and b
         assert_eq!(graph.node.downstream.len(), 2);
@@ -1112,9 +1138,9 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("a", &ast, &schema, &config).unwrap();
-        
+
         assert_eq!(graph.node.name, "a");
         // Should trace through the CTE
         assert!(graph.source_tables().contains(&"t".to_string()));
@@ -1126,10 +1152,10 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("name", &ast, &schema, &config).unwrap();
         assert_eq!(graph.node.name, "name");
-        
+
         let graph2 = lineage("amount", &ast, &schema, &config).unwrap();
         assert_eq!(graph2.node.name, "amount");
     }
@@ -1140,9 +1166,9 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("a", &ast, &schema, &config).unwrap();
-        
+
         assert_eq!(graph.node.name, "a");
         // Should have two branches
         assert_eq!(graph.node.downstream.len(), 2);
@@ -1154,7 +1180,7 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let result = lineage("nonexistent", &ast, &schema, &config);
         assert!(matches!(result, Err(LineageError::ColumnNotFound(_))));
     }
@@ -1165,9 +1191,9 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("x", &ast, &schema, &config).unwrap();
-        
+
         assert_eq!(graph.node.name, "x");
         // Should trace through the derived table to t.a
         assert!(graph.source_tables().contains(&"t".to_string()));
@@ -1179,9 +1205,9 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("total", &ast, &schema, &config).unwrap();
-        
+
         assert_eq!(graph.node.name, "total");
         assert_eq!(graph.node.downstream.len(), 1);
     }
@@ -1190,9 +1216,9 @@ mod tests {
     fn test_lineage_sql_convenience() {
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage_sql("b", "SELECT a, b FROM t", &schema, &config).unwrap();
-        
+
         assert_eq!(graph.node.name, "b");
         assert_eq!(graph.sql, Some("SELECT a, b FROM t".to_string()));
     }
@@ -1203,10 +1229,10 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("name", &ast, &schema, &config).unwrap();
         let tables = graph.source_tables();
-        
+
         assert!(tables.contains(&"u".to_string()));
     }
 
@@ -1216,10 +1242,10 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("col", &ast, &schema, &config).unwrap();
         let dot = graph.to_dot();
-        
+
         assert!(dot.contains("digraph lineage"));
         assert!(dot.contains("rankdir=BT"));
     }
@@ -1230,10 +1256,10 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("col", &ast, &schema, &config).unwrap();
         let mermaid = graph.to_mermaid();
-        
+
         assert!(mermaid.contains("flowchart BT"));
     }
 
@@ -1243,9 +1269,9 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("result", &ast, &schema, &config).unwrap();
-        
+
         assert_eq!(graph.node.name, "result");
         // Should depend on a, b, and c
         assert!(graph.node.downstream.len() >= 2);
@@ -1257,9 +1283,9 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("val", &ast, &schema, &config).unwrap();
-        
+
         assert_eq!(graph.node.name, "val");
         // Should depend on a, b, and c
         assert_eq!(graph.node.downstream.len(), 3);
@@ -1275,9 +1301,9 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("sum", &ast, &schema, &config).unwrap();
-        
+
         assert_eq!(graph.node.name, "sum");
         // Should trace through both CTEs to t
         let sources = graph.source_tables();
@@ -1290,9 +1316,9 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = test_config();
-        
+
         let graph = lineage("sum", &ast, &schema, &config).unwrap();
-        
+
         let nodes: Vec<_> = graph.node.iter().collect();
         assert!(!nodes.is_empty());
         assert_eq!(nodes[0].name, "sum");
@@ -1303,9 +1329,9 @@ mod tests {
         let schema = test_schema();
         let mut sources = HashMap::new();
         sources.insert("view1".to_string(), "SELECT a FROM t".to_string());
-        
+
         let config = LineageConfig::new(Dialect::Ansi).with_sources(sources);
-        
+
         let sql = "SELECT a FROM view1";
         let result = lineage_sql("a", sql, &schema, &config);
         // Should parse and handle external sources
@@ -1318,9 +1344,9 @@ mod tests {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let schema = test_schema();
         let config = LineageConfig::new(Dialect::Ansi).with_trim_qualifiers(false);
-        
+
         let graph = lineage("a", &ast, &schema, &config).unwrap();
-        
+
         // With trim_qualifiers=false, should preserve qualification
         assert!(graph.node.name.contains('a'));
     }
