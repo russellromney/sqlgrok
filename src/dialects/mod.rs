@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ast::*;
 
+pub mod plugin;
 pub mod time;
 
 /// Supported SQL dialects.
@@ -265,7 +266,7 @@ fn is_tsql_family(d: Dialect) -> bool {
 }
 
 /// Dialects that natively support ILIKE.
-fn supports_ilike(d: Dialect) -> bool {
+pub(crate) fn supports_ilike_builtin(d: Dialect) -> bool {
     matches!(
         d,
         Dialect::Postgres
@@ -428,7 +429,7 @@ fn transform_expr(expr: Expr, target: Dialect) -> Expr {
             pattern,
             negated,
             escape,
-        } if !supports_ilike(target) => Expr::Like {
+        } if !supports_ilike_builtin(target) => Expr::Like {
             expr: Box::new(Expr::TypedFunction {
                 func: TypedFunction::Lower {
                     expr: Box::new(transform_expr(*expr, target)),
@@ -588,7 +589,7 @@ fn detect_format_style(format_str: &str) -> time::TimeFormatStyle {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Map function names between dialects.
-fn map_function_name(name: &str, target: Dialect) -> String {
+pub(crate) fn map_function_name(name: &str, target: Dialect) -> String {
     let upper = name.to_uppercase();
     match upper.as_str() {
         // ── NOW / CURRENT_TIMESTAMP / GETDATE ────────────────────────────
@@ -726,7 +727,7 @@ fn map_function_name(name: &str, target: Dialect) -> String {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Map data types between dialects.
-fn map_data_type(dt: DataType, target: Dialect) -> DataType {
+pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
     match (dt, target) {
         // ── TEXT / STRING ────────────────────────────────────────────────
         // TEXT → STRING for BigQuery, Hive, Spark, Databricks

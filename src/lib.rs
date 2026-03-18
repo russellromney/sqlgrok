@@ -101,6 +101,10 @@ pub use builder::{
     table_full,
 };
 pub use dialects::Dialect;
+pub use dialects::plugin::{
+    DialectPlugin, DialectRef, DialectRegistry, register_dialect, resolve_dialect, transpile_ext,
+    transpile_statements_ext,
+};
 pub use dialects::time::{
     FormatConversionResult, TimeFormatStyle, TsqlStyleCode, format_time, format_time_dialect,
     format_time_with_warnings,
