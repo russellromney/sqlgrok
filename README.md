@@ -16,6 +16,7 @@ A SQL parser, optimizer, and transpiler library written in Rust, inspired by Pyt
 - **Schema management** — dialect-aware table/column registration and type lookup
 - **AST traversal** — walk, find, transform expressions
 - **AST Diff** — semantic comparison of SQL statements with structural change detection
+- **SQL Execution Engine** — in-memory query execution against Rust data structures for testing and validation
 - CTEs, subqueries, set operations (UNION / INTERSECT / EXCEPT)
 - Window functions with frames and filters
 - CAST, TRY_CAST, EXTRACT, INTERVAL, EXISTS, ANY/ALL/SOME
@@ -241,6 +242,7 @@ src/
 ├── generator/    # SQL code generator
 ├── dialects/     # 30 dialect definitions with transform rules
 ├── optimizer/    # Query optimization and scope analysis
+├── executor/     # In-memory SQL execution engine
 ├── schema/       # Schema management (MappingSchema, dialect-aware lookups)
 ├── errors/       # Error types
 └── lib.rs        # Public API (parse, generate, transpile)

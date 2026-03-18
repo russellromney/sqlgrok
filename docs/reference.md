@@ -67,6 +67,11 @@ Complete type and function reference for **sqlglot-rust**.
 - [AST Diff](#ast-diff)
   - [ChangeAction Enum](#changeaction-enum)
   - [AstNode Enum](#astnode-enum)
+- [SQL Execution Engine](#sql-execution-engine)
+  - [Value Enum](#value-enum)
+  - [Table / Tables](#table--tables)
+  - [ResultSet](#resultset)
+  - [execute / execute_statement](#execute--execute_statement)
 
 ---
 
@@ -1938,3 +1943,98 @@ let changes = diff_sql(
 ).unwrap();
 assert!(changes.iter().any(|c| matches!(c, ChangeAction::Insert(_))));
 ```
+
+---
+
+## SQL Execution Engine
+
+The executor module provides an in-memory SQL execution engine that can run queries against Rust data structures. This is useful for testing SQL transformations, validating optimizer output, and unit-testing SQL pipelines without a real database.
+
+### Value Enum
+
+Represents a single cell value in the execution engine.
+
+| Variant | Rust Type | Description |
+|---------|-----------|-------------|
+| `Null` | — | SQL NULL |
+| `Boolean(bool)` | `bool` | TRUE / FALSE |
+| `Int(i64)` | `i64` | Integer numbers |
+| `Float(f64)` | `f64` | Floating-point numbers |
+| `String(String)` | `String` | Text values |
+
+`Value` implements `Display`, `PartialEq`, `Eq`, `Hash`, `PartialOrd`, `Ord`, `Clone`, and `Serialize`.
+
+### Table / Tables
+
+```rust
+use sqlglot_rust::executor::{Table, Tables};
+
+// A Table is a named collection of rows
+let table = Table {
+    columns: vec!["id".into(), "name".into(), "salary".into()],
+    rows: vec![
+        vec![Value::Int(1), Value::String("Alice".into()), Value::Float(100000.0)],
+        vec![Value::Int(2), Value::String("Bob".into()),   Value::Float(95000.0)],
+    ],
+};
+
+// Tables is a HashMap<String, Table>
+let mut tables: Tables = std::collections::HashMap::new();
+tables.insert("employees".to_string(), table);
+```
+
+### ResultSet
+
+Returned by `execute` and `execute_statement`. Provides access to column names and rows.
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `columns()` | `&[String]` | Column names in the result |
+| `rows()` | `&[Vec<Value>]` | All result rows |
+| `row_count()` | `usize` | Number of rows |
+| `column_count()` | `usize` | Number of columns |
+
+### execute / execute_statement
+
+```rust
+use sqlglot_rust::executor::{execute, Value, Table, Tables};
+use std::collections::HashMap;
+
+let mut tables: Tables = HashMap::new();
+tables.insert("employees".into(), Table {
+    columns: vec!["name".into(), "department".into(), "salary".into()],
+    rows: vec![
+        vec![Value::String("Alice".into()), Value::String("Engineering".into()), Value::Float(100000.0)],
+        vec![Value::String("Bob".into()),   Value::String("Engineering".into()), Value::Float(95000.0)],
+        vec![Value::String("Carol".into()), Value::String("Marketing".into()),   Value::Float(80000.0)],
+    ],
+});
+
+// Execute a SQL string directly
+let result = execute(
+    "SELECT name, salary FROM employees WHERE department = 'Engineering' ORDER BY salary DESC",
+    &tables,
+).unwrap();
+
+assert_eq!(result.row_count(), 2);
+assert_eq!(result.rows()[0][0], Value::String("Alice".into()));
+```
+
+#### Supported SQL Features
+
+| Feature | Details |
+|---------|---------|
+| **SELECT** | Column references, aliases, `*`, expressions, `DISTINCT` |
+| **WHERE** | Comparison operators, `AND`/`OR`/`NOT`, `IN`, `BETWEEN`, `LIKE`, `IS NULL` |
+| **JOIN** | `INNER`, `LEFT`, `RIGHT`, `FULL`, `CROSS`, `NATURAL` |
+| **GROUP BY / HAVING** | Grouping with aggregate functions |
+| **ORDER BY** | ASC/DESC, NULLS FIRST/LAST, positional references |
+| **LIMIT / OFFSET** | Row limiting |
+| **Aggregates** | `COUNT`, `SUM`, `AVG`, `MIN`, `MAX` (including `COUNT(*)`, `COUNT(DISTINCT)`) |
+| **Scalar functions** | `UPPER`, `LOWER`, `LENGTH`, `CONCAT`, `ABS`, `CEIL`, `FLOOR`, `ROUND`, `SQRT`, `POWER`, `COALESCE`, `REPLACE`, `SUBSTRING`, `TRIM`, `LEFT`, `RIGHT`, `LPAD`, `RPAD`, `MOD`, `LN`, `LOG` |
+| **Subqueries** | Scalar subqueries, `IN (SELECT ...)`, `EXISTS (SELECT ...)` |
+| **CTEs** | `WITH ... AS (SELECT ...)` common table expressions |
+| **Set operations** | `UNION`, `UNION ALL`, `INTERSECT`, `EXCEPT` |
+| **CASE** | `CASE WHEN ... THEN ... ELSE ... END` |
+| **CAST** | Type conversions between INT, FLOAT, STRING, BOOLEAN |
+| **EXTRACT** | `EXTRACT(field FROM value)` for date-part extraction |
