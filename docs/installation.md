@@ -13,6 +13,10 @@ Getting started with **sqlglot-rust** — adding the crate and verifying your se
 
 No C compiler or system libraries are needed — the crate is pure Rust.
 
+For C/C++ FFI usage, you'll also need:
+- A C or C++ compiler (`gcc`, `clang`, `g++`, or MSVC)
+- `cbindgen` for header generation (`cargo install cbindgen`)
+
 ---
 
 ## Add the Dependency
@@ -122,6 +126,35 @@ Verify the installation:
 ```bash
 echo "SELECT 1" | sqlglot transpile --read mysql --write postgres
 ```
+
+---
+
+## Building for C/C++ (FFI)
+
+To build sqlglot-rust as a shared library (`.so` / `.dylib`) and static library
+(`.a`) for use from C or C++ applications:
+
+```bash
+# Build for the current host (output in target/ffi/)
+make ffi
+
+# Or build for a specific cross-compilation target
+make ffi-macos-arm64
+make ffi-macos-amd64
+make ffi-linux-amd64
+make ffi-linux-arm64
+```
+
+The generated artefacts:
+
+| File | Description |
+| --- | --- |
+| `target/ffi/include/sqlglot.h` | C header with all function declarations |
+| `target/ffi/lib/libsqlglot_rust.a` | Static library |
+| `target/ffi/lib/libsqlglot_rust.so` (or `.dylib`) | Shared library |
+
+See the **[Developer Guide — C/C++ FFI Bindings](developer-guide.md#cc-ffi-bindings)**
+for usage examples.
 
 ---
 

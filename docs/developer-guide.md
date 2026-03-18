@@ -71,6 +71,11 @@ the AST, optimizing queries, and serializing results.
   - [Inspecting Steps](#inspecting-steps)
   - [Visualization](#visualization)
 - [Serialization (JSON Round-Tripping)](#serialization-json-round-tripping)
+- [C/C++ FFI Bindings](#cc-ffi-bindings)
+  - [Building the FFI Libraries](#building-the-ffi-libraries)
+  - [C Example](#c-example)
+  - [C++ Example with RAII](#c-example-with-raii)
+  - [Linking](#linking)
 - [Error Handling](#error-handling)
 - [SBOM Generation](#sbom-generation)
 - [Updating the Version](#updating-the-version)
@@ -1768,6 +1773,141 @@ assert_eq!(sql, "SELECT id, name FROM users WHERE active = TRUE");
 - Send ASTs across service boundaries (microservices, WASM)
 - Build language-server-style tooling
 - Debugging — inspect the exact parse tree
+
+---
+
+## C/C++ FFI Bindings
+
+sqlglot-rust ships with a C-compatible FFI layer so the library can be consumed
+from C, C++, or any language that supports the C ABI.
+
+### Building the FFI Libraries
+
+```bash
+# Build for the current host — produces header + static/shared libs
+make ffi
+
+# Or build for a specific cross-compilation target
+make ffi-macos-arm64   # aarch64-apple-darwin
+make ffi-linux-amd64   # x86_64-unknown-linux-gnu
+
+# Build all four targets (macOS + Linux × arm64 + amd64)
+make ffi-all
+```
+
+Output:
+
+```text
+target/ffi/
+├── include/
+│   └── sqlglot.h           # Auto-generated C header
+└── lib/
+    ├── libsqlglot_rust.a       # Static library
+    └── libsqlglot_rust.dylib   # Shared library (or .so on Linux)
+```
+
+### C Example
+
+```c
+#include <stdio.h>
+#include "sqlglot.h"
+
+int main(void) {
+    printf("version: %s\n", sqlglot_version());
+
+    /* Transpile MySQL → PostgreSQL */
+    char *result = sqlglot_transpile(
+        "SELECT NOW(), IFNULL(a, b) FROM t LIMIT 10",
+        "mysql",
+        "postgres"
+    );
+    if (result) {
+        printf("transpiled: %s\n", result);
+        sqlglot_free(result);   /* MUST free every non-NULL return */
+    }
+
+    /* Parse SQL to JSON AST */
+    char *json = sqlglot_parse("SELECT a FROM t", "ansi");
+    if (json) {
+        printf("AST: %s\n", json);
+        sqlglot_free(json);
+    }
+
+    return 0;
+}
+```
+
+Build and run:
+
+```bash
+# macOS
+gcc example.c -Itarget/ffi/include -Ltarget/release -lsqlglot_rust -o example
+./example
+
+# Linux
+gcc example.c -Itarget/ffi/include -Ltarget/release -lsqlglot_rust -lpthread -ldl -lm -o example
+LD_LIBRARY_PATH=target/release ./example
+```
+
+### C++ Example with RAII
+
+Use a `unique_ptr` with a custom deleter so strings are freed automatically:
+
+```cpp
+#include <cstdio>
+#include <memory>
+#include <optional>
+#include <string>
+
+extern "C" {
+#include "sqlglot.h"
+}
+
+struct SqlglotDeleter {
+    void operator()(char *p) const noexcept { sqlglot_free(p); }
+};
+using SqlglotString = std::unique_ptr<char, SqlglotDeleter>;
+
+std::optional<std::string> transpile(const char *sql,
+                                     const char *from,
+                                     const char *to) {
+    SqlglotString result(sqlglot_transpile(sql, from, to));
+    if (!result) return std::nullopt;
+    return std::string(result.get());
+}
+
+int main() {
+    auto sql = transpile("SELECT * FROM t LIMIT 5", "mysql", "tsql");
+    if (sql) std::printf("result: %s\n", sql->c_str());
+    return 0;
+}
+```
+
+Build:
+
+```bash
+g++ -std=c++17 example.cpp -Itarget/ffi/include -Ltarget/release -lsqlglot_rust -o example
+```
+
+### Linking
+
+**Static linking** (no runtime dependency):
+
+```bash
+gcc example.c -Itarget/ffi/include target/ffi/lib/libsqlglot_rust.a -lpthread -ldl -lm -o example
+```
+
+**Dynamic linking** (smaller binary, requires `.so`/`.dylib` at runtime):
+
+```bash
+gcc example.c -Itarget/ffi/include -Ltarget/ffi/lib -lsqlglot_rust -o example
+LD_LIBRARY_PATH=target/ffi/lib ./example    # Linux
+DYLD_LIBRARY_PATH=target/ffi/lib ./example  # macOS
+```
+
+See [`examples/ffi_example.c`](../examples/ffi_example.c) and
+[`examples/ffi_example.cpp`](../examples/ffi_example.cpp) for complete working
+examples.
 
 ---
 

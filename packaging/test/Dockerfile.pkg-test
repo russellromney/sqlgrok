@@ -1,0 +1,71 @@
+FROM rust:latest
+
+# Install tools needed for RPM testing + CA certs
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    rpm file ca-certificates \
+    && update-ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Optional: inject host CA bundle for corporate proxies.
+# Copy your PEM bundle to packaging/test/ca-bundle.pem before building:
+#   security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain \
+#     /Library/Keychains/System.keychain > packaging/test/ca-bundle.pem
+# Then uncomment the next 3 lines:
+# COPY packaging/test/ca-bundle.pem /usr/local/share/ca-certificates/host-ca.crt
+# RUN update-ca-certificates
+# ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt CARGO_HTTP_CAINFO=/etc/ssl/certs/ca-certificates.crt
+
+WORKDIR /workspace
+COPY . .
+
+# Remove any macOS build artefacts
+RUN rm -rf target
+
+# Build release binaries (libraries + CLI)
+RUN cargo build --release && \
+    cargo build --release --features cli
+
+# Install packaging tools and cbindgen
+RUN cargo install cbindgen cargo-deb cargo-generate-rpm
+
+# Generate C header
+RUN mkdir -p target/ffi/include && \
+    cbindgen --config cbindgen.toml --crate sqlglot-rust --output target/ffi/include/sqlglot.h
+
+# Verify all expected artefacts exist
+RUN echo "=== Checking build artefacts ===" && \
+    ls -lh target/release/sqlglot && \
+    ls -lh target/release/libsqlglot_rust.so && \
+    ls -lh target/release/libsqlglot_rust.a && \
+    ls -lh target/ffi/include/sqlglot.h && \
+    file target/release/sqlglot && \
+    file target/release/libsqlglot_rust.so
+
+# ── Build Debian package ─────────────────────────────────────────────────
+RUN echo "=== Building Debian package ===" && \
+    cargo deb --no-build --no-strip && \
+    echo "=== .deb contents ===" && \
+    DEB=$(find target/debian -name '*.deb' | head -1) && \
+    dpkg-deb --info "$DEB" && \
+    dpkg-deb --contents "$DEB"
+
+# ── Build RPM package ────────────────────────────────────────────────────
+RUN echo "=== Building RPM package ===" && \
+    cargo generate-rpm && \
+    echo "=== .rpm contents ===" && \
+    RPM=$(find target/generate-rpm -name '*.rpm' | head -1) && \
+    rpm -qip "$RPM" && \
+    rpm -qlp "$RPM"
+
+# ── Install and smoke-test the .deb ──────────────────────────────────────
+RUN echo "=== Installing and testing .deb ===" && \
+    DEB=$(find target/debian -name '*.deb' | head -1) && \
+    dpkg -i "$DEB" && \
+    which sqlglot && \
+    sqlglot --version && \
+    echo "SELECT 1" | sqlglot transpile --read mysql --write postgres && \
+    ls /usr/lib/libsqlglot_rust.so && \
+    ls /usr/include/sqlglot.h && \
+    echo "=== .deb install PASSED ==="
+
+CMD ["echo", "All packaging tests passed!"]

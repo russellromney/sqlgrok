@@ -1,3 +1,4 @@
 /target
-.github
 /tmp
+.github/copilot-instructions.md
+packaging/test/ca-bundle.pem
