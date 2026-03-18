@@ -459,6 +459,7 @@ pub enum MergeAction {
 | `output` | T-SQL `OUTPUT` clause items |
 
 **Supported dialect extensions:**
+
 - `WHEN NOT MATCHED BY SOURCE` (T-SQL)
 - `INSERT ROW` (BigQuery)
 - `OUTPUT` clause (T-SQL)
@@ -810,11 +811,13 @@ pub struct PivotValue {
 ```
 
 **PIVOT** rotates rows into columns using an aggregate function:
+
 ```sql
 SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2', 'Q3')) AS pvt
 ```
 
 **UNPIVOT** rotates columns back into rows:
+
 ```sql
 SELECT * FROM quarterly UNPIVOT (amount FOR quarter IN (Q1, Q2, Q3, Q4)) AS unpvt
 ```
@@ -1029,7 +1032,7 @@ pub enum AlterTableAction {
 | `SmallSerial` | — | `SMALLSERIAL` |
 | `Money` | — | `MONEY` |
 
-### String
+### String Types
 
 | Variant | Parameters | Example SQL |
 | --- | --- | --- |
@@ -1065,7 +1068,7 @@ pub enum AlterTableAction {
 | `DateTime` | — | `DATETIME` |
 | `Interval` | — | `INTERVAL` |
 
-### JSON
+### JSON Types
 
 | Variant | Example SQL |
 | --- | --- |
@@ -1350,6 +1353,7 @@ Date/time format strings are automatically converted during transpilation. Each 
 | **Java** | Spark, Hive, Databricks, Presto, Trino | `yyyy` | `MM` | `dd` | `HH` | `mm` | `ss` |
 
 **Example Transpilation:**
+
 ```rust
 use sqlglot_rust::{transpile, Dialect};
 
@@ -1371,6 +1375,7 @@ assert_eq!(result, "SELECT DATE_FORMAT(dt, 'yyyy-MM-dd HH:mm:ss')");
 ```
 
 **Direct Format Conversion:**
+
 ```rust
 use sqlglot_rust::{format_time, format_time_dialect, TimeFormatStyle, Dialect};
 
@@ -1384,6 +1389,7 @@ assert_eq!(spark_format, "yyyy-MM-dd HH:mm:ss");
 ```
 
 **Format Function Mapping:**
+
 | Source Function | Postgres | MySQL | BigQuery | Spark | T-SQL |
 | --- | --- | --- | --- | --- | --- |
 | Time → String | `TO_CHAR()` | `DATE_FORMAT()` | `FORMAT_TIMESTAMP()` | `DATE_FORMAT()` | `FORMAT()` |
@@ -1857,11 +1863,11 @@ or the crate-level re-exports `use sqlglot_rust::{annotate_types, TypeAnnotation
 
 Wider types supersede narrower ones in arithmetic expressions:
 
-```
+```text
 Boolean < TinyInt < SmallInt < Int < BigInt < Float/Real < Double < Decimal/Numeric
 ```
 
-#### Example
+#### Annotate Types Example
 
 ```rust
 use sqlglot_rust::{parse, Dialect, annotate_types};
@@ -1968,7 +1974,7 @@ or the crate-level re-exports `use sqlglot_rust::{lineage, lineage_sql, LineageC
 | `InvalidQuery(String)` | Query structure not supported for lineage |
 | `ParseError(String)` | SQL parsing failed |
 
-#### Example
+#### Lineage Example
 
 ```rust
 use sqlglot_rust::{parse, Dialect};
@@ -2020,7 +2026,7 @@ println!("{p}"); // Display shows all steps and dependencies
 ```
 
 | Method | Return Type | Description |
-|--------|-------------|-------------|
+| -------- | ------------- | ------------- |
 | `plan(&Statement)` | `Result<Plan>` | Build a plan from a parsed statement |
 | `Plan::root()` | `StepId` | The root step that produces the final result |
 | `Plan::steps()` | `&[Step]` | All steps in topological order |
@@ -2035,7 +2041,7 @@ println!("{p}"); // Display shows all steps and dependencies
 Each step in the plan represents a logical operation.
 
 | Variant | Description | Dependencies |
-|---------|-------------|--------------|
+| --------- | ------------- | -------------- |
 | `Scan` | Full table scan with optional filter pushdown | None (leaf) |
 | `Filter` | WHERE / HAVING predicate evaluation | 1 input |
 | `Project` | SELECT list evaluation | 1 input |
@@ -2047,6 +2053,7 @@ Each step in the plan represents a logical operation.
 | `Distinct` | DISTINCT elimination | 1 input |
 
 All steps have:
+
 - `dependencies()` → `&[StepId]` — IDs of input steps
 - `projections()` → `&[Projection]` — output column projections
 - `kind()` → `&str` — human-readable step type name
@@ -2171,7 +2178,7 @@ The executor module provides an in-memory SQL execution engine that can run quer
 Represents a single cell value in the execution engine.
 
 | Variant | Rust Type | Description |
-|---------|-----------|-------------|
+| --------- | ----------- | ------------- |
 | `Null` | — | SQL NULL |
 | `Boolean(bool)` | `bool` | TRUE / FALSE |
 | `Int(i64)` | `i64` | Integer numbers |
@@ -2204,7 +2211,7 @@ tables.insert("employees".to_string(), table);
 Returned by `execute` and `execute_statement`. Provides access to column names and rows.
 
 | Method | Return Type | Description |
-|--------|-------------|-------------|
+| -------- | ------------- | ------------- |
 | `columns()` | `&[String]` | Column names in the result |
 | `rows()` | `&[Vec<Value>]` | All result rows |
 | `row_count()` | `usize` | Number of rows |
@@ -2239,7 +2246,7 @@ assert_eq!(result.rows()[0][0], Value::String("Alice".into()));
 #### Supported SQL Features
 
 | Feature | Details |
-|---------|---------|
+| --------- | --------- |
 | **SELECT** | Column references, aliases, `*`, expressions, `DISTINCT` |
 | **WHERE** | Comparison operators, `AND`/`OR`/`NOT`, `IN`, `BETWEEN`, `LIKE`, `IS NULL` |
 | **JOIN** | `INNER`, `LEFT`, `RIGHT`, `FULL`, `CROSS`, `NATURAL` |
