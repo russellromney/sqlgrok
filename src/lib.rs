@@ -37,6 +37,7 @@ pub mod dialects;
 pub mod diff;
 pub mod errors;
 pub mod executor;
+pub mod ffi;
 pub mod generator;
 pub mod optimizer;
 pub mod parser;

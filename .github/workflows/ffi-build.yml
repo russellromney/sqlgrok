@@ -1,0 +1,149 @@
+name: Build FFI Libraries & CLI
+
+on:
+  push:
+    branches: [feature/c-ffi-bindings, master]
+  pull_request:
+    branches: [master]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── macOS ──────────────────────────────────────────
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: macos-arm64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: macos-amd64
+          # ── Linux ──────────────────────────────────────────
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: linux-amd64
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact: linux-arm64
+
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.artifact }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - name: Configure linker for cross-compilation (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          mkdir -p .cargo
+          cat >> .cargo/config.toml <<'EOF'
+          [target.aarch64-unknown-linux-gnu]
+          linker = "aarch64-linux-gnu-gcc"
+          EOF
+
+      - name: Build release libraries
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Build CLI binary
+        run: cargo build --release --features cli --target ${{ matrix.target }}
+
+      - name: Install cbindgen and generate header
+        run: |
+          cargo install cbindgen
+          cbindgen --config cbindgen.toml --crate sqlglot-rust --output include/sqlglot.h
+          mkdir -p include
+
+      - name: Identify built artefacts
+        id: artifacts
+        shell: bash
+        run: |
+          BASE="target/${{ matrix.target }}/release"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          # Dynamic library
+          if [[ "${{ matrix.os }}" == macos-* ]]; then
+            echo "dylib=$BASE/libsqlglot_rust.dylib" >> "$GITHUB_OUTPUT"
+          else
+            echo "dylib=$BASE/libsqlglot_rust.so" >> "$GITHUB_OUTPUT"
+          fi
+          # Static library
+          echo "static=$BASE/libsqlglot_rust.a" >> "$GITHUB_OUTPUT"
+          # CLI binary
+          echo "cli=$BASE/sqlglot" >> "$GITHUB_OUTPUT"
+
+      - name: Package artefacts
+        shell: bash
+        run: |
+          STAGING="sqlglot-ffi-${{ matrix.artifact }}"
+          mkdir -p "$STAGING/lib" "$STAGING/include" "$STAGING/bin"
+          cp include/sqlglot.h        "$STAGING/include/"
+          cp "${{ steps.artifacts.outputs.static }}" "$STAGING/lib/" || true
+          cp "${{ steps.artifacts.outputs.dylib }}"  "$STAGING/lib/" || true
+          cp "${{ steps.artifacts.outputs.cli }}"     "$STAGING/bin/" || true
+          tar czf "$STAGING.tar.gz" "$STAGING"
+
+      - name: Upload artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlglot-ffi-${{ matrix.artifact }}
+          path: sqlglot-ffi-${{ matrix.artifact }}.tar.gz
+          retention-days: 30
+
+  # Optional: run a quick smoke test by linking into a C program
+  smoke-test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download linux-amd64 artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: sqlglot-ffi-linux-amd64
+
+      - name: Extract and compile C smoke test
+        run: |
+          tar xzf sqlglot-ffi-linux-amd64.tar.gz
+          cat > smoke.c << 'EOF'
+          #include <stdio.h>
+          #include "sqlglot-ffi-linux-amd64/include/sqlglot.h"
+
+          int main(void) {
+              const char *ver = sqlglot_version();
+              printf("sqlglot version: %s\n", ver);
+
+              char *result = sqlglot_transpile(
+                  "SELECT * FROM t LIMIT 10",
+                  "mysql",
+                  "postgres"
+              );
+              if (result) {
+                  printf("transpiled: %s\n", result);
+                  sqlglot_free(result);
+              } else {
+                  fprintf(stderr, "transpile failed\n");
+                  return 1;
+              }
+              return 0;
+          }
+          EOF
+          gcc smoke.c \
+            -Lsqlglot-ffi-linux-amd64/lib \
+            -lsqlglot_rust \
+            -lpthread -ldl -lm \
+            -o smoke
+          LD_LIBRARY_PATH=sqlglot-ffi-linux-amd64/lib ./smoke

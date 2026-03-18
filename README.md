@@ -7,6 +7,7 @@ A SQL parser, optimizer, and transpiler library written in Rust, inspired by Pyt
 - **Parse** SQL strings into a structured AST
 - **Generate** SQL from AST nodes
 - **Transpile** between 30 SQL dialects
+- **C/C++ FFI** — shared & static libraries with a C header for integration from C, C++, or any language with C ABI support
 - **CLI** — command-line interface for transpiling, parsing, and formatting SQL
 - **Expression Builder API** — fluent builders for programmatic SQL construction
 - **Typed function expressions** — 72+ functions across 8 categories with dialect-specific generation
@@ -282,6 +283,69 @@ echo "select a,b from t where x>1" | sqlglot format
 | `--output <file>` | Write to file instead of stdout |
 | `--optimize` | Run optimizer before generation (transpile only) |
 
+## C/C++ FFI
+
+sqlglot-rust can be built as a shared library (`.so` / `.dylib` / `.dll`) or a static library (`.a`) for use from C, C++, or any language that supports the C ABI.
+
+### Build the FFI libraries
+
+```bash
+# Build for the current host
+make ffi
+
+# Build for a specific target
+make ffi-macos-arm64    # aarch64-apple-darwin
+make ffi-macos-amd64    # x86_64-apple-darwin
+make ffi-linux-amd64    # x86_64-unknown-linux-gnu
+make ffi-linux-arm64    # aarch64-unknown-linux-gnu
+
+# Build all four targets
+make ffi-all
+```
+
+Output goes to `target/ffi/` with the C header at `target/ffi/include/sqlglot.h`.
+
+### C API
+
+```c
+#include "sqlglot.h"
+
+const char *sqlglot_version(void);
+char *sqlglot_parse(const char *sql, const char *dialect);
+char *sqlglot_transpile(const char *sql, const char *from_dialect, const char *to_dialect);
+char *sqlglot_generate(const char *ast_json, const char *dialect);
+void  sqlglot_free(char *ptr);   /* must be called on every non-NULL return */
+```
+
+### C usage example
+
+```c
+#include <stdio.h>
+#include "sqlglot.h"
+
+int main(void) {
+    char *result = sqlglot_transpile("SELECT * FROM t LIMIT 10", "mysql", "tsql");
+    if (result) {
+        printf("%s\n", result);   /* → SELECT TOP 10 * FROM t */
+        sqlglot_free(result);
+    }
+    return 0;
+}
+```
+
+See [`examples/ffi_example.c`](examples/ffi_example.c) and [`examples/ffi_example.cpp`](examples/ffi_example.cpp) for complete examples.
+
+### Link against the library
+
+```bash
+# macOS
+gcc example.c -Itarget/ffi/include -Ltarget/release -lsqlglot_rust -o example
+
+# Linux
+gcc example.c -Itarget/ffi/include -Ltarget/release -lsqlglot_rust -lpthread -ldl -lm -o example
+LD_LIBRARY_PATH=target/release ./example
+```
+
 ## Documentation
 
 - **[Installation](docs/installation.md)** — Dependency setup and verification
@@ -294,6 +358,7 @@ echo "select a,b from t where x>1" | sqlglot format
 src/
 ├── ast/          # AST node definitions (~40 expression types, 15 statement types)
 ├── bin/          # CLI binary (sqlglot) — feature-gated behind "cli"
+├── ffi.rs        # C-compatible FFI bindings (extern "C" API)
 ├── tokens/       # Token types (~200+ variants) and tokenizer
 ├── parser/       # Recursive-descent SQL parser
 ├── generator/    # SQL code generator
@@ -340,6 +405,8 @@ make lint           # cargo clippy
 make fmt            # cargo fmt
 make sbom           # Generate SPDX SBOM (see below)
 make bump-version   # Update version across all files (see below)
+make ffi            # Build FFI libraries for the current host
+make ffi-all        # Build FFI libraries for all 4 targets (macOS/Linux × arm64/amd64)
 make all            # build + sbom
 ```
 

@@ -10,6 +10,10 @@ homepage = "https://github.com/protegrity/sql-glot-rust"
 documentation = "https://github.com/protegrity/sql-glot-rust/blob/master/docs/guide.md"
 keywords = ["sql", "parser", "transpiler", "ast", "database"]
 categories = ["parser-implementations", "database"]
+exclude = ["packaging/test/", ".dockerignore", ".github/"]
+
+[lib]
+crate-type = ["rlib", "cdylib", "staticlib"]
 
 [features]
 default = []
@@ -38,3 +42,33 @@ serde_json = "1"
 [[bench]]
 name = "parser_bench"
 harness = false
+
+# ── Debian package (cargo-deb) ────────────────────────────────────────────
+[package.metadata.deb]
+maintainer = "Protegrity <engineering@protegrity.com>"
+copyright = "2024-2026 Protegrity"
+extended-description = """\
+sqlglot-rust is a SQL parser, optimizer, and transpiler library \
+supporting 30 SQL dialects. This package provides the sqlglot CLI \
+and shared/static C FFI libraries."""
+section = "database"
+priority = "optional"
+assets = [
+    ["target/release/sqlglot",                "usr/bin/sqlglot",                            "755"],
+    ["target/release/libsqlglot_rust.so",     "usr/lib/libsqlglot_rust.so",                "644"],
+    ["target/release/libsqlglot_rust.a",      "usr/lib/libsqlglot_rust.a",                 "644"],
+    ["target/ffi/include/sqlglot.h",          "usr/include/sqlglot.h",                     "644"],
+    ["README.md",                             "usr/share/doc/sqlglot-rust/README.md",      "644"],
+    ["LICENSE",                               "usr/share/doc/sqlglot-rust/LICENSE",         "644"],
+]
+
+# ── RPM package (cargo-generate-rpm) ─────────────────────────────────────
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/sqlglot",            dest = "/usr/bin/sqlglot",            mode = "0755" },
+    { source = "target/release/libsqlglot_rust.so", dest = "/usr/lib64/libsqlglot_rust.so", mode = "0644" },
+    { source = "target/release/libsqlglot_rust.a",  dest = "/usr/lib64/libsqlglot_rust.a",  mode = "0644" },
+    { source = "target/ffi/include/sqlglot.h",      dest = "/usr/include/sqlglot.h",      mode = "0644" },
+    { source = "README.md",                         dest = "/usr/share/doc/sqlglot-rust/README.md", mode = "0644" },
+    { source = "LICENSE",                           dest = "/usr/share/doc/sqlglot-rust/LICENSE",   mode = "0644" },
+]
