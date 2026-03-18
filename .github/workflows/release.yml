@@ -161,9 +161,8 @@ jobs:
           done
 
           cargo generate-rpm \
-            --set-metadata="version=$VERSION" \
-            --set-metadata="arch=$RPM_ARCH" \
-            || true
+            --set-metadata="version=\"$VERSION\"" \
+            --set-metadata="arch=\"$RPM_ARCH\""
 
           RPM_FILE=$(find target/generate-rpm -name '*.rpm' 2>/dev/null | head -1)
           if [[ -n "$RPM_FILE" ]]; then
@@ -175,20 +174,21 @@ jobs:
 
       # ── Upload all artefacts ────────────────────────────────────────
       - name: Upload tarball
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tarball-${{ matrix.artifact }}
           path: ${{ steps.tarball.outputs.path }}
 
       - name: Upload deb
-        if: matrix.pkg_deb && steps.deb.outputs.path != ''
+        if: always() && matrix.pkg_deb && steps.deb.outputs.path != ''
         uses: actions/upload-artifact@v4
         with:
           name: deb-${{ matrix.artifact }}
           path: ${{ steps.deb.outputs.path }}
 
       - name: Upload rpm
-        if: matrix.pkg_rpm && steps.rpm.outputs.path != ''
+        if: always() && matrix.pkg_rpm && steps.rpm.outputs.path != ''
         uses: actions/upload-artifact@v4
         with:
           name: rpm-${{ matrix.artifact }}
