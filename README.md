@@ -7,6 +7,7 @@ A SQL parser, optimizer, and transpiler library written in Rust, inspired by Pyt
 - **Parse** SQL strings into a structured AST
 - **Generate** SQL from AST nodes
 - **Transpile** between 30 SQL dialects
+- **Expression Builder API** — fluent builders for programmatic SQL construction
 - **Typed function expressions** — 72+ functions across 8 categories with dialect-specific generation
 - **LIMIT / TOP / FETCH FIRST** transpilation across dialects
 - **Quoted identifier** preservation and cross-dialect conversion (`"id"` ↔ `` `id` `` ↔ `[id]`)
@@ -150,6 +151,40 @@ assert_eq!(d, Dialect::Postgres);
 assert_eq!(Dialect::from_str("tsql"), Some(Dialect::Tsql));
 assert_eq!(Dialect::from_str("mssql"), Some(Dialect::Tsql));
 assert_eq!(Dialect::from_str("sqlserver"), Some(Dialect::Tsql));
+```
+
+### Build SQL with the Expression Builder API
+
+```rust
+use sqlglot_rust::builder::{select, condition, column, literal};
+use sqlglot_rust::{generate, Dialect};
+
+fn main() {
+    // Fluent SELECT builder
+    let query = select(&["u.id", "u.name", "COUNT(o.id) AS order_count"])
+        .from("users")
+        .left_join("orders", "u.id = o.user_id")
+        .where_clause("u.active = true")
+        .and_where("o.created_at > '2024-01-01'")
+        .group_by(&["u.id", "u.name"])
+        .having("COUNT(o.id) > 0")
+        .order_by(&["order_count DESC"])
+        .limit(10)
+        .build();
+
+    let sql = generate(&query, Dialect::Postgres);
+    // => "SELECT u.id, u.name, COUNT(o.id) AS order_count FROM users LEFT JOIN orders ON u.id = o.user_id WHERE u.active = true AND o.created_at > '2024-01-01' GROUP BY u.id, u.name HAVING COUNT(o.id) > 0 ORDER BY order_count DESC LIMIT 10"
+
+    // Condition builder
+    let cond = condition("x = 1")
+        .and("y = 2")
+        .or("z = 3")
+        .build();
+
+    // Expression factory functions
+    let col = column("name", Some("users"));  // users.name
+    let num = literal(42);                     // 42
+}
 ```
 
 ### Supported Statements

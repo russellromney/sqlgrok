@@ -31,6 +31,7 @@
 //! ```
 
 pub mod ast;
+pub mod builder;
 pub mod dialects;
 pub mod errors;
 pub mod generator;
@@ -40,6 +41,23 @@ pub mod schema;
 pub mod tokens;
 
 pub use ast::{Expr, MergeClauseKind, QuoteStyle, Statement};
+pub use builder::{
+    // Expression factory functions
+    column, table, table_full, literal, string_literal, boolean, null,
+    // Operators and expressions
+    cast, and_all, or_all, not, func, func_distinct,
+    // Comparison helpers
+    eq, neq, lt, lte, gt, gte, is_null, is_not_null, between, in_list, not_in_list, in_subquery, like,
+    // Arithmetic helpers
+    add, sub, mul, div,
+    // Other helpers
+    star, qualified_star, subquery, exists, alias,
+    // Parse helpers
+    parse_expr, parse_expr_dialect, parse_condition, parse_condition_dialect,
+    // Builders
+    condition, condition_dialect, select, select_all, select_distinct,
+    ConditionBuilder, SelectBuilder,
+};
 pub use dialects::Dialect;
 pub use errors::SqlglotError;
 pub use generator::{generate, generate_pretty};
