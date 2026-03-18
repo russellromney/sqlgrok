@@ -2159,7 +2159,7 @@ impl Generator {
                 self.write(")");
             }
             TypedFunction::TimeToStr { expr, format } => {
-                if is_mysql {
+                if is_mysql || is_hive_family {
                     self.write_keyword("DATE_FORMAT(");
                 } else if is_bigquery {
                     self.write_keyword("FORMAT_TIMESTAMP(");

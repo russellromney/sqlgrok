@@ -22,6 +22,7 @@ the AST, optimizing queries, and serializing results.
   - [Multi-Statement Transpilation](#multi-statement-transpilation)
   - [Function Mapping Examples](#function-mapping-examples)
   - [Data Type Mapping Examples](#data-type-mapping-examples)
+  - [Time Format Mapping](#time-format-mapping)
   - [ILIKE Rewriting](#ilike-rewriting)
   - [Identifier Quoting](#identifier-quoting)
   - [LIMIT / TOP / FETCH FIRST](#limit--top--fetch-first)
@@ -357,6 +358,65 @@ CAST expressions are rewritten to use the target dialect's preferred type names.
 | `SELECT CAST(x AS INT) FROM t` | PostgreSQL | BigQuery | `SELECT CAST(x AS BIGINT) FROM t` |
 | `SELECT CAST(x AS FLOAT) FROM t` | PostgreSQL | BigQuery | `SELECT CAST(x AS DOUBLE) FROM t` |
 | `SELECT CAST(x AS BYTEA) FROM t` | PostgreSQL | MySQL | `SELECT CAST(x AS BLOB) FROM t` |
+
+### Time Format Mapping
+
+Date/time formatting functions (`DATE_FORMAT`, `TO_CHAR`, `STRFTIME`, etc.) use format
+strings that vary by dialect. During transpilation, both the function name AND the format
+specifiers are automatically converted:
+
+```rust
+use sqlglot_rust::{transpile, Dialect};
+
+// MySQL → PostgreSQL
+let result = transpile(
+    "SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s')",
+    Dialect::Mysql,
+    Dialect::Postgres
+).unwrap();
+// => "SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS')"
+
+// PostgreSQL → Spark (uses Java DateTimeFormatter patterns)
+let result = transpile(
+    "SELECT TO_CHAR(dt, 'YYYY-MM-DD HH24:MI:SS')",
+    Dialect::Postgres,
+    Dialect::Spark
+).unwrap();
+// => "SELECT DATE_FORMAT(dt, 'yyyy-MM-dd HH:mm:ss')"
+
+// MySQL → BigQuery
+let result = transpile(
+    "SELECT DATE_FORMAT(created_at, '%Y-%m-%d')",
+    Dialect::Mysql,
+    Dialect::BigQuery
+).unwrap();
+// => "SELECT FORMAT_TIMESTAMP(created_at, '%Y-%m-%d')"
+```
+
+**Format Style Families:**
+
+| Family | Dialects | Year | Month | Day | Hour (24h) | Minute | Second |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| strftime | SQLite, BigQuery, DuckDB | `%Y` | `%m` | `%d` | `%H` | `%M` | `%S` |
+| MySQL | MySQL, Doris, SingleStore, StarRocks | `%Y` | `%m` | `%d` | `%H` | `%i` | `%s` |
+| Postgres | PostgreSQL, Oracle, Redshift | `YYYY` | `MM` | `DD` | `HH24` | `MI` | `SS` |
+| Java | Spark, Hive, Databricks, Presto, Trino | `yyyy` | `MM` | `dd` | `HH` | `mm` | `ss` |
+
+**Direct Format Conversion:**
+
+You can also convert format strings directly without parsing SQL:
+
+```rust
+use sqlglot_rust::{format_time, format_time_dialect, TimeFormatStyle, Dialect};
+
+// Convert between format styles
+let pg_format = format_time("%Y-%m-%d", TimeFormatStyle::Strftime, TimeFormatStyle::Postgres);
+assert_eq!(pg_format, "YYYY-MM-DD");
+
+// Or use dialect-to-dialect conversion
+let spark_format = format_time_dialect("YYYY-MM-DD", Dialect::Postgres, Dialect::Spark);
+assert_eq!(spark_format, "yyyy-MM-dd");
+```
 
 ### ILIKE Rewriting
 

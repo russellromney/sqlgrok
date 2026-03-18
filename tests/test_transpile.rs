@@ -1639,3 +1639,128 @@ fn test_pivot_with_join() {
         "SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2')) AS pvt INNER JOIN regions ON pvt.region_id = regions.id",
     );
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Time Format Mapping Tests
+// ═════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_time_format_mysql_to_postgres() {
+    // MySQL DATE_FORMAT should transpile to PostgreSQL TO_CHAR with format conversion
+    validate_with_dialect(
+        "SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s')",
+        "SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS')",
+        Dialect::Mysql,
+        Dialect::Postgres,
+    );
+}
+
+#[test]
+fn test_time_format_postgres_to_mysql() {
+    // PostgreSQL TO_CHAR should transpile to MySQL DATE_FORMAT with format conversion
+    validate_with_dialect(
+        "SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS')",
+        "SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s')",
+        Dialect::Postgres,
+        Dialect::Mysql,
+    );
+}
+
+#[test]
+fn test_time_format_mysql_to_spark() {
+    // MySQL format to Spark Java DateTimeFormatter style
+    validate_with_dialect(
+        "SELECT DATE_FORMAT(created_at, '%Y-%m-%d')",
+        "SELECT DATE_FORMAT(created_at, 'yyyy-MM-dd')",
+        Dialect::Mysql,
+        Dialect::Spark,
+    );
+}
+
+#[test]
+fn test_time_format_postgres_to_snowflake() {
+    // PostgreSQL TO_CHAR to Snowflake (which uses similar Postgres-style format)
+    validate_with_dialect(
+        "SELECT TO_CHAR(created_at, 'YYYY-MM-DD')",
+        "SELECT TO_CHAR(created_at, 'YYYY-MM-DD')",
+        Dialect::Postgres,
+        Dialect::Snowflake,
+    );
+}
+
+#[test]
+fn test_time_format_spark_to_postgres() {
+    // Spark Java format to PostgreSQL
+    validate_with_dialect(
+        "SELECT DATE_FORMAT(created_at, 'yyyy-MM-dd HH:mm:ss')",
+        "SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS')",
+        Dialect::Spark,
+        Dialect::Postgres,
+    );
+}
+
+#[test]
+fn test_time_format_with_12hour_clock() {
+    // 12-hour clock format with AM/PM (MySQL uses %h for 12-hour)
+    validate_with_dialect(
+        "SELECT DATE_FORMAT(created_at, '%Y-%m-%d %h:%i %p')",
+        "SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH12:MI AM')",
+        Dialect::Mysql,
+        Dialect::Postgres,
+    );
+}
+
+#[test]
+fn test_time_format_mysql_to_bigquery() {
+    // MySQL to BigQuery (BigQuery uses strftime-like format)
+    validate_with_dialect(
+        "SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s')",
+        "SELECT FORMAT_TIMESTAMP(created_at, '%Y-%m-%d %H:%M:%S')",
+        Dialect::Mysql,
+        Dialect::BigQuery,
+    );
+}
+
+#[test]
+fn test_time_format_with_literals() {
+    // Format with literal characters (like T in ISO format)
+    validate_with_dialect(
+        "SELECT DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s')",
+        "SELECT TO_CHAR(created_at, 'YYYY-MM-DDTHH24:MI:SS')",
+        Dialect::Mysql,
+        Dialect::Postgres,
+    );
+}
+
+#[test]
+fn test_str_to_time_mysql_to_postgres() {
+    // STR_TO_DATE to TO_TIMESTAMP conversion
+    validate_with_dialect(
+        "SELECT STR_TO_DATE(date_str, '%Y-%m-%d')",
+        "SELECT TO_TIMESTAMP(date_str, 'YYYY-MM-DD')",
+        Dialect::Mysql,
+        Dialect::Postgres,
+    );
+}
+
+#[test]
+fn test_time_format_identity_mysql() {
+    // Identity test - MySQL format should remain unchanged when transpiling to MySQL
+    validate_with_dialect(
+        "SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s')",
+        "SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s')",
+        Dialect::Mysql,
+        Dialect::Mysql,
+    );
+}
+
+#[test]
+fn test_time_format_identity_postgres() {
+    // Identity test - PostgreSQL format should remain unchanged
+    validate_with_dialect(
+        "SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS')",
+        "SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS')",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+}

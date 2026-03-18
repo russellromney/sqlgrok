@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::ast::*;
 
+pub mod time;
+
 /// Supported SQL dialects.
 ///
 /// Mirrors the full set of dialects supported by Python's sqlglot library.
@@ -410,9 +412,10 @@ fn transform_expr(expr: Expr, target: Dialect) -> Expr {
                 over,
             }
         }
-        // Recurse into typed function child expressions
+        // Recurse into typed function child expressions, with special handling
+        // for date/time formatting functions that need format string conversion
         Expr::TypedFunction { func, filter, over } => {
-            let transformed_func = func.transform_children(&|e| transform_expr(e, target));
+            let transformed_func = transform_typed_function(func, target);
             Expr::TypedFunction {
                 func: transformed_func,
                 filter: filter.map(|f| Box::new(transform_expr(*f, target))),
@@ -485,6 +488,98 @@ fn transform_expr(expr: Expr, target: Dialect) -> Expr {
         }
         // Everything else stays the same
         other => other,
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Typed function transformation with format string conversion
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Transform a TypedFunction, including date/time format string conversion.
+///
+/// For TimeToStr and StrToTime functions, this converts the format string
+/// from the source dialect's convention to the target dialect's convention.
+fn transform_typed_function(func: TypedFunction, target: Dialect) -> TypedFunction {
+    match func {
+        TypedFunction::TimeToStr { expr, format } => {
+            let transformed_expr = Box::new(transform_expr(*expr, target));
+            let transformed_format = transform_format_expr(*format, target);
+            TypedFunction::TimeToStr {
+                expr: transformed_expr,
+                format: Box::new(transformed_format),
+            }
+        }
+        TypedFunction::StrToTime { expr, format } => {
+            let transformed_expr = Box::new(transform_expr(*expr, target));
+            let transformed_format = transform_format_expr(*format, target);
+            TypedFunction::StrToTime {
+                expr: transformed_expr,
+                format: Box::new(transformed_format),
+            }
+        }
+        // For all other typed functions, just transform child expressions
+        other => other.transform_children(&|e| transform_expr(e, target)),
+    }
+}
+
+/// Transform a format string expression for the target dialect.
+///
+/// If the expression is a string literal, convert the format specifiers.
+/// Otherwise, just recursively transform child expressions.
+fn transform_format_expr(expr: Expr, target: Dialect) -> Expr {
+    // We need to know the source dialect to convert properly.
+    // Since we don't have access to the source dialect here, we use heuristics
+    // to detect the format style based on the format string content.
+    match &expr {
+        Expr::StringLiteral(s) => {
+            let detected_source = detect_format_style(s);
+            let target_style = time::TimeFormatStyle::for_dialect(target);
+            
+            // Only convert if styles differ
+            if detected_source != target_style {
+                let converted = time::format_time(s, detected_source, target_style);
+                Expr::StringLiteral(converted)
+            } else {
+                expr
+            }
+        }
+        _ => transform_expr(expr, target),
+    }
+}
+
+/// Detect the format style from a format string based on its content.
+fn detect_format_style(format_str: &str) -> time::TimeFormatStyle {
+    // Check for style-specific patterns
+    if format_str.contains('%') {
+        // strftime-style format
+        if format_str.contains("%i") {
+            // MySQL uses %i for minutes
+            time::TimeFormatStyle::Mysql
+        } else {
+            // Generic strftime (SQLite, BigQuery, etc.)
+            time::TimeFormatStyle::Strftime
+        }
+    } else if format_str.contains("YYYY") || format_str.contains("yyyy") {
+        // Check for Java vs Postgres/Snowflake
+        if format_str.contains("HH24") || format_str.contains("MI") || format_str.contains("SS") {
+            // Postgres/Oracle style
+            time::TimeFormatStyle::Postgres
+        } else if format_str.contains("mm") && format_str.contains("ss") {
+            // Java style (lowercase seconds and minutes)
+            time::TimeFormatStyle::Java
+        } else if format_str.contains("FF") {
+            // Snowflake fractional seconds
+            time::TimeFormatStyle::Snowflake
+        } else if format_str.contains("MM") && format_str.contains("DD") {
+            // Could be Postgres or Snowflake - default to Postgres
+            time::TimeFormatStyle::Postgres
+        } else {
+            // Default to Java for ambiguous cases with lowercase patterns
+            time::TimeFormatStyle::Java
+        }
+    } else {
+        // Unknown format - default to strftime
+        time::TimeFormatStyle::Strftime
     }
 }
 
