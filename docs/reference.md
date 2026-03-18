@@ -45,6 +45,7 @@ Complete type and function reference for **sqlglot-rust**.
 - [DataType Enum](#datatype-enum)
 - [DateTimeField Enum](#datetimefield-enum)
 - [QuoteStyle Enum](#quotestyle-enum)
+- [CommentType Enum](#commenttype-enum)
 - [Dialect Enum](#dialect-enum)
   - [Dialect List](#dialect-list)
   - [Dialect Methods](#dialect-methods)
@@ -97,6 +98,9 @@ All re-exported from the crate root (`use sqlglot_rust::*`).
 | `generate_pretty` | `(stmt: &Statement, dialect: Dialect) -> String` | `String` | Generate formatted SQL with indentation |
 | `transpile` | `(sql: &str, read: Dialect, write: Dialect) -> Result<String>` | `String` | Parse → transform → generate in one call |
 | `transpile_statements` | `(sql: &str, read: Dialect, write: Dialect) -> Result<Vec<String>>` | `Vec<String>` | Transpile multiple statements |
+| `parse_with_comments` | `(sql: &str, dialect: Dialect) -> Result<Statement>` | `Statement` | Parse a single statement preserving SQL comments on AST nodes |
+| `parse_statements_with_comments` | `(sql: &str, dialect: Dialect) -> Result<Vec<Statement>>` | `Vec<Statement>` | Parse multiple statements preserving SQL comments |
+| `transpile_with_comments` | `(sql: &str, read: Dialect, write: Dialect) -> Result<String>` | `String` | Transpile preserving SQL comments |
 
 **`parse_statements`** is accessed via `sqlglot_rust::parser::parse_statements`.
 
@@ -293,6 +297,7 @@ Derives: `Debug`, `Clone`, `PartialEq`, `Serialize`, `Deserialize`.
 
 ```rust
 pub struct SelectStatement {
+    pub comments: Vec<String>,
     pub ctes: Vec<Cte>,
     pub distinct: bool,
     pub top: Option<Box<Expr>>,
@@ -313,6 +318,7 @@ pub struct SelectStatement {
 
 | Field | Type | Description |
 | --- | --- | --- |
+| `comments` | `Vec<String>` | Attached SQL comments (populated by `parse_with_comments`) |
 | `ctes` | `Vec<Cte>` | Common Table Expressions (`WITH` clause) |
 | `distinct` | `bool` | `SELECT DISTINCT` flag |
 | `top` | `Option<Box<Expr>>` | T-SQL `TOP N` expression |
@@ -579,6 +585,7 @@ pub struct AlterTableStatement {
 | `Cube` | `{ exprs }` | `CUBE(a, b)` |
 | `Rollup` | `{ exprs }` | `ROLLUP(a, b)` |
 | `GroupingSets` | `{ sets }` | `GROUPING SETS((a, b), (a), ())` |
+| `Commented` | `{ expr, comments }` | Expression with attached SQL comments |
 
 ### Expr Methods
 
@@ -1144,6 +1151,22 @@ let ast = parse("SELECT EXTRACT(YEAR FROM hire_date) FROM employees", Dialect::A
 let sql = generate(&ast, Dialect::Ansi);
 assert_eq!(sql, "SELECT EXTRACT(YEAR FROM hire_date) FROM employees");
 ```
+
+---
+
+## CommentType Enum
+
+```rust
+pub enum CommentType {
+    Line,   // -- comment
+    Block,  // /* comment */
+    Hash,   // # comment (MySQL)
+}
+```
+
+Used internally to classify comment tokens. Comments are stored as raw strings
+(including delimiters) on the `comments: Vec<String>` field of each statement
+struct and on `Expr::Commented`.
 
 ---
 

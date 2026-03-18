@@ -844,6 +844,7 @@ impl SelectBuilder {
     pub fn new() -> Self {
         Self {
             statement: SelectStatement {
+                comments: Vec::new(),
                 ctes: Vec::new(),
                 distinct: false,
                 top: None,

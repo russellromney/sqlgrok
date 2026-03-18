@@ -19,6 +19,11 @@ fn quote_style_from_char(c: char) -> QuoteStyle {
 pub struct Parser {
     tokens: Vec<Token>,
     pos: usize,
+    /// Whether to preserve comments during parsing.
+    #[allow(dead_code)]
+    preserve_comments: bool,
+    /// Accumulated comments pending attachment to the next AST node.
+    pending_comments: Vec<String>,
 }
 
 impl Parser {
@@ -26,7 +31,46 @@ impl Parser {
     pub fn new(sql: &str) -> Result<Self> {
         let mut tokenizer = Tokenizer::new(sql);
         let tokens = tokenizer.tokenize()?;
-        Ok(Self { tokens, pos: 0 })
+        Ok(Self {
+            tokens,
+            pos: 0,
+            preserve_comments: false,
+            pending_comments: Vec::new(),
+        })
+    }
+
+    /// Create a new parser that preserves SQL comments in the AST.
+    pub fn new_with_comments(sql: &str) -> Result<Self> {
+        let mut tokenizer = Tokenizer::with_comments(sql);
+        let tokens = tokenizer.tokenize()?;
+        Ok(Self {
+            tokens,
+            pos: 0,
+            preserve_comments: true,
+            pending_comments: Vec::new(),
+        })
+    }
+
+    // ── Comment helpers ────────────────────────────────────────────
+
+    /// Consume any comment tokens at the current position, accumulating
+    /// their text into `pending_comments`.
+    fn collect_comments(&mut self) {
+        while self.pos < self.tokens.len() {
+            match self.tokens[self.pos].token_type {
+                TokenType::LineComment | TokenType::BlockComment => {
+                    let token = &self.tokens[self.pos];
+                    self.pending_comments.push(token.value.clone());
+                    self.pos += 1;
+                }
+                _ => break,
+            }
+        }
+    }
+
+    /// Take all pending comments, leaving the buffer empty.
+    fn take_comments(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.pending_comments)
     }
 
     // ── Token helpers ──────────────────────────────────────────────
@@ -202,6 +246,7 @@ impl Parser {
 
     /// Parse a single SQL statement.
     pub fn parse_statement(&mut self) -> Result<Statement> {
+        self.collect_comments();
         let stmt = self.parse_statement_inner()?;
         // Consume trailing semicolons
         while self.match_token(TokenType::Semicolon) {}
@@ -209,7 +254,9 @@ impl Parser {
     }
 
     fn parse_statement_inner(&mut self) -> Result<Statement> {
-        match self.peek_type() {
+        self.collect_comments();
+        let comments = self.take_comments();
+        let mut stmt = match self.peek_type() {
             TokenType::With => self.parse_with_statement(),
             TokenType::Select => {
                 let select = self.parse_select_body(vec![])?;
@@ -246,7 +293,11 @@ impl Parser {
             _ => Err(SqlglotError::UnexpectedToken {
                 token: self.peek().clone(),
             }),
+        }?;
+        if !comments.is_empty() {
+            attach_comments_to_statement(&mut stmt, comments);
         }
+        Ok(stmt)
     }
 
     /// Parse multiple statements separated by semicolons.
@@ -430,6 +481,7 @@ impl Parser {
         };
 
         Ok(SelectStatement {
+            comments: vec![],
             ctes,
             distinct,
             top,
@@ -481,6 +533,7 @@ impl Parser {
 
         // Check for further set operations chaining
         let combined = Statement::SetOperation(SetOperationStatement {
+            comments: vec![],
             op,
             all,
             left: Box::new(left),
@@ -1093,6 +1146,7 @@ impl Parser {
         };
 
         Ok(InsertStatement {
+            comments: vec![],
             table,
             columns,
             source,
@@ -1140,6 +1194,7 @@ impl Parser {
         };
 
         Ok(UpdateStatement {
+            comments: vec![],
             table,
             assignments,
             from,
@@ -1176,6 +1231,7 @@ impl Parser {
         };
 
         Ok(DeleteStatement {
+            comments: vec![],
             table,
             using,
             where_clause,
@@ -1215,6 +1271,7 @@ impl Parser {
         };
 
         Ok(MergeStatement {
+            comments: vec![],
             target,
             source,
             on,
@@ -1356,6 +1413,7 @@ impl Parser {
         if self.match_token(TokenType::As) {
             let query = self.parse_statement_inner()?;
             return Ok(Statement::CreateTable(CreateTableStatement {
+                comments: vec![],
                 if_not_exists,
                 temporary,
                 table,
@@ -1392,6 +1450,7 @@ impl Parser {
         self.expect(TokenType::RParen)?;
 
         Ok(Statement::CreateTable(CreateTableStatement {
+            comments: vec![],
             if_not_exists,
             temporary,
             table,
@@ -1432,6 +1491,7 @@ impl Parser {
         let query = self.parse_statement_inner()?;
 
         Ok(CreateViewStatement {
+            comments: vec![],
             name,
             columns,
             query: Box::new(query),
@@ -1808,6 +1868,7 @@ impl Parser {
             };
             let name = self.parse_table_ref()?;
             return Ok(Statement::DropView(DropViewStatement {
+                comments: vec![],
                 name,
                 if_exists,
                 materialized: true,
@@ -1823,6 +1884,7 @@ impl Parser {
             };
             let name = self.parse_table_ref()?;
             return Ok(Statement::DropView(DropViewStatement {
+                comments: vec![],
                 name,
                 if_exists,
                 materialized: false,
@@ -1842,6 +1904,7 @@ impl Parser {
         let cascade = self.match_token(TokenType::Cascade);
 
         Ok(Statement::DropTable(DropTableStatement {
+            comments: vec![],
             if_exists,
             table,
             cascade,
@@ -1864,7 +1927,11 @@ impl Parser {
             }
         }
 
-        Ok(AlterTableStatement { table, actions })
+        Ok(AlterTableStatement {
+            comments: vec![],
+            table,
+            actions,
+        })
     }
 
     fn parse_alter_action(&mut self) -> Result<AlterTableAction> {
@@ -1921,7 +1988,10 @@ impl Parser {
         self.expect(TokenType::Truncate)?;
         let _ = self.match_token(TokenType::Table);
         let table = self.parse_table_ref()?;
-        Ok(TruncateStatement { table })
+        Ok(TruncateStatement {
+            comments: vec![],
+            table,
+        })
     }
 
     // ── Transaction ─────────────────────────────────────────────────
@@ -1967,6 +2037,7 @@ impl Parser {
         let analyze = self.match_token(TokenType::Analyze);
         let statement = self.parse_statement_inner()?;
         Ok(ExplainStatement {
+            comments: vec![],
             analyze,
             statement: Box::new(statement),
         })
@@ -1977,7 +2048,10 @@ impl Parser {
     fn parse_use(&mut self) -> Result<UseStatement> {
         self.expect(TokenType::Use)?;
         let name = self.expect_name()?;
-        Ok(UseStatement { name })
+        Ok(UseStatement {
+            comments: vec![],
+            name,
+        })
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -3774,5 +3848,27 @@ mod tests {
             }
             _ => panic!("Expected SELECT"),
         }
+    }
+}
+
+/// Attach comments to the appropriate field on a parsed statement.
+fn attach_comments_to_statement(stmt: &mut Statement, comments: Vec<String>) {
+    match stmt {
+        Statement::Select(s) => s.comments = comments,
+        Statement::Insert(s) => s.comments = comments,
+        Statement::Update(s) => s.comments = comments,
+        Statement::Delete(s) => s.comments = comments,
+        Statement::CreateTable(s) => s.comments = comments,
+        Statement::DropTable(s) => s.comments = comments,
+        Statement::SetOperation(s) => s.comments = comments,
+        Statement::AlterTable(s) => s.comments = comments,
+        Statement::CreateView(s) => s.comments = comments,
+        Statement::DropView(s) => s.comments = comments,
+        Statement::Truncate(s) => s.comments = comments,
+        Statement::Explain(s) => s.comments = comments,
+        Statement::Use(s) => s.comments = comments,
+        Statement::Merge(s) => s.comments = comments,
+        // Transaction and Expression don't have comment fields
+        Statement::Transaction(_) | Statement::Expression(_) => {}
     }
 }

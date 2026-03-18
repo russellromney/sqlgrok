@@ -1,6 +1,21 @@
 use serde::{Deserialize, Serialize};
 
 // ═══════════════════════════════════════════════════════════════════════
+// Comment types
+// ═══════════════════════════════════════════════════════════════════════
+
+/// The type of a SQL comment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CommentType {
+    /// Single-line comment starting with `--`
+    Line,
+    /// Block comment delimited by `/* ... */`
+    Block,
+    /// MySQL-style hash comment starting with `#`
+    Hash,
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Identifier quoting style
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -95,6 +110,9 @@ pub enum Statement {
 /// `Where`, `Group`, `Having`, `Order`, `Limit`, `Offset`, `Window`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SelectStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
     /// Common Table Expressions (WITH clause)
     pub ctes: Vec<Cte>,
     pub distinct: bool,
@@ -141,6 +159,9 @@ pub struct WindowDefinition {
 /// UNION / INTERSECT / EXCEPT between two or more queries.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SetOperationStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
     pub op: SetOperationType,
     pub all: bool,
     pub left: Box<Statement>,
@@ -466,6 +487,12 @@ pub enum Expr {
         filter: Option<Box<Expr>>,
         /// OVER window specification for window functions
         over: Option<WindowSpec>,
+    },
+    /// An expression with attached SQL comments.
+    /// Wraps an inner expression so that comments survive transformations.
+    Commented {
+        expr: Box<Expr>,
+        comments: Vec<String>,
     },
 }
 
@@ -1388,6 +1415,9 @@ pub enum UnaryOperator {
 /// An INSERT statement, now supporting INSERT ... SELECT and ON CONFLICT.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct InsertStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
     pub table: TableRef,
     pub columns: Vec<String>,
     pub source: InsertSource,
@@ -1419,6 +1449,9 @@ pub enum ConflictAction {
 /// An UPDATE statement.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UpdateStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
     pub table: TableRef,
     pub assignments: Vec<(String, Expr)>,
     pub from: Option<FromClause>,
@@ -1429,6 +1462,9 @@ pub struct UpdateStatement {
 /// A DELETE statement.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DeleteStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
     pub table: TableRef,
     pub using: Option<FromClause>,
     pub where_clause: Option<Expr>,
@@ -1446,6 +1482,9 @@ pub struct DeleteStatement {
 ///   WHEN NOT MATCHED THEN INSERT ...
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MergeStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
     pub target: TableRef,
     pub source: TableSource,
     pub on: Expr,
@@ -1497,6 +1536,9 @@ pub enum MergeAction {
 /// A CREATE TABLE statement.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CreateTableStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
     pub if_not_exists: bool,
     pub temporary: bool,
     pub table: TableRef,
@@ -1557,6 +1599,9 @@ pub struct ColumnDef {
 /// ALTER TABLE statement.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AlterTableStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
     pub table: TableRef,
     pub actions: Vec<AlterTableAction>,
 }
@@ -1575,6 +1620,9 @@ pub enum AlterTableAction {
 /// CREATE VIEW statement.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CreateViewStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
     pub name: TableRef,
     pub columns: Vec<String>,
     pub query: Box<Statement>,
@@ -1586,6 +1634,9 @@ pub struct CreateViewStatement {
 /// DROP VIEW statement.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DropViewStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
     pub name: TableRef,
     pub if_exists: bool,
     pub materialized: bool,
@@ -1594,6 +1645,9 @@ pub struct DropViewStatement {
 /// TRUNCATE TABLE statement.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TruncateStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
     pub table: TableRef,
 }
 
@@ -1611,6 +1665,9 @@ pub enum TransactionStatement {
 /// EXPLAIN statement.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ExplainStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
     pub analyze: bool,
     pub statement: Box<Statement>,
 }
@@ -1618,12 +1675,18 @@ pub struct ExplainStatement {
 /// USE database statement.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UseStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
     pub name: String,
 }
 
 /// A DROP TABLE statement.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DropTableStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
     pub if_exists: bool,
     pub table: TableRef,
     pub cascade: bool,
@@ -1840,6 +1903,7 @@ impl Expr {
                     item.walk(visitor);
                 }
             }
+            Expr::Commented { expr, .. } => expr.walk(visitor),
             // Leaf nodes
             Expr::Column { .. }
             | Expr::Number(_)
@@ -2092,6 +2156,10 @@ impl Expr {
             },
             Expr::GroupingSets { sets } => Expr::GroupingSets {
                 sets: sets.into_iter().map(|e| e.transform(func)).collect(),
+            },
+            Expr::Commented { expr, comments } => Expr::Commented {
+                expr: Box::new(expr.transform(func)),
+                comments,
             },
             other => other,
         };

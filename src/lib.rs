@@ -44,7 +44,7 @@ pub mod planner;
 pub mod schema;
 pub mod tokens;
 
-pub use ast::{Expr, MergeClauseKind, QuoteStyle, Statement};
+pub use ast::{CommentType, Expr, MergeClauseKind, QuoteStyle, Statement};
 pub use builder::{
     ConditionBuilder,
     SelectBuilder,
@@ -119,6 +119,7 @@ pub use optimizer::lineage::{
 pub use optimizer::pushdown_predicates::pushdown_predicates;
 pub use optimizer::scope_analysis::{Scope, ScopeType, build_scope, find_all_in_scope};
 pub use parser::parse;
+pub use parser::{parse_statements_with_comments, parse_with_comments};
 pub use planner::{Plan, Projection, Step, StepId, plan};
 
 /// Transpile a SQL string from one dialect to another.
@@ -169,4 +170,19 @@ pub fn transpile_statements(
         results.push(generate(&transformed, write_dialect));
     }
     Ok(results)
+}
+
+/// Transpile a SQL string preserving comments through the pipeline.
+///
+/// # Errors
+///
+/// Returns a [`SqlglotError`] if parsing fails.
+pub fn transpile_with_comments(
+    sql: &str,
+    read_dialect: Dialect,
+    write_dialect: Dialect,
+) -> errors::Result<String> {
+    let ast = parse_with_comments(sql, read_dialect)?;
+    let transformed = dialects::transform(&ast, read_dialect, write_dialect);
+    Ok(generate(&transformed, write_dialect))
 }
