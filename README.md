@@ -242,6 +242,7 @@ src/
 ├── generator/    # SQL code generator
 ├── dialects/     # 30 dialect definitions with transform rules
 ├── optimizer/    # Query optimization and scope analysis
+├── planner/      # Logical query planner (execution plan DAG)
 ├── executor/     # In-memory SQL execution engine
 ├── schema/       # Schema management (MappingSchema, dialect-aware lookups)
 ├── errors/       # Error types

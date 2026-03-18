@@ -40,6 +40,7 @@ pub mod executor;
 pub mod generator;
 pub mod optimizer;
 pub mod parser;
+pub mod planner;
 pub mod schema;
 pub mod tokens;
 
@@ -114,6 +115,7 @@ pub use optimizer::lineage::{
 pub use optimizer::pushdown_predicates::pushdown_predicates;
 pub use optimizer::scope_analysis::{Scope, ScopeType, build_scope, find_all_in_scope};
 pub use parser::parse;
+pub use planner::{Plan, Projection, Step, StepId, plan};
 
 /// Transpile a SQL string from one dialect to another.
 ///
