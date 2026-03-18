@@ -59,6 +59,7 @@ pub use builder::{
     ConditionBuilder, SelectBuilder,
 };
 pub use dialects::Dialect;
+pub use dialects::time::{TimeFormatStyle, format_time, format_time_dialect, format_time_with_warnings, FormatConversionResult, TsqlStyleCode};
 pub use errors::SqlglotError;
 pub use generator::{generate, generate_pretty};
 pub use optimizer::annotate_types::{TypeAnnotations, annotate_types};

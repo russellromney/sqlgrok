@@ -52,6 +52,7 @@ Complete type and function reference for **sqlglot-rust**.
   - [Function Mapping Matrix](#function-mapping-matrix)
   - [Data Type Mapping Matrix](#data-type-mapping-matrix)
   - [Identifier Quote Styles by Dialect](#identifier-quote-styles-by-dialect)
+  - [Time Format Mapping](#time-format-mapping)
 - [Error Types](#error-types)
 - [Free Functions (ast module)](#free-functions-ast-module)
 - [Schema System](#schema-system)
@@ -1294,6 +1295,70 @@ Transformations applied automatically during transpilation via typed function ex
 | `"double"` | ANSI, PostgreSQL, Oracle, Snowflake, Presto, Trino, Redshift, Athena, DuckDB |
 | `` `backtick` `` | MySQL, BigQuery, Hive, Spark, Databricks, Doris, SingleStore, StarRocks |
 | `[bracket]` | T-SQL, Fabric |
+
+### Time Format Mapping
+
+Date/time format strings are automatically converted during transpilation. Each dialect family uses different format specifiers:
+
+| Style | Dialects | Year | Month | Day | Hour (24h) | Minute | Second |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **strftime** | SQLite, BigQuery, DuckDB | `%Y` | `%m` | `%d` | `%H` | `%M` | `%S` |
+| **MySQL** | MySQL, Doris, SingleStore, StarRocks | `%Y` | `%m` | `%d` | `%H` | `%i` | `%s` |
+| **Postgres** | PostgreSQL, Oracle, Redshift | `YYYY` | `MM` | `DD` | `HH24` | `MI` | `SS` |
+| **Snowflake** | Snowflake | `YYYY` | `MM` | `DD` | `HH24` | `MI` | `SS` |
+| **Java** | Spark, Hive, Databricks, Presto, Trino | `yyyy` | `MM` | `dd` | `HH` | `mm` | `ss` |
+
+**Example Transpilation:**
+```rust
+use sqlglot_rust::{transpile, Dialect};
+
+// MySQL → PostgreSQL: format strings are converted automatically
+let result = transpile(
+    "SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s')",
+    Dialect::Mysql,
+    Dialect::Postgres
+).unwrap();
+assert_eq!(result, "SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS')");
+
+// PostgreSQL → Spark
+let result = transpile(
+    "SELECT TO_CHAR(dt, 'YYYY-MM-DD HH24:MI:SS')",
+    Dialect::Postgres,
+    Dialect::Spark
+).unwrap();
+assert_eq!(result, "SELECT DATE_FORMAT(dt, 'yyyy-MM-dd HH:mm:ss')");
+```
+
+**Direct Format Conversion:**
+```rust
+use sqlglot_rust::{format_time, format_time_dialect, TimeFormatStyle, Dialect};
+
+// Convert format strings directly
+let pg_format = format_time("%Y-%m-%d", TimeFormatStyle::Strftime, TimeFormatStyle::Postgres);
+assert_eq!(pg_format, "YYYY-MM-DD");
+
+// Or use dialect-to-dialect conversion
+let spark_format = format_time_dialect("YYYY-MM-DD HH24:MI:SS", Dialect::Postgres, Dialect::Spark);
+assert_eq!(spark_format, "yyyy-MM-dd HH:mm:ss");
+```
+
+**Format Function Mapping:**
+| Source Function | Postgres | MySQL | BigQuery | Spark | T-SQL |
+| --- | --- | --- | --- | --- | --- |
+| Time → String | `TO_CHAR()` | `DATE_FORMAT()` | `FORMAT_TIMESTAMP()` | `DATE_FORMAT()` | `FORMAT()` |
+| String → Time | `TO_TIMESTAMP()` | `STR_TO_DATE()` | `PARSE_TIMESTAMP()` | `TO_TIMESTAMP()` | `CONVERT()` |
+
+**T-SQL Style Codes:**
+
+T-SQL's `CONVERT` function uses numeric style codes instead of format patterns. The `TsqlStyleCode` enum provides mappings:
+
+| Code | Format | Example |
+| --- | --- | --- |
+| 101 | mm/dd/yyyy (USA) | 03/17/2026 |
+| 102 | yyyy.mm.dd (ANSI) | 2026.03.17 |
+| 103 | dd/mm/yyyy (British) | 17/03/2026 |
+| 120 | yyyy-mm-dd hh:mi:ss (ODBC) | 2026-03-17 22:15:30 |
+| 126 | yyyy-mm-ddThh:mi:ss.mmm (ISO8601) | 2026-03-17T22:15:30.123 |
 
 ---
 
