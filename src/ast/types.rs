@@ -139,6 +139,8 @@ pub struct SelectStatement {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Cte {
     pub name: String,
+    #[serde(default)]
+    pub name_quote_style: QuoteStyle,
     pub columns: Vec<String>,
     pub query: Box<Statement>,
     pub materialized: Option<bool>,
@@ -190,7 +192,12 @@ pub enum SelectItem {
     /// `table.*`
     QualifiedWildcard { table: String },
     /// An expression with optional alias: `expr AS alias`
-    Expr { expr: Expr, alias: Option<String> },
+    Expr {
+        expr: Expr,
+        alias: Option<String>,
+        #[serde(default)]
+        alias_quote_style: QuoteStyle,
+    },
 }
 
 /// A FROM clause, now supporting subqueries and multiple tables.
@@ -206,11 +213,15 @@ pub enum TableSource {
     Subquery {
         query: Box<Statement>,
         alias: Option<String>,
+        #[serde(default)]
+        alias_quote_style: QuoteStyle,
     },
     TableFunction {
         name: String,
         args: Vec<Expr>,
         alias: Option<String>,
+        #[serde(default)]
+        alias_quote_style: QuoteStyle,
     },
     /// LATERAL subquery or function
     Lateral {
@@ -220,6 +231,8 @@ pub enum TableSource {
     Unnest {
         expr: Box<Expr>,
         alias: Option<String>,
+        #[serde(default)]
+        alias_quote_style: QuoteStyle,
         with_offset: bool,
     },
     /// PIVOT (aggregate FOR column IN (values))
@@ -229,6 +242,8 @@ pub enum TableSource {
         for_column: String,
         in_values: Vec<PivotValue>,
         alias: Option<String>,
+        #[serde(default)]
+        alias_quote_style: QuoteStyle,
     },
     /// UNPIVOT (value_column FOR name_column IN (columns))
     Unpivot {
@@ -237,6 +252,8 @@ pub enum TableSource {
         for_column: String,
         in_columns: Vec<PivotValue>,
         alias: Option<String>,
+        #[serde(default)]
+        alias_quote_style: QuoteStyle,
     },
 }
 
@@ -245,6 +262,8 @@ pub enum TableSource {
 pub struct PivotValue {
     pub value: Expr,
     pub alias: Option<String>,
+    #[serde(default)]
+    pub alias_quote_style: QuoteStyle,
 }
 
 /// A reference to a table.
@@ -257,6 +276,9 @@ pub struct TableRef {
     /// How the table name was quoted in the source SQL.
     #[serde(default)]
     pub name_quote_style: QuoteStyle,
+    /// How the alias was quoted in the source SQL.
+    #[serde(default)]
+    pub alias_quote_style: QuoteStyle,
 }
 
 /// A JOIN clause.

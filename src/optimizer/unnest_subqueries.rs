@@ -521,11 +521,13 @@ fn build_derived_table_from_exists(
     inner_select.columns = vec![SelectItem::Expr {
         expr: Expr::Number("1".to_string()),
         alias: Some("_sentinel".to_string()),
+        alias_quote_style: QuoteStyle::None,
     }];
 
     TableSource::Subquery {
         query: Box::new(Statement::Select(inner_select)),
         alias: Some(alias.to_string()),
+        alias_quote_style: QuoteStyle::None,
     }
 }
 
@@ -553,6 +555,7 @@ fn build_derived_table_from_in(
     TableSource::Subquery {
         query: Box::new(Statement::Select(inner_select)),
         alias: Some(table_alias.to_string()),
+        alias_quote_style: QuoteStyle::None,
     }
 }
 

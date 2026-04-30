@@ -44,7 +44,7 @@ fn main() {
                 .columns
                 .into_iter()
                 .map(|item| match item {
-                    sqlglot_rust::ast::SelectItem::Expr { expr, alias } => {
+                    sqlglot_rust::ast::SelectItem::Expr { expr, alias, alias_quote_style } => {
                         sqlglot_rust::ast::SelectItem::Expr {
                             expr: expr.transform(&|e| match e {
                                 Expr::Column {
@@ -61,6 +61,7 @@ fn main() {
                                 other => other,
                             }),
                             alias,
+                            alias_quote_style,
                         }
                     }
                     other => other,

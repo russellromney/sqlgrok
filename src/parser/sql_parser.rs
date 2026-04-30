@@ -343,7 +343,7 @@ impl Parser {
     }
 
     fn parse_cte(&mut self, recursive: bool) -> Result<Cte> {
-        let name = self.expect_name()?;
+        let (name, name_quote_style) = self.expect_name_with_quote()?;
 
         let columns = if self.match_token(TokenType::LParen) {
             let mut cols = vec![self.expect_name()?];
@@ -379,6 +379,7 @@ impl Parser {
 
         Ok(Cte {
             name,
+            name_quote_style,
             columns,
             query: Box::new(query),
             materialized,
@@ -592,14 +593,17 @@ impl Parser {
             });
         }
 
-        let alias = self.parse_optional_alias()?;
+        let (alias, alias_quote_style) = match self.parse_optional_alias()? {
+            Some((name, qs)) => (Some(name), qs),
+            None => (None, QuoteStyle::None),
+        };
 
-        Ok(SelectItem::Expr { expr, alias })
+        Ok(SelectItem::Expr { expr, alias, alias_quote_style })
     }
 
-    fn parse_optional_alias(&mut self) -> Result<Option<String>> {
+    fn parse_optional_alias(&mut self) -> Result<Option<(String, QuoteStyle)>> {
         if self.match_token(TokenType::As) {
-            return Ok(Some(self.expect_name()?));
+            return Ok(Some(self.expect_name_with_quote()?));
         }
         // Implicit alias
         if self.is_name_token() {
@@ -630,7 +634,9 @@ impl Parser {
                     | "PIVOT"
                     | "UNPIVOT"
             ) {
-                return Ok(Some(self.advance().value.clone()));
+                let token = self.advance().clone();
+                let qs = quote_style_from_char(token.quote_char);
+                return Ok(Some((token.value.clone(), qs)));
             }
         }
         Ok(None)
@@ -656,11 +662,15 @@ impl Parser {
             self.expect(TokenType::LParen)?;
             let expr = self.parse_expr()?;
             self.expect(TokenType::RParen)?;
-            let alias = self.parse_optional_alias()?;
+            let (alias, alias_quote_style) = match self.parse_optional_alias()? {
+                Some((name, qs)) => (Some(name), qs),
+                None => (None, QuoteStyle::None),
+            };
             let with_offset = self.match_keyword("WITH") && self.match_keyword("OFFSET");
             return Ok(TableSource::Unnest {
                 expr: Box::new(expr),
                 alias,
+                alias_quote_style,
                 with_offset,
             });
         }
@@ -672,10 +682,14 @@ impl Parser {
             if matches!(self.peek_type(), TokenType::Select | TokenType::With) {
                 let query = self.parse_statement_inner()?;
                 self.expect(TokenType::RParen)?;
-                let alias = self.parse_optional_alias()?;
+                let (alias, alias_quote_style) = match self.parse_optional_alias()? {
+                    Some((name, qs)) => (Some(name), qs),
+                    None => (None, QuoteStyle::None),
+                };
                 return Ok(TableSource::Subquery {
                     query: Box::new(query),
                     alias,
+                    alias_quote_style,
                 });
             }
             self.pos = saved;
@@ -693,11 +707,15 @@ impl Parser {
                 vec![]
             };
             self.expect(TokenType::RParen)?;
-            let alias = self.parse_optional_alias()?;
+            let (alias, alias_quote_style) = match self.parse_optional_alias()? {
+                Some((name, qs)) => (Some(name), qs),
+                None => (None, QuoteStyle::None),
+            };
             return Ok(TableSource::TableFunction {
                 name: table_ref.name,
                 args,
                 alias,
+                alias_quote_style,
             });
         }
 
@@ -716,13 +734,17 @@ impl Parser {
             let in_values = self.parse_pivot_values()?;
             self.expect(TokenType::RParen)?;
             self.expect(TokenType::RParen)?;
-            let alias = self.parse_optional_alias()?;
+            let (alias, alias_quote_style) = match self.parse_optional_alias()? {
+                Some((name, qs)) => (Some(name), qs),
+                None => (None, QuoteStyle::None),
+            };
             return Ok(TableSource::Pivot {
                 source: Box::new(source),
                 aggregate: Box::new(aggregate),
                 for_column,
                 in_values,
                 alias,
+                alias_quote_style,
             });
         }
         if self.match_token(TokenType::Unpivot) {
@@ -735,13 +757,17 @@ impl Parser {
             let in_columns = self.parse_pivot_values()?;
             self.expect(TokenType::RParen)?;
             self.expect(TokenType::RParen)?;
-            let alias = self.parse_optional_alias()?;
+            let (alias, alias_quote_style) = match self.parse_optional_alias()? {
+                Some((name, qs)) => (Some(name), qs),
+                None => (None, QuoteStyle::None),
+            };
             return Ok(TableSource::Unpivot {
                 source: Box::new(source),
                 value_column,
                 for_column,
                 in_columns,
                 alias,
+                alias_quote_style,
             });
         }
         Ok(source)
@@ -752,8 +778,11 @@ impl Parser {
         let mut values = Vec::new();
         loop {
             let value = self.parse_expr()?;
-            let alias = self.parse_optional_alias()?;
-            values.push(PivotValue { value, alias });
+            let (alias, alias_quote_style) = match self.parse_optional_alias()? {
+                Some((name, qs)) => (Some(name), qs),
+                None => (None, QuoteStyle::None),
+            };
+            values.push(PivotValue { value, alias, alias_quote_style });
             if !self.match_token(TokenType::Comma) {
                 break;
             }
@@ -777,7 +806,10 @@ impl Parser {
             (None, None, first, first_qs)
         };
 
-        let alias = self.parse_optional_alias()?;
+        let (alias, alias_quote_style) = match self.parse_optional_alias()? {
+            Some((name, qs)) => (Some(name), qs),
+            None => (None, QuoteStyle::None),
+        };
 
         Ok(TableRef {
             catalog,
@@ -785,6 +817,7 @@ impl Parser {
             name,
             alias,
             name_quote_style: name_qs,
+            alias_quote_style,
         })
     }
 
@@ -810,6 +843,7 @@ impl Parser {
             name,
             alias: None,
             name_quote_style: name_qs,
+            alias_quote_style: QuoteStyle::None,
         })
     }
 

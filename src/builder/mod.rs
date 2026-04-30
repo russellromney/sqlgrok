@@ -105,6 +105,7 @@ pub fn table(name: &str, schema: Option<&str>) -> TableRef {
         name: name.to_string(),
         alias: None,
         name_quote_style: QuoteStyle::None,
+        alias_quote_style: QuoteStyle::None,
     }
 }
 
@@ -130,6 +131,7 @@ pub fn table_full(name: &str, schema: Option<&str>, catalog: Option<&str>) -> Ta
         name: name.to_string(),
         alias: None,
         name_quote_style: QuoteStyle::None,
+        alias_quote_style: QuoteStyle::None,
     }
 }
 
@@ -881,7 +883,7 @@ impl SelectBuilder {
             if let Some(expr) = parse_expr_dialect(col, self.dialect) {
                 self.statement
                     .columns
-                    .push(SelectItem::Expr { expr, alias: None });
+                    .push(SelectItem::Expr { expr, alias: None, alias_quote_style: QuoteStyle::None });
             }
         }
         self
@@ -893,6 +895,7 @@ impl SelectBuilder {
         self.statement.columns.push(SelectItem::Expr {
             expr,
             alias: alias.map(String::from),
+            alias_quote_style: QuoteStyle::None,
         });
         self
     }
@@ -945,6 +948,7 @@ impl SelectBuilder {
             source: TableSource::Subquery {
                 query: Box::new(query),
                 alias: Some(alias.to_string()),
+                alias_quote_style: QuoteStyle::None,
             },
         });
         self
@@ -1026,6 +1030,7 @@ impl SelectBuilder {
             table: TableSource::Subquery {
                 query: Box::new(query),
                 alias: Some(alias.to_string()),
+                alias_quote_style: QuoteStyle::None,
             },
             on: on_expr,
             using: Vec::new(),
@@ -1259,7 +1264,7 @@ impl SelectStatement {
     /// Add a column with dialect-specific parsing.
     pub fn add_select_dialect(&mut self, expr_str: &str, dialect: Dialect) {
         if let Some(expr) = parse_expr_dialect(expr_str, dialect) {
-            self.columns.push(SelectItem::Expr { expr, alias: None });
+            self.columns.push(SelectItem::Expr { expr, alias: None, alias_quote_style: QuoteStyle::None });
         }
     }
 
@@ -1268,6 +1273,7 @@ impl SelectStatement {
         self.columns.push(SelectItem::Expr {
             expr,
             alias: alias.map(String::from),
+            alias_quote_style: QuoteStyle::None,
         });
     }
 
@@ -1370,6 +1376,7 @@ impl SelectStatement {
             table: TableSource::Subquery {
                 query: Box::new(query),
                 alias: Some(alias.to_string()),
+                alias_quote_style: QuoteStyle::None,
             },
             on: on_expr,
             using: Vec::new(),
@@ -1391,6 +1398,7 @@ impl SelectStatement {
         TableSource::Subquery {
             query: Box::new(Statement::Select(self)),
             alias: Some(alias.to_string()),
+            alias_quote_style: QuoteStyle::None,
         }
     }
 }

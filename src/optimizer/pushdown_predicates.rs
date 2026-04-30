@@ -106,7 +106,7 @@ fn pushdown_select(mut sel: SelectStatement) -> SelectStatement {
 /// Try to push a predicate into a table source. Returns true if pushed.
 fn try_push_into_source(source: &mut TableSource, pred: &Expr, tables: &HashSet<String>) -> bool {
     match source {
-        TableSource::Subquery { query, alias } => {
+        TableSource::Subquery { query, alias, .. } => {
             let alias_name = match alias {
                 Some(a) => a.clone(),
                 None => return false,
@@ -525,6 +525,7 @@ fn build_column_map(sel: &SelectStatement) -> std::collections::HashMap<&str, Ex
                         table_quote_style,
                     },
                 alias,
+                ..
             } => {
                 let output_name = alias.as_deref().unwrap_or(name.as_str());
                 map.insert(
@@ -537,7 +538,7 @@ fn build_column_map(sel: &SelectStatement) -> std::collections::HashMap<&str, Ex
                     },
                 );
             }
-            SelectItem::Expr { expr, alias } => {
+            SelectItem::Expr { expr, alias, .. } => {
                 if let Some(alias) = alias {
                     map.insert(alias.as_str(), expr.clone());
                 }

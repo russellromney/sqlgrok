@@ -155,7 +155,7 @@ impl<'a> ExecutionContext<'a> {
                 Ok(Self::table_to_rows(table, &alias))
             }
 
-            TableSource::Subquery { query, alias } => {
+            TableSource::Subquery { query, alias, .. } => {
                 let result =
                     ExecutionContext::with_ctes(self.tables, self.ctes.clone()).execute(query)?;
                 let alias_name = alias.as_deref().unwrap_or("subquery");
@@ -545,7 +545,7 @@ impl<'a> ExecutionContext<'a> {
                         }
                     }
                 }
-                SelectItem::Expr { expr, alias } => {
+                SelectItem::Expr { expr, alias, .. } => {
                     names.push(alias.clone().unwrap_or_else(|| expr_to_name(expr)));
                 }
             }
