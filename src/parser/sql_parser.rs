@@ -1825,7 +1825,16 @@ impl Parser {
                 message: format!("Expected data type, got {:?}", token.token_type),
             }),
         };
-        type_result
+
+        // PostgreSQL opt_array_bounds: typename[], typename[N], typename[][]...
+        let mut dt = type_result?;
+        while self.match_token(TokenType::LBracket) {
+            // Consume optional integer bound (PostgreSQL ignores it but accepts it)
+            let _ = self.match_token(TokenType::Number);
+            self.expect(TokenType::RBracket)?;
+            dt = DataType::Array(Some(Box::new(dt)));
+        }
+        Ok(dt)
     }
 
     fn parse_type_params(&mut self) -> Result<(Option<u32>, Option<u32>)> {
