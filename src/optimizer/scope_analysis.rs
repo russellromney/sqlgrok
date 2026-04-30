@@ -356,7 +356,7 @@ fn process_table_source(source: &TableSource, scope: &mut Scope) {
                 .to_string();
             scope.sources.insert(key, Source::Table(table_ref.clone()));
         }
-        TableSource::Subquery { query, alias } => {
+        TableSource::Subquery { query, alias, .. } => {
             let mut dt_scope = Scope::new(ScopeType::DerivedTable);
             dt_scope.expression = Some(ScopeExpression::Statement(*query.clone()));
             build_scope_inner(query, &mut dt_scope, ScopeType::DerivedTable);
@@ -380,6 +380,7 @@ fn process_table_source(source: &TableSource, scope: &mut Scope) {
                         name: alias.clone(),
                         alias: None,
                         name_quote_style: QuoteStyle::None,
+                        alias_quote_style: QuoteStyle::None,
                     }),
                 );
             }
@@ -398,6 +399,7 @@ fn process_table_source(source: &TableSource, scope: &mut Scope) {
                         name: alias.clone(),
                         alias: None,
                         name_quote_style: QuoteStyle::None,
+                        alias_quote_style: QuoteStyle::None,
                     }),
                 );
             }
@@ -412,6 +414,7 @@ fn process_table_source(source: &TableSource, scope: &mut Scope) {
                         name: alias.clone(),
                         alias: None,
                         name_quote_style: QuoteStyle::None,
+                        alias_quote_style: QuoteStyle::None,
                     }),
                 );
             }

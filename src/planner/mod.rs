@@ -542,9 +542,9 @@ impl PlanBuilder {
                     dependencies: vec![],
                 }))
             }
-            TableSource::Subquery { query, alias: _ } => self.plan_statement(query),
+            TableSource::Subquery { query, alias: _, .. } => self.plan_statement(query),
             TableSource::Lateral { source } => self.plan_table_source(source),
-            TableSource::TableFunction { name, args, alias } => Ok(self.add_step(Step::Scan {
+            TableSource::TableFunction { name, args, alias, .. } => Ok(self.add_step(Step::Scan {
                 table: name.clone(),
                 alias: alias.clone(),
                 projections: args
@@ -652,7 +652,7 @@ fn select_items_to_projections(items: &[SelectItem]) -> Vec<Projection> {
                 },
                 alias: None,
             },
-            SelectItem::Expr { expr, alias } => Projection {
+            SelectItem::Expr { expr, alias, .. } => Projection {
                 expr: expr.clone(),
                 alias: alias.clone(),
             },
@@ -752,7 +752,7 @@ fn typed_function_is_aggregate(func: &TypedFunction) -> bool {
 fn extract_aggregates(items: &[SelectItem]) -> Vec<Projection> {
     let mut aggs = Vec::new();
     for item in items {
-        if let SelectItem::Expr { expr, alias } = item {
+        if let SelectItem::Expr { expr, alias, .. } = item {
             collect_aggregates(expr, alias, &mut aggs);
         }
     }

@@ -100,8 +100,19 @@ impl Generator {
     }
 
     /// Write an identifier with the given quoting style.
+    /// If a target dialect is set and the identifier is quoted, the quoting
+    /// is transformed to the target dialect's canonical style.
     fn write_quoted(&mut self, name: &str, style: QuoteStyle) {
-        match style {
+        let effective_style = if style.is_quoted() {
+            if let Some(dialect) = self.dialect {
+                QuoteStyle::for_dialect(dialect)
+            } else {
+                style
+            }
+        } else {
+            style
+        };
+        match effective_style {
             QuoteStyle::None => self.write(name),
             QuoteStyle::DoubleQuote => {
                 self.write("\"");
@@ -394,7 +405,7 @@ impl Generator {
                 self.write(",");
                 self.sep();
             }
-            self.write(&cte.name);
+            self.write_quoted(&cte.name, cte.name_quote_style);
             if !cte.columns.is_empty() {
                 self.write("(");
                 self.write(&cte.columns.join(", "));
@@ -428,12 +439,12 @@ impl Generator {
                 self.write(table);
                 self.write(".*");
             }
-            SelectItem::Expr { expr, alias } => {
+            SelectItem::Expr { expr, alias, alias_quote_style } => {
                 self.gen_expr(expr);
                 if let Some(alias) = alias {
                     self.write(" ");
                     self.write_keyword("AS ");
-                    self.write(alias);
+                    self.write_quoted(alias, *alias_quote_style);
                 }
             }
         }
@@ -442,7 +453,7 @@ impl Generator {
     fn gen_table_source(&mut self, source: &TableSource) {
         match source {
             TableSource::Table(table_ref) => self.gen_table_ref(table_ref),
-            TableSource::Subquery { query, alias } => {
+            TableSource::Subquery { query, alias, alias_quote_style } => {
                 self.write("(");
                 self.gen_statement(query);
                 self.write(")");
@@ -451,10 +462,10 @@ impl Generator {
                     if !self.omit_table_alias_as() {
                         self.write_keyword("AS ");
                     }
-                    self.write(alias);
+                    self.write_quoted(alias, *alias_quote_style);
                 }
             }
-            TableSource::TableFunction { name, args, alias } => {
+            TableSource::TableFunction { name, args, alias, alias_quote_style } => {
                 self.write(name);
                 self.write("(");
                 self.gen_expr_list(args);
@@ -464,7 +475,7 @@ impl Generator {
                     if !self.omit_table_alias_as() {
                         self.write_keyword("AS ");
                     }
-                    self.write(alias);
+                    self.write_quoted(alias, *alias_quote_style);
                 }
             }
             TableSource::Lateral { source } => {
@@ -474,6 +485,7 @@ impl Generator {
             TableSource::Unnest {
                 expr,
                 alias,
+                alias_quote_style,
                 with_offset,
             } => {
                 self.write_keyword("UNNEST(");
@@ -484,7 +496,7 @@ impl Generator {
                     if !self.omit_table_alias_as() {
                         self.write_keyword("AS ");
                     }
-                    self.write(alias);
+                    self.write_quoted(alias, *alias_quote_style);
                 }
                 if *with_offset {
                     self.write(" ");
@@ -497,6 +509,7 @@ impl Generator {
                 for_column,
                 in_values,
                 alias,
+                alias_quote_style,
             } => {
                 self.gen_table_source(source);
                 self.write(" ");
@@ -516,7 +529,7 @@ impl Generator {
                     if !self.omit_table_alias_as() {
                         self.write_keyword("AS ");
                     }
-                    self.write(alias);
+                    self.write_quoted(alias, *alias_quote_style);
                 }
             }
             TableSource::Unpivot {
@@ -525,6 +538,7 @@ impl Generator {
                 for_column,
                 in_columns,
                 alias,
+                alias_quote_style,
             } => {
                 self.gen_table_source(source);
                 self.write(" ");
@@ -544,7 +558,7 @@ impl Generator {
                     if !self.omit_table_alias_as() {
                         self.write_keyword("AS ");
                     }
-                    self.write(alias);
+                    self.write_quoted(alias, *alias_quote_style);
                 }
             }
         }
@@ -559,7 +573,7 @@ impl Generator {
             if let Some(alias) = &pv.alias {
                 self.write(" ");
                 self.write_keyword("AS ");
-                self.write(alias);
+                self.write_quoted(alias, pv.alias_quote_style);
             }
         }
     }
@@ -584,7 +598,7 @@ impl Generator {
             if !self.omit_table_alias_as() {
                 self.write_keyword("AS ");
             }
-            self.write(alias);
+            self.write_quoted(alias, table.alias_quote_style);
         }
     }
 

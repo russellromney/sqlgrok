@@ -609,7 +609,7 @@ fn build_lineage_for_select_column(
 
     for item in &sel.columns {
         match item {
-            SelectItem::Expr { expr, alias } => {
+            SelectItem::Expr { expr, alias, .. } => {
                 let item_name = alias
                     .as_ref()
                     .map(String::as_str)
@@ -624,7 +624,7 @@ fn build_lineage_for_select_column(
                 for (source_name, source_info) in ctx.sources.clone() {
                     if let Some(cols) = &source_info.columns {
                         for col_item in cols {
-                            if let SelectItem::Expr { expr, alias } = col_item {
+                            if let SelectItem::Expr { expr, alias, .. } = col_item {
                                 let item_name = alias
                                     .as_ref()
                                     .map(String::as_str)
@@ -666,7 +666,7 @@ fn build_lineage_for_select_column(
                     if let Some(source_info) = ctx.sources.get(table).cloned() {
                         if let Some(cols) = &source_info.columns {
                             for col_item in cols {
-                                if let SelectItem::Expr { expr, alias } = col_item {
+                                if let SelectItem::Expr { expr, alias, .. } = col_item {
                                     let item_name = alias
                                         .as_ref()
                                         .map(String::as_str)
@@ -842,7 +842,7 @@ fn register_table_source(source: &TableSource, ctx: &mut LineageContext) {
                 );
             }
         }
-        TableSource::Subquery { query, alias } => {
+        TableSource::Subquery { query, alias, .. } => {
             if let Some(alias) = alias {
                 let normalized = normalize_name(alias, ctx.config.dialect);
                 ctx.sources.insert(
@@ -1008,7 +1008,7 @@ fn normalize_name(name: &str, dialect: Dialect) -> String {
 /// Check if a SELECT item outputs a column with the given name.
 fn select_item_has_column(item: &SelectItem, name: &str) -> bool {
     match item {
-        SelectItem::Expr { expr, alias } => {
+        SelectItem::Expr { expr, alias, .. } => {
             let item_name = alias
                 .as_ref()
                 .map(String::as_str)

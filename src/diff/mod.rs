@@ -763,10 +763,12 @@ impl AstDiffer {
                         SelectItem::Expr {
                             expr: se,
                             alias: sa,
+                            ..
                         },
                         SelectItem::Expr {
                             expr: te,
                             alias: ta,
+                            ..
                         },
                     ) => {
                         if sa != ta {

@@ -99,7 +99,7 @@ fn collect_source_columns<S: Schema>(
                 source_map.insert(norm_key, SourceColumns { columns: cols });
             }
         }
-        TableSource::Subquery { query, alias } => {
+        TableSource::Subquery { query, alias, .. } => {
             if let Some(alias) = alias {
                 let norm_alias = normalize_identifier(alias, dialect);
                 let cols = extract_output_columns(query, schema, dialect, cte_columns);
@@ -170,7 +170,7 @@ fn extract_output_columns<S: Schema>(
                             cols.extend(sc.columns.iter().cloned());
                         }
                     }
-                    SelectItem::Expr { alias, expr } => {
+                    SelectItem::Expr { alias, expr, .. } => {
                         if let Some(alias) = alias {
                             cols.push(alias.clone());
                         } else {
@@ -308,6 +308,7 @@ fn qualify_select<S: Schema>(
                                 table_quote_style: QuoteStyle::None,
                             },
                             alias: None,
+                            alias_quote_style: QuoteStyle::None,
                         });
                     }
                 });
@@ -324,6 +325,7 @@ fn qualify_select<S: Schema>(
                                 table_quote_style: QuoteStyle::None,
                             },
                             alias: None,
+                            alias_quote_style: QuoteStyle::None,
                         });
                     }
                 } else {
@@ -331,11 +333,12 @@ fn qualify_select<S: Schema>(
                     new_columns.push(SelectItem::QualifiedWildcard { table });
                 }
             }
-            SelectItem::Expr { expr, alias } => {
+            SelectItem::Expr { expr, alias, alias_quote_style, .. } => {
                 let qualified_expr = qualify_expr(expr, &source_map, schema, dialect, &cte_columns);
                 new_columns.push(SelectItem::Expr {
                     expr: qualified_expr,
                     alias,
+                    alias_quote_style,
                 });
             }
         }
