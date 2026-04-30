@@ -1421,11 +1421,30 @@ impl Generator {
             DataType::Jsonb => self.write("JSONB"),
             DataType::Uuid => self.write("UUID"),
             DataType::Array(inner) => {
-                self.write("ARRAY");
-                if let Some(inner) = inner {
-                    self.write("<");
-                    self.gen_data_type(inner);
-                    self.write(">");
+                let is_postgres = matches!(
+                    self.dialect,
+                    Some(
+                        Dialect::Postgres
+                            | Dialect::Redshift
+                            | Dialect::Materialize
+                            | Dialect::RisingWave
+                    )
+                );
+                if is_postgres {
+                    // PostgreSQL: emit "typename[]"
+                    if let Some(inner) = inner {
+                        self.gen_data_type(inner);
+                        self.write("[]");
+                    } else {
+                        self.write("ARRAY");
+                    }
+                } else {
+                    self.write("ARRAY");
+                    if let Some(inner) = inner {
+                        self.write("<");
+                        self.gen_data_type(inner);
+                        self.write(">");
+                    }
                 }
             }
             DataType::Map { key, value } => {
@@ -1806,12 +1825,27 @@ impl Generator {
                 self.write(")");
             }
             Expr::Cast { expr, data_type } => {
-                self.write_keyword("CAST(");
-                self.gen_expr(expr);
-                self.write(" ");
-                self.write_keyword("AS ");
-                self.gen_data_type(data_type);
-                self.write(")");
+                let is_postgres = matches!(
+                    self.dialect,
+                    Some(
+                        Dialect::Postgres
+                            | Dialect::Redshift
+                            | Dialect::Materialize
+                            | Dialect::RisingWave
+                    )
+                );
+                if is_postgres {
+                    self.gen_expr(expr);
+                    self.write("::");
+                    self.gen_data_type(data_type);
+                } else {
+                    self.write_keyword("CAST(");
+                    self.gen_expr(expr);
+                    self.write(" ");
+                    self.write_keyword("AS ");
+                    self.gen_data_type(data_type);
+                    self.write(")");
+                }
             }
             Expr::TryCast { expr, data_type } => {
                 self.write_keyword("TRY_CAST(");

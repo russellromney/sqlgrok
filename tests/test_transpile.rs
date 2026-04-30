@@ -904,7 +904,7 @@ fn test_transpile_type_mapping_string_to_text() {
     // STRING → TEXT for Postgres, MySQL, SQLite
     validate_with_dialect(
         "SELECT CAST(x AS STRING) FROM t",
-        "SELECT CAST(x AS TEXT) FROM t",
+        "SELECT x::TEXT FROM t",
         Dialect::BigQuery,
         Dialect::Postgres,
     );
@@ -944,7 +944,7 @@ fn test_transpile_type_mapping_bytea_blob() {
     // BLOB → BYTEA for Postgres
     validate_with_dialect(
         "SELECT CAST(x AS BLOB) FROM t",
-        "SELECT CAST(x AS BYTEA) FROM t",
+        "SELECT x::BYTEA FROM t",
         Dialect::Mysql,
         Dialect::Postgres,
     );
