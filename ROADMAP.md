@@ -457,7 +457,7 @@ cargo test --features cli
 
 ### Session 7: Split DDL Into First-Class AST Properties
 
-Status: next.
+Status: in progress.
 
 Files:
 
@@ -470,7 +470,7 @@ Files:
 
 Tasks:
 
-- Replace the current parse-and-discard handling for MySQL `CREATE TABLE` options with explicit AST properties where SQLGlot keeps semantic information.
+- Replace the current parse-and-discard handling for MySQL `CREATE TABLE` options with explicit AST properties where SQLGlot keeps semantic information. Initial coverage for engine, auto-increment, character set, collation, comment, row format, and unknown passthrough options has landed.
 - Decide which properties are target-only rendering details, which are source metadata, and which should survive cross-dialect transforms.
 - Add parser/generator coverage for common properties beyond the first ratchet: `ENGINE`, `CHARACTER SET`, `COLLATE`, `COMMENT`, `ROW_FORMAT`, and table-level `AUTO_INCREMENT`.
 - Keep SQLite output behavior aligned with Python SQLGlot while allowing MySQL identity round-trips to preserve useful options.

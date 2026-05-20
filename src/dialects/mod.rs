@@ -351,6 +351,9 @@ fn transform_statement(statement: &mut Statement, target: Dialect) {
         }
         // DDL: map data types in CREATE TABLE column definitions
         Statement::CreateTable(ct) => {
+            if matches!(target, Dialect::Sqlite) {
+                move_single_column_primary_key_to_column(ct);
+            }
             for col in &mut ct.columns {
                 if matches!(target, Dialect::Sqlite)
                     && !(matches!(col.data_type, DataType::Int) && col.primary_key)
@@ -391,6 +394,31 @@ fn transform_statement(statement: &mut Statement, target: Dialect) {
             }
         }
         _ => {}
+    }
+}
+
+fn move_single_column_primary_key_to_column(ct: &mut CreateTableStatement) {
+    let Some(primary_key_index) = ct.constraints.iter().position(|constraint| {
+        matches!(
+            constraint,
+            TableConstraint::PrimaryKey { columns, .. } if columns.len() == 1
+        )
+    }) else {
+        return;
+    };
+
+    let column_name = match &ct.constraints[primary_key_index] {
+        TableConstraint::PrimaryKey { columns, .. } => columns[0].clone(),
+        _ => return,
+    };
+
+    if let Some(column) = ct
+        .columns
+        .iter_mut()
+        .find(|column| column.name.eq_ignore_ascii_case(&column_name))
+    {
+        column.primary_key = true;
+        ct.constraints.remove(primary_key_index);
     }
 }
 

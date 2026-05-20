@@ -1568,8 +1568,23 @@ pub struct CreateTableStatement {
     pub table: TableRef,
     pub columns: Vec<ColumnDef>,
     pub constraints: Vec<TableConstraint>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub options: Vec<CreateTableOption>,
     /// CREATE TABLE ... AS SELECT ...
     pub as_select: Option<Box<Statement>>,
+}
+
+/// Table-level options following a CREATE TABLE schema, mostly used by
+/// MySQL-family dialects.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CreateTableOption {
+    Engine(String),
+    AutoIncrement(String),
+    CharacterSet { default: bool, value: String },
+    Collate { default: bool, value: String },
+    Comment(String),
+    RowFormat(String),
+    Unknown { name: String, value: Option<String> },
 }
 
 /// Table-level constraints.

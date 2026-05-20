@@ -1465,6 +1465,7 @@ impl Parser {
                 table,
                 columns: vec![],
                 constraints: vec![],
+                options: vec![],
                 as_select: Some(Box::new(query)),
             }));
         }
@@ -1494,7 +1495,7 @@ impl Parser {
             }
         }
         self.expect(TokenType::RParen)?;
-        self.parse_create_table_options();
+        let options = self.parse_create_table_options();
 
         Ok(Statement::CreateTable(CreateTableStatement {
             comments: vec![],
@@ -1503,6 +1504,7 @@ impl Parser {
             table,
             columns,
             constraints,
+            options,
             as_select: None,
         }))
     }
@@ -1671,7 +1673,7 @@ impl Parser {
             } else if self.match_token(TokenType::Unique) {
                 unique = true;
             } else if self.match_token(TokenType::AutoIncrement) {
-                auto_increment = primary_key;
+                auto_increment = true;
             } else if self.match_token(TokenType::Collate) {
                 collation = Some(self.expect_name()?);
             } else if self.match_token(TokenType::Comment) {
@@ -1703,65 +1705,127 @@ impl Parser {
         })
     }
 
-    fn parse_create_table_options(&mut self) {
-        loop {
-            let consumed = if self.match_keyword("ENGINE")
-                || self.match_token(TokenType::AutoIncrement)
-                || self.match_keyword("CHARSET")
-                || self.match_keyword("ROW_FORMAT")
-                || self.match_keyword("KEY_BLOCK_SIZE")
-                || self.match_keyword("PACK_KEYS")
-                || self.match_keyword("STATS_AUTO_RECALC")
-                || self.match_keyword("STATS_PERSISTENT")
-                || self.match_keyword("STATS_SAMPLE_PAGES")
-                || self.match_keyword("TABLESPACE")
-            {
-                self.skip_create_table_option_value();
-                true
-            } else if self.match_token(TokenType::Default) {
-                if self.match_keyword("CHARSET") {
-                    // Consumed the option name; value handling is shared below.
-                } else if self.match_token(TokenType::Char) {
-                    let _ = self.match_token(TokenType::Set);
-                }
-                self.skip_create_table_option_value();
-                true
-            } else if self.match_token(TokenType::Char) {
-                let _ = self.match_token(TokenType::Set);
-                self.skip_create_table_option_value();
-                true
-            } else if self.match_token(TokenType::Collate) || self.match_token(TokenType::Comment) {
-                self.skip_create_table_option_value();
-                true
-            } else {
-                false
-            };
+    fn parse_create_table_options(&mut self) -> Vec<CreateTableOption> {
+        let mut options = Vec::new();
 
-            if !consumed {
-                break;
-            }
+        while let Some(option) = self.parse_create_table_option() {
+            options.push(option);
         }
+
+        options
     }
 
-    fn skip_create_table_option_value(&mut self) {
+    fn parse_create_table_option(&mut self) -> Option<CreateTableOption> {
+        if self.match_keyword("ENGINE") {
+            return Some(CreateTableOption::Engine(
+                self.parse_create_table_option_value().unwrap_or_default(),
+            ));
+        }
+        if self.match_token(TokenType::AutoIncrement) {
+            return Some(CreateTableOption::AutoIncrement(
+                self.parse_create_table_option_value().unwrap_or_default(),
+            ));
+        }
+        if self.match_keyword("CHARSET") {
+            return Some(CreateTableOption::CharacterSet {
+                default: false,
+                value: self.parse_create_table_option_value().unwrap_or_default(),
+            });
+        }
+        if self.match_token(TokenType::Char) {
+            let _ = self.match_token(TokenType::Set);
+            return Some(CreateTableOption::CharacterSet {
+                default: false,
+                value: self.parse_create_table_option_value().unwrap_or_default(),
+            });
+        }
+        if self.match_token(TokenType::Collate) {
+            return Some(CreateTableOption::Collate {
+                default: false,
+                value: self.parse_create_table_option_value().unwrap_or_default(),
+            });
+        }
+        if self.match_token(TokenType::Comment) {
+            return Some(CreateTableOption::Comment(
+                self.parse_create_table_option_value().unwrap_or_default(),
+            ));
+        }
+        if self.match_keyword("ROW_FORMAT") {
+            return Some(CreateTableOption::RowFormat(
+                self.parse_create_table_option_value().unwrap_or_default(),
+            ));
+        }
+        if self.match_token(TokenType::Default) {
+            if self.match_keyword("CHARSET") {
+                return Some(CreateTableOption::CharacterSet {
+                    default: true,
+                    value: self.parse_create_table_option_value().unwrap_or_default(),
+                });
+            }
+            if self.match_token(TokenType::Char) {
+                let _ = self.match_token(TokenType::Set);
+                return Some(CreateTableOption::CharacterSet {
+                    default: true,
+                    value: self.parse_create_table_option_value().unwrap_or_default(),
+                });
+            }
+            if self.match_token(TokenType::Collate) {
+                return Some(CreateTableOption::Collate {
+                    default: true,
+                    value: self.parse_create_table_option_value().unwrap_or_default(),
+                });
+            }
+            return Some(CreateTableOption::Unknown {
+                name: "DEFAULT".to_string(),
+                value: self.parse_create_table_option_value(),
+            });
+        }
+
+        for name in [
+            "KEY_BLOCK_SIZE",
+            "PACK_KEYS",
+            "STATS_AUTO_RECALC",
+            "STATS_PERSISTENT",
+            "STATS_SAMPLE_PAGES",
+            "TABLESPACE",
+        ] {
+            if self.match_keyword(name) {
+                return Some(CreateTableOption::Unknown {
+                    name: name.to_string(),
+                    value: self.parse_create_table_option_value(),
+                });
+            }
+        }
+
+        None
+    }
+
+    fn parse_create_table_option_value(&mut self) -> Option<String> {
         let _ = self.match_token(TokenType::Eq);
         if self.match_token(TokenType::LParen) {
             let mut depth = 1;
+            let mut parts = Vec::new();
             while depth > 0 && !matches!(self.peek_type(), TokenType::Eof) {
                 if self.match_token(TokenType::LParen) {
                     depth += 1;
+                    parts.push("(".to_string());
                 } else if self.match_token(TokenType::RParen) {
                     depth -= 1;
+                    if depth > 0 {
+                        parts.push(")".to_string());
+                    }
                 } else {
-                    self.advance();
+                    parts.push(self.advance().value.clone());
                 }
             }
-            return;
+            return Some(parts.join(" "));
         }
 
-        if !matches!(self.peek_type(), TokenType::Semicolon | TokenType::Eof) {
-            self.advance();
+        if matches!(self.peek_type(), TokenType::Semicolon | TokenType::Eof) {
+            return None;
         }
+
+        Some(self.advance().value.clone())
     }
 
     fn parse_data_type(&mut self) -> Result<DataType> {

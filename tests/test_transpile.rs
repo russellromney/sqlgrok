@@ -3,7 +3,8 @@
 /// These test parse→generate roundtrips (identity), normalization transforms,
 /// and basic cross-dialect transpilation. Modeled after the `validate` and
 /// `validate_identity` helpers in the Python test suite.
-use sqlgrok::{Dialect, generate, parse, transpile};
+use sqlgrok::ast::CreateTableOption;
+use sqlgrok::{Dialect, Statement, generate, parse, transpile};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Helpers (mirrors Python sqlglot's TestTranspile.validate / validate_identity)
@@ -692,10 +693,60 @@ fn test_mysql_create_table_options_to_sqlite() {
 }
 
 #[test]
+fn test_mysql_create_table_options_roundtrip() {
+    validate_with_dialect(
+        "CREATE TABLE z (a INT) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARACTER SET=utf8 COLLATE=utf8_bin COMMENT='x'",
+        "CREATE TABLE z (a INT) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARACTER SET=utf8 COLLATE=utf8_bin COMMENT='x'",
+        Dialect::Mysql,
+        Dialect::Mysql,
+    );
+}
+
+#[test]
+fn test_mysql_create_table_column_auto_increment_roundtrip() {
+    validate_with_dialect(
+        "CREATE TABLE x (id INT AUTO_INCREMENT, PRIMARY KEY (id))",
+        "CREATE TABLE x (id INT AUTO_INCREMENT, PRIMARY KEY (id))",
+        Dialect::Mysql,
+        Dialect::Mysql,
+    );
+}
+
+#[test]
+fn test_mysql_create_table_options_ast() {
+    let ast = parse(
+        "CREATE TABLE z (a INT) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARACTER SET=utf8 COLLATE=utf8_bin COMMENT='x'",
+        Dialect::Mysql,
+    )
+    .unwrap();
+
+    let Statement::CreateTable(ct) = ast else {
+        panic!("expected CREATE TABLE");
+    };
+
+    assert_eq!(
+        ct.options,
+        vec![
+            CreateTableOption::Engine("InnoDB".to_string()),
+            CreateTableOption::AutoIncrement("1".to_string()),
+            CreateTableOption::CharacterSet {
+                default: true,
+                value: "utf8".to_string()
+            },
+            CreateTableOption::Collate {
+                default: false,
+                value: "utf8_bin".to_string()
+            },
+            CreateTableOption::Comment("x".to_string()),
+        ]
+    );
+}
+
+#[test]
 fn test_mysql_create_table_column_options_to_sqlite() {
     validate_with_dialect(
         "CREATE TABLE z (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) COLLATE utf8_bin COMMENT 'n') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-        "CREATE TABLE z (id INTEGER PRIMARY KEY, name TEXT(255) COLLATE utf8_bin COMMENT 'n')",
+        "CREATE TABLE z (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT(255) COLLATE utf8_bin COMMENT 'n')",
         Dialect::Mysql,
         Dialect::Sqlite,
     );
@@ -706,6 +757,16 @@ fn test_mysql_create_table_primary_key_auto_increment_order_to_sqlite() {
     validate_with_dialect(
         "CREATE TABLE z (id INT PRIMARY KEY AUTO_INCREMENT)",
         "CREATE TABLE z (id INTEGER PRIMARY KEY AUTOINCREMENT)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_mysql_create_table_table_primary_key_auto_increment_to_sqlite() {
+    validate_with_dialect(
+        "CREATE TABLE x (id INT NOT NULL AUTO_INCREMENT, PRIMARY KEY (id))",
+        "CREATE TABLE x (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT)",
         Dialect::Mysql,
         Dialect::Sqlite,
     );

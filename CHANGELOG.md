@@ -54,3 +54,10 @@ this file records what landed.
 - Taught the parser to consume common MySQL `CREATE TABLE (...)` options such as `ENGINE`, `AUTO_INCREMENT`, `DEFAULT CHARACTER SET`, `COLLATE`, and `COMMENT`.
 - Added SQLite type normalization for integer, boolean, real, text, blob, decimal, and numeric column types.
 - Fixed the CLI `transpile` path so it applies dialect transforms before generating output.
+
+### DDL AST Properties
+
+- Added a first-class `CreateTableOption` AST enum for MySQL-family table options.
+- Preserved `ENGINE`, table-level `AUTO_INCREMENT`, character set, collation, comment, and row format options through MySQL round-trips.
+- Kept SQLite generation dropping MySQL table options while preserving valid `AUTOINCREMENT` on integer primary keys.
+- Added a table-level primary-key ratchet for MySQL `AUTO_INCREMENT` columns targeting SQLite.

@@ -1088,6 +1088,63 @@ impl Generator {
         }
 
         self.write(")");
+        self.gen_create_table_options(&ct.options);
+    }
+
+    fn gen_create_table_options(&mut self, options: &[CreateTableOption]) {
+        let Some(dialect) = self.dialect else {
+            return;
+        };
+        if !matches!(
+            dialect,
+            Dialect::Mysql | Dialect::Doris | Dialect::SingleStore | Dialect::StarRocks
+        ) {
+            return;
+        }
+
+        for option in options {
+            self.write(" ");
+            match option {
+                CreateTableOption::Engine(value) => {
+                    self.write_keyword("ENGINE=");
+                    self.write(value);
+                }
+                CreateTableOption::AutoIncrement(value) => {
+                    self.write_keyword("AUTO_INCREMENT=");
+                    self.write(value);
+                }
+                CreateTableOption::CharacterSet { default, value } => {
+                    if *default {
+                        self.write_keyword("DEFAULT ");
+                    }
+                    self.write_keyword("CHARACTER SET=");
+                    self.write(value);
+                }
+                CreateTableOption::Collate { default, value } => {
+                    if *default {
+                        self.write_keyword("DEFAULT ");
+                    }
+                    self.write_keyword("COLLATE=");
+                    self.write(value);
+                }
+                CreateTableOption::Comment(value) => {
+                    self.write_keyword("COMMENT='");
+                    self.write(&value.replace('\'', "''"));
+                    self.write("'");
+                }
+                CreateTableOption::RowFormat(value) => {
+                    self.write_keyword("ROW_FORMAT=");
+                    self.write(value);
+                }
+                CreateTableOption::Unknown { name, value } => {
+                    self.write_keyword(name);
+                    if let Some(value) = value {
+                        self.write("=");
+                        self.write(value);
+                    }
+                }
+            }
+        }
     }
 
     fn gen_column_def(&mut self, col: &ColumnDef) {
@@ -1095,17 +1152,9 @@ impl Generator {
         self.write(" ");
         self.gen_data_type(&col.data_type);
 
-        if col.primary_key {
-            self.write(" ");
-            self.write_keyword("PRIMARY KEY");
-        }
         if col.unique {
             self.write(" ");
             self.write_keyword("UNIQUE");
-        }
-        if col.auto_increment {
-            self.write(" ");
-            self.write_keyword("AUTOINCREMENT");
         }
 
         match col.nullable {
@@ -1118,6 +1167,22 @@ impl Generator {
                 self.write_keyword("NULL");
             }
             None => {}
+        }
+
+        if col.primary_key {
+            self.write(" ");
+            self.write_keyword("PRIMARY KEY");
+        }
+        if col.auto_increment {
+            self.write(" ");
+            if matches!(
+                self.dialect,
+                Some(Dialect::Mysql | Dialect::Doris | Dialect::SingleStore | Dialect::StarRocks)
+            ) {
+                self.write_keyword("AUTO_INCREMENT");
+            } else {
+                self.write_keyword("AUTOINCREMENT");
+            }
         }
 
         if let Some(default) = &col.default {
