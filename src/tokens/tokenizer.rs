@@ -638,6 +638,7 @@ impl Tokenizer {
             "RESPECT" => TokenType::Respect,
             "TOP" => TokenType::Top,
             "COLLATE" => TokenType::Collate,
+            "COMMENT" => TokenType::Comment,
             "QUALIFY" => TokenType::Qualify,
             "CUBE" => TokenType::Cube,
             "ROLLUP" => TokenType::Rollup,

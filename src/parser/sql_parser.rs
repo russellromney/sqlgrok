@@ -1494,6 +1494,7 @@ impl Parser {
             }
         }
         self.expect(TokenType::RParen)?;
+        self.parse_create_table_options();
 
         Ok(Statement::CreateTable(CreateTableStatement {
             comments: vec![],
@@ -1670,7 +1671,7 @@ impl Parser {
             } else if self.match_token(TokenType::Unique) {
                 unique = true;
             } else if self.match_token(TokenType::AutoIncrement) {
-                auto_increment = true;
+                auto_increment = primary_key;
             } else if self.match_token(TokenType::Collate) {
                 collation = Some(self.expect_name()?);
             } else if self.match_token(TokenType::Comment) {
@@ -1700,6 +1701,67 @@ impl Parser {
             collation,
             comment,
         })
+    }
+
+    fn parse_create_table_options(&mut self) {
+        loop {
+            let consumed = if self.match_keyword("ENGINE")
+                || self.match_token(TokenType::AutoIncrement)
+                || self.match_keyword("CHARSET")
+                || self.match_keyword("ROW_FORMAT")
+                || self.match_keyword("KEY_BLOCK_SIZE")
+                || self.match_keyword("PACK_KEYS")
+                || self.match_keyword("STATS_AUTO_RECALC")
+                || self.match_keyword("STATS_PERSISTENT")
+                || self.match_keyword("STATS_SAMPLE_PAGES")
+                || self.match_keyword("TABLESPACE")
+            {
+                self.skip_create_table_option_value();
+                true
+            } else if self.match_token(TokenType::Default) {
+                if self.match_keyword("CHARSET") {
+                    // Consumed the option name; value handling is shared below.
+                } else if self.match_token(TokenType::Char) {
+                    let _ = self.match_token(TokenType::Set);
+                }
+                self.skip_create_table_option_value();
+                true
+            } else if self.match_token(TokenType::Char) {
+                let _ = self.match_token(TokenType::Set);
+                self.skip_create_table_option_value();
+                true
+            } else if self.match_token(TokenType::Collate) || self.match_token(TokenType::Comment) {
+                self.skip_create_table_option_value();
+                true
+            } else {
+                false
+            };
+
+            if !consumed {
+                break;
+            }
+        }
+    }
+
+    fn skip_create_table_option_value(&mut self) {
+        let _ = self.match_token(TokenType::Eq);
+        if self.match_token(TokenType::LParen) {
+            let mut depth = 1;
+            while depth > 0 && !matches!(self.peek_type(), TokenType::Eof) {
+                if self.match_token(TokenType::LParen) {
+                    depth += 1;
+                } else if self.match_token(TokenType::RParen) {
+                    depth -= 1;
+                } else {
+                    self.advance();
+                }
+            }
+            return;
+        }
+
+        if !matches!(self.peek_type(), TokenType::Semicolon | TokenType::Eof) {
+            self.advance();
+        }
     }
 
     fn parse_data_type(&mut self) -> Result<DataType> {

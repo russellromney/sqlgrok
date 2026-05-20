@@ -681,6 +681,46 @@ fn test_create_table_constraint_ordering() {
     );
 }
 
+#[test]
+fn test_mysql_create_table_options_to_sqlite() {
+    validate_with_dialect(
+        "CREATE TABLE z (a INT) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARACTER SET=utf8 COLLATE=utf8_bin COMMENT='x'",
+        "CREATE TABLE z (a INTEGER)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_mysql_create_table_column_options_to_sqlite() {
+    validate_with_dialect(
+        "CREATE TABLE z (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) COLLATE utf8_bin COMMENT 'n') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+        "CREATE TABLE z (id INTEGER PRIMARY KEY, name TEXT(255) COLLATE utf8_bin COMMENT 'n')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_mysql_create_table_primary_key_auto_increment_order_to_sqlite() {
+    validate_with_dialect(
+        "CREATE TABLE z (id INT PRIMARY KEY AUTO_INCREMENT)",
+        "CREATE TABLE z (id INTEGER PRIMARY KEY AUTOINCREMENT)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_mysql_create_table_type_affinity_to_sqlite() {
+    validate_with_dialect(
+        "CREATE TABLE z (a TINYINT, b SMALLINT, c INT, d BIGINT, e VARCHAR(10), f DATETIME, g BOOLEAN, h FLOAT, i DOUBLE, j DECIMAL(5, 2), k BINARY(4), l VARBINARY(8), m JSON)",
+        "CREATE TABLE z (a INTEGER, b INTEGER, c INTEGER, d INTEGER, e TEXT(10), f DATETIME, g INTEGER, h REAL, i REAL, j REAL(5, 2), k BLOB(4), l BLOB(8), m JSON)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – DDL: DROP TABLE, CREATE/DROP VIEW
 // (from Python identity.sql)

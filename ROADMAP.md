@@ -428,7 +428,7 @@ Done when:
 
 ### Session 6: Ratchet DDL And Type Normalization
 
-Status: next.
+Status: complete.
 
 Files:
 
@@ -452,6 +452,35 @@ Done when:
 ```bash
 SQLGLOT_PYTHON_PATH=/path/to/sqlglot SQLGROK_PARITY_TAG=ddl cargo test sqlglot_python_smoke_parity --features cli -- --nocapture
 cargo test ddl --features cli
+cargo test --features cli
+```
+
+### Session 7: Split DDL Into First-Class AST Properties
+
+Status: next.
+
+Files:
+
+- `src/ast/types.rs`
+- `src/parser/sql_parser.rs`
+- `src/generator/sql_generator.rs`
+- `src/dialects/`
+- `tests/test_transpile.rs`
+- `parity/cases/*.jsonl`
+
+Tasks:
+
+- Replace the current parse-and-discard handling for MySQL `CREATE TABLE` options with explicit AST properties where SQLGlot keeps semantic information.
+- Decide which properties are target-only rendering details, which are source metadata, and which should survive cross-dialect transforms.
+- Add parser/generator coverage for common properties beyond the first ratchet: `ENGINE`, `CHARACTER SET`, `COLLATE`, `COMMENT`, `ROW_FORMAT`, and table-level `AUTO_INCREMENT`.
+- Keep SQLite output behavior aligned with Python SQLGlot while allowing MySQL identity round-trips to preserve useful options.
+- Add fixture metadata for options that Python SQLGlot warns about and intentionally drops for SQLite.
+
+Done when:
+
+```bash
+SQLGROK_PARITY_TAG=ddl cargo test sqlglot_python_smoke_parity --features cli -- --nocapture
+cargo test create_table --features cli
 cargo test --features cli
 ```
 

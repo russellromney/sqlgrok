@@ -20,6 +20,16 @@ fn transpile_stdin_to_stdout() {
 }
 
 #[test]
+fn transpile_applies_dialect_transforms() {
+    sqlgrok()
+        .args(["transpile", "--read", "mysql", "--write", "sqlite"])
+        .write_stdin("CREATE TABLE z (a INT)")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("CREATE TABLE z (a INTEGER)"));
+}
+
+#[test]
 fn transpile_pretty() {
     sqlgrok()
         .args(["transpile", "--pretty"])

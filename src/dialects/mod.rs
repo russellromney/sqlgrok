@@ -352,6 +352,11 @@ fn transform_statement(statement: &mut Statement, target: Dialect) {
         // DDL: map data types in CREATE TABLE column definitions
         Statement::CreateTable(ct) => {
             for col in &mut ct.columns {
+                if matches!(target, Dialect::Sqlite)
+                    && !(matches!(col.data_type, DataType::Int) && col.primary_key)
+                {
+                    col.auto_increment = false;
+                }
                 col.data_type = map_data_type(col.data_type.clone(), target);
                 if let Some(default) = &mut col.default {
                     *default = transform_expr(default.clone(), target);
@@ -729,6 +734,27 @@ pub(crate) fn map_function_name(name: &str, target: Dialect) -> String {
 /// Map data types between dialects.
 pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
     match (dt, target) {
+        // ── SQLite type affinity ─────────────────────────────────────────
+        (
+            DataType::TinyInt | DataType::SmallInt | DataType::Int | DataType::BigInt,
+            Dialect::Sqlite,
+        ) => DataType::Unknown("INTEGER".to_string()),
+        (DataType::Boolean, Dialect::Sqlite) => DataType::Unknown("INTEGER".to_string()),
+        (DataType::Float | DataType::Double, Dialect::Sqlite) => DataType::Real,
+        (
+            DataType::Decimal { precision, scale } | DataType::Numeric { precision, scale },
+            Dialect::Sqlite,
+        ) => sqlite_type_with_params("REAL", precision, scale),
+        (DataType::Varchar(len) | DataType::Char(len), Dialect::Sqlite) => match len {
+            Some(n) => DataType::Unknown(format!("TEXT({n})")),
+            None => DataType::Text,
+        },
+        (DataType::String, Dialect::Sqlite) => DataType::Text,
+        (DataType::Binary(len) | DataType::Varbinary(len), Dialect::Sqlite) => match len {
+            Some(n) => DataType::Unknown(format!("BLOB({n})")),
+            None => DataType::Blob,
+        },
+
         // ── TEXT / STRING ────────────────────────────────────────────────
         // TEXT → STRING for BigQuery, Hive, Spark, Databricks
         (DataType::Text, t) if matches!(t, Dialect::BigQuery) || is_hive_family(t) => {
@@ -762,6 +788,14 @@ pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
 
         // Everything else is unchanged
         (dt, _) => dt,
+    }
+}
+
+fn sqlite_type_with_params(name: &str, precision: Option<u32>, scale: Option<u32>) -> DataType {
+    match (precision, scale) {
+        (Some(p), Some(s)) => DataType::Unknown(format!("{name}({p}, {s})")),
+        (Some(p), None) => DataType::Unknown(format!("{name}({p})")),
+        (None, _) => DataType::Unknown(name.to_string()),
     }
 }
 
