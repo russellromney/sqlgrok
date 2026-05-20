@@ -861,7 +861,7 @@ impl Parser {
             let join_type = match self.peek_type() {
                 TokenType::Comma => {
                     self.advance();
-                    JoinType::Cross
+                    JoinType::Comma
                 }
                 TokenType::Join => {
                     self.advance();

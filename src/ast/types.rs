@@ -298,6 +298,8 @@ pub enum JoinType {
     Right,
     Full,
     Cross,
+    /// Comma join syntax (`FROM a, b`), semantically a cross join.
+    Comma,
     /// NATURAL JOIN
     Natural,
     /// LATERAL JOIN

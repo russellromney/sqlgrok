@@ -617,11 +617,16 @@ impl Generator {
             JoinType::Right => "RIGHT JOIN",
             JoinType::Full => "FULL JOIN",
             JoinType::Cross => "CROSS JOIN",
+            JoinType::Comma => ",",
             JoinType::Natural => "NATURAL JOIN",
             JoinType::Lateral => "LATERAL JOIN",
         };
-        self.sep();
-        self.write_keyword(join_kw);
+        if join.join_type == JoinType::Comma {
+            self.write(",");
+        } else {
+            self.sep();
+            self.write_keyword(join_kw);
+        }
         if self.pretty {
             self.indent_up();
             self.newline();

@@ -343,6 +343,9 @@ fn test_cross_join() {
     );
     let result = execute("SELECT x, y FROM a CROSS JOIN b", &t).unwrap();
     assert_eq!(result.row_count(), 4);
+
+    let result = execute("SELECT x, y FROM a, b", &t).unwrap();
+    assert_eq!(result.row_count(), 4);
 }
 
 // ═══════════════════════════════════════════════════════════════════════

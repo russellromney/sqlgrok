@@ -225,9 +225,31 @@ fn test_identity_join_subquery() {
 fn test_identity_multiple_from_tables() {
     assert_eq!(
         transpile("SELECT * FROM a, b", Dialect::Ansi, Dialect::Ansi).unwrap(),
-        "SELECT * FROM a CROSS JOIN b"
+        "SELECT * FROM a, b"
     );
     validate_identity("SELECT * FROM a CROSS JOIN b");
+}
+
+#[test]
+fn test_comma_join_preserves_sources() {
+    assert_eq!(
+        transpile(
+            "SELECT COUNT(*) FROM cj a, cj b",
+            Dialect::Mysql,
+            Dialect::Sqlite,
+        )
+        .unwrap(),
+        "SELECT COUNT(*) FROM cj AS a, cj AS b"
+    );
+    assert_eq!(
+        transpile(
+            "SELECT COUNT(*) FROM cj a CROSS JOIN cj b",
+            Dialect::Mysql,
+            Dialect::Sqlite,
+        )
+        .unwrap(),
+        "SELECT COUNT(*) FROM cj AS a CROSS JOIN cj AS b"
+    );
 }
 
 #[test]

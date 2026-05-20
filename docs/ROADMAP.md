@@ -375,7 +375,7 @@ cargo test sqlglot_python_smoke_parity --features cli
 
 ### Session 4: Ratchet Comma Join And GROUP_CONCAT
 
-Status: next.
+Status: complete.
 
 Files:
 
@@ -391,6 +391,7 @@ Tasks:
 - Ensure comma joins preserve all table sources and do not regress explicit `CROSS JOIN`.
 - Ensure MySQL `GROUP_CONCAT` renders valid SQLite/Postgres output where supported.
 - Add focused Rust regression tests for each fixed bug.
+- Remove the accepted-divergence escape hatch from the smoke parity corpus.
 
 Done when:
 

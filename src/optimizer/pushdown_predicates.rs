@@ -156,7 +156,10 @@ fn try_push_into_source(source: &mut TableSource, pred: &Expr, tables: &HashSet<
 fn try_push_into_join(join: &mut JoinClause, pred: &Expr, tables: &HashSet<String>) -> bool {
     // Only push into inner joins — pushing into LEFT/RIGHT/FULL
     // changes semantics.
-    if !matches!(join.join_type, JoinType::Inner | JoinType::Cross) {
+    if !matches!(
+        join.join_type,
+        JoinType::Inner | JoinType::Cross | JoinType::Comma
+    ) {
         return false;
     }
 

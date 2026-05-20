@@ -206,7 +206,7 @@ impl<'a> ExecutionContext<'a> {
             JoinType::Left => self.left_join(left_rows, &right_rows, &join.on, &join.using),
             JoinType::Right => self.right_join(left_rows, &right_rows, &join.on, &join.using),
             JoinType::Full => self.full_join(left_rows, &right_rows, &join.on, &join.using),
-            JoinType::Cross => self.cross_join(left_rows, &right_rows),
+            JoinType::Cross | JoinType::Comma => self.cross_join(left_rows, &right_rows),
             JoinType::Natural => self.natural_join(left_rows, &right_rows),
             _ => Err(SqlglotError::Internal(format!(
                 "Unsupported join type: {:?}",
