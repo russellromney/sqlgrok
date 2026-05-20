@@ -32,6 +32,7 @@ What this roadmap must prevent:
 - Known divergences must be explicit in fixture metadata, not hidden in assertions.
 - Progress should be measurable by counts: imported cases, exact matches, accepted divergences, unsupported cases, and regressions.
 - Every implementation session should update either code, fixtures, or this roadmap. Do not leave discoveries only in chat.
+- Completed user-facing changes should also update [CHANGELOG.md](../CHANGELOG.md) with a short summary.
 
 ## Repository Map
 
@@ -41,6 +42,7 @@ Start here when opening a new implementation session:
 - `parity/cases/*.jsonl`: parity corpus loaded by the smoke harness.
 - `docs/PARITY.md`: fixture format and ratchet workflow.
 - `docs/ARCHITECTURE.md`: parser architecture notes and non-SQLGlot design influences.
+- `CHANGELOG.md`: quick summaries of completed work.
 - `tests/test_transpile.rs`: focused transpiler regressions.
 - `src/parser/sql_parser.rs`: parser entry points and grammar behavior.
 - `src/generator/sql_generator.rs`: SQL generation and dialect rendering.

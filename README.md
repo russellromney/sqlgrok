@@ -20,7 +20,12 @@ echo "SELECT GROUP_CONCAT(v SEPARATOR '|') FROM gc" | cargo run --features cli -
 
 ## Python SQLGlot Parity
 
-See [docs/ROADMAP.md](docs/ROADMAP.md) for the execution roadmap, [docs/PARITY.md](docs/PARITY.md) for the parity fixture format, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for parser architecture notes.
+The project docs are split by purpose:
+
+- [docs/ROADMAP.md](docs/ROADMAP.md): future work, execution sessions, and acceptance checks.
+- [CHANGELOG.md](CHANGELOG.md): quick summaries of completed changes.
+- [docs/PARITY.md](docs/PARITY.md): parity fixture format and SQLGlot oracle workflow.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): parser architecture notes and outside influences.
 
 The parity smoke test looks for Python SQLGlot in one of two places:
 
