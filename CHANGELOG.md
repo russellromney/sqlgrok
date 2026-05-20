@@ -15,7 +15,7 @@ this file records what landed.
 
 ### Planning And Architecture
 
-- Added [docs/ROADMAP.md](docs/ROADMAP.md) with executable parity milestones and implementation sessions.
+- Added [ROADMAP.md](ROADMAP.md) with executable parity milestones and implementation sessions.
 - Hardened the roadmap with a hostile review pass so each session names files, tasks, and acceptance checks.
 - Added [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), including the Databend parser article as inspiration for parser ergonomics while keeping Python SQLGlot as the behavior contract.
 
@@ -37,3 +37,7 @@ this file records what landed.
 - Added `JoinType::Comma` so comma joins preserve SQLGlot string parity while remaining semantic cartesian joins in execution.
 - Removed the accepted-divergence marker from the comma join smoke case.
 - Reached smoke parity with `4/4` exact matches and `0` accepted divergences.
+
+### Project Memory
+
+- Moved the roadmap to top-level [ROADMAP.md](ROADMAP.md) so it sits beside README and CHANGELOG.

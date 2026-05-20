@@ -22,7 +22,7 @@ echo "SELECT GROUP_CONCAT(v SEPARATOR '|') FROM gc" | cargo run --features cli -
 
 The project docs are split by purpose:
 
-- [docs/ROADMAP.md](docs/ROADMAP.md): future work, execution sessions, and acceptance checks.
+- [ROADMAP.md](ROADMAP.md): future work, execution sessions, and acceptance checks.
 - [CHANGELOG.md](CHANGELOG.md): quick summaries of completed changes.
 - [docs/PARITY.md](docs/PARITY.md): parity fixture format and SQLGlot oracle workflow.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): parser architecture notes and outside influences.

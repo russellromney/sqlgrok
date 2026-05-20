@@ -32,7 +32,7 @@ What this roadmap must prevent:
 - Known divergences must be explicit in fixture metadata, not hidden in assertions.
 - Progress should be measurable by counts: imported cases, exact matches, accepted divergences, unsupported cases, and regressions.
 - Every implementation session should update either code, fixtures, or this roadmap. Do not leave discoveries only in chat.
-- Completed user-facing changes should also update [CHANGELOG.md](../CHANGELOG.md) with a short summary.
+- Completed user-facing changes should also update [CHANGELOG.md](CHANGELOG.md) with a short summary.
 
 ## Repository Map
 
@@ -81,7 +81,7 @@ Acceptance checks:
 
 ```bash
 cargo test --features cli
-rg --hidden "sqlglot-rust|sqlglot_rust|libsqlglot_rust|-lsqlglot_rust|target/release/sqlglot|bin/sqlglot" . --glob '!docs/ROADMAP.md' --glob '!.git/**' --glob '!target/**'
+rg --hidden "sqlglot-rust|sqlglot_rust|libsqlglot_rust|-lsqlglot_rust|target/release/sqlglot|bin/sqlglot" . --glob '!ROADMAP.md' --glob '!.git/**' --glob '!target/**'
 ```
 
 The `rg` check should return no project-facing references. Upstream attribution links are allowed.
@@ -99,7 +99,7 @@ Goal: make it easy to compare sqlgrok against a local Python SQLGlot checkout.
 
 Deliverables:
 
-- Keep the JSONL parity fixture format documented in [PARITY.md](PARITY.md).
+- Keep the JSONL parity fixture format documented in [PARITY.md](docs/PARITY.md).
 - Support exact-match cases and documented accepted Rust divergences.
 - Emit useful failure output: case id, dialects, source SQL, Python output, Rust output, and note.
 - Add case filtering by `SQLGROK_PARITY_ID`, `SQLGROK_PARITY_TAG`, `SQLGROK_PARITY_READ`, and `SQLGROK_PARITY_WRITE`.
@@ -197,7 +197,7 @@ Status: planned.
 
 Goal: parse the SQL shapes Python SQLGlot understands, even before every expression can be optimized or executed.
 
-Architecture note: use the Databend parser article linked from [ARCHITECTURE.md](ARCHITECTURE.md) as inspiration for spans, furthest-error tracking, zero-copy design, and syntax/semantic separation. Do not use it as the AST contract; Python SQLGlot remains the parity target.
+Architecture note: use the Databend parser article linked from [ARCHITECTURE.md](docs/ARCHITECTURE.md) as inspiration for spans, furthest-error tracking, zero-copy design, and syntax/semantic separation. Do not use it as the AST contract; Python SQLGlot remains the parity target.
 
 Deliverables:
 
@@ -347,7 +347,7 @@ Done when:
 cargo fmt --check
 cargo clippy --features cli --all-targets
 cargo test --features cli
-rg --hidden "sqlglot-rust|sqlglot_rust|libsqlglot_rust|-lsqlglot_rust|target/release/sqlglot|bin/sqlglot" . --glob '!docs/ROADMAP.md' --glob '!.git/**' --glob '!target/**'
+rg --hidden "sqlglot-rust|sqlglot_rust|libsqlglot_rust|-lsqlglot_rust|target/release/sqlglot|bin/sqlglot" . --glob '!ROADMAP.md' --glob '!.git/**' --glob '!target/**'
 ```
 
 ### Session 3: Build The Fixture Importer Skeleton
