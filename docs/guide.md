@@ -1,4 +1,4 @@
-# sqlglot-rust Documentation
+# sqlgrok Documentation
 
 A SQL parser, optimizer, and transpiler library written in Rust, inspired by Python's [sqlglot](https://github.com/tobymao/sqlglot).
 
@@ -13,5 +13,5 @@ A SQL parser, optimizer, and transpiler library written in Rust, inspired by Pyt
 | **[API Reference](reference.md)** | Complete type catalog, function signatures, dialect tables, operator enums, data types, and error variants |
 | **[SQL Execution Engine](reference.md#sql-execution-engine)** | In-memory query execution against Rust data structures for testing and validation |
 | **[Custom Dialect Plugins](developer-guide.md#custom-dialect-plugins)** | Register custom dialects at runtime with the `DialectPlugin` trait and `DialectRegistry` |
-| **[C/C++ FFI Bindings](developer-guide.md#cc-ffi-bindings)** | Use sqlglot-rust from C, C++, or any language with C ABI support |
+| **[C/C++ FFI Bindings](developer-guide.md#cc-ffi-bindings)** | Use sqlgrok from C, C++, or any language with C ABI support |
 | **CLI** | Command-line interface for transpiling, parsing, and formatting SQL (see [README](../README.md#cli)) |

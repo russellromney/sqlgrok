@@ -1,16 +1,16 @@
 /**
- * sqlglot-rust C FFI example — parse, transpile, and generate SQL.
+ * sqlgrok C FFI example — parse, transpile, and generate SQL.
  *
  * Build (macOS):
  *   cargo build --release
- *   cbindgen --config cbindgen.toml --crate sqlglot-rust --output target/ffi/include/sqlglot.h
- *   gcc examples/ffi_example.c -Itarget/ffi/include -Ltarget/release -lsqlglot_rust -o ffi_example
+ *   cbindgen --config cbindgen.toml --crate sqlgrok --output target/ffi/include/sqlglot.h
+ *   gcc examples/ffi_example.c -Itarget/ffi/include -Ltarget/release -lsqlgrok -o ffi_example
  *   ./ffi_example                           # macOS: dylib is found via -L
  *
  * Build (Linux):
  *   cargo build --release
- *   cbindgen --config cbindgen.toml --crate sqlglot-rust --output target/ffi/include/sqlglot.h
- *   gcc examples/ffi_example.c -Itarget/ffi/include -Ltarget/release -lsqlglot_rust -lpthread -ldl -lm -o ffi_example
+ *   cbindgen --config cbindgen.toml --crate sqlgrok --output target/ffi/include/sqlglot.h
+ *   gcc examples/ffi_example.c -Itarget/ffi/include -Ltarget/release -lsqlgrok -lpthread -ldl -lm -o ffi_example
  *   LD_LIBRARY_PATH=target/release ./ffi_example
  */
 
@@ -20,7 +20,7 @@
 
 int main(void) {
     /* ── Library version ──────────────────────────────────────────── */
-    printf("sqlglot-rust version: %s\n\n", sqlglot_version());
+    printf("sqlgrok version: %s\n\n", sqlglot_version());
 
     /* ── Transpile ────────────────────────────────────────────────── */
     const char *sql = "SELECT NOW(), IFNULL(a, b) FROM t LIMIT 10";

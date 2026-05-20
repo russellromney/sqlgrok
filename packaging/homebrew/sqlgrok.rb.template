@@ -1,0 +1,47 @@
+# Homebrew formula for sqlgrok CLI.
+#
+# Install:  brew install russellromney/tap/sqlgrok
+# Upgrade:  brew upgrade sqlgrok
+#
+# This formula downloads pre-built binaries from GitHub Releases.
+# To use the C/C++ FFI libraries, download the full tarball from the release page.
+
+class Sqlgrok < Formula
+  desc "SQL parser, optimizer, and transpiler CLI — 30 dialects"
+  homepage "https://github.com/russellromney/sqlgrok"
+  version "@@VERSION@@"
+  license "MIT"
+
+  on_macos do
+    if Hardware::CPU.arm?
+      url "https://github.com/russellromney/sqlgrok/releases/download/v@@VERSION@@/sqlgrok-@@VERSION@@-macos-arm64.tar.gz"
+      sha256 "@@SHA256_ARM64@@"
+    else
+      url "https://github.com/russellromney/sqlgrok/releases/download/v@@VERSION@@/sqlgrok-@@VERSION@@-macos-amd64.tar.gz"
+      sha256 "@@SHA256_AMD64@@"
+    end
+  end
+
+  on_linux do
+    if Hardware::CPU.arm?
+      url "https://github.com/russellromney/sqlgrok/releases/download/v@@VERSION@@/sqlgrok-@@VERSION@@-linux-arm64.tar.gz"
+      sha256 "@@SHA256_LINUX_ARM64@@"
+    else
+      url "https://github.com/russellromney/sqlgrok/releases/download/v@@VERSION@@/sqlgrok-@@VERSION@@-linux-amd64.tar.gz"
+      sha256 "@@SHA256_LINUX_AMD64@@"
+    end
+  end
+
+  def install
+    bin.install "bin/sqlgrok"
+    lib.install Dir["lib/*"]
+    include.install "include/sqlglot.h"
+    doc.install "README.md", "LICENSE"
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/sqlgrok --version")
+    result = pipe_output("#{bin}/sqlgrok transpile --read mysql --write postgres", "SELECT NOW()")
+    assert_match "NOW()", result
+  end
+end

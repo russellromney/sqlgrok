@@ -1,6 +1,6 @@
 # Developer Guide
 
-A hands-on guide to using **sqlglot-rust** in your application — parsing SQL,
+A hands-on guide to using **sqlgrok** in your application — parsing SQL,
 generating output, transpiling across dialects, inspecting and transforming
 the AST, optimizing queries, and serializing results.
 
@@ -89,7 +89,7 @@ the AST, optimizing queries, and serializing results.
 Use `parse` to convert a SQL string into a `Statement` AST node.
 
 ```rust
-use sqlglot_rust::{parse, Dialect};
+use sqlgrok::{parse, Dialect};
 
 let stmt = parse("SELECT 1 + 2", Dialect::Ansi).unwrap();
 ```
@@ -114,8 +114,8 @@ Statement::Select(SelectStatement {
 `parse_statements` splits on semicolons and returns a `Vec<Statement>`:
 
 ```rust
-use sqlglot_rust::parser::parse_statements;
-use sqlglot_rust::Dialect;
+use sqlgrok::parser::parse_statements;
+use sqlgrok::Dialect;
 
 let stmts = parse_statements(
     "SELECT 1; SELECT 2; INSERT INTO t VALUES (1)",
@@ -138,7 +138,7 @@ By default, `parse` strips SQL comments. Use `parse_with_comments` or
 `parse_statements_with_comments` to preserve them on the AST.
 
 ```rust
-use sqlglot_rust::{parse_with_comments, generate, Dialect, Statement};
+use sqlgrok::{parse_with_comments, generate, Dialect, Statement};
 
 let stmt = parse_with_comments(
     "-- fetch active users\nSELECT * FROM users WHERE active = TRUE",
@@ -169,7 +169,7 @@ automatically converted to `--` style.
 For multiple statements:
 
 ```rust
-use sqlglot_rust::{parse_statements_with_comments, Dialect};
+use sqlgrok::{parse_statements_with_comments, Dialect};
 
 let stmts = parse_statements_with_comments(
     "-- first\nSELECT 1; -- second\nSELECT 2",
@@ -200,7 +200,7 @@ assert_eq!(stmts.len(), 2);
 `generate` produces a single-line SQL string from an AST:
 
 ```rust
-use sqlglot_rust::{parse, generate, Dialect};
+use sqlgrok::{parse, generate, Dialect};
 
 let ast = parse("SELECT a FROM t WHERE a > 1", Dialect::Ansi).unwrap();
 let sql = generate(&ast, Dialect::Ansi);
@@ -220,7 +220,7 @@ SELECT a FROM t WHERE a > 1
 `generate_pretty` adds line breaks and indentation:
 
 ```rust
-use sqlglot_rust::{parse, generate_pretty, Dialect};
+use sqlgrok::{parse, generate_pretty, Dialect};
 
 let ast = parse(
     "SELECT u.id, u.name FROM users AS u INNER JOIN orders AS o ON u.id = o.user_id WHERE o.total > 100 ORDER BY u.name LIMIT 10",
@@ -296,7 +296,7 @@ dialect-specific transformations automatically.
 ### Single Statement Transpilation
 
 ```rust
-use sqlglot_rust::{transpile, Dialect};
+use sqlgrok::{transpile, Dialect};
 
 let result = transpile(
     "SELECT NOW()",
@@ -323,8 +323,8 @@ SELECT CURRENT_TIMESTAMP()
 ### Multi-Statement Transpilation
 
 ```rust
-use sqlglot_rust::transpile_statements;
-use sqlglot_rust::Dialect;
+use sqlgrok::transpile_statements;
+use sqlgrok::Dialect;
 
 let results = transpile_statements(
     "SELECT SUBSTR(x, 1, 3); SELECT NOW()",
@@ -352,7 +352,7 @@ Use `transpile_with_comments` to preserve comments through a dialect conversion
 in one call:
 
 ```rust
-use sqlglot_rust::{transpile_with_comments, Dialect};
+use sqlgrok::{transpile_with_comments, Dialect};
 
 let sql = transpile_with_comments(
     "-- user lookup\nSELECT NOW()",
@@ -411,7 +411,7 @@ Unrecognized functions fall back to the generic `Expr::Function` with
 string-based name and argument list, preserving backward compatibility.
 
 ```rust
-use sqlglot_rust::{parse, Dialect, ast::types::Expr};
+use sqlgrok::{parse, Dialect, ast::types::Expr};
 
 let stmt = parse("SELECT SUBSTRING(name, 1, 3) FROM users", Dialect::Ansi).unwrap();
 
@@ -450,7 +450,7 @@ strings that vary by dialect. During transpilation, both the function name AND t
 specifiers are automatically converted:
 
 ```rust
-use sqlglot_rust::{transpile, Dialect};
+use sqlgrok::{transpile, Dialect};
 
 // MySQL → PostgreSQL
 let result = transpile(
@@ -491,7 +491,7 @@ let result = transpile(
 You can also convert format strings directly without parsing SQL:
 
 ```rust
-use sqlglot_rust::{format_time, format_time_dialect, TimeFormatStyle, Dialect};
+use sqlgrok::{format_time, format_time_dialect, TimeFormatStyle, Dialect};
 
 // Convert between format styles
 let pg_format = format_time("%Y-%m-%d", TimeFormatStyle::Strftime, TimeFormatStyle::Postgres);
@@ -564,8 +564,8 @@ SQL extensions, internal database engines, or experimental dialects.
 Implement the `DialectPlugin` trait — only override the methods you need:
 
 ```rust
-use sqlglot_rust::DialectPlugin;
-use sqlglot_rust::ast::{DataType, Expr, QuoteStyle};
+use sqlgrok::DialectPlugin;
+use sqlgrok::ast::{DataType, Expr, QuoteStyle};
 
 struct AcmeDialect;
 
@@ -600,8 +600,8 @@ impl DialectPlugin for AcmeDialect {
 ### Registering and Using a Custom Dialect
 
 ```rust
-use sqlglot_rust::{register_dialect, DialectRef, Dialect};
-use sqlglot_rust::dialects::plugin::transpile_ext;
+use sqlgrok::{register_dialect, DialectRef, Dialect};
+use sqlgrok::dialects::plugin::transpile_ext;
 
 // Register the custom dialect globally (once)
 register_dialect(AcmeDialect);
@@ -631,7 +631,7 @@ You can convert any `Dialect` into a `DialectRef` with `DialectRef::from(dialect
 Look up a dialect by name, checking built-in dialects first, then the custom registry:
 
 ```rust
-use sqlglot_rust::{resolve_dialect, DialectRef, Dialect};
+use sqlgrok::{resolve_dialect, DialectRef, Dialect};
 
 assert_eq!(resolve_dialect("postgres"), Some(DialectRef::from(Dialect::Postgres)));
 assert_eq!(resolve_dialect("acme"), Some(DialectRef::custom("acme")));
@@ -668,7 +668,7 @@ assert_eq!(resolve_dialect("unknown"), None);
 After parsing, match on the `Statement` enum to handle each SQL command:
 
 ```rust
-use sqlglot_rust::{parse, Dialect, Statement};
+use sqlgrok::{parse, Dialect, Statement};
 
 let stmt = parse("SELECT a, b FROM users", Dialect::Ansi).unwrap();
 
@@ -703,8 +703,8 @@ Has WHERE: false
 Access individual clauses of a `SelectStatement`:
 
 ```rust
-use sqlglot_rust::{parse, Dialect, Statement};
-use sqlglot_rust::ast::SelectItem;
+use sqlgrok::{parse, Dialect, Statement};
+use sqlgrok::ast::SelectItem;
 
 let stmt = parse(
     "SELECT u.name, COUNT(*) FROM users AS u WHERE u.active = TRUE GROUP BY u.name ORDER BY u.name LIMIT 10",
@@ -756,8 +756,8 @@ Limit: 10
 Build AST nodes programmatically:
 
 ```rust
-use sqlglot_rust::Expr;
-use sqlglot_rust::ast::BinaryOperator;
+use sqlgrok::Expr;
+use sqlgrok::ast::BinaryOperator;
 
 // Build: price * quantity
 let expr = Expr::BinaryOp {
@@ -797,8 +797,8 @@ queries programmatically without manually assembling AST enum variants.
 Build SELECT queries using method chaining:
 
 ```rust
-use sqlglot_rust::builder::{select, select_all, select_distinct};
-use sqlglot_rust::{generate, Dialect};
+use sqlgrok::builder::{select, select_all, select_distinct};
+use sqlgrok::{generate, Dialect};
 
 // Basic SELECT
 let query = select(&["a", "b", "c"])
@@ -866,7 +866,7 @@ let query = select_all()
 Build complex conditions with AND/OR/NOT:
 
 ```rust
-use sqlglot_rust::builder::condition;
+use sqlgrok::builder::condition;
 
 // Build: x = 1 AND y = 2 OR z = 3
 let cond = condition("x = 1")
@@ -885,8 +885,8 @@ let negated = condition("status = 'active'")
 Create expressions without manual AST construction:
 
 ```rust
-use sqlglot_rust::builder::*;
-use sqlglot_rust::ast::DataType;
+use sqlgrok::builder::*;
+use sqlgrok::ast::DataType;
 
 // Column reference
 let col = column("name", Some("users"));  // users.name
@@ -931,7 +931,7 @@ let qualified = qualified_star("users");
 Shorthand functions for common operations:
 
 ```rust
-use sqlglot_rust::builder::*;
+use sqlgrok::builder::*;
 
 // Comparisons
 let e = eq(column("a", None), literal(1));      // a = 1
@@ -976,8 +976,8 @@ let e = not(eq(column("active", None), boolean(true)));
 Modify existing statements after construction:
 
 ```rust
-use sqlglot_rust::builder::select;
-use sqlglot_rust::ast::JoinType;
+use sqlgrok::builder::select;
+use sqlgrok::ast::JoinType;
 
 let mut stmt = select(&["a"]).from("table1").build_select();
 
@@ -1002,7 +1002,7 @@ let subquery_source = stmt.as_subquery("sub");
 Parse SQL fragments into expressions:
 
 ```rust
-use sqlglot_rust::builder::{parse_expr, parse_condition};
+use sqlgrok::builder::{parse_expr, parse_condition};
 
 // Parse an expression
 let expr = parse_expr("x + y * 2").unwrap();
@@ -1021,8 +1021,8 @@ let cond = parse_condition("a > 1 AND b < 10").unwrap();
 callback returns `true` to recurse into children, `false` to skip them.
 
 ```rust
-use sqlglot_rust::{parse, Dialect, Expr, Statement};
-use sqlglot_rust::ast::SelectItem;
+use sqlgrok::{parse, Dialect, Expr, Statement};
+use sqlgrok::ast::SelectItem;
 
 let stmt = parse("SELECT a + b * 2", Dialect::Ansi).unwrap();
 if let Statement::Select(s) = &stmt {
@@ -1086,8 +1086,8 @@ let numbers = expr.find_all(&|e| matches!(e, Expr::Number(_)));
 Free functions in the `ast` module collect common references:
 
 ```rust
-use sqlglot_rust::{parse, Dialect};
-use sqlglot_rust::ast::{find_columns, find_tables};
+use sqlgrok::{parse, Dialect};
+use sqlgrok::ast::{find_columns, find_tables};
 
 // --- find_tables ---
 let stmt = parse(
@@ -1108,8 +1108,8 @@ println!("{:?}", tables.iter().map(|t| &t.name).collect::<Vec<_>>());
 
 ```rust
 // --- find_columns ---
-use sqlglot_rust::{parse, Dialect, Expr, Statement};
-use sqlglot_rust::ast::{find_columns, SelectItem};
+use sqlgrok::{parse, Dialect, Expr, Statement};
+use sqlgrok::ast::{find_columns, SelectItem};
 
 let stmt = parse("SELECT a + b + c", Dialect::Ansi).unwrap();
 if let Statement::Select(s) = &stmt {
@@ -1139,8 +1139,8 @@ function, which can return it unchanged or provide a replacement.
 ### Doubling Numeric Literals
 
 ```rust
-use sqlglot_rust::{parse, generate, Expr, Dialect, Statement};
-use sqlglot_rust::ast::SelectItem;
+use sqlgrok::{parse, generate, Expr, Dialect, Statement};
+use sqlgrok::ast::SelectItem;
 
 let stmt = parse("SELECT 1 + 2", Dialect::Ansi).unwrap();
 
@@ -1206,8 +1206,8 @@ new_col + b
 The optimizer applies safe, semantics-preserving rewrites to a `Statement`.
 
 ```rust
-use sqlglot_rust::{parse, generate, Dialect};
-use sqlglot_rust::optimizer::optimize;
+use sqlgrok::{parse, generate, Dialect};
+use sqlgrok::optimizer::optimize;
 
 let stmt = parse("SELECT 1 + 2 * 3", Dialect::Ansi).unwrap();
 let optimized = optimize(stmt).unwrap();
@@ -1256,8 +1256,8 @@ Correlated subqueries in WHERE clauses are rewritten into equivalent JOINs,
 which most query engines execute more efficiently.
 
 ```rust
-use sqlglot_rust::{parse, generate, Dialect};
-use sqlglot_rust::optimizer::optimize;
+use sqlgrok::{parse, generate, Dialect};
+use sqlgrok::optimizer::optimize;
 
 let stmt = parse(
     "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.id = a.id)",
@@ -1285,7 +1285,7 @@ The pass is conservative and leaves the query unchanged when:
 You can also call the pass directly:
 
 ```rust
-use sqlglot_rust::optimizer::unnest_subqueries::unnest_subqueries;
+use sqlgrok::optimizer::unnest_subqueries::unnest_subqueries;
 
 let unnested = unnest_subqueries(stmt);
 ```
@@ -1297,8 +1297,8 @@ derived tables and JOIN conditions where possible, reducing the data processed
 by inner queries.
 
 ```rust
-use sqlglot_rust::{parse, generate, Dialect};
-use sqlglot_rust::pushdown_predicates;
+use sqlgrok::{parse, generate, Dialect};
+use sqlgrok::pushdown_predicates;
 
 let stmt = parse(
     "SELECT sub.id FROM (SELECT id, name FROM t) AS sub WHERE sub.id > 5",
@@ -1331,9 +1331,9 @@ The pass does **not** push predicates when:
 adding table qualifiers to unqualified columns and expanding wildcards.
 
 ```rust
-use sqlglot_rust::{parse, generate, Dialect};
-use sqlglot_rust::optimizer::qualify_columns::qualify_columns;
-use sqlglot_rust::schema::MappingSchema;
+use sqlgrok::{parse, generate, Dialect};
+use sqlgrok::optimizer::qualify_columns::qualify_columns;
+use sqlgrok::schema::MappingSchema;
 
 let schema = MappingSchema::new()
     .with_table(vec!["users"], vec!["id", "name", "email"])
@@ -1368,8 +1368,8 @@ foundation for qualify_columns, pushdown_predicates, annotate_types, and
 column lineage.
 
 ```rust
-use sqlglot_rust::{parse, Dialect, build_scope};
-use sqlglot_rust::optimizer::scope_analysis::ScopeType;
+use sqlgrok::{parse, Dialect, build_scope};
+use sqlgrok::optimizer::scope_analysis::ScopeType;
 
 let ast = parse(
     "WITH cte AS (SELECT id FROM t) \
@@ -1414,9 +1414,9 @@ by combining schema column types, literal inference, function signatures, operat
 coercion rules, and CASE/COALESCE resolution.
 
 ```rust
-use sqlglot_rust::{parse, Dialect, annotate_types};
-use sqlglot_rust::ast::DataType;
-use sqlglot_rust::schema::{MappingSchema, Schema};
+use sqlgrok::{parse, Dialect, annotate_types};
+use sqlgrok::ast::DataType;
+use sqlgrok::schema::{MappingSchema, Schema};
 
 let mut schema = MappingSchema::new(Dialect::Ansi);
 schema.add_table(&["employees"], vec![
@@ -1429,8 +1429,8 @@ let stmt = parse("SELECT id, salary * 1.1, COUNT(*) FROM employees WHERE id > 5 
 let ann = annotate_types(&stmt, &schema);
 
 // Access types for individual expression nodes
-if let sqlglot_rust::Statement::Select(sel) = &stmt {
-    if let Some(sqlglot_rust::ast::SelectItem::Expr { expr, .. }) = sel.columns.first() {
+if let sqlgrok::Statement::Select(sel) = &stmt {
+    if let Some(sqlgrok::ast::SelectItem::Expr { expr, .. }) = sel.columns.first() {
         assert_eq!(ann.get_type(expr), Some(&DataType::Int)); // id → Int
     }
 }
@@ -1457,16 +1457,16 @@ transformations to output columns. This is essential for data governance, impact
 analysis, and understanding complex query pipelines.
 
 ```rust
-use sqlglot_rust::{parse, Dialect};
-use sqlglot_rust::optimizer::lineage::{lineage, lineage_sql, LineageConfig};
-use sqlglot_rust::schema::MappingSchema;
+use sqlgrok::{parse, Dialect};
+use sqlgrok::optimizer::lineage::{lineage, lineage_sql, LineageConfig};
+use sqlgrok::schema::MappingSchema;
 
 // Set up schema
 let mut schema = MappingSchema::new(Dialect::Ansi);
 schema.add_table(&["employees"], vec![
-    ("id".to_string(), sqlglot_rust::ast::DataType::Int),
-    ("name".to_string(), sqlglot_rust::ast::DataType::Varchar(Some(100))),
-    ("salary".to_string(), sqlglot_rust::ast::DataType::Double),
+    ("id".to_string(), sqlgrok::ast::DataType::Int),
+    ("name".to_string(), sqlgrok::ast::DataType::Varchar(Some(100))),
+    ("salary".to_string(), sqlgrok::ast::DataType::Double),
 ]).unwrap();
 
 // Build lineage for a specific output column
@@ -1568,8 +1568,8 @@ The planner module generates a logical execution plan from a parsed (and optiona
 ### Building a Plan
 
 ```rust
-use sqlglot_rust::{parse, Dialect};
-use sqlglot_rust::planner::plan;
+use sqlgrok::{parse, Dialect};
+use sqlgrok::planner::plan;
 
 let ast = parse("SELECT a, b FROM t WHERE a > 1 ORDER BY b", Dialect::Ansi).unwrap();
 let p = plan(&ast).unwrap();
@@ -1581,9 +1581,9 @@ println!("{p}");
 For best results, optimize the AST first:
 
 ```rust
-use sqlglot_rust::{parse, Dialect};
-use sqlglot_rust::optimizer::optimize;
-use sqlglot_rust::planner::plan;
+use sqlgrok::{parse, Dialect};
+use sqlgrok::optimizer::optimize;
+use sqlgrok::planner::plan;
 
 let ast = parse("SELECT a FROM t WHERE 1 = 1 AND a > 0", Dialect::Ansi).unwrap();
 let optimized = optimize(ast).unwrap();
@@ -1595,8 +1595,8 @@ let p = plan(&optimized).unwrap();
 Each step in the plan has a type, dependencies, and projections:
 
 ```rust
-use sqlglot_rust::{parse, Dialect};
-use sqlglot_rust::planner::{plan, Step};
+use sqlgrok::{parse, Dialect};
+use sqlgrok::planner::{plan, Step};
 
 let ast = parse(
     "SELECT a, SUM(b) FROM t JOIN u ON t.id = u.id GROUP BY a",
@@ -1616,8 +1616,8 @@ Step types: `Scan`, `Filter`, `Project`, `Aggregate`, `Sort`, `Join`, `Limit`, `
 Plans can be rendered as Mermaid or Graphviz DOT:
 
 ```rust
-use sqlglot_rust::{parse, Dialect};
-use sqlglot_rust::planner::plan;
+use sqlgrok::{parse, Dialect};
+use sqlgrok::planner::plan;
 
 let ast = parse("SELECT a FROM t WHERE a > 1", Dialect::Ansi).unwrap();
 let p = plan(&ast).unwrap();
@@ -1640,9 +1640,9 @@ foundation for type annotation, column qualification, and lineage analysis.
 ### Creating a Schema
 
 ```rust
-use sqlglot_rust::schema::{MappingSchema, Schema};
-use sqlglot_rust::ast::DataType;
-use sqlglot_rust::Dialect;
+use sqlgrok::schema::{MappingSchema, Schema};
+use sqlgrok::ast::DataType;
+use sqlgrok::Dialect;
 
 let mut schema = MappingSchema::new(Dialect::Postgres);
 
@@ -1709,9 +1709,9 @@ The `ensure_schema` helper builds a `MappingSchema` from nested `HashMap`s:
 
 ```rust
 use std::collections::HashMap;
-use sqlglot_rust::schema::ensure_schema;
-use sqlglot_rust::ast::DataType;
-use sqlglot_rust::Dialect;
+use sqlgrok::schema::ensure_schema;
+use sqlgrok::ast::DataType;
+use sqlgrok::Dialect;
 
 let mut tables = HashMap::new();
 let mut cols = HashMap::new();
@@ -1731,7 +1731,7 @@ All AST types derive `serde::Serialize` and `serde::Deserialize`, so you can
 convert any `Statement` to JSON and back:
 
 ```rust
-use sqlglot_rust::{parse, generate, Dialect, Statement};
+use sqlgrok::{parse, generate, Dialect, Statement};
 
 // Parse
 let ast = parse("SELECT id, name FROM users WHERE active = TRUE", Dialect::Ansi).unwrap();
@@ -1778,7 +1778,7 @@ assert_eq!(sql, "SELECT id, name FROM users WHERE active = TRUE");
 
 ## C/C++ FFI Bindings
 
-sqlglot-rust ships with a C-compatible FFI layer so the library can be consumed
+sqlgrok ships with a C-compatible FFI layer so the library can be consumed
 from C, C++, or any language that supports the C ABI.
 
 ### Building the FFI Libraries
@@ -1802,8 +1802,8 @@ target/ffi/
 ├── include/
 │   └── sqlglot.h           # Auto-generated C header
 └── lib/
-    ├── libsqlglot_rust.a       # Static library
-    └── libsqlglot_rust.dylib   # Shared library (or .so on Linux)
+    ├── libsqlgrok.a       # Static library
+    └── libsqlgrok.dylib   # Shared library (or .so on Linux)
 ```
 
 ### C Example
@@ -1841,11 +1841,11 @@ Build and run:
 
 ```bash
 # macOS
-gcc example.c -Itarget/ffi/include -Ltarget/release -lsqlglot_rust -o example
+gcc example.c -Itarget/ffi/include -Ltarget/release -lsqlgrok -o example
 ./example
 
 # Linux
-gcc example.c -Itarget/ffi/include -Ltarget/release -lsqlglot_rust -lpthread -ldl -lm -o example
+gcc example.c -Itarget/ffi/include -Ltarget/release -lsqlgrok -lpthread -ldl -lm -o example
 LD_LIBRARY_PATH=target/release ./example
 ```
 
@@ -1886,7 +1886,7 @@ int main() {
 Build:
 
 ```bash
-g++ -std=c++17 example.cpp -Itarget/ffi/include -Ltarget/release -lsqlglot_rust -o example
+g++ -std=c++17 example.cpp -Itarget/ffi/include -Ltarget/release -lsqlgrok -o example
 ```
 
 ### Linking
@@ -1894,13 +1894,13 @@ g++ -std=c++17 example.cpp -Itarget/ffi/include -Ltarget/release -lsqlglot_rust 
 **Static linking** (no runtime dependency):
 
 ```bash
-gcc example.c -Itarget/ffi/include target/ffi/lib/libsqlglot_rust.a -lpthread -ldl -lm -o example
+gcc example.c -Itarget/ffi/include target/ffi/lib/libsqlgrok.a -lpthread -ldl -lm -o example
 ```
 
 **Dynamic linking** (smaller binary, requires `.so`/`.dylib` at runtime):
 
 ```bash
-gcc example.c -Itarget/ffi/include -Ltarget/ffi/lib -lsqlglot_rust -o example
+gcc example.c -Itarget/ffi/include -Ltarget/ffi/lib -lsqlgrok -o example
 LD_LIBRARY_PATH=target/ffi/lib ./example    # Linux
 DYLD_LIBRARY_PATH=target/ffi/lib ./example  # macOS
 ```
@@ -1918,7 +1918,7 @@ All fallible operations return `Result<T, SqlglotError>`. Errors implement
 with `anyhow`, `eyre`, and the `?` operator.
 
 ```rust
-use sqlglot_rust::{parse, Dialect, SqlglotError};
+use sqlgrok::{parse, Dialect, SqlglotError};
 
 match parse("SELECT FROM", Dialect::Ansi) {
     Ok(stmt) => println!("Parsed: {:?}", stmt),
@@ -1937,7 +1937,7 @@ Error: Parser error: ...
 ### Matching Error Variants
 
 ```rust
-use sqlglot_rust::{parse, Dialect, SqlglotError};
+use sqlgrok::{parse, Dialect, SqlglotError};
 
 let err = parse("SELECT @@@", Dialect::Ansi).unwrap_err();
 
@@ -1964,7 +1964,7 @@ match &err {
 
 ```rust
 use anyhow::Result;
-use sqlglot_rust::{parse, generate, Dialect};
+use sqlgrok::{parse, generate, Dialect};
 
 fn process_query(sql: &str) -> Result<String> {
     let ast = parse(sql, Dialect::Ansi)?;    // SqlglotError → anyhow::Error
@@ -2003,10 +2003,10 @@ make sbom
 Or run the command directly:
 
 ```bash
-cargo sbom --output-format spdx_json_2_3 > target/sbom/sqlglot-rust.spdx.json
+cargo sbom --output-format spdx_json_2_3 > target/sbom/sqlgrok.spdx.json
 ```
 
-**Output location:** `target/sbom/sqlglot-rust.spdx.json`
+**Output location:** `target/sbom/sqlgrok.spdx.json`
 
 ### What the SBOM Contains
 
@@ -2026,19 +2026,19 @@ The generated SPDX document includes:
 List all packages:
 
 ```bash
-jq -r '.packages[].name' target/sbom/sqlglot-rust.spdx.json
+jq -r '.packages[].name' target/sbom/sqlgrok.spdx.json
 ```
 
 Count dependencies:
 
 ```bash
-jq '.packages | length' target/sbom/sqlglot-rust.spdx.json
+jq '.packages | length' target/sbom/sqlgrok.spdx.json
 ```
 
 Extract licenses:
 
 ```bash
-jq -r '.packages[] | "\(.name): \(.licenseConcluded)"' target/sbom/sqlglot-rust.spdx.json
+jq -r '.packages[] | "\(.name): \(.licenseConcluded)"' target/sbom/sqlgrok.spdx.json
 ```
 
 ---
@@ -2057,8 +2057,8 @@ make bump-version VERSION=1.0.0
 | File | Field |
 | --- | --- |
 | `Cargo.toml` | `version = "..."` |
-| `README.md` | `sqlglot-rust = "..."` dependency snippet |
-| `docs/installation.md` | `sqlglot-rust = "..."` dependency snippet |
+| `README.md` | `sqlgrok = "..."` dependency snippet |
+| `docs/installation.md` | `sqlgrok = "..."` dependency snippet |
 | `Cargo.lock` | Regenerated via `cargo generate-lockfile` |
 
 ### Guidelines

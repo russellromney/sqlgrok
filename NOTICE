@@ -1,9 +1,9 @@
 sqlgrok is licensed under the MIT License. See LICENSE.
 
-sqlgrok is derived from sqlglot-rust, originally copyright (c) 2026
+sqlgrok is derived from Protegrity's Rust SQLGlot port, originally copyright (c) 2026
 Protegrity and licensed under the MIT License.
 
-sqlglot-rust is inspired by and derived from Python SQLGlot, which is
+The upstream Rust project is inspired by and derived from Python SQLGlot, which is
 copyright its authors and licensed under the MIT License.
 
 New sqlgrok changes are copyright (c) 2026 Russell Romney and sqlgrok

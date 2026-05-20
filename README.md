@@ -2,7 +2,7 @@
 
 sqlgrok is a pure-Rust SQL parser, optimizer, and transpiler project with one north star: pass Python SQLGlot's behavior suite directly.
 
-It is currently bootstrapped from [`sqlglot-rust`](https://github.com/protegrity/sql-glot-rust), with an added parity harness that compares Rust output against a local Python SQLGlot checkout. The implementation stays Rust; Python is used only as the test oracle while the port catches up.
+It is currently bootstrapped from Protegrity's Rust SQLGlot port, with an added parity harness that compares Rust output against a local Python SQLGlot checkout. The implementation stays Rust; Python is used only as the test oracle while the port catches up.
 
 ## Goals
 
@@ -36,4 +36,4 @@ The initial corpus lives in `parity/cases/smoke.jsonl`. Cases without an `accept
 
 ## Lineage
 
-This project is derived from [`sqlglot-rust`](https://github.com/protegrity/sql-glot-rust), which is inspired by and derived from Python [SQLGlot](https://github.com/tobymao/sqlglot). Both upstream projects are MIT licensed.
+This project is derived from Protegrity's Rust SQLGlot port, which is inspired by and derived from Python [SQLGlot](https://github.com/tobymao/sqlglot). See [the upstream Rust project](https://github.com/protegrity/sql-glot-rust) for the original implementation lineage. Both upstream projects are MIT licensed.

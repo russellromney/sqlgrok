@@ -30,16 +30,16 @@ RUN cargo install cbindgen cargo-deb cargo-generate-rpm
 
 # Generate C header
 RUN mkdir -p target/ffi/include && \
-    cbindgen --config cbindgen.toml --crate sqlglot-rust --output target/ffi/include/sqlglot.h
+    cbindgen --config cbindgen.toml --crate sqlgrok --output target/ffi/include/sqlglot.h
 
 # Verify all expected artefacts exist
 RUN echo "=== Checking build artefacts ===" && \
-    ls -lh target/release/sqlglot && \
-    ls -lh target/release/libsqlglot_rust.so && \
-    ls -lh target/release/libsqlglot_rust.a && \
+    ls -lh target/release/sqlgrok && \
+    ls -lh target/release/libsqlgrok.so && \
+    ls -lh target/release/libsqlgrok.a && \
     ls -lh target/ffi/include/sqlglot.h && \
-    file target/release/sqlglot && \
-    file target/release/libsqlglot_rust.so
+    file target/release/sqlgrok && \
+    file target/release/libsqlgrok.so
 
 # ── Build Debian package ─────────────────────────────────────────────────
 RUN echo "=== Building Debian package ===" && \
@@ -61,10 +61,10 @@ RUN echo "=== Building RPM package ===" && \
 RUN echo "=== Installing and testing .deb ===" && \
     DEB=$(find target/debian -name '*.deb' | head -1) && \
     dpkg -i "$DEB" && \
-    which sqlglot && \
-    sqlglot --version && \
-    echo "SELECT 1" | sqlglot transpile --read mysql --write postgres && \
-    ls /usr/lib/libsqlglot_rust.so && \
+    which sqlgrok && \
+    sqlgrok --version && \
+    echo "SELECT 1" | sqlgrok transpile --read mysql --write postgres && \
+    ls /usr/lib/libsqlgrok.so && \
     ls /usr/include/sqlglot.h && \
     echo "=== .deb install PASSED ==="
 

@@ -1,4 +1,4 @@
-//! C FFI bindings for sqlglot-rust.
+//! C FFI bindings for sqlgrok.
 //!
 //! This module exposes a C-compatible API so the library can be consumed
 //! from C, C++, or any language that supports the C ABI.

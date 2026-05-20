@@ -21,8 +21,8 @@ fmt:
 sbom:
 	@echo "Generating SPDX SBOM..."
 	@mkdir -p target/sbom
-	cargo sbom --output-format spdx_json_2_3 > target/sbom/sqlglot-rust.spdx.json
-	@echo "SBOM written to target/sbom/sqlglot-rust.spdx.json"
+	cargo sbom --output-format spdx_json_2_3 > target/sbom/sqlgrok.spdx.json
+	@echo "SBOM written to target/sbom/sqlgrok.spdx.json"
 
 clean:
 	cargo clean
@@ -36,7 +36,7 @@ HEADER  = $(FFI_OUT)/include/sqlglot.h
 ffi-header: $(HEADER)
 $(HEADER):
 	@mkdir -p $(FFI_OUT)/include
-	cbindgen --config cbindgen.toml --crate sqlglot-rust --output $(HEADER)
+	cbindgen --config cbindgen.toml --crate sqlgrok --output $(HEADER)
 	@echo "Header written to $(HEADER)"
 
 ## Build for a single target (set TARGET, e.g. make ffi-target TARGET=aarch64-apple-darwin)
@@ -46,9 +46,9 @@ ifndef TARGET
 endif
 	cargo build --release --target $(TARGET)
 	@mkdir -p $(FFI_OUT)/$(TARGET)/lib
-	@cp -f target/$(TARGET)/release/libsqlglot_rust.a  $(FFI_OUT)/$(TARGET)/lib/ 2>/dev/null || true
-	@cp -f target/$(TARGET)/release/libsqlglot_rust.so $(FFI_OUT)/$(TARGET)/lib/ 2>/dev/null || true
-	@cp -f target/$(TARGET)/release/libsqlglot_rust.dylib $(FFI_OUT)/$(TARGET)/lib/ 2>/dev/null || true
+	@cp -f target/$(TARGET)/release/libsqlgrok.a  $(FFI_OUT)/$(TARGET)/lib/ 2>/dev/null || true
+	@cp -f target/$(TARGET)/release/libsqlgrok.so $(FFI_OUT)/$(TARGET)/lib/ 2>/dev/null || true
+	@cp -f target/$(TARGET)/release/libsqlgrok.dylib $(FFI_OUT)/$(TARGET)/lib/ 2>/dev/null || true
 	@echo "Built FFI libraries for $(TARGET) → $(FFI_OUT)/$(TARGET)/lib/"
 
 ## Convenience per-platform targets
@@ -68,9 +68,9 @@ ffi-linux-arm64:
 ffi: ffi-header
 	cargo build --release
 	@mkdir -p $(FFI_OUT)/lib
-	@cp -f target/release/libsqlglot_rust.a      $(FFI_OUT)/lib/ 2>/dev/null || true
-	@cp -f target/release/libsqlglot_rust.so     $(FFI_OUT)/lib/ 2>/dev/null || true
-	@cp -f target/release/libsqlglot_rust.dylib  $(FFI_OUT)/lib/ 2>/dev/null || true
+	@cp -f target/release/libsqlgrok.a      $(FFI_OUT)/lib/ 2>/dev/null || true
+	@cp -f target/release/libsqlgrok.so     $(FFI_OUT)/lib/ 2>/dev/null || true
+	@cp -f target/release/libsqlgrok.dylib  $(FFI_OUT)/lib/ 2>/dev/null || true
 	@echo "Built FFI libraries for host → $(FFI_OUT)/lib/"
 
 ## Build all four platform/arch combinations
@@ -88,8 +88,8 @@ ifndef TARGET
 endif
 	cargo build --release --features cli --target $(TARGET)
 	@mkdir -p $(CLI_OUT)/$(TARGET)/bin
-	@cp -f target/$(TARGET)/release/sqlglot $(CLI_OUT)/$(TARGET)/bin/ 2>/dev/null || true
-	@echo "Built CLI for $(TARGET) → $(CLI_OUT)/$(TARGET)/bin/sqlglot"
+	@cp -f target/$(TARGET)/release/sqlgrok $(CLI_OUT)/$(TARGET)/bin/ 2>/dev/null || true
+	@echo "Built CLI for $(TARGET) → $(CLI_OUT)/$(TARGET)/bin/sqlgrok"
 
 ## Convenience per-platform CLI targets
 cli-macos-arm64:
@@ -108,8 +108,8 @@ cli-linux-arm64:
 cli:
 	cargo build --release --features cli
 	@mkdir -p $(CLI_OUT)/bin
-	@cp -f target/release/sqlglot $(CLI_OUT)/bin/ 2>/dev/null || true
-	@echo "Built CLI for host → $(CLI_OUT)/bin/sqlglot"
+	@cp -f target/release/sqlgrok $(CLI_OUT)/bin/ 2>/dev/null || true
+	@echo "Built CLI for host → $(CLI_OUT)/bin/sqlgrok"
 
 ## Build CLI for all four targets
 cli-all: cli-macos-arm64 cli-macos-amd64 cli-linux-amd64 cli-linux-arm64
@@ -148,8 +148,8 @@ endif
 	@# Update Cargo.toml
 	sed -i '' 's/^version = ".*"/version = "$(VERSION)"/' Cargo.toml
 	@# Update version in documentation
-	sed -i '' 's/sqlglot-rust = "[^"]*"/sqlglot-rust = "$(VERSION)"/' README.md
-	sed -i '' 's/sqlglot-rust = "[^"]*"/sqlglot-rust = "$(VERSION)"/' docs/installation.md
+	sed -i '' 's/sqlgrok = "[^"]*"/sqlgrok = "$(VERSION)"/' README.md
+	sed -i '' 's/sqlgrok = "[^"]*"/sqlgrok = "$(VERSION)"/' docs/installation.md
 	@# Sync Cargo.lock
 	cargo generate-lockfile
 	@echo "Version updated to $(VERSION)"

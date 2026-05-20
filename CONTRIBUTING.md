@@ -1,6 +1,6 @@
-# Contributing to sqlglot-rust
+# Contributing to sqlgrok
 
-Thank you for your interest in contributing to sqlglot-rust! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to sqlgrok! This document provides guidelines and instructions for contributing.
 
 ## Getting Started
 
@@ -8,8 +8,8 @@ Thank you for your interest in contributing to sqlglot-rust! This document provi
 2. Clone your fork locally:
 
    ```bash
-   git clone https://github.com/<your-username>/sql-glot-rust.git
-   cd sql-glot-rust
+   git clone https://github.com/<your-username>/sqlgrok.git
+   cd sqlgrok
    ```
 
 3. Create a branch for your changes:
@@ -60,7 +60,7 @@ cargo install cargo-sbom   # one-time setup
 make sbom
 ```
 
-The output is written to `target/sbom/sqlglot-rust.spdx.json`.
+The output is written to `target/sbom/sqlgrok.spdx.json`.
 
 ## Updating the Version
 

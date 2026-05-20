@@ -1,16 +1,16 @@
 /**
- * sqlglot-rust C++ FFI example — RAII wrapper around the C API.
+ * sqlgrok C++ FFI example — RAII wrapper around the C API.
  *
  * Build (macOS):
  *   cargo build --release
  *   make ffi-header
- *   g++ -std=c++17 examples/ffi_example.cpp -Itarget/ffi/include -Ltarget/release -lsqlglot_rust -o ffi_example_cpp
+ *   g++ -std=c++17 examples/ffi_example.cpp -Itarget/ffi/include -Ltarget/release -lsqlgrok -o ffi_example_cpp
  *   ./ffi_example_cpp
  *
  * Build (Linux):
  *   cargo build --release
  *   make ffi-header
- *   g++ -std=c++17 examples/ffi_example.cpp -Itarget/ffi/include -Ltarget/release -lsqlglot_rust -lpthread -ldl -lm -o ffi_example_cpp
+ *   g++ -std=c++17 examples/ffi_example.cpp -Itarget/ffi/include -Ltarget/release -lsqlgrok -lpthread -ldl -lm -o ffi_example_cpp
  *   LD_LIBRARY_PATH=target/release ./ffi_example_cpp
  */
 
@@ -62,7 +62,7 @@ std::optional<std::string> generate(const char *ast_json, const char *dialect = 
 // ── Main ────────────────────────────────────────────────────────────────
 
 int main() {
-    std::printf("sqlglot-rust version: %s\n\n", sqlglot_version());
+    std::printf("sqlgrok version: %s\n\n", sqlglot_version());
 
     // --- Transpile examples ---
     struct Example {

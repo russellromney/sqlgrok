@@ -1,6 +1,6 @@
 # Installation
 
-Getting started with **sqlglot-rust** — adding the crate and verifying your setup.
+Getting started with **sqlgrok** — adding the crate and verifying your setup.
 
 > **See also:** [Developer Guide](developer-guide.md) · [Reference](reference.md)
 
@@ -21,11 +21,11 @@ For C/C++ FFI usage, you'll also need:
 
 ## Add the Dependency
 
-Add `sqlglot-rust` to your project's `Cargo.toml`:
+Add `sqlgrok` to your project's `Cargo.toml`:
 
 ```toml
 [dependencies]
-sqlglot-rust = "0.9.24"
+sqlgrok = "0.9.24"
 ```
 
 Then run:
@@ -55,7 +55,7 @@ Create a small program to confirm everything works.
 ### Input — `src/main.rs`
 
 ```rust
-use sqlglot_rust::{parse, generate, transpile, Dialect};
+use sqlgrok::{parse, generate, transpile, Dialect};
 
 fn main() {
     // 1. Parse a SQL string into an AST
@@ -93,20 +93,20 @@ If you see this, the library is installed and ready.
 
 ## Using as a Library Dependency
 
-sqlglot-rust is a **library crate** — it exposes modules you import in your own
+sqlgrok is a **library crate** — it exposes modules you import in your own
 code. The public entry points are re-exported from the crate root for
 convenience:
 
 ```rust
 // Commonly used imports (all re-exported from the crate root)
-use sqlglot_rust::{parse, generate, generate_pretty, transpile, Dialect};
-use sqlglot_rust::{Expr, Statement, QuoteStyle};
-use sqlglot_rust::SqlglotError;
+use sqlgrok::{parse, generate, generate_pretty, transpile, Dialect};
+use sqlgrok::{Expr, Statement, QuoteStyle};
+use sqlgrok::SqlglotError;
 
 // For sub-module access
-use sqlglot_rust::parser::parse_statements;
-use sqlglot_rust::optimizer::optimize;
-use sqlglot_rust::ast::{find_columns, find_tables, SelectItem};
+use sqlgrok::parser::parse_statements;
+use sqlgrok::optimizer::optimize;
+use sqlgrok::ast::{find_columns, find_tables, SelectItem};
 ```
 
 ---
@@ -116,22 +116,22 @@ use sqlglot_rust::ast::{find_columns, find_tables, SelectItem};
 The CLI is an optional binary. Install it with:
 
 ```bash
-cargo install sqlglot-rust --features cli
+cargo install sqlgrok --features cli
 ```
 
-This provides the `sqlglot` command with `transpile`, `parse`, and `format` subcommands.
+This provides the `sqlgrok` command with `transpile`, `parse`, and `format` subcommands.
 
 Verify the installation:
 
 ```bash
-echo "SELECT 1" | sqlglot transpile --read mysql --write postgres
+echo "SELECT 1" | sqlgrok transpile --read mysql --write postgres
 ```
 
 ---
 
 ## Building for C/C++ (FFI)
 
-To build sqlglot-rust as a shared library (`.so` / `.dylib`) and static library
+To build sqlgrok as a shared library (`.so` / `.dylib`) and static library
 (`.a`) for use from C or C++ applications:
 
 ```bash
@@ -150,8 +150,8 @@ The generated artefacts:
 | File | Description |
 | --- | --- |
 | `target/ffi/include/sqlglot.h` | C header with all function declarations |
-| `target/ffi/lib/libsqlglot_rust.a` | Static library |
-| `target/ffi/lib/libsqlglot_rust.so` (or `.dylib`) | Shared library |
+| `target/ffi/lib/libsqlgrok.a` | Static library |
+| `target/ffi/lib/libsqlgrok.so` (or `.dylib`) | Shared library |
 
 See the **[Developer Guide — C/C++ FFI Bindings](developer-guide.md#cc-ffi-bindings)**
 for usage examples.
