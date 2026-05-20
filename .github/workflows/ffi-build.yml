@@ -2,9 +2,9 @@ name: Build FFI Libraries & CLI
 
 on:
   push:
-    branches: [feature/c-ffi-bindings, master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -65,8 +65,8 @@ jobs:
       - name: Install cbindgen and generate header
         run: |
           cargo install cbindgen
-          cbindgen --config cbindgen.toml --crate sqlglot-rust --output include/sqlglot.h
           mkdir -p include
+          cbindgen --config cbindgen.toml --crate sqlgrok --output include/sqlglot.h
 
       - name: Identify built artefacts
         id: artifacts
@@ -76,19 +76,19 @@ jobs:
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
           # Dynamic library
           if [[ "${{ matrix.os }}" == macos-* ]]; then
-            echo "dylib=$BASE/libsqlglot_rust.dylib" >> "$GITHUB_OUTPUT"
+            echo "dylib=$BASE/libsqlgrok.dylib" >> "$GITHUB_OUTPUT"
           else
-            echo "dylib=$BASE/libsqlglot_rust.so" >> "$GITHUB_OUTPUT"
+            echo "dylib=$BASE/libsqlgrok.so" >> "$GITHUB_OUTPUT"
           fi
           # Static library
-          echo "static=$BASE/libsqlglot_rust.a" >> "$GITHUB_OUTPUT"
+          echo "static=$BASE/libsqlgrok.a" >> "$GITHUB_OUTPUT"
           # CLI binary
-          echo "cli=$BASE/sqlglot" >> "$GITHUB_OUTPUT"
+          echo "cli=$BASE/sqlgrok" >> "$GITHUB_OUTPUT"
 
       - name: Package artefacts
         shell: bash
         run: |
-          STAGING="sqlglot-ffi-${{ matrix.artifact }}"
+          STAGING="sqlgrok-ffi-${{ matrix.artifact }}"
           mkdir -p "$STAGING/lib" "$STAGING/include" "$STAGING/bin"
           cp include/sqlglot.h        "$STAGING/include/"
           cp "${{ steps.artifacts.outputs.static }}" "$STAGING/lib/" || true
@@ -99,8 +99,8 @@ jobs:
       - name: Upload artefact
         uses: actions/upload-artifact@v6
         with:
-          name: sqlglot-ffi-${{ matrix.artifact }}
-          path: sqlglot-ffi-${{ matrix.artifact }}.tar.gz
+          name: sqlgrok-ffi-${{ matrix.artifact }}
+          path: sqlgrok-ffi-${{ matrix.artifact }}.tar.gz
           retention-days: 30
 
   # Optional: run a quick smoke test by linking into a C program
@@ -113,14 +113,14 @@ jobs:
       - name: Download linux-amd64 artefact
         uses: actions/download-artifact@v7
         with:
-          name: sqlglot-ffi-linux-amd64
+          name: sqlgrok-ffi-linux-amd64
 
       - name: Extract and compile C smoke test
         run: |
-          tar xzf sqlglot-ffi-linux-amd64.tar.gz
+          tar xzf sqlgrok-ffi-linux-amd64.tar.gz
           cat > smoke.c << 'EOF'
           #include <stdio.h>
-          #include "sqlglot-ffi-linux-amd64/include/sqlglot.h"
+          #include "sqlgrok-ffi-linux-amd64/include/sqlglot.h"
 
           int main(void) {
               const char *ver = sqlglot_version();
@@ -142,8 +142,8 @@ jobs:
           }
           EOF
           gcc smoke.c \
-            -Lsqlglot-ffi-linux-amd64/lib \
-            -lsqlglot_rust \
+            -Lsqlgrok-ffi-linux-amd64/lib \
+            -lsqlgrok \
             -lpthread -ldl -lm \
             -o smoke
-          LD_LIBRARY_PATH=sqlglot-ffi-linux-amd64/lib ./smoke
+          LD_LIBRARY_PATH=sqlgrok-ffi-linux-amd64/lib ./smoke

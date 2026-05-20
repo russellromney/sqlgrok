@@ -79,7 +79,7 @@ jobs:
         run: |
           cargo install cbindgen
           mkdir -p target/ffi/include
-          cbindgen --config cbindgen.toml --crate sqlglot-rust --output target/ffi/include/sqlglot.h
+          cbindgen --config cbindgen.toml --crate sqlgrok --output target/ffi/include/sqlglot.h
 
       # ── Package tarball ─────────────────────────────────────────────
       - name: Package tarball
@@ -87,14 +87,14 @@ jobs:
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          STAGING="sqlglot-${VERSION}-${{ matrix.artifact }}"
+          STAGING="sqlgrok-${VERSION}-${{ matrix.artifact }}"
           mkdir -p "$STAGING/bin" "$STAGING/lib" "$STAGING/include"
 
           BASE="target/${{ matrix.target }}/release"
-          cp "$BASE/sqlglot"               "$STAGING/bin/"            || true
-          cp "$BASE/libsqlglot_rust.a"     "$STAGING/lib/"            || true
-          cp "$BASE/libsqlglot_rust.so"    "$STAGING/lib/"            || true
-          cp "$BASE/libsqlglot_rust.dylib" "$STAGING/lib/"            || true
+          cp "$BASE/sqlgrok"          "$STAGING/bin/" || true
+          cp "$BASE/libsqlgrok.a"     "$STAGING/lib/" || true
+          cp "$BASE/libsqlgrok.so"    "$STAGING/lib/" || true
+          cp "$BASE/libsqlgrok.dylib" "$STAGING/lib/" || true
           cp target/ffi/include/sqlglot.h  "$STAGING/include/"
           cp README.md LICENSE             "$STAGING/"
 
@@ -122,11 +122,11 @@ jobs:
           # cargo-deb needs files at the paths listed in Cargo.toml metadata.
           # Symlink the cross-compiled outputs to target/release/.
           mkdir -p target/release
-          for f in sqlglot libsqlglot_rust.so libsqlglot_rust.a; do
+          for f in sqlgrok libsqlgrok.so libsqlgrok.a; do
             ln -sf "$(pwd)/$BASE/$f" "target/release/$f" 2>/dev/null || true
           done
 
-          DEB_FILE="sqlglot-rust_${VERSION}_${DEB_ARCH}.deb"
+          DEB_FILE="sqlgrok_${VERSION}_${DEB_ARCH}.deb"
           cargo deb --no-build --no-strip \
             --target "${{ matrix.target }}" \
             --deb-version "$VERSION" \
@@ -156,7 +156,7 @@ jobs:
 
           # Symlink cross-compiled outputs to target/release/
           mkdir -p target/release
-          for f in sqlglot libsqlglot_rust.so libsqlglot_rust.a; do
+          for f in sqlgrok libsqlgrok.so libsqlgrok.a; do
             ln -sf "$(pwd)/$BASE/$f" "target/release/$f" 2>/dev/null || true
           done
 
@@ -166,7 +166,7 @@ jobs:
 
           RPM_FILE=$(find target/generate-rpm -name '*.rpm' 2>/dev/null | head -1)
           if [[ -n "$RPM_FILE" ]]; then
-            DEST="sqlglot-rust-${VERSION}-1.${RPM_ARCH}.rpm"
+            DEST="sqlgrok-${VERSION}-1.${RPM_ARCH}.rpm"
             mv "$RPM_FILE" "$DEST"
             echo "path=$DEST" >> "$GITHUB_OUTPUT"
             echo "name=$DEST" >> "$GITHUB_OUTPUT"
@@ -244,10 +244,10 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
 
-          ARM_TAR=$(ls artefacts/sqlglot-*-macos-arm64.tar.gz 2>/dev/null | head -1)
-          AMD_TAR=$(ls artefacts/sqlglot-*-macos-amd64.tar.gz 2>/dev/null | head -1)
-          LINUX_AMD_TAR=$(ls artefacts/sqlglot-*-linux-amd64.tar.gz 2>/dev/null | head -1)
-          LINUX_ARM_TAR=$(ls artefacts/sqlglot-*-linux-arm64.tar.gz 2>/dev/null | head -1)
+          ARM_TAR=$(ls artefacts/sqlgrok-*-macos-arm64.tar.gz 2>/dev/null | head -1)
+          AMD_TAR=$(ls artefacts/sqlgrok-*-macos-amd64.tar.gz 2>/dev/null | head -1)
+          LINUX_AMD_TAR=$(ls artefacts/sqlgrok-*-linux-amd64.tar.gz 2>/dev/null | head -1)
+          LINUX_ARM_TAR=$(ls artefacts/sqlgrok-*-linux-arm64.tar.gz 2>/dev/null | head -1)
 
           ARM_SHA=$(sha256sum "$ARM_TAR" | awk '{print $1}')
           AMD_SHA=$(sha256sum "$AMD_TAR" | awk '{print $1}')
@@ -266,13 +266,13 @@ jobs:
             -e "s|@@SHA256_AMD64@@|$AMD_SHA|g" \
             -e "s|@@SHA256_LINUX_ARM64@@|$LINUX_ARM_SHA|g" \
             -e "s|@@SHA256_LINUX_AMD64@@|$LINUX_AMD_SHA|g" \
-            packaging/homebrew/sqlglot.rb.template > sqlglot.rb
+            packaging/homebrew/sqlgrok.rb.template > sqlgrok.rb
 
           echo "--- Generated formula ---"
-          cat sqlglot.rb
+          cat sqlgrok.rb
 
       - name: Upload formula artefact
         uses: actions/upload-artifact@v6
         with:
           name: homebrew-formula
-          path: sqlglot.rb
+          path: sqlgrok.rb
