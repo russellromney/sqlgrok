@@ -20,6 +20,8 @@ echo "SELECT GROUP_CONCAT(v SEPARATOR '|') FROM gc" | cargo run --features cli -
 
 ## Python SQLGlot Parity
 
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the execution roadmap and [docs/PARITY.md](docs/PARITY.md) for the parity fixture format.
+
 The parity smoke test looks for Python SQLGlot in one of two places:
 
 - `SQLGLOT_PYTHON_PATH=/path/to/sqlglot`
