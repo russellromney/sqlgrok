@@ -26,6 +26,7 @@ The project docs are split by purpose:
 - [CHANGELOG.md](CHANGELOG.md): quick summaries of completed changes.
 - [docs/PARITY.md](docs/PARITY.md): parity fixture format and SQLGlot oracle workflow.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): parser architecture notes and outside influences.
+- [docs/AST_INVENTORY.md](docs/AST_INVENTORY.md): SQLGlot expression coverage map.
 
 The parity smoke test looks for Python SQLGlot in one of two places:
 

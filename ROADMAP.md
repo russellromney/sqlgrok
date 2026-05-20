@@ -156,7 +156,7 @@ The exact command may change once the tooling exists, but the workflow should st
 
 ## Milestone 3: Transpiler Parity Ratchet
 
-Status: planned.
+Status: in progress.
 
 Goal: steadily close high-value cross-dialect gaps in parser and generator behavior.
 
@@ -406,21 +406,54 @@ cargo test --features cli
 
 ### Session 5: AST Inventory
 
+Status: complete.
+
 Files:
 
 - `docs/AST_INVENTORY.md`
 - `src/ast/types.rs`
-- `/path/to/sqlglot/sqlglot/expressions.py`
+- `/path/to/sqlglot/sqlglot/expressions/`
+- `src/bin/xtask.rs`
 
 Tasks:
 
 - Inventory Python SQLGlot expression classes against Rust AST variants.
 - Mark each expression `supported`, `partial`, `unsupported`, or `out-of-scope`.
 - Identify the top 10 missing AST constructs blocking transpiler fixtures.
+- Add an `xtask inventory-ast` command so the inventory can be regenerated after upstream SQLGlot updates.
 
 Done when:
 
 - `docs/AST_INVENTORY.md` exists and is specific enough to drive AST expansion tickets.
+
+### Session 6: Ratchet DDL And Type Normalization
+
+Status: next.
+
+Files:
+
+- `parity/cases/*.jsonl`
+- `tests/test_transpile.rs`
+- `src/ast/types.rs`
+- `src/parser/sql_parser.rs`
+- `src/generator/sql_generator.rs`
+- `src/dialects/`
+- `docs/AST_INVENTORY.md`
+
+Tasks:
+
+- Import or hand-add the smallest MySQL-to-SQLite DDL case that currently blocks the first imported fixture batch.
+- Normalize MySQL `INT` to SQLite `INTEGER` where Python SQLGlot does.
+- Preserve or intentionally discard MySQL table options such as `ENGINE`, `AUTO_INCREMENT`, `CHARACTER SET`, `COLLATE`, and `COMMENT`.
+- Add focused Rust regression tests and update the AST inventory notes if the fix exposes a missing DDL node.
+
+Done when:
+
+```bash
+SQLGLOT_PYTHON_PATH=/path/to/sqlglot SQLGROK_PARITY_TAG=ddl cargo test sqlglot_python_smoke_parity --features cli -- --nocapture
+cargo test ddl --features cli
+cargo test --features cli
+```
 
 ## Definition Of Done For Parity Fixes
 

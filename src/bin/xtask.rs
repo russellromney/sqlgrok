@@ -14,7 +14,24 @@ fn main() {
 }
 
 fn run() -> Result<(), String> {
-    let args = ImportArgs::parse(env::args().skip(1))?;
+    let mut raw_args = env::args().skip(1);
+    let Some(command) = raw_args.next() else {
+        return Err(usage());
+    };
+
+    match command.as_str() {
+        "import-sqlglot-fixtures" => run_import(ImportArgs::parse(raw_args)?),
+        "inventory-ast" => run_inventory(InventoryArgs::parse(raw_args)?),
+        "-h" | "--help" => Err(usage()),
+        _ => Err(format!("unknown command {command:?}\n\n{}", usage())),
+    }
+}
+
+fn usage() -> String {
+    [ImportArgs::usage(), InventoryArgs::usage()].join("\n")
+}
+
+fn run_import(args: ImportArgs) -> Result<(), String> {
     args.validate()?;
 
     let mut cases = import_sqlglot_fixtures(&args)?;
@@ -50,6 +67,26 @@ fn run() -> Result<(), String> {
     Ok(())
 }
 
+fn run_inventory(args: InventoryArgs) -> Result<(), String> {
+    args.validate()?;
+
+    let markdown = generate_ast_inventory(&args)?;
+    if args.dry_run {
+        print!("{markdown}");
+        return Ok(());
+    }
+
+    if let Some(parent) = args.output.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|err| format!("failed to create {}: {err}", parent.display()))?;
+    }
+    fs::write(&args.output, markdown)
+        .map_err(|err| format!("failed to write {}: {err}", args.output.display()))?;
+    eprintln!("wrote {}", args.output.display());
+
+    Ok(())
+}
+
 #[derive(Debug)]
 struct ImportArgs {
     sqlglot: PathBuf,
@@ -64,13 +101,6 @@ struct ImportArgs {
 impl ImportArgs {
     fn parse(args: impl Iterator<Item = String>) -> Result<Self, String> {
         let mut args = args.peekable();
-        let Some(command) = args.next() else {
-            return Err(Self::usage());
-        };
-        if command != "import-sqlglot-fixtures" {
-            return Err(format!("unknown command {command:?}\n\n{}", Self::usage()));
-        }
-
         let mut sqlglot = None;
         let mut family = None;
         let mut read = None;
@@ -150,6 +180,67 @@ impl ImportArgs {
 
     fn usage() -> String {
         "usage: cargo run --bin xtask -- import-sqlglot-fixtures --sqlglot /path/to/sqlglot --family transpile --read mysql --write sqlite --limit 25 [--dry-run] [--output parity/cases/transpile_mysql_sqlite.jsonl]".to_string()
+    }
+}
+
+#[derive(Debug)]
+struct InventoryArgs {
+    sqlglot: PathBuf,
+    rust_ast: PathBuf,
+    output: PathBuf,
+    dry_run: bool,
+}
+
+impl InventoryArgs {
+    fn parse(args: impl Iterator<Item = String>) -> Result<Self, String> {
+        let mut args = args.peekable();
+        let mut sqlglot = None;
+        let mut rust_ast = PathBuf::from("src/ast/types.rs");
+        let mut output = PathBuf::from("docs/AST_INVENTORY.md");
+        let mut dry_run = false;
+
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "--sqlglot" => sqlglot = Some(next_value(&mut args, "--sqlglot")?.into()),
+                "--rust-ast" => rust_ast = next_value(&mut args, "--rust-ast")?.into(),
+                "--output" => output = next_value(&mut args, "--output")?.into(),
+                "--dry-run" => dry_run = true,
+                "-h" | "--help" => return Err(Self::usage()),
+                _ => return Err(format!("unknown argument {arg:?}\n\n{}", Self::usage())),
+            }
+        }
+
+        let sqlglot = sqlglot.ok_or_else(|| "--sqlglot is required".to_string())?;
+        Ok(Self {
+            sqlglot,
+            rust_ast,
+            output,
+            dry_run,
+        })
+    }
+
+    fn validate(&self) -> Result<(), String> {
+        if !self.sqlglot.join("sqlglot/__init__.py").is_file() {
+            return Err(format!(
+                "{} does not look like a Python SQLGlot checkout",
+                self.sqlglot.display()
+            ));
+        }
+        let expressions_dir = self.sqlglot.join("sqlglot/expressions");
+        if !expressions_dir.is_dir() {
+            return Err(format!(
+                "{} is missing the SQLGlot expressions package",
+                expressions_dir.display()
+            ));
+        }
+        if !self.rust_ast.is_file() {
+            return Err(format!("{} does not exist", self.rust_ast.display()));
+        }
+        Ok(())
+    }
+
+    fn usage() -> String {
+        "usage: cargo run --bin xtask -- inventory-ast --sqlglot /path/to/sqlglot [--rust-ast src/ast/types.rs] [--output docs/AST_INVENTORY.md] [--dry-run]".to_string()
     }
 }
 
@@ -260,6 +351,26 @@ fn render_jsonl(cases: &[FixtureCase]) -> Result<String, String> {
         output.push('\n');
     }
     Ok(output)
+}
+
+fn generate_ast_inventory(args: &InventoryArgs) -> Result<String, String> {
+    let output = Command::new("python3")
+        .arg("-c")
+        .arg(SQLGLOT_AST_INVENTORY)
+        .arg(&args.sqlglot)
+        .arg(&args.rust_ast)
+        .output()
+        .map_err(|err| format!("failed to run python3 AST inventory: {err}"))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "python3 AST inventory exited with {}\nstderr:\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+
+    String::from_utf8(output.stdout).map_err(|err| format!("invalid UTF-8 inventory output: {err}"))
 }
 
 const SQLGLOT_FIXTURE_IMPORTER: &str = r#"
@@ -418,3 +529,307 @@ for case in cases:
 
 print(json.dumps(deduped, sort_keys=False))
 "#;
+
+const SQLGLOT_AST_INVENTORY: &str = r###"
+import ast
+import re
+import sys
+from collections import Counter, defaultdict
+from pathlib import Path
+
+root = Path(sys.argv[1])
+rust_ast = Path(sys.argv[2])
+expressions_dir = root / "sqlglot" / "expressions"
+
+def bases_for(node):
+    bases = []
+    for base in node.bases:
+        if isinstance(base, ast.Name):
+            bases.append(base.id)
+        elif isinstance(base, ast.Attribute):
+            bases.append(base.attr)
+        elif isinstance(base, ast.Subscript):
+            value = base.value
+            if isinstance(value, ast.Name):
+                bases.append(value.id)
+            elif isinstance(value, ast.Attribute):
+                bases.append(value.attr)
+    return bases
+
+classes = {}
+for path in sorted(expressions_dir.glob("*.py")):
+    if path.name == "__init__.py":
+        continue
+    module = ast.parse(path.read_text(), filename=str(path))
+    for node in module.body:
+        if isinstance(node, ast.ClassDef):
+            classes[node.name] = {
+                "name": node.name,
+                "bases": bases_for(node),
+                "module": path.name,
+                "line": node.lineno,
+            }
+
+expression_classes = []
+memo = {}
+def is_expression_class(name):
+    if name in memo:
+        return memo[name]
+    if name in {"Expression", "Expr"}:
+        memo[name] = True
+        return True
+    info = classes.get(name)
+    if not info:
+        memo[name] = False
+        return False
+    result = any(base in {"Expression", "Expr"} or is_expression_class(base) for base in info["bases"])
+    memo[name] = result
+    return result
+
+for name in sorted(classes):
+    if is_expression_class(name) and name not in {"Expression", "Expr"}:
+        expression_classes.append(classes[name])
+
+rust_text = rust_ast.read_text()
+def enum_variants(enum_name):
+    match = re.search(r"pub enum " + re.escape(enum_name) + r"\s*\{(?P<body>.*?)\n\}", rust_text, re.S)
+    if not match:
+        return []
+    variants = []
+    for line in match.group("body").splitlines():
+        line = line.strip()
+        if line.startswith(("//", "///", "#")):
+            continue
+        variant = re.match(r"([A-Z][A-Za-z0-9_]*)\b", line)
+        if variant:
+            variants.append(variant.group(1))
+    return variants
+
+rust_enums = {
+    "Statement": enum_variants("Statement"),
+    "Expr": enum_variants("Expr"),
+    "TypedFunction": enum_variants("TypedFunction"),
+    "DataType": enum_variants("DataType"),
+    "JoinType": enum_variants("JoinType"),
+    "TableSource": enum_variants("TableSource"),
+}
+rust_variants = {variant for variants in rust_enums.values() for variant in variants}
+normalized_rust = {re.sub(r"[^a-z0-9]", "", variant.lower()): variant for variant in rust_variants}
+
+supported = {
+    "Alias": "Expr::Alias",
+    "All": "Expr::AllOp",
+    "And": "Expr::BinaryOp",
+    "Any": "Expr::AnyOp",
+    "Array": "Expr::ArrayLiteral",
+    "Between": "Expr::Between",
+    "Boolean": "Expr::Boolean",
+    "Case": "Expr::Case",
+    "Cast": "Expr::Cast",
+    "Coalesce": "Expr::Coalesce",
+    "Column": "Expr::Column",
+    "Create": "Statement::CreateTable/CreateView",
+    "DataType": "DataType",
+    "Delete": "Statement::Delete",
+    "Drop": "Statement::DropTable/DropView",
+    "EQ": "Expr::BinaryOp",
+    "Exists": "Expr::Exists",
+    "Extract": "Expr::Extract",
+    "From": "FromClause/TableSource",
+    "Func": "Expr::Function",
+    "Group": "SelectStatement::group_by",
+    "If": "Expr::If",
+    "ILike": "Expr::ILike",
+    "In": "Expr::InList/InSubquery",
+    "Insert": "Statement::Insert",
+    "Interval": "Expr::Interval",
+    "Is": "Expr::IsNull/IsBool",
+    "Join": "JoinClause",
+    "Lambda": "Expr::Lambda",
+    "Like": "Expr::Like",
+    "Literal": "Expr::Number/StringLiteral/Boolean/Null",
+    "Merge": "Statement::Merge",
+    "Null": "Expr::Null",
+    "Nullif": "Expr::NullIf",
+    "Or": "Expr::BinaryOp",
+    "Order": "SelectStatement::order_by",
+    "Parameter": "Expr::Parameter",
+    "Paren": "Expr::Nested",
+    "Pivot": "TableSource::Pivot",
+    "Select": "Statement::Select",
+    "Star": "Expr::Star/Wildcard",
+    "Subquery": "Expr::Subquery/TableSource::Subquery",
+    "Table": "TableSource::Table",
+    "TryCast": "Expr::TryCast",
+    "Tuple": "Expr::Tuple",
+    "Union": "Statement::SetOperation",
+    "Unnest": "TableSource::Unnest",
+    "Unpivot": "TableSource::Unpivot",
+    "Update": "Statement::Update",
+    "Use": "Statement::Use",
+    "Window": "WindowSpec/Expr::TypedFunction.over",
+    "With": "SelectStatement::ctes",
+}
+
+partial = {
+    "Add": "covered by Expr::BinaryOp, but SQLGlot has operator-specific classes",
+    "AggFunc": "many common aggregates are typed; long tail falls back to Expr::Function",
+    "Alter": "Statement::AlterTable exists, but operation coverage is shallow",
+    "ArrayAgg": "TypedFunction::ArrayAgg, limited ordered/filter/null behavior",
+    "ArrayContains": "TypedFunction::ArrayContains, dialect coverage partial",
+    "ArraySize": "TypedFunction::ArraySize, dialect coverage partial",
+    "BitwiseAnd": "BinaryOperator coverage, limited dialect spelling",
+    "BitwiseOr": "BinaryOperator coverage, limited dialect spelling",
+    "BitwiseXor": "BinaryOperator coverage, limited dialect spelling",
+    "Command": "some commands map to dedicated statements; many are unsupported",
+    "Count": "TypedFunction::Count, limited ordered/filter variants",
+    "DateAdd": "TypedFunction::DateAdd handles common forms",
+    "DateDiff": "TypedFunction::DateDiff handles common forms",
+    "DateStrToDate": "temporal functions mostly normalize through TypedFunction",
+    "DateTrunc": "TypedFunction::DateTrunc handles common forms",
+    "DDL": "core DDL exists; options/constraints are partial",
+    "DML": "core DML exists; vendor-specific clauses are partial",
+    "Explode": "TypedFunction::Explode, generator support partial",
+    "FirstValue": "TypedFunction::FirstValue, window/null treatment partial",
+    "GroupConcat": "supported through parsed GROUP_CONCAT function; AST lacks dedicated variant",
+    "JSONExtract": "TypedFunction::JSONExtract, path/operator coverage partial",
+    "JSONExtractScalar": "TypedFunction::JSONExtractScalar, path/operator coverage partial",
+    "Lag": "TypedFunction::Lag, window defaults partial",
+    "LastValue": "TypedFunction::LastValue, window/null treatment partial",
+    "Lead": "TypedFunction::Lead, window defaults partial",
+    "Limit": "SelectStatement::limit, fetch/offset variants partial",
+    "Offset": "SelectStatement::offset",
+    "RegexpExtract": "TypedFunction::RegexpExtract, dialect coverage partial",
+    "RegexpLike": "TypedFunction::RegexpLike, dialect coverage partial",
+    "RegexpReplace": "TypedFunction::RegexpReplace, dialect coverage partial",
+    "Returning": "DML returning fields exist, but coverage varies",
+    "Rollup": "Expr::Rollup, group-by integration partial",
+    "Cube": "Expr::Cube, group-by integration partial",
+    "GroupingSets": "Expr::GroupingSets, group-by integration partial",
+    "Struct": "DataType::Struct exists; expression-level struct literals are limited",
+    "TableAlias": "aliases exist on TableRef/TableSource, SQLGlot's richer alias node is partial",
+    "TimeToStr": "TypedFunction::TimeToStr handles common forms",
+    "TsOrDsToDate": "TypedFunction::TsOrDsToDate handles common forms",
+}
+
+out_of_scope = {
+    "AIAgg": "vendor/AI aggregate long tail",
+    "AISummarizeAgg": "vendor/AI aggregate long tail",
+    "BlockchainTable": "specialized source construct",
+    "CollateProperty": "DDL property long tail",
+    "EngineProperty": "DDL property long tail",
+    "FileFormatProperty": "DDL property long tail",
+    "IcebergProperty": "DDL property long tail",
+    "ModelProperty": "DDL/model property long tail",
+    "OpenAIRespond": "vendor AI function",
+    "OpenAIRespondWithContext": "vendor AI function",
+}
+
+def classify(info):
+    name = info["name"]
+    norm = re.sub(r"[^a-z0-9]", "", name.lower())
+    if name in supported:
+        return "supported", supported[name]
+    if name in partial:
+        return "partial", partial[name]
+    if name in out_of_scope:
+        return "out-of-scope", out_of_scope[name]
+    if norm in normalized_rust:
+        return "supported", normalized_rust[norm]
+    bases = set(info["bases"])
+    module = info["module"]
+    if bases & {"Binary", "Predicate", "Unary", "Condition", "Connector"} or name in {"Binary", "Predicate", "Unary", "Condition", "Connector"}:
+        return "partial", "represented by generic operator/predicate nodes where parsed"
+    if "Func" in bases or "AggFunc" in bases or module in {"functions.py", "aggregate.py", "temporal.py"}:
+        return "partial", "generic Expr::Function fallback or selected TypedFunction variant"
+    if module in {"properties.py", "constraints.py"}:
+        return "partial", "DDL metadata is represented only for common cases"
+    return "unsupported", "no clear Rust AST representation yet"
+
+for info in expression_classes:
+    status, notes = classify(info)
+    info["status"] = status
+    info["notes"] = notes
+
+status_counts = Counter(info["status"] for info in expression_classes)
+module_counts = defaultdict(Counter)
+for info in expression_classes:
+    module_counts[info["module"]][info["status"]] += 1
+
+priority_gaps = [
+    ("DDL properties and constraints", "partial", "First imported MySQL->SQLite batch fails on DDL/type normalization before deeper fixtures run."),
+    ("Dedicated GroupConcat AST", "partial", "Current parser/generator handles key MySQL cases, but SQLGlot has GroupConcat as a first-class aggregate."),
+    ("Ordered/filter aggregate modifiers", "partial", "Needed for broader aggregate fixture imports beyond simple COUNT/SUM/AVG/MIN/MAX."),
+    ("Struct/map/object literals", "partial", "Data types exist, but expression-level constructors and dialect generation are thin."),
+    ("JSON path/operator model", "partial", "Common JSON functions exist; SQLGlot has richer paths, operators, and dialect spellings."),
+    ("Table alias and lateral richness", "partial", "Aliases exist, but SQLGlot models richer alias columns, lateral views, and source metadata."),
+    ("Set operation options", "partial", "UNION/INTERSECT/EXCEPT exist; modifiers and nested ordering need more parity coverage."),
+    ("Window frame/null treatment", "partial", "Window specs exist, but SQLGlot models IGNORE/RESPECT NULLS and ordered aggregate nuance."),
+    ("Command/cache/export/load statements", "unsupported", "SQLGlot supports operational statements outside current core parser scope."),
+    ("Long-tail function variants", "partial", "Hundreds of SQLGlot Func/AggFunc classes currently collapse to generic function or unsupported typed variants."),
+]
+
+def row(cols):
+    return "| " + " | ".join(str(c).replace("\n", " ") for c in cols) + " |"
+
+lines = []
+lines.append("# AST Inventory")
+lines.append("")
+lines.append("Generated from Python SQLGlot's `sqlglot/expressions/` package and sqlgrok's `src/ast/types.rs`.")
+lines.append("")
+lines.append("This is a planning document, not a conformance claim. `supported` means sqlgrok has a clear AST home for the construct. `partial` means there is a home but missing SQLGlot behavior is likely. `unsupported` means imported fixtures need AST design before implementation. `out-of-scope` means the construct is not currently on the parity critical path.")
+lines.append("")
+lines.append("## Snapshot")
+lines.append("")
+lines.append(f"- SQLGlot expression classes: `{len(expression_classes)}`")
+lines.append(f"- SQLGlot expression files: `{len([p for p in expressions_dir.glob('*.py') if p.name != '__init__.py'])}`")
+lines.append(f"- Rust AST enums inspected: `{', '.join(rust_enums)}`")
+lines.append(f"- Supported: `{status_counts['supported']}`")
+lines.append(f"- Partial: `{status_counts['partial']}`")
+lines.append(f"- Unsupported: `{status_counts['unsupported']}`")
+lines.append(f"- Out of scope: `{status_counts['out-of-scope']}`")
+lines.append("")
+lines.append("## Priority Gaps")
+lines.append("")
+lines.append(row(["Gap", "Status", "Why it matters"]))
+lines.append(row(["---", "---", "---"]))
+for gap in priority_gaps:
+    lines.append(row(gap))
+lines.append("")
+lines.append("## Rust AST Surface")
+lines.append("")
+for enum_name, variants in rust_enums.items():
+    lines.append(f"- `{enum_name}`: {', '.join('`' + v + '`' for v in variants)}")
+lines.append("")
+lines.append("## Coverage By SQLGlot Module")
+lines.append("")
+lines.append(row(["Module", "Supported", "Partial", "Unsupported", "Out of scope", "Total"]))
+lines.append(row(["---", "---:", "---:", "---:", "---:", "---:"]))
+for module in sorted(module_counts):
+    counts = module_counts[module]
+    total = sum(counts.values())
+    lines.append(row([module, counts["supported"], counts["partial"], counts["unsupported"], counts["out-of-scope"], total]))
+lines.append("")
+lines.append("## Full Generated Inventory")
+lines.append("")
+lines.append(row(["SQLGlot class", "Module", "Bases", "Status", "Rust representation / notes"]))
+lines.append(row(["---", "---", "---", "---", "---"]))
+status_rank = {"unsupported": 0, "partial": 1, "supported": 2, "out-of-scope": 3}
+for info in sorted(expression_classes, key=lambda i: (status_rank[i["status"]], i["module"], i["name"])):
+    lines.append(row([
+        info["name"],
+        f"{info['module']}:{info['line']}",
+        ", ".join(info["bases"]) or "-",
+        info["status"],
+        info["notes"],
+    ]))
+lines.append("")
+lines.append("## Update Command")
+lines.append("")
+lines.append("```bash")
+lines.append("cargo run --bin xtask -- inventory-ast --sqlglot /path/to/sqlglot")
+lines.append("```")
+lines.append("")
+
+print("\n".join(lines))
+"###;

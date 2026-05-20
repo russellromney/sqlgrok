@@ -41,3 +41,9 @@ this file records what landed.
 ### Project Memory
 
 - Moved the roadmap to top-level [ROADMAP.md](ROADMAP.md) so it sits beside README and CHANGELOG.
+
+### AST Inventory
+
+- Added `xtask inventory-ast` to compare Python SQLGlot's `sqlglot/expressions/` package against sqlgrok's Rust AST enums.
+- Added [docs/AST_INVENTORY.md](docs/AST_INVENTORY.md) with coverage counts, priority gaps, module summaries, and a full generated inventory.
+- Marked AST inventory complete in the roadmap and selected DDL/type normalization as the next ratchet.
