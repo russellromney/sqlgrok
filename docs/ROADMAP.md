@@ -38,7 +38,7 @@ What this roadmap must prevent:
 Start here when opening a new implementation session:
 
 - `tests/sqlglot_parity.rs`: Rust parity harness that calls Python SQLGlot.
-- `parity/cases/smoke.jsonl`: current parity corpus.
+- `parity/cases/*.jsonl`: parity corpus loaded by the smoke harness.
 - `docs/PARITY.md`: fixture format and ratchet workflow.
 - `docs/ARCHITECTURE.md`: parser architecture notes and non-SQLGlot design influences.
 - `tests/test_transpile.rs`: focused transpiler regressions.
@@ -117,7 +117,7 @@ SQLGROK_PARITY_ID=mysql-group-concat-separator-to-sqlite \
 
 ## Milestone 2: SQLGlot Fixture Importer
 
-Status: planned.
+Status: in progress.
 
 Goal: consume Python SQLGlot test data directly enough that updates from upstream are routine.
 
@@ -350,7 +350,7 @@ rg --hidden "sqlglot-rust|sqlglot_rust|libsqlglot_rust|-lsqlglot_rust|target/rel
 
 ### Session 3: Build The Fixture Importer Skeleton
 
-Status: next.
+Status: complete.
 
 Files:
 
@@ -364,6 +364,7 @@ Tasks:
 - Add an importer command with `--sqlglot`, `--family`, `--read`, `--write`, `--limit`, and `--dry-run`.
 - Start with deterministic JSONL writing and fixture validation before parsing every upstream test shape.
 - Import no more than 25 MySQL-to-SQLite transpiler cases in the first batch.
+- Load all `parity/cases/*.jsonl` files from the parity harness so importer output is immediately runnable.
 
 Done when:
 
@@ -373,6 +374,8 @@ cargo test sqlglot_python_smoke_parity --features cli
 ```
 
 ### Session 4: Ratchet Comma Join And GROUP_CONCAT
+
+Status: next.
 
 Files:
 

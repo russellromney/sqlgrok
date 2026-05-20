@@ -31,6 +31,10 @@ name = "sqlgrok"
 path = "src/bin/sqlgrok.rs"
 required-features = ["cli"]
 
+[[bin]]
+name = "xtask"
+path = "src/bin/xtask.rs"
+
 [dev-dependencies]
 pretty_assertions = "1"
 criterion = { version = "0.8", features = ["html_reports"] }

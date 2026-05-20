@@ -1,12 +1,11 @@
 use std::collections::HashSet;
 use std::env;
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use serde::Deserialize;
 use sqlgrok::{Dialect, transpile};
-
-const SMOKE_CASES: &str = include_str!("../parity/cases/smoke.jsonl");
 
 #[derive(Debug, Deserialize)]
 struct ParityCase {
@@ -54,7 +53,7 @@ fn sqlglot_python_smoke_parity() {
     };
 
     let filters = ParityFilters::from_env();
-    let cases = parse_cases(SMOKE_CASES);
+    let cases = load_cases();
     assert!(!cases.is_empty(), "parity smoke corpus should not be empty");
 
     let mut summary = ParitySummary::default();
@@ -193,14 +192,47 @@ impl ParityFilters {
     }
 }
 
-fn parse_cases(input: &str) -> Vec<ParityCase> {
-    let cases: Vec<ParityCase> = input
-        .lines()
-        .filter(|line| !line.trim().is_empty() && !line.trim_start().starts_with('#'))
-        .map(|line| serde_json::from_str(line).expect("valid parity case JSON"))
-        .collect();
+fn load_cases() -> Vec<ParityCase> {
+    let cases_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("parity/cases");
+    let mut files = fs::read_dir(&cases_dir)
+        .unwrap_or_else(|err| panic!("failed to read {}: {err}", cases_dir.display()))
+        .map(|entry| {
+            entry
+                .unwrap_or_else(|err| panic!("failed to read parity case dir entry: {err}"))
+                .path()
+        })
+        .filter(|path| {
+            path.extension()
+                .is_some_and(|extension| extension == "jsonl")
+        })
+        .collect::<Vec<_>>();
+    files.sort();
+
+    let mut cases = Vec::new();
+    for file in files {
+        let input = fs::read_to_string(&file)
+            .unwrap_or_else(|err| panic!("failed to read {}: {err}", file.display()));
+        cases.extend(parse_cases(&file, &input));
+    }
     assert_unique_ids(&cases);
     cases
+}
+
+fn parse_cases(file: &Path, input: &str) -> Vec<ParityCase> {
+    input
+        .lines()
+        .enumerate()
+        .filter(|(_, line)| !line.trim().is_empty() && !line.trim_start().starts_with('#'))
+        .map(|(index, line)| {
+            serde_json::from_str(line).unwrap_or_else(|err| {
+                panic!(
+                    "valid parity case JSON in {}:{}: {err}",
+                    file.display(),
+                    index + 1
+                )
+            })
+        })
+        .collect()
 }
 
 fn assert_unique_ids(cases: &[ParityCase]) {

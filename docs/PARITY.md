@@ -56,6 +56,36 @@ Supported filters:
 
 The harness rejects duplicate case ids and invalid tags. Tags must be lowercase kebab-case.
 
+## Importing SQLGlot Fixtures
+
+Use `xtask` to extract a small, deterministic batch from a local Python SQLGlot checkout:
+
+```bash
+cargo run --bin xtask -- import-sqlglot-fixtures \
+  --sqlglot /path/to/sqlglot \
+  --family transpile \
+  --read mysql \
+  --write sqlite \
+  --limit 25 \
+  --dry-run
+```
+
+Drop `--dry-run` to write the default output file:
+
+```bash
+cargo run --bin xtask -- import-sqlglot-fixtures \
+  --sqlglot /path/to/sqlglot \
+  --family transpile \
+  --read mysql \
+  --write sqlite \
+  --limit 25
+```
+
+By default, imported cases are written to `parity/cases/transpile_<read>_<write>.jsonl`.
+Use `--output` to choose a different file. The importer currently supports the `transpile`
+family and reads straightforward `validate`, `validate_all`, and same-dialect
+`validate_identity` cases from SQLGlot's Python tests.
+
 ## Ratchet
 
 The intended workflow is:
