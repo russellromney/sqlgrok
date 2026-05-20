@@ -45,8 +45,8 @@ harness = false
 
 # ── Debian package (cargo-deb) ────────────────────────────────────────────
 [package.metadata.deb]
-maintainer = "Protegrity <engineering@protegrity.com>"
-copyright = "2024-2026 Protegrity"
+maintainer = "Russell Romney <russellromney@users.noreply.github.com>"
+copyright = "2026 Russell Romney and sqlgrok contributors; 2026 Protegrity"
 extended-description = """\
 sqlgrok is a SQL parser, optimizer, and transpiler library \
 targeting behavioral parity with Python SQLGlot. This package provides the sqlgrok CLI \
@@ -58,8 +58,9 @@ assets = [
     ["target/release/libsqlgrok.so",          "usr/lib/libsqlgrok.so",                     "644"],
     ["target/release/libsqlgrok.a",           "usr/lib/libsqlgrok.a",                      "644"],
     ["target/ffi/include/sqlglot.h",          "usr/include/sqlglot.h",                     "644"],
-    ["README.md",                             "usr/share/doc/sqlglot-rust/README.md",      "644"],
-    ["LICENSE",                               "usr/share/doc/sqlglot-rust/LICENSE",         "644"],
+    ["README.md",                             "usr/share/doc/sqlgrok/README.md",           "644"],
+    ["LICENSE",                               "usr/share/doc/sqlgrok/LICENSE",             "644"],
+    ["NOTICE",                                "usr/share/doc/sqlgrok/NOTICE",              "644"],
 ]
 
 # ── RPM package (cargo-generate-rpm) ─────────────────────────────────────
@@ -69,6 +70,7 @@ assets = [
     { source = "target/release/libsqlgrok.so",      dest = "/usr/lib64/libsqlgrok.so",      mode = "0644" },
     { source = "target/release/libsqlgrok.a",       dest = "/usr/lib64/libsqlgrok.a",       mode = "0644" },
     { source = "target/ffi/include/sqlglot.h",      dest = "/usr/include/sqlglot.h",      mode = "0644" },
-    { source = "README.md",                         dest = "/usr/share/doc/sqlglot-rust/README.md", mode = "0644" },
-    { source = "LICENSE",                           dest = "/usr/share/doc/sqlglot-rust/LICENSE",   mode = "0644" },
+    { source = "README.md",                         dest = "/usr/share/doc/sqlgrok/README.md", mode = "0644" },
+    { source = "LICENSE",                           dest = "/usr/share/doc/sqlgrok/LICENSE",   mode = "0644" },
+    { source = "NOTICE",                            dest = "/usr/share/doc/sqlgrok/NOTICE",    mode = "0644" },
 ]
