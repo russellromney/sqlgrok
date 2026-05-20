@@ -40,6 +40,7 @@ Start here when opening a new implementation session:
 - `tests/sqlglot_parity.rs`: Rust parity harness that calls Python SQLGlot.
 - `parity/cases/smoke.jsonl`: current parity corpus.
 - `docs/PARITY.md`: fixture format and ratchet workflow.
+- `docs/ARCHITECTURE.md`: parser architecture notes and non-SQLGlot design influences.
 - `tests/test_transpile.rs`: focused transpiler regressions.
 - `src/parser/sql_parser.rs`: parser entry points and grammar behavior.
 - `src/generator/sql_generator.rs`: SQL generation and dialect rendering.
@@ -194,11 +195,15 @@ Status: planned.
 
 Goal: parse the SQL shapes Python SQLGlot understands, even before every expression can be optimized or executed.
 
+Architecture note: use the Databend parser article linked from [ARCHITECTURE.md](ARCHITECTURE.md) as inspiration for spans, furthest-error tracking, zero-copy design, and syntax/semantic separation. Do not use it as the AST contract; Python SQLGlot remains the parity target.
+
 Deliverables:
 
 - Import parser-oriented fixtures from Python SQLGlot.
 - Classify unsupported grammar by feature area and dialect.
 - Improve error messages with token position and surrounding context.
+- Add furthest-error tracking before broad grammar expansion.
+- Preserve room for token/AST spans even if the first implementation stores them sparsely.
 - Add round-trip tests for parsed ASTs where generation support already exists.
 - Separate parser failures from generator failures in fixture metadata.
 
