@@ -17,8 +17,8 @@ use crate::ast::{DataType, Expr, QuoteStyle, Statement};
 /// # Example
 ///
 /// ```rust
-/// use sqlglot_rust::dialects::plugin::{DialectPlugin, DialectRegistry};
-/// use sqlglot_rust::ast::{DataType, Expr, QuoteStyle, Statement};
+/// use sqlgrok::dialects::plugin::{DialectPlugin, DialectRegistry};
+/// use sqlgrok::ast::{DataType, Expr, QuoteStyle, Statement};
 ///
 /// struct MyDialect;
 ///
@@ -161,8 +161,8 @@ use crate::dialects::Dialect;
 /// # Example
 ///
 /// ```rust
-/// use sqlglot_rust::dialects::plugin::DialectRef;
-/// use sqlglot_rust::Dialect;
+/// use sqlgrok::dialects::plugin::DialectRef;
+/// use sqlgrok::Dialect;
 ///
 /// let builtin = DialectRef::from(Dialect::Postgres);
 /// let custom  = DialectRef::custom("mydialect");
@@ -690,8 +690,8 @@ use crate::errors;
 /// # Example
 ///
 /// ```rust
-/// use sqlglot_rust::dialects::plugin::{DialectRef, transpile_ext};
-/// use sqlglot_rust::Dialect;
+/// use sqlgrok::dialects::plugin::{DialectRef, transpile_ext};
+/// use sqlgrok::Dialect;
 ///
 /// let result = transpile_ext(
 ///     "SELECT NOW()",

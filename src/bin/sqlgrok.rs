@@ -3,15 +3,15 @@ use std::path::PathBuf;
 use std::process;
 
 use clap::{Parser, Subcommand};
-use sqlglot_rust::parser::parse_statements;
-use sqlglot_rust::{Dialect, generate, generate_pretty, optimizer};
+use sqlgrok::parser::parse_statements;
+use sqlgrok::{Dialect, generate, generate_pretty, optimizer};
 
 /// A SQL parser, optimizer, and transpiler CLI.
 ///
 /// Transpile SQL between dialects, parse SQL into JSON AST,
 /// or pretty-print SQL — all from the command line.
 #[derive(Parser)]
-#[command(name = "sqlglot", version, about)]
+#[command(name = "sqlgrok", version, about)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

@@ -2,8 +2,8 @@
 //!
 //! Run with: `cargo run --example diff`
 
-use sqlglot_rust::diff::{diff_sql, ChangeAction};
-use sqlglot_rust::Dialect;
+use sqlgrok::diff::{diff_sql, ChangeAction};
+use sqlgrok::Dialect;
 
 fn main() {
     let original = "SELECT a, b FROM t WHERE a > 1 ORDER BY a";

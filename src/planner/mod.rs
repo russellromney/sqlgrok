@@ -10,9 +10,9 @@
 //! # Example
 //!
 //! ```rust
-//! use sqlglot_rust::parser::parse;
-//! use sqlglot_rust::dialects::Dialect;
-//! use sqlglot_rust::planner::{plan, Plan};
+//! use sqlgrok::parser::parse;
+//! use sqlgrok::dialects::Dialect;
+//! use sqlgrok::planner::{plan, Plan};
 //!
 //! let ast = parse("SELECT a, b FROM t WHERE a > 1 ORDER BY b", Dialect::Ansi).unwrap();
 //! let p = plan(&ast).unwrap();

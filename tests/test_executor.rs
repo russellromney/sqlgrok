@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use sqlglot_rust::executor::{Table, Value, execute};
+use sqlgrok::executor::{Table, Value, execute};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Test helpers

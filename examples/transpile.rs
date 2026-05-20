@@ -2,7 +2,7 @@
 //!
 //! Run with: `cargo run --example transpile`
 
-use sqlglot_rust::{transpile, Dialect};
+use sqlgrok::{transpile, Dialect};
 
 fn main() {
     let examples = [

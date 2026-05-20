@@ -7,8 +7,8 @@
 //! # Example
 //!
 //! ```rust
-//! use sqlglot_rust::{parse, Dialect};
-//! use sqlglot_rust::diff::{diff, ChangeAction};
+//! use sqlgrok::{parse, Dialect};
+//! use sqlgrok::diff::{diff, ChangeAction};
 //!
 //! let source = parse("SELECT a, b FROM t WHERE a > 1", Dialect::Ansi).unwrap();
 //! let target = parse("SELECT a, c FROM t WHERE a > 2", Dialect::Ansi).unwrap();

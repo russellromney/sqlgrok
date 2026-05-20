@@ -1,7 +1,7 @@
-//! # sqlglot-rust
+//! # sqlgrok
 //!
 //! A SQL parser, optimizer, and transpiler library written in Rust,
-//! inspired by Python's [sqlglot](https://github.com/tobymao/sqlglot).
+//! targeting behavioral parity with Python's [SQLGlot](https://github.com/tobymao/sqlglot).
 //!
 //! ## Features
 //!
@@ -18,7 +18,7 @@
 //! ## Quick Start
 //!
 //! ```rust
-//! use sqlglot_rust::{parse, generate, transpile, Dialect};
+//! use sqlgrok::{parse, generate, transpile, Dialect};
 //!
 //! // Parse a SQL query
 //! let ast = parse("SELECT a, b FROM t WHERE a > 1", Dialect::Ansi).unwrap();
@@ -131,7 +131,7 @@ pub use planner::{Plan, Projection, Step, StepId, plan};
 /// # Example
 ///
 /// ```rust
-/// use sqlglot_rust::{transpile, Dialect};
+/// use sqlgrok::{transpile, Dialect};
 ///
 /// let result = transpile(
 ///     "SELECT CAST(x AS INT) FROM t",

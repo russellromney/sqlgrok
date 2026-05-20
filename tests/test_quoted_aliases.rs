@@ -3,7 +3,7 @@
 /// Verifies that the parser preserves QuoteStyle on aliases and the generator
 /// emits them with proper quoting, preventing silent miscompiles when
 /// re-emitted SQL is executed on case-sensitive databases (PostgreSQL, Oracle, etc.).
-use sqlglot_rust::{Dialect, generate, parse, transpile};
+use sqlgrok::{Dialect, generate, parse, transpile};
 
 /// Parse SQL → generate SQL, assert output == input (identity round-trip).
 fn validate_identity(sql: &str, dialect: Dialect) {

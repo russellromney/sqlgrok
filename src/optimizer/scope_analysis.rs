@@ -10,9 +10,9 @@
 //! # Example
 //!
 //! ```rust
-//! use sqlglot_rust::parser::parse;
-//! use sqlglot_rust::dialects::Dialect;
-//! use sqlglot_rust::optimizer::scope_analysis::{build_scope, ScopeType};
+//! use sqlgrok::parser::parse;
+//! use sqlgrok::dialects::Dialect;
+//! use sqlgrok::optimizer::scope_analysis::{build_scope, ScopeType};
 //!
 //! let ast = parse("SELECT a, b FROM t WHERE a > 1", Dialect::Ansi).unwrap();
 //! let scope = build_scope(&ast);

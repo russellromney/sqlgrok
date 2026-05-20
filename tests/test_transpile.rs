@@ -3,7 +3,7 @@
 /// These test parse→generate roundtrips (identity), normalization transforms,
 /// and basic cross-dialect transpilation. Modeled after the `validate` and
 /// `validate_identity` helpers in the Python test suite.
-use sqlglot_rust::{Dialect, generate, parse, transpile};
+use sqlgrok::{Dialect, generate, parse, transpile};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Helpers (mirrors Python sqlglot's TestTranspile.validate / validate_identity)
@@ -995,7 +995,7 @@ fn test_parse_errors() {
 
 #[test]
 fn test_transpile_multiple_statements() {
-    let results = sqlglot_rust::transpile_statements(
+    let results = sqlgrok::transpile_statements(
         "SELECT 1; SELECT 2; SELECT 3",
         Dialect::Ansi,
         Dialect::Ansi,
@@ -1085,7 +1085,7 @@ fn test_serde_roundtrip() {
     for sql in &test_cases {
         let ast = parse(sql, Dialect::Ansi).unwrap();
         let json = serde_json::to_string(&ast).unwrap();
-        let deserialized: sqlglot_rust::Statement = serde_json::from_str(&json).unwrap();
+        let deserialized: sqlgrok::Statement = serde_json::from_str(&json).unwrap();
         let output = generate(&deserialized, Dialect::Ansi);
         assert_eq!(output, *sql, "Serde roundtrip failed for: {}", sql);
     }

@@ -3,8 +3,8 @@
 /// Covers comment types (single-line --, block /* */, MySQL #), comment
 /// preservation through parse -> generate roundtrip, and comment survival
 /// through AST transformations.
-use sqlglot_rust::generator::Generator;
-use sqlglot_rust::{
+use sqlgrok::generator::Generator;
+use sqlgrok::{
     parse_with_comments, parse_statements_with_comments,
     Dialect, Expr, Statement, generate, generate_pretty,
 };
@@ -120,7 +120,7 @@ fn test_hash_comment_preserved_for_mysql_target() {
 fn test_default_parse_ignores_comments() {
     // The default parse() should not include comments
     let sql = "-- comment\nSELECT a FROM t";
-    let stmt = sqlglot_rust::parse(sql, Dialect::Ansi).unwrap();
+    let stmt = sqlgrok::parse(sql, Dialect::Ansi).unwrap();
     match stmt {
         Statement::Select(s) => assert!(s.comments.is_empty()),
         _ => panic!("Expected SELECT"),
@@ -239,8 +239,8 @@ fn test_commented_expr_walk() {
         expr: Box::new(Expr::Column {
             table: None,
             name: "a".into(),
-            quote_style: sqlglot_rust::QuoteStyle::None,
-            table_quote_style: sqlglot_rust::QuoteStyle::None,
+            quote_style: sqlgrok::QuoteStyle::None,
+            table_quote_style: sqlgrok::QuoteStyle::None,
         }),
         comments: vec!["-- test".into()],
     };
@@ -279,8 +279,8 @@ fn test_commented_expr_find() {
         expr: Box::new(Expr::Column {
             table: None,
             name: "x".into(),
-            quote_style: sqlglot_rust::QuoteStyle::None,
-            table_quote_style: sqlglot_rust::QuoteStyle::None,
+            quote_style: sqlgrok::QuoteStyle::None,
+            table_quote_style: sqlgrok::QuoteStyle::None,
         }),
         comments: vec!["-- note".into()],
     };
@@ -298,8 +298,8 @@ fn test_generate_commented_expr() {
         expr: Box::new(Expr::Column {
             table: None,
             name: "a".into(),
-            quote_style: sqlglot_rust::QuoteStyle::None,
-            table_quote_style: sqlglot_rust::QuoteStyle::None,
+            quote_style: sqlgrok::QuoteStyle::None,
+            table_quote_style: sqlgrok::QuoteStyle::None,
         }),
         comments: vec!["/* hint */".into()],
     };

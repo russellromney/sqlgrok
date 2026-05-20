@@ -2,7 +2,7 @@
 //!
 //! Run with: `cargo run --example executor`
 
-use sqlglot_rust::executor::{execute, Table, Tables, Value};
+use sqlgrok::executor::{execute, Table, Tables, Value};
 use std::collections::HashMap;
 
 fn main() {

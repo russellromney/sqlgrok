@@ -7,9 +7,9 @@
 //! # Example
 //!
 //! ```rust
-//! use sqlglot_rust::schema::{MappingSchema, Schema};
-//! use sqlglot_rust::ast::DataType;
-//! use sqlglot_rust::Dialect;
+//! use sqlgrok::schema::{MappingSchema, Schema};
+//! use sqlgrok::ast::DataType;
+//! use sqlgrok::Dialect;
 //!
 //! let mut schema = MappingSchema::new(Dialect::Ansi);
 //! schema.add_table(
@@ -410,9 +410,9 @@ pub fn is_case_sensitive_dialect(dialect: Dialect) -> bool {
 ///
 /// ```rust
 /// use std::collections::HashMap;
-/// use sqlglot_rust::schema::{ensure_schema, Schema};
-/// use sqlglot_rust::ast::DataType;
-/// use sqlglot_rust::Dialect;
+/// use sqlgrok::schema::{ensure_schema, Schema};
+/// use sqlgrok::ast::DataType;
+/// use sqlgrok::Dialect;
 ///
 /// let mut tables = HashMap::new();
 /// let mut columns = HashMap::new();

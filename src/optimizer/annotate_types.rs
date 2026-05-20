@@ -18,10 +18,10 @@
 //! # Example
 //!
 //! ```rust
-//! use sqlglot_rust::optimizer::annotate_types::annotate_types;
-//! use sqlglot_rust::schema::{MappingSchema, Schema};
-//! use sqlglot_rust::ast::DataType;
-//! use sqlglot_rust::{parse, Dialect};
+//! use sqlgrok::optimizer::annotate_types::annotate_types;
+//! use sqlgrok::schema::{MappingSchema, Schema};
+//! use sqlgrok::ast::DataType;
+//! use sqlgrok::{parse, Dialect};
 //!
 //! let mut schema = MappingSchema::new(Dialect::Ansi);
 //! schema.add_table(&["t"], vec![

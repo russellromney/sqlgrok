@@ -2,7 +2,7 @@
 //!
 //! Run with: `cargo run --example comments`
 
-use sqlglot_rust::{
+use sqlgrok::{
     generate, parse_with_comments, transpile_with_comments, Dialect, Statement,
 };
 

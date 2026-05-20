@@ -8,7 +8,7 @@
 /// Coverage mirrors the main cross-dialect test categories from:
 ///   - tests/dialects/test_dialect.py (cast, operators, random, transactions, etc.)
 ///   - tests/dialects/test_{bigquery,mysql,postgres,duckdb,snowflake,tsql,...}.py
-use sqlglot_rust::{Dialect, transpile};
+use sqlgrok::{Dialect, transpile};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Helpers

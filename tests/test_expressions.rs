@@ -2,8 +2,8 @@
 ///
 /// Covers AST construction, traversal (walk, find, find_all, transform),
 /// helper methods (find_columns, find_tables, sql()), and equality.
-use sqlglot_rust::ast::{SelectItem, find_columns, find_tables};
-use sqlglot_rust::{Dialect, Expr, Statement, generate, parse};
+use sqlgrok::ast::{SelectItem, find_columns, find_tables};
+use sqlgrok::{Dialect, Expr, Statement, generate, parse};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // AST traversal helpers
@@ -357,7 +357,7 @@ fn test_some_maps_to_any() {
 
 #[test]
 fn test_any_op_ast_shape() {
-    use sqlglot_rust::ast::BinaryOperator;
+    use sqlgrok::ast::BinaryOperator;
     let sql = "SELECT * FROM t WHERE id = ANY(ARRAY[1])";
     let stmt = parse(sql, Dialect::Postgres).unwrap();
     if let Statement::Select(sel) = &stmt {

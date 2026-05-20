@@ -9,8 +9,8 @@
 //! ## Quick Start
 //!
 //! ```rust
-//! use sqlglot_rust::builder::{select, column, literal, condition};
-//! use sqlglot_rust::{Dialect, generate};
+//! use sqlgrok::builder::{select, column, literal, condition};
+//! use sqlgrok::{Dialect, generate};
 //!
 //! // Build a SELECT query fluently
 //! let query = select(&["a", "b"])
@@ -26,7 +26,7 @@
 //! ## Condition Builder
 //!
 //! ```rust
-//! use sqlglot_rust::builder::condition;
+//! use sqlgrok::builder::condition;
 //!
 //! // Build complex conditions
 //! let cond = condition("x = 1")
@@ -38,8 +38,8 @@
 //! ## Expression Factory Functions
 //!
 //! ```rust
-//! use sqlglot_rust::builder::{column, table, literal, cast, and_all, or_all};
-//! use sqlglot_rust::ast::DataType;
+//! use sqlgrok::builder::{column, table, literal, cast, and_all, or_all};
+//! use sqlgrok::ast::DataType;
 //!
 //! // Create expressions directly
 //! let col = column("name", Some("users"));
@@ -68,7 +68,7 @@ use crate::parser::parse;
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::column;
+/// use sqlgrok::builder::column;
 ///
 /// let col = column("id", None);
 /// let qualified = column("name", Some("users"));
@@ -92,7 +92,7 @@ pub fn column(name: &str, table: Option<&str>) -> Expr {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::table;
+/// use sqlgrok::builder::table;
 ///
 /// let tbl = table("users", None);
 /// let qualified = table("orders", Some("public"));
@@ -119,7 +119,7 @@ pub fn table(name: &str, schema: Option<&str>) -> TableRef {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::table_full;
+/// use sqlgrok::builder::table_full;
 ///
 /// let tbl = table_full("users", Some("public"), Some("mydb"));
 /// ```
@@ -140,7 +140,7 @@ pub fn table_full(name: &str, schema: Option<&str>, catalog: Option<&str>) -> Ta
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::literal;
+/// use sqlgrok::builder::literal;
 ///
 /// let num = literal(42);
 /// ```
@@ -154,7 +154,7 @@ pub fn literal<T: ToString>(value: T) -> Expr {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::string_literal;
+/// use sqlgrok::builder::string_literal;
 ///
 /// let s = string_literal("hello");
 /// ```
@@ -168,7 +168,7 @@ pub fn string_literal(value: &str) -> Expr {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::boolean;
+/// use sqlgrok::builder::boolean;
 ///
 /// let t = boolean(true);
 /// let f = boolean(false);
@@ -183,7 +183,7 @@ pub fn boolean(value: bool) -> Expr {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::null;
+/// use sqlgrok::builder::null;
 ///
 /// let n = null();
 /// ```
@@ -201,8 +201,8 @@ pub fn null() -> Expr {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::{cast, column};
-/// use sqlglot_rust::ast::DataType;
+/// use sqlgrok::builder::{cast, column};
+/// use sqlgrok::ast::DataType;
 ///
 /// let casted = cast(column("id", None), DataType::BigInt);
 /// ```
@@ -222,8 +222,8 @@ pub fn cast(expr: Expr, data_type: DataType) -> Expr {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::{and_all, column};
-/// use sqlglot_rust::ast::{Expr, BinaryOperator};
+/// use sqlgrok::builder::{and_all, column};
+/// use sqlgrok::ast::{Expr, BinaryOperator};
 ///
 /// let cond1 = Expr::BinaryOp {
 ///     left: Box::new(column("x", None)),
@@ -260,8 +260,8 @@ where
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::{or_all, column};
-/// use sqlglot_rust::ast::{Expr, BinaryOperator};
+/// use sqlgrok::builder::{or_all, column};
+/// use sqlgrok::ast::{Expr, BinaryOperator};
 ///
 /// let cond1 = Expr::BinaryOp {
 ///     left: Box::new(column("status", None)),
@@ -295,7 +295,7 @@ where
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::{not, column};
+/// use sqlgrok::builder::{not, column};
 ///
 /// let negated = not(column("active", None));
 /// ```
@@ -316,10 +316,10 @@ pub fn not(expr: Expr) -> Expr {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::{func, column};
+/// use sqlgrok::builder::{func, column};
 ///
 /// let count = func("COUNT", vec![column("id", None)]);
-/// let coalesce = func("COALESCE", vec![column("name", None), sqlglot_rust::builder::string_literal("N/A")]);
+/// let coalesce = func("COALESCE", vec![column("name", None), sqlgrok::builder::string_literal("N/A")]);
 /// ```
 #[must_use]
 pub fn func(name: &str, args: Vec<Expr>) -> Expr {
@@ -337,7 +337,7 @@ pub fn func(name: &str, args: Vec<Expr>) -> Expr {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::{func_distinct, column};
+/// use sqlgrok::builder::{func_distinct, column};
 ///
 /// let count_distinct = func_distinct("COUNT", vec![column("user_id", None)]);
 /// ```
@@ -357,7 +357,7 @@ pub fn func_distinct(name: &str, args: Vec<Expr>) -> Expr {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::star;
+/// use sqlgrok::builder::star;
 ///
 /// let all = star();
 /// ```
@@ -371,7 +371,7 @@ pub fn star() -> Expr {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::qualified_star;
+/// use sqlgrok::builder::qualified_star;
 ///
 /// let all_users = qualified_star("users");
 /// ```
@@ -387,7 +387,7 @@ pub fn qualified_star(table: &str) -> Expr {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::{subquery, select};
+/// use sqlgrok::builder::{subquery, select};
 ///
 /// let inner = select(&["id"]).from("users").build();
 /// let sub = subquery(inner);
@@ -402,7 +402,7 @@ pub fn subquery(statement: Statement) -> Expr {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::{exists, select};
+/// use sqlgrok::builder::{exists, select};
 ///
 /// let inner = select(&["1"]).from("users").where_clause("id = 1").build();
 /// let check = exists(inner, false);
@@ -420,7 +420,7 @@ pub fn exists(statement: Statement, negated: bool) -> Expr {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::{alias, column};
+/// use sqlgrok::builder::{alias, column};
 ///
 /// let aliased = alias(column("first_name", None), "name");
 /// ```
@@ -621,7 +621,7 @@ pub fn div(left: Expr, right: Expr) -> Expr {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::parse_expr;
+/// use sqlgrok::builder::parse_expr;
 ///
 /// let expr = parse_expr("x + 1").unwrap();
 /// let cond = parse_expr("a = 1 AND b = 2").unwrap();
@@ -653,7 +653,7 @@ pub fn parse_expr_dialect(sql: &str, dialect: Dialect) -> Option<Expr> {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::parse_condition;
+/// use sqlgrok::builder::parse_condition;
 ///
 /// let cond = parse_condition("x > 1 AND y < 10").unwrap();
 /// ```
@@ -682,7 +682,7 @@ pub fn parse_condition_dialect(sql: &str, dialect: Dialect) -> Option<Expr> {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::condition;
+/// use sqlgrok::builder::condition;
 ///
 /// let cond = condition("x = 1")
 ///     .and("y = 2")
@@ -795,7 +795,7 @@ impl ConditionBuilder {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::condition;
+/// use sqlgrok::builder::condition;
 ///
 /// let cond = condition("x = 1").and("y = 2").build();
 /// ```
@@ -819,7 +819,7 @@ pub fn condition_dialect(cond: &str, dialect: Dialect) -> ConditionBuilder {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::select;
+/// use sqlgrok::builder::select;
 ///
 /// let query = select(&["a", "b"])
 ///     .from("users")
@@ -1205,7 +1205,7 @@ impl SelectBuilder {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::select;
+/// use sqlgrok::builder::select;
 ///
 /// let query = select(&["a", "b", "c"]).from("table_name").build();
 /// ```
@@ -1219,7 +1219,7 @@ pub fn select(columns: &[&str]) -> SelectBuilder {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::select_all;
+/// use sqlgrok::builder::select_all;
 ///
 /// let query = select_all().from("users").build();
 /// ```
@@ -1233,7 +1233,7 @@ pub fn select_all() -> SelectBuilder {
 /// # Examples
 ///
 /// ```rust
-/// use sqlglot_rust::builder::select_distinct;
+/// use sqlgrok::builder::select_distinct;
 ///
 /// let query = select_distinct(&["category"]).from("products").build();
 /// ```
@@ -1252,7 +1252,7 @@ impl SelectStatement {
     /// # Examples
     ///
     /// ```rust
-    /// use sqlglot_rust::builder::select;
+    /// use sqlgrok::builder::select;
     ///
     /// let mut stmt = select(&["a"]).from("t").build_select();
     /// stmt.add_select("b");
@@ -1282,7 +1282,7 @@ impl SelectStatement {
     /// # Examples
     ///
     /// ```rust
-    /// use sqlglot_rust::builder::select;
+    /// use sqlgrok::builder::select;
     ///
     /// let mut stmt = select(&["a"]).from("t").build_select();
     /// stmt.add_where("x > 1");
@@ -1323,8 +1323,8 @@ impl SelectStatement {
     /// # Examples
     ///
     /// ```rust
-    /// use sqlglot_rust::builder::select;
-    /// use sqlglot_rust::ast::JoinType;
+    /// use sqlgrok::builder::select;
+    /// use sqlgrok::ast::JoinType;
     ///
     /// let mut stmt = select(&["*"]).from("users").build_select();
     /// stmt.add_join("orders", "users.id = orders.user_id", JoinType::Left);
@@ -1388,7 +1388,7 @@ impl SelectStatement {
     /// # Examples
     ///
     /// ```rust
-    /// use sqlglot_rust::builder::select;
+    /// use sqlgrok::builder::select;
     ///
     /// let inner = select(&["id", "name"]).from("users").build_select();
     /// let subq = inner.as_subquery("u");

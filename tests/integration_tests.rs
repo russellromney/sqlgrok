@@ -1,5 +1,5 @@
-use sqlglot_rust::schema::{MappingSchema, Schema, SchemaError, ensure_schema};
-use sqlglot_rust::{Dialect, generate, parse, transpile};
+use sqlgrok::schema::{MappingSchema, Schema, SchemaError, ensure_schema};
+use sqlgrok::{Dialect, generate, parse, transpile};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Basic roundtrip tests
@@ -69,7 +69,7 @@ fn test_roundtrip_complex_query() {
 fn test_ast_serialization() {
     let ast = parse("SELECT 1", Dialect::Ansi).unwrap();
     let json = serde_json::to_string(&ast).unwrap();
-    let deserialized: sqlglot_rust::Statement = serde_json::from_str(&json).unwrap();
+    let deserialized: sqlgrok::Statement = serde_json::from_str(&json).unwrap();
     let output = generate(&deserialized, Dialect::Ansi);
     assert_eq!(output, "SELECT 1");
 }
@@ -260,7 +260,7 @@ fn test_roundtrip_on_conflict_nothing() {
 #[test]
 fn test_optimizer_constant_folding() {
     let ast = parse("SELECT 1 + 2 FROM t", Dialect::Ansi).unwrap();
-    let optimized = sqlglot_rust::optimizer::optimize(ast).unwrap();
+    let optimized = sqlgrok::optimizer::optimize(ast).unwrap();
     let output = generate(&optimized, Dialect::Ansi);
     assert_eq!(output, "SELECT 3 FROM t");
 }
@@ -272,9 +272,9 @@ fn test_optimizer_constant_folding() {
 #[test]
 fn test_find_columns() {
     let ast = parse("SELECT a, b, c FROM t WHERE a > 1", Dialect::Ansi).unwrap();
-    if let sqlglot_rust::Statement::Select(sel) = &ast {
+    if let sqlgrok::Statement::Select(sel) = &ast {
         if let Some(wh) = &sel.where_clause {
-            let cols = sqlglot_rust::ast::find_columns(wh);
+            let cols = sqlgrok::ast::find_columns(wh);
             assert_eq!(cols.len(), 1);
         }
     }
@@ -287,7 +287,7 @@ fn test_find_tables() {
         Dialect::Ansi,
     )
     .unwrap();
-    let tables = sqlglot_rust::ast::find_tables(&ast);
+    let tables = sqlgrok::ast::find_tables(&ast);
     assert_eq!(tables.len(), 2);
 }
 
@@ -304,8 +304,8 @@ fn test_schema_from_create_table() {
 
     let mut schema = MappingSchema::new(Dialect::Ansi);
 
-    if let sqlglot_rust::ast::Statement::CreateTable(ct) = &ast {
-        let columns: Vec<(String, sqlglot_rust::ast::DataType)> = ct
+    if let sqlgrok::ast::Statement::CreateTable(ct) = &ast {
+        let columns: Vec<(String, sqlgrok::ast::DataType)> = ct
             .columns
             .iter()
             .map(|col| (col.name.clone(), col.data_type.clone()))
@@ -319,7 +319,7 @@ fn test_schema_from_create_table() {
     );
     assert_eq!(
         schema.get_column_type(&["products"], "price").unwrap(),
-        sqlglot_rust::ast::DataType::Decimal {
+        sqlgrok::ast::DataType::Decimal {
             precision: Some(10),
             scale: Some(2)
         }
@@ -336,9 +336,9 @@ fn test_schema_validates_query_columns() {
         .add_table(
             &["users"],
             vec![
-                ("id".into(), sqlglot_rust::ast::DataType::Int),
-                ("name".into(), sqlglot_rust::ast::DataType::Text),
-                ("email".into(), sqlglot_rust::ast::DataType::Text),
+                ("id".into(), sqlgrok::ast::DataType::Int),
+                ("name".into(), sqlgrok::ast::DataType::Text),
+                ("email".into(), sqlgrok::ast::DataType::Text),
             ],
         )
         .unwrap();
@@ -348,11 +348,11 @@ fn test_schema_validates_query_columns() {
         Dialect::Postgres,
     )
     .unwrap();
-    if let sqlglot_rust::ast::Statement::Select(sel) = &ast {
+    if let sqlgrok::ast::Statement::Select(sel) = &ast {
         // Verify all selected columns exist in schema
         for item in &sel.columns {
-            if let sqlglot_rust::ast::SelectItem::Expr {
-                expr: sqlglot_rust::ast::Expr::Column { name, .. },
+            if let sqlgrok::ast::SelectItem::Expr {
+                expr: sqlgrok::ast::Expr::Column { name, .. },
                 ..
             } = item
             {
@@ -372,8 +372,8 @@ fn test_schema_cross_dialect_normalization() {
     // Build schema with ensure_schema helper
     let mut tables = HashMap::new();
     let mut cols = HashMap::new();
-    cols.insert("UserId".to_string(), sqlglot_rust::ast::DataType::Int);
-    cols.insert("UserName".to_string(), sqlglot_rust::ast::DataType::Text);
+    cols.insert("UserId".to_string(), sqlgrok::ast::DataType::Int);
+    cols.insert("UserName".to_string(), sqlgrok::ast::DataType::Text);
     tables.insert("UserAccounts".to_string(), cols);
 
     // Postgres: case-insensitive
@@ -391,13 +391,13 @@ fn test_schema_cross_dialect_normalization() {
 fn test_schema_duplicate_and_replace() {
     let mut schema = MappingSchema::new(Dialect::Ansi);
     schema
-        .add_table(&["t"], vec![("a".into(), sqlglot_rust::ast::DataType::Int)])
+        .add_table(&["t"], vec![("a".into(), sqlgrok::ast::DataType::Int)])
         .unwrap();
 
     // Duplicate should fail
     let result = schema.add_table(
         &["t"],
-        vec![("b".into(), sqlglot_rust::ast::DataType::Text)],
+        vec![("b".into(), sqlgrok::ast::DataType::Text)],
     );
     assert!(matches!(result, Err(SchemaError::DuplicateTable(_))));
 
@@ -405,7 +405,7 @@ fn test_schema_duplicate_and_replace() {
     schema
         .replace_table(
             &["t"],
-            vec![("b".into(), sqlglot_rust::ast::DataType::Text)],
+            vec![("b".into(), sqlgrok::ast::DataType::Text)],
         )
         .unwrap();
     assert!(schema.has_column(&["t"], "b"));
@@ -415,17 +415,17 @@ fn test_schema_duplicate_and_replace() {
 #[test]
 fn test_schema_udf_types() {
     let mut schema = MappingSchema::new(Dialect::Ansi);
-    schema.add_udf("calculate_score", sqlglot_rust::ast::DataType::Double);
-    schema.add_udf("format_name", sqlglot_rust::ast::DataType::Text);
+    schema.add_udf("calculate_score", sqlgrok::ast::DataType::Double);
+    schema.add_udf("format_name", sqlgrok::ast::DataType::Text);
 
     assert_eq!(
         schema.get_udf_type("calculate_score").unwrap(),
-        &sqlglot_rust::ast::DataType::Double,
+        &sqlgrok::ast::DataType::Double,
     );
     // Case-insensitive lookup in ANSI
     assert_eq!(
         schema.get_udf_type("CALCULATE_SCORE").unwrap(),
-        &sqlglot_rust::ast::DataType::Double,
+        &sqlgrok::ast::DataType::Double,
     );
 }
 
@@ -667,11 +667,11 @@ fn test_merge_ast_structure() {
     let sql = "MERGE INTO dst USING src ON dst.id = src.id WHEN MATCHED THEN UPDATE SET dst.val = src.val WHEN NOT MATCHED THEN INSERT (id, val) VALUES (src.id, src.val)";
     let ast = parse(sql, Dialect::Ansi).unwrap();
     match &ast {
-        sqlglot_rust::Statement::Merge(m) => {
+        sqlgrok::Statement::Merge(m) => {
             assert_eq!(m.target.name, "dst");
             assert_eq!(m.clauses.len(), 2);
-            assert_eq!(m.clauses[0].kind, sqlglot_rust::MergeClauseKind::Matched);
-            assert_eq!(m.clauses[1].kind, sqlglot_rust::MergeClauseKind::NotMatched);
+            assert_eq!(m.clauses[0].kind, sqlgrok::MergeClauseKind::Matched);
+            assert_eq!(m.clauses[1].kind, sqlgrok::MergeClauseKind::NotMatched);
         }
         other => panic!("Expected Merge statement, got {:?}", other),
     }
@@ -682,7 +682,7 @@ fn test_merge_serialization() {
     let sql = "MERGE INTO target USING source ON target.id = source.id WHEN MATCHED THEN UPDATE SET target.name = source.name";
     let ast = parse(sql, Dialect::Ansi).unwrap();
     let json = serde_json::to_string(&ast).unwrap();
-    let deserialized: sqlglot_rust::Statement = serde_json::from_str(&json).unwrap();
+    let deserialized: sqlgrok::Statement = serde_json::from_str(&json).unwrap();
     let output = generate(&deserialized, Dialect::Ansi);
     assert_eq!(output, sql);
 }

@@ -1,11 +1,11 @@
-use sqlglot_rust::optimizer::optimize;
+use sqlgrok::optimizer::optimize;
 /// Tests ported from Python sqlglot's `test_optimizer.py`.
 ///
 /// Covers constant folding (arithmetic, string concat, comparisons),
 /// boolean simplification (AND/OR with TRUE/FALSE, double NOT, WHERE TRUE),
 /// subquery unnesting / decorrelation (EXISTS/IN → JOINs),
 /// and predicate pushdown (WHERE → derived tables / JOINs).
-use sqlglot_rust::{Dialect, generate, parse};
+use sqlgrok::{Dialect, generate, parse};
 
 /// Parse → optimise → generate, compare with expected output.
 fn validate_optimized(input: &str, expected: &str) {
@@ -372,9 +372,9 @@ fn test_optimize_preserves_existing_joins_with_unnest() {
 // qualify_columns tests
 // ═══════════════════════════════════════════════════════════════════════
 
-use sqlglot_rust::ast::DataType;
-use sqlglot_rust::optimizer::qualify_columns::qualify_columns;
-use sqlglot_rust::schema::{MappingSchema, Schema};
+use sqlgrok::ast::DataType;
+use sqlgrok::optimizer::qualify_columns::qualify_columns;
+use sqlgrok::schema::{MappingSchema, Schema};
 
 fn test_schema() -> MappingSchema {
     let mut s = MappingSchema::new(Dialect::Ansi);
@@ -630,7 +630,7 @@ fn test_qc_qualify_join_on_clause() {
 // (from Python test_optimizer.py::test_pushdown_predicates)
 // ═════════════════════════════════════════════════════════════════════════════
 
-use sqlglot_rust::pushdown_predicates;
+use sqlgrok::pushdown_predicates;
 
 /// Parse → pushdown_predicates → generate, compare with expected output.
 fn validate_pushdown(input: &str, expected: &str) {

@@ -1,0 +1,4 @@
+{"id":"mysql-group-concat-separator-to-sqlite","sql":"SELECT GROUP_CONCAT(v SEPARATOR '|') FROM gc","read":"mysql","write":"sqlite"}
+{"id":"mysql-group-concat-order-separator-to-sqlite","sql":"SELECT GROUP_CONCAT(v ORDER BY v SEPARATOR '|') FROM gc","read":"mysql","write":"sqlite"}
+{"id":"mysql-explicit-cross-join-to-sqlite","sql":"SELECT COUNT(*) FROM cj a CROSS JOIN cj b","read":"mysql","write":"sqlite"}
+{"id":"mysql-comma-join-known-generator-divergence","sql":"SELECT COUNT(*) FROM cj a, cj b","read":"mysql","write":"sqlite","accepted_rust":"SELECT COUNT(*) FROM cj AS a CROSS JOIN cj AS b","note":"Python SQLGlot preserves comma joins; sqlgrok currently normalizes them to explicit CROSS JOIN."}

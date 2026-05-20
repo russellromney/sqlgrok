@@ -8,7 +8,7 @@
 //!
 //! ```
 //! use std::collections::HashMap;
-//! use sqlglot_rust::executor::{execute, Table, Value};
+//! use sqlgrok::executor::{execute, Table, Value};
 //!
 //! let mut tables = HashMap::new();
 //! tables.insert("t".to_string(), Table::new(

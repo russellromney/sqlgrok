@@ -1,5 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use sqlglot_rust::{Dialect, generate, parse, transpile};
+use sqlgrok::{Dialect, generate, parse, transpile};
 use std::hint::black_box;
 
 fn bench_parse_simple(c: &mut Criterion) {

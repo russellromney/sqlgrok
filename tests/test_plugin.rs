@@ -10,12 +10,12 @@
 /// - Custom quote style
 /// - Full statement-level transform hooks
 /// - resolve_dialect helper
-use sqlglot_rust::ast::{DataType, Expr, QuoteStyle, Statement};
-use sqlglot_rust::dialects::plugin::{
+use sqlgrok::ast::{DataType, Expr, QuoteStyle, Statement};
+use sqlgrok::dialects::plugin::{
     DialectPlugin, DialectRef, DialectRegistry, register_dialect, resolve_dialect, transpile_ext,
     transpile_statements_ext,
 };
-use sqlglot_rust::Dialect;
+use sqlgrok::Dialect;
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Test dialect implementations

@@ -9,10 +9,10 @@
 //! # Example
 //!
 //! ```rust
-//! use sqlglot_rust::parser::parse;
-//! use sqlglot_rust::dialects::Dialect;
-//! use sqlglot_rust::optimizer::lineage::{lineage, LineageConfig};
-//! use sqlglot_rust::schema::MappingSchema;
+//! use sqlgrok::parser::parse;
+//! use sqlgrok::dialects::Dialect;
+//! use sqlgrok::optimizer::lineage::{lineage, LineageConfig};
+//! use sqlgrok::schema::MappingSchema;
 //!
 //! let sql = "SELECT a, b + 1 AS c FROM t";
 //! let ast = parse(sql, Dialect::Ansi).unwrap();
@@ -485,10 +485,10 @@ impl LineageContext {
 /// # Example
 ///
 /// ```rust
-/// use sqlglot_rust::parser::parse;
-/// use sqlglot_rust::dialects::Dialect;
-/// use sqlglot_rust::optimizer::lineage::{lineage, LineageConfig};
-/// use sqlglot_rust::schema::MappingSchema;
+/// use sqlgrok::parser::parse;
+/// use sqlgrok::dialects::Dialect;
+/// use sqlgrok::optimizer::lineage::{lineage, LineageConfig};
+/// use sqlgrok::schema::MappingSchema;
 ///
 /// let sql = "SELECT a, b AS c FROM t";
 /// let ast = parse(sql, Dialect::Ansi).unwrap();
@@ -530,9 +530,9 @@ pub fn lineage(
 /// # Example
 ///
 /// ```rust
-/// use sqlglot_rust::dialects::Dialect;
-/// use sqlglot_rust::optimizer::lineage::{lineage_sql, LineageConfig};
-/// use sqlglot_rust::schema::MappingSchema;
+/// use sqlgrok::dialects::Dialect;
+/// use sqlgrok::optimizer::lineage::{lineage_sql, LineageConfig};
+/// use sqlgrok::schema::MappingSchema;
 ///
 /// let schema = MappingSchema::new(Dialect::Ansi);
 /// let config = LineageConfig::default();

@@ -2,8 +2,8 @@
 //!
 //! Run with: `cargo run --example builder`
 
-use sqlglot_rust::builder::*;
-use sqlglot_rust::{generate, Dialect};
+use sqlgrok::builder::*;
+use sqlgrok::{generate, Dialect};
 
 fn main() {
     // Simple SELECT

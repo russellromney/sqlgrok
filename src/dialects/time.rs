@@ -14,7 +14,7 @@
 //! # Example
 //!
 //! ```rust
-//! use sqlglot_rust::dialects::time::{format_time, TimeFormatStyle};
+//! use sqlgrok::dialects::time::{format_time, TimeFormatStyle};
 //!
 //! // Convert MySQL format to PostgreSQL format
 //! let pg_format = format_time("%Y-%m-%d %H:%i:%s",
@@ -395,7 +395,7 @@ fn build_style_lookup(style: TimeFormatStyle) -> HashMap<&'static str, usize> {
 /// # Example
 ///
 /// ```rust
-/// use sqlglot_rust::dialects::time::{format_time, TimeFormatStyle};
+/// use sqlgrok::dialects::time::{format_time, TimeFormatStyle};
 ///
 /// let result = format_time("%Y-%m-%d", TimeFormatStyle::Strftime, TimeFormatStyle::Postgres);
 /// assert_eq!(result, "YYYY-MM-DD");
@@ -682,8 +682,8 @@ fn convert_java_style(
 /// # Example
 ///
 /// ```rust
-/// use sqlglot_rust::dialects::time::format_time_dialect;
-/// use sqlglot_rust::Dialect;
+/// use sqlgrok::dialects::time::format_time_dialect;
+/// use sqlgrok::Dialect;
 ///
 /// // Convert MySQL format to PostgreSQL
 /// let result = format_time_dialect("%Y-%m-%d %H:%i:%s", Dialect::Mysql, Dialect::Postgres);

@@ -2,7 +2,7 @@
 //!
 //! Run with: `cargo run --example ast_traversal`
 
-use sqlglot_rust::{generate, parse, Dialect, Expr, Statement};
+use sqlgrok::{generate, parse, Dialect, Expr, Statement};
 
 fn main() {
     let sql = "SELECT a, b + 1, UPPER(name) FROM users WHERE age > 21 AND status = 'active'";
@@ -39,13 +39,13 @@ fn main() {
     // Transform: rename column "a" → "id"
     println!("\n=== Transform: rename column a → id ===");
     if let Statement::Select(s) = ast {
-        let transformed = Statement::Select(sqlglot_rust::ast::SelectStatement {
+        let transformed = Statement::Select(sqlgrok::ast::SelectStatement {
             columns: s
                 .columns
                 .into_iter()
                 .map(|item| match item {
-                    sqlglot_rust::ast::SelectItem::Expr { expr, alias, alias_quote_style } => {
-                        sqlglot_rust::ast::SelectItem::Expr {
+                    sqlgrok::ast::SelectItem::Expr { expr, alias, alias_quote_style } => {
+                        sqlgrok::ast::SelectItem::Expr {
                             expr: expr.transform(&|e| match e {
                                 Expr::Column {
                                     name,
