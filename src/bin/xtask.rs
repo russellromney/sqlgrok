@@ -613,8 +613,20 @@ rust_enums = {
     "JoinType": enum_variants("JoinType"),
     "TableSource": enum_variants("TableSource"),
 }
-rust_variants = {variant for variants in rust_enums.values() for variant in variants}
-normalized_rust = {re.sub(r"[^a-z0-9]", "", variant.lower()): variant for variant in rust_variants}
+expression_enums = ["Statement", "Expr", "TypedFunction", "JoinType", "TableSource"]
+expression_variants = {
+    variant
+    for enum_name in expression_enums
+    for variant in rust_enums[enum_name]
+}
+normalized_expression_rust = {
+    re.sub(r"[^a-z0-9]", "", variant.lower()): variant
+    for variant in expression_variants
+}
+normalized_data_types = {
+    re.sub(r"[^a-z0-9]", "", variant.lower()): variant
+    for variant in rust_enums["DataType"]
+}
 
 supported = {
     "Alias": "Expr::Alias",
@@ -728,16 +740,18 @@ out_of_scope = {
 def classify(info):
     name = info["name"]
     norm = re.sub(r"[^a-z0-9]", "", name.lower())
+    module = info["module"]
     if name in supported:
         return "supported", supported[name]
     if name in partial:
         return "partial", partial[name]
     if name in out_of_scope:
         return "out-of-scope", out_of_scope[name]
-    if norm in normalized_rust:
-        return "supported", normalized_rust[norm]
+    if norm in normalized_expression_rust:
+        return "supported", normalized_expression_rust[norm]
+    if module == "datatypes.py" and norm in normalized_data_types:
+        return "supported", f"DataType::{normalized_data_types[norm]}"
     bases = set(info["bases"])
-    module = info["module"]
     if bases & {"Binary", "Predicate", "Unary", "Condition", "Connector"} or name in {"Binary", "Predicate", "Unary", "Condition", "Connector"}:
         return "partial", "represented by generic operator/predicate nodes where parsed"
     if "Func" in bases or "AggFunc" in bases or module in {"functions.py", "aggregate.py", "temporal.py"}:

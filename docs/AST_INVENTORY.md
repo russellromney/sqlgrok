@@ -9,9 +9,9 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 - SQLGlot expression classes: `1024`
 - SQLGlot expression files: `15`
 - Rust AST enums inspected: `Statement, Expr, TypedFunction, DataType, JoinType, TableSource`
-- Supported: `115`
-- Partial: `699`
-- Unsupported: `204`
+- Supported: `106`
+- Partial: `707`
+- Unsupported: `205`
 - Out of scope: `6`
 
 ## Priority Gaps
@@ -43,19 +43,19 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | Module | Supported | Partial | Unsupported | Out of scope | Total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | aggregate.py | 10 | 61 | 0 | 2 | 73 |
-| array.py | 6 | 54 | 6 | 0 | 66 |
+| array.py | 5 | 55 | 6 | 0 | 66 |
 | constraints.py | 0 | 45 | 0 | 0 | 45 |
-| core.py | 23 | 54 | 33 | 0 | 110 |
+| core.py | 22 | 55 | 33 | 0 | 110 |
 | datatypes.py | 2 | 0 | 4 | 0 | 6 |
 | ddl.py | 4 | 4 | 43 | 0 | 51 |
 | dml.py | 4 | 2 | 10 | 0 | 16 |
-| functions.py | 11 | 85 | 0 | 0 | 96 |
+| functions.py | 10 | 86 | 0 | 0 | 96 |
 | json.py | 2 | 32 | 0 | 0 | 34 |
 | math.py | 7 | 53 | 0 | 0 | 60 |
 | properties.py | 0 | 120 | 0 | 4 | 124 |
-| query.py | 16 | 12 | 107 | 0 | 135 |
-| string.py | 18 | 85 | 1 | 0 | 104 |
-| temporal.py | 12 | 92 | 0 | 0 | 104 |
+| query.py | 15 | 12 | 108 | 0 | 135 |
+| string.py | 17 | 86 | 1 | 0 | 104 |
+| temporal.py | 8 | 96 | 0 | 0 | 104 |
 
 ## Full Generated Inventory
 
@@ -196,6 +196,7 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | Intersect | query.py:1092 | SetOperation | unsupported | no clear Rust AST representation yet |
 | Into | query.py:534 | Expression | unsupported | no clear Rust AST representation yet |
 | Introducer | query.py:581 | Expression | unsupported | no clear Rust AST representation yet |
+| JSON | query.py:1962 | Expression | unsupported | no clear Rust AST representation yet |
 | JSONColumnDef | query.py:2027 | Expression | unsupported | no clear Rust AST representation yet |
 | JSONExtractQuote | query.py:2059 | Expression | unsupported | no clear Rust AST representation yet |
 | JSONKeyValue | query.py:2023 | Expression | unsupported | no clear Rust AST representation yet |
@@ -359,6 +360,7 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | Generator | array.py:225 | Expression, Func, UDTF | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | Inline | array.py:234 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | List | array.py:34 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
+| Map | array.py:279 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | MapCat | array.py:293 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | MapContainsKey | array.py:297 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | MapDelete | array.py:301 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
@@ -430,6 +432,7 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | AggFunc | core.py:1669 | Func | partial | many common aggregates are typed; long tail falls back to Expr::Function |
 | Anonymous | core.py:1943 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | AnonymousAggFunc | core.py:1952 | Expression, AggFunc | partial | generic Expr::Function fallback or selected TypedFunction variant |
+| Binary | core.py:1598 | Condition | partial | represented by generic operator/predicate nodes where parsed |
 | BitwiseAnd | core.py:2061 | Expression, Binary | partial | BinaryOperator coverage, limited dialect spelling |
 | BitwiseLeftShift | core.py:2065 | Expression, Binary | partial | represented by generic operator/predicate nodes where parsed |
 | BitwiseNot | core.py:2205 | Unary | partial | represented by generic operator/predicate nodes where parsed |
@@ -563,6 +566,7 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | ToVariant | functions.py:225 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | Try | functions.py:159 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | Uniform | functions.py:525 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
+| Uuid | functions.py:529 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | VectorSearch | functions.py:405 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | WeekStart | functions.py:535 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | WidthBucket | functions.py:539 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
@@ -853,6 +857,7 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | StartsWith | string.py:188 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | StrPosition | string.py:193 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | StrToMap | string.py:203 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
+| String | string.py:212 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | Strtok | string.py:180 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | Stuff | string.py:216 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | SubstringIndex | string.py:226 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
@@ -878,6 +883,7 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | CurrentTime | temporal.py:33 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | CurrentTimestampLTZ | temporal.py:41 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | CurrentTimezone | temporal.py:45 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
+| Date | temporal.py:288 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | DateAdd | temporal.py:80 | Expression, Func, IntervalOp | partial | TypedFunction::DateAdd handles common forms |
 | DateBin | temporal.py:84 | Expression, Func, IntervalOp | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | DateDiff | temporal.py:88 | Expression, Func, TimeUnit | partial | TypedFunction::DateDiff handles common forms |
@@ -887,6 +893,7 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | DateToDateStr | temporal.py:424 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | DateToDi | temporal.py:428 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | DateTrunc | temporal.py:165 | Expression, Func | partial | TypedFunction::DateTrunc handles common forms |
+| Datetime | temporal.py:302 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | DatetimeAdd | temporal.py:104 | Expression, Func, IntervalOp | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | DatetimeDiff | temporal.py:108 | Expression, Func, TimeUnit | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | DatetimeSub | temporal.py:112 | Expression, Func, IntervalOp | partial | generic Expr::Function fallback or selected TypedFunction variant |
@@ -922,6 +929,7 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | StrToDate | temporal.py:448 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | StrToUnix | temporal.py:456 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | Systimestamp | temporal.py:57 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
+| Time | temporal.py:363 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | TimeAdd | temporal.py:120 | Expression, Func, TimeUnit | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | TimeDiff | temporal.py:124 | Expression, Func, TimeUnit | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | TimeFromParts | temporal.py:367 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
@@ -934,6 +942,7 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | TimeToTimeStr | temporal.py:476 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | TimeToUnix | temporal.py:480 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | TimeTrunc | temporal.py:198 | Expression, Func, TimeUnit | partial | generic Expr::Function fallback or selected TypedFunction variant |
+| Timestamp | temporal.py:380 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | TimestampAdd | temporal.py:132 | Expression, Func, TimeUnit | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | TimestampDiff | temporal.py:136 | Expression, Func, TimeUnit | partial | generic Expr::Function fallback or selected TypedFunction variant |
 | TimestampFromParts | temporal.py:384 | Expression, Func | partial | generic Expr::Function fallback or selected TypedFunction variant |
@@ -978,7 +987,6 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | ArrayConcat | array.py:54 | Expression, Func | supported | ArrayConcat |
 | Flatten | array.py:186 | Expression, Func | supported | Flatten |
 | GenerateSeries | array.py:217 | Expression, Func | supported | GenerateSeries |
-| Map | array.py:279 | Expression, Func | supported | Map |
 | Unnest | array.py:259 | Expression, Func, UDTF | supported | TableSource::Unnest |
 | Alias | core.py:1872 | Expression | supported | Expr::Alias |
 | All | core.py:1589 | Expression, SubqueryPredicate | supported | Expr::AllOp |
@@ -986,7 +994,6 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | Any | core.py:1593 | Expression, SubqueryPredicate | supported | Expr::AnyOp |
 | ApproxDistinct | core.py:1975 | Expression, AggFunc | supported | ApproxDistinct |
 | Between | core.py:2248 | Expression, Predicate | supported | Expr::Between |
-| Binary | core.py:1598 | Condition | supported | Binary |
 | Boolean | core.py:1823 | Expression, Condition | supported | Expr::Boolean |
 | Column | core.py:1673 | Expression, Condition | supported | Expr::Column |
 | EQ | core.py:2101 | Expression, Binary, Predicate | supported | Expr::BinaryOp |
@@ -1023,7 +1030,6 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | Least | functions.py:142 | Expression, Func | supported | Least |
 | Nullif | functions.py:147 | Expression, Func | supported | Expr::NullIf |
 | TryCast | functions.py:72 | Cast | supported | Expr::TryCast |
-| Uuid | functions.py:529 | Expression, Func | supported | Uuid |
 | JSONFormat | json.py:141 | Expression, Func | supported | JSONFormat |
 | ParseJSON | json.py:234 | Expression, Func | supported | ParseJSON |
 | Abs | math.py:126 | Expression, Func | supported | Abs |
@@ -1035,7 +1041,6 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | Sqrt | math.py:184 | Expression, Func | supported | Sqrt |
 | From | query.py:544 | Expression | supported | FromClause/TableSource |
 | Group | query.py:623 | Expression | supported | SelectStatement::group_by |
-| JSON | query.py:1962 | Expression | supported | Json |
 | Join | query.py:668 | Expression | supported | JoinClause |
 | Lambda | query.py:646 | Expression | supported | Expr::Lambda |
 | Lateral | query.py:796 | Expression, UDTF | supported | Lateral |
@@ -1062,22 +1067,17 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | SHA | string.py:553 | Expression, Func | supported | Sha |
 | SHA2 | string.py:561 | Expression, Func | supported | Sha2 |
 | Split | string.py:160 | Expression, Func | supported | Split |
-| String | string.py:212 | Expression, Func | supported | String |
 | Substring | string.py:221 | Expression, Func | supported | Substring |
 | Trim | string.py:241 | Expression, Func | supported | Trim |
 | Unhex | string.py:404 | Expression, Func | supported | Unhex |
 | Upper | string.py:254 | Expression, Func | supported | Upper |
 | CurrentDate | temporal.py:25 | Expression, Func | supported | CurrentDate |
 | CurrentTimestamp | temporal.py:37 | Expression, Func | supported | CurrentTimestamp |
-| Date | temporal.py:288 | Expression, Func | supported | Date |
 | DateSub | temporal.py:100 | Expression, Func, IntervalOp | supported | DateSub |
-| Datetime | temporal.py:302 | Expression, Func | supported | DateTime |
 | Day | temporal.py:205 | Expression, Func | supported | Day |
 | Extract | temporal.py:229 | Expression, Func | supported | Expr::Extract |
 | Month | temporal.py:245 | Expression, Func | supported | Month |
 | StrToTime | temporal.py:452 | Expression, Func | supported | StrToTime |
-| Time | temporal.py:363 | Expression, Func | supported | Time |
-| Timestamp | temporal.py:380 | Expression, Func | supported | Timestamp |
 | Year | temporal.py:273 | Expression, Func | supported | Year |
 | AIAgg | aggregate.py:8 | Expression, AggFunc | out-of-scope | vendor/AI aggregate long tail |
 | AISummarizeAgg | aggregate.py:13 | Expression, AggFunc | out-of-scope | vendor/AI aggregate long tail |
