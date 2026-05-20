@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use serde::Deserialize;
-use sqlgrok::{transpile, Dialect};
+use sqlgrok::{Dialect, transpile};
 
 const SMOKE_CASES: &str = include_str!("../parity/cases/smoke.jsonl");
 

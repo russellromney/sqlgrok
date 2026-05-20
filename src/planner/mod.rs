@@ -542,9 +542,13 @@ impl PlanBuilder {
                     dependencies: vec![],
                 }))
             }
-            TableSource::Subquery { query, alias: _, .. } => self.plan_statement(query),
+            TableSource::Subquery {
+                query, alias: _, ..
+            } => self.plan_statement(query),
             TableSource::Lateral { source } => self.plan_table_source(source),
-            TableSource::TableFunction { name, args, alias, .. } => Ok(self.add_step(Step::Scan {
+            TableSource::TableFunction {
+                name, args, alias, ..
+            } => Ok(self.add_step(Step::Scan {
                 table: name.clone(),
                 alias: alias.clone(),
                 projections: args

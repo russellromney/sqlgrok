@@ -120,14 +120,20 @@ impl DialectRegistry {
     /// If a plugin with the same name already exists it is replaced.
     pub fn register<P: DialectPlugin + 'static>(&self, plugin: P) {
         let name = plugin.name().to_lowercase();
-        let mut map = self.dialects.lock().expect("dialect registry lock poisoned");
+        let mut map = self
+            .dialects
+            .lock()
+            .expect("dialect registry lock poisoned");
         map.insert(name, Arc::new(plugin));
     }
 
     /// Look up a custom dialect by name (case-insensitive).
     #[must_use]
     pub fn get(&self, name: &str) -> Option<Arc<dyn DialectPlugin>> {
-        let map = self.dialects.lock().expect("dialect registry lock poisoned");
+        let map = self
+            .dialects
+            .lock()
+            .expect("dialect registry lock poisoned");
         map.get(&name.to_lowercase()).cloned()
     }
 
@@ -135,14 +141,20 @@ impl DialectRegistry {
     ///
     /// Returns `true` if the dialect was found and removed.
     pub fn unregister(&self, name: &str) -> bool {
-        let mut map = self.dialects.lock().expect("dialect registry lock poisoned");
+        let mut map = self
+            .dialects
+            .lock()
+            .expect("dialect registry lock poisoned");
         map.remove(&name.to_lowercase()).is_some()
     }
 
     /// Returns the names of all registered custom dialects.
     #[must_use]
     pub fn registered_names(&self) -> Vec<String> {
-        let map = self.dialects.lock().expect("dialect registry lock poisoned");
+        let map = self
+            .dialects
+            .lock()
+            .expect("dialect registry lock poisoned");
         map.keys().cloned().collect()
     }
 }
@@ -393,33 +405,49 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
             vec![*expr.clone(), *interval.clone()]
         }
         TypedFunction::DateDiff { start, end, .. } => vec![*start.clone(), *end.clone()],
-        TypedFunction::StrToTime { expr, format }
-        | TypedFunction::TimeToStr { expr, format } => {
+        TypedFunction::StrToTime { expr, format } | TypedFunction::TimeToStr { expr, format } => {
             vec![*expr.clone(), *format.clone()]
         }
         TypedFunction::Trim { expr, .. } => vec![*expr.clone()],
-        TypedFunction::Substring { expr, start, length } => {
+        TypedFunction::Substring {
+            expr,
+            start,
+            length,
+        } => {
             let mut args = vec![*expr.clone(), *start.clone()];
             if let Some(len) = length {
                 args.push(*len.clone());
             }
             args
         }
-        TypedFunction::RegexpLike { expr, pattern, flags } => {
+        TypedFunction::RegexpLike {
+            expr,
+            pattern,
+            flags,
+        } => {
             let mut args = vec![*expr.clone(), *pattern.clone()];
             if let Some(f) = flags {
                 args.push(*f.clone());
             }
             args
         }
-        TypedFunction::RegexpExtract { expr, pattern, group_index } => {
+        TypedFunction::RegexpExtract {
+            expr,
+            pattern,
+            group_index,
+        } => {
             let mut args = vec![*expr.clone(), *pattern.clone()];
             if let Some(g) = group_index {
                 args.push(*g.clone());
             }
             args
         }
-        TypedFunction::RegexpReplace { expr, pattern, replacement, flags } => {
+        TypedFunction::RegexpReplace {
+            expr,
+            pattern,
+            replacement,
+            flags,
+        } => {
             let mut args = vec![*expr.clone(), *pattern.clone(), *replacement.clone()];
             if let Some(f) = flags {
                 args.push(*f.clone());
@@ -438,8 +466,7 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         TypedFunction::Left { expr, n } | TypedFunction::Right { expr, n } => {
             vec![*expr.clone(), *n.clone()]
         }
-        TypedFunction::Lpad { expr, length, pad }
-        | TypedFunction::Rpad { expr, length, pad } => {
+        TypedFunction::Lpad { expr, length, pad } | TypedFunction::Rpad { expr, length, pad } => {
             let mut args = vec![*expr.clone(), *length.clone()];
             if let Some(p) = pad {
                 args.push(*p.clone());
@@ -468,8 +495,16 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
             vec![*expr.clone(), *path.clone()]
         }
         TypedFunction::NTile { n } => vec![*n.clone()],
-        TypedFunction::Lead { expr, offset, default }
-        | TypedFunction::Lag { expr, offset, default } => {
+        TypedFunction::Lead {
+            expr,
+            offset,
+            default,
+        }
+        | TypedFunction::Lag {
+            expr,
+            offset,
+            default,
+        } => {
             let mut args = vec![*expr.clone()];
             if let Some(o) = offset {
                 args.push(*o.clone());
@@ -709,14 +744,10 @@ pub fn transpile_ext(
     write_dialect: &DialectRef,
 ) -> errors::Result<String> {
     // Parse using the read dialect (fall back to Ansi for custom dialects)
-    let parse_dialect = read_dialect
-        .as_builtin()
-        .unwrap_or(Dialect::Ansi);
+    let parse_dialect = read_dialect.as_builtin().unwrap_or(Dialect::Ansi);
     let ast = crate::parser::parse(sql, parse_dialect)?;
     let transformed = transform(&ast, read_dialect, write_dialect);
-    let gen_dialect = write_dialect
-        .as_builtin()
-        .unwrap_or(Dialect::Ansi);
+    let gen_dialect = write_dialect.as_builtin().unwrap_or(Dialect::Ansi);
     Ok(crate::generator::generate(&transformed, gen_dialect))
 }
 
@@ -730,13 +761,9 @@ pub fn transpile_statements_ext(
     read_dialect: &DialectRef,
     write_dialect: &DialectRef,
 ) -> errors::Result<Vec<String>> {
-    let parse_dialect = read_dialect
-        .as_builtin()
-        .unwrap_or(Dialect::Ansi);
+    let parse_dialect = read_dialect.as_builtin().unwrap_or(Dialect::Ansi);
     let stmts = crate::parser::parse_statements(sql, parse_dialect)?;
-    let gen_dialect = write_dialect
-        .as_builtin()
-        .unwrap_or(Dialect::Ansi);
+    let gen_dialect = write_dialect.as_builtin().unwrap_or(Dialect::Ansi);
     let mut results = Vec::with_capacity(stmts.len());
     for stmt in &stmts {
         let transformed = transform(stmt, read_dialect, write_dialect);

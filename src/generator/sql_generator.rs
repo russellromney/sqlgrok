@@ -153,12 +153,7 @@ impl Generator {
         if comment.starts_with('#') {
             let is_mysql_target = matches!(
                 self.dialect,
-                Some(
-                    Dialect::Mysql
-                        | Dialect::Doris
-                        | Dialect::SingleStore
-                        | Dialect::StarRocks
-                )
+                Some(Dialect::Mysql | Dialect::Doris | Dialect::SingleStore | Dialect::StarRocks)
             );
             if !is_mysql_target {
                 return format!("--{}", &comment[1..]);
@@ -439,7 +434,11 @@ impl Generator {
                 self.write(table);
                 self.write(".*");
             }
-            SelectItem::Expr { expr, alias, alias_quote_style } => {
+            SelectItem::Expr {
+                expr,
+                alias,
+                alias_quote_style,
+            } => {
                 self.gen_expr(expr);
                 if let Some(alias) = alias {
                     self.write(" ");
@@ -453,7 +452,11 @@ impl Generator {
     fn gen_table_source(&mut self, source: &TableSource) {
         match source {
             TableSource::Table(table_ref) => self.gen_table_ref(table_ref),
-            TableSource::Subquery { query, alias, alias_quote_style } => {
+            TableSource::Subquery {
+                query,
+                alias,
+                alias_quote_style,
+            } => {
                 self.write("(");
                 self.gen_statement(query);
                 self.write(")");
@@ -465,7 +468,12 @@ impl Generator {
                     self.write_quoted(alias, *alias_quote_style);
                 }
             }
-            TableSource::TableFunction { name, args, alias, alias_quote_style } => {
+            TableSource::TableFunction {
+                name,
+                args,
+                alias,
+                alias_quote_style,
+            } => {
                 self.write(name);
                 self.write("(");
                 self.gen_expr_list(args);

@@ -78,7 +78,7 @@ Acceptance checks:
 
 ```bash
 cargo test --features cli
-rg --hidden "sqlglot-rust|sqlglot_rust|libsqlglot_rust|-lsqlglot_rust|target/release/sqlglot|bin/sqlglot" . --glob '!docs/ROADMAP.md'
+rg --hidden "sqlglot-rust|sqlglot_rust|libsqlglot_rust|-lsqlglot_rust|target/release/sqlglot|bin/sqlglot" . --glob '!docs/ROADMAP.md' --glob '!.git/**' --glob '!target/**'
 ```
 
 The `rg` check should return no project-facing references. Upstream attribution links are allowed.
@@ -320,6 +320,8 @@ cargo test --features cli
 
 ### Session 2: Add Standard CI
 
+Status: complete.
+
 Files:
 
 - `.github/workflows/ci.yml`
@@ -338,10 +340,12 @@ Done when:
 cargo fmt --check
 cargo clippy --features cli --all-targets
 cargo test --features cli
-rg --hidden "sqlglot-rust|sqlglot_rust|libsqlglot_rust|-lsqlglot_rust|target/release/sqlglot|bin/sqlglot" . --glob '!docs/ROADMAP.md'
+rg --hidden "sqlglot-rust|sqlglot_rust|libsqlglot_rust|-lsqlglot_rust|target/release/sqlglot|bin/sqlglot" . --glob '!docs/ROADMAP.md' --glob '!.git/**' --glob '!target/**'
 ```
 
 ### Session 3: Build The Fixture Importer Skeleton
+
+Status: next.
 
 Files:
 

@@ -395,18 +395,12 @@ fn test_schema_duplicate_and_replace() {
         .unwrap();
 
     // Duplicate should fail
-    let result = schema.add_table(
-        &["t"],
-        vec![("b".into(), sqlgrok::ast::DataType::Text)],
-    );
+    let result = schema.add_table(&["t"], vec![("b".into(), sqlgrok::ast::DataType::Text)]);
     assert!(matches!(result, Err(SchemaError::DuplicateTable(_))));
 
     // Replace should succeed
     schema
-        .replace_table(
-            &["t"],
-            vec![("b".into(), sqlgrok::ast::DataType::Text)],
-        )
+        .replace_table(&["t"], vec![("b".into(), sqlgrok::ast::DataType::Text)])
         .unwrap();
     assert!(schema.has_column(&["t"], "b"));
     assert!(!schema.has_column(&["t"], "a"));

@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  SQLGLOT_REF: 33b31be8255d45a464cd119fe4d16c3438ff3be3
+
+jobs:
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --check
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo clippy --features cli --all-targets
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --features cli
+
+  parity-smoke:
+    name: sqlglot parity smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sqlgrok
+        uses: actions/checkout@v5
+        with:
+          path: sqlgrok
+
+      - name: Checkout Python SQLGlot
+        uses: actions/checkout@v5
+        with:
+          repository: tobymao/sqlglot
+          ref: ${{ env.SQLGLOT_REF }}
+          path: sqlglot
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Run parity smoke
+        working-directory: sqlgrok
+        env:
+          SQLGLOT_PYTHON_PATH: ${{ github.workspace }}/sqlglot
+        run: cargo test sqlglot_python_smoke_parity --features cli -- --nocapture

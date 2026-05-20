@@ -598,7 +598,11 @@ impl Parser {
             None => (None, QuoteStyle::None),
         };
 
-        Ok(SelectItem::Expr { expr, alias, alias_quote_style })
+        Ok(SelectItem::Expr {
+            expr,
+            alias,
+            alias_quote_style,
+        })
     }
 
     fn parse_optional_alias(&mut self) -> Result<Option<(String, QuoteStyle)>> {
@@ -782,7 +786,11 @@ impl Parser {
                 Some((name, qs)) => (Some(name), qs),
                 None => (None, QuoteStyle::None),
             };
-            values.push(PivotValue { value, alias, alias_quote_style });
+            values.push(PivotValue {
+                value,
+                alias,
+                alias_quote_style,
+            });
             if !self.match_token(TokenType::Comma) {
                 break;
             }

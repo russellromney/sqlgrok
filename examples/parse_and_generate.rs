@@ -2,7 +2,7 @@
 //!
 //! Run with: `cargo run --example parse_and_generate`
 
-use sqlgrok::{generate, generate_pretty, parse, Dialect, Statement};
+use sqlgrok::{Dialect, Statement, generate, generate_pretty, parse};
 
 fn main() {
     let sql = "SELECT id, name, salary * 1.1 AS adjusted FROM employees WHERE department = 'Engineering' ORDER BY salary DESC LIMIT 10";

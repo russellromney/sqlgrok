@@ -2,9 +2,7 @@
 //!
 //! Run with: `cargo run --example comments`
 
-use sqlgrok::{
-    generate, parse_with_comments, transpile_with_comments, Dialect, Statement,
-};
+use sqlgrok::{Dialect, Statement, generate, parse_with_comments, transpile_with_comments};
 
 fn main() {
     // Parse with comments preserved

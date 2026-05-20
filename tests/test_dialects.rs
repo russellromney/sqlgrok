@@ -2104,7 +2104,10 @@ fn test_postgres_array_type_varchar() {
 
 #[test]
 fn test_postgres_array_type_column_def() {
-    assert_identity("CREATE TABLE t (tags TEXT[], scores INT[][])", Dialect::Postgres);
+    assert_identity(
+        "CREATE TABLE t (tags TEXT[], scores INT[][])",
+        Dialect::Postgres,
+    );
 }
 
 #[test]

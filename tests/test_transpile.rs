@@ -995,12 +995,9 @@ fn test_parse_errors() {
 
 #[test]
 fn test_transpile_multiple_statements() {
-    let results = sqlgrok::transpile_statements(
-        "SELECT 1; SELECT 2; SELECT 3",
-        Dialect::Ansi,
-        Dialect::Ansi,
-    )
-    .unwrap();
+    let results =
+        sqlgrok::transpile_statements("SELECT 1; SELECT 2; SELECT 3", Dialect::Ansi, Dialect::Ansi)
+            .unwrap();
     assert_eq!(results.len(), 3);
     assert_eq!(results[0], "SELECT 1");
     assert_eq!(results[1], "SELECT 2");

@@ -3,7 +3,7 @@
 //! Run with: `cargo run --example builder`
 
 use sqlgrok::builder::*;
-use sqlgrok::{generate, Dialect};
+use sqlgrok::{Dialect, generate};
 
 fn main() {
     // Simple SELECT
