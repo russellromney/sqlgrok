@@ -223,9 +223,33 @@ fn test_identity_join_subquery() {
 
 #[test]
 fn test_identity_multiple_from_tables() {
-    // Note: comma-separated FROM tables parsed as single table (limitation)
-    // Use explicit CROSS JOIN instead
+    assert_eq!(
+        transpile("SELECT * FROM a, b", Dialect::Ansi, Dialect::Ansi).unwrap(),
+        "SELECT * FROM a CROSS JOIN b"
+    );
     validate_identity("SELECT * FROM a CROSS JOIN b");
+}
+
+#[test]
+fn test_mysql_group_concat_to_sqlite() {
+    assert_eq!(
+        transpile(
+            "SELECT GROUP_CONCAT(v SEPARATOR '|') FROM gc",
+            Dialect::Mysql,
+            Dialect::Sqlite,
+        )
+        .unwrap(),
+        "SELECT GROUP_CONCAT(v, '|') FROM gc"
+    );
+    assert_eq!(
+        transpile(
+            "SELECT GROUP_CONCAT(v ORDER BY v SEPARATOR '|') FROM gc",
+            Dialect::Mysql,
+            Dialect::Sqlite,
+        )
+        .unwrap(),
+        "SELECT GROUP_CONCAT(v, '|') FROM gc"
+    );
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -851,6 +851,10 @@ impl Parser {
         let mut joins = Vec::new();
         loop {
             let join_type = match self.peek_type() {
+                TokenType::Comma => {
+                    self.advance();
+                    JoinType::Cross
+                }
                 TokenType::Join => {
                     self.advance();
                     JoinType::Inner
@@ -2802,7 +2806,9 @@ impl Parser {
                     // Special: COUNT(*), COUNT(DISTINCT x)
                     let distinct = self.match_token(TokenType::Distinct);
 
-                    let args = if self.peek_type() == &TokenType::RParen {
+                    let args = if name.eq_ignore_ascii_case("GROUP_CONCAT") {
+                        self.parse_group_concat_args()?
+                    } else if self.peek_type() == &TokenType::RParen {
                         vec![]
                     } else if self.peek_type() == &TokenType::Star {
                         self.advance();
@@ -2937,6 +2943,40 @@ impl Parser {
                 None
             }
         }
+    }
+
+    fn parse_group_concat_args(&mut self) -> Result<Vec<Expr>> {
+        if self.peek_type() == &TokenType::RParen {
+            return Ok(vec![]);
+        }
+
+        let mut args = vec![self.parse_expr()?];
+
+        if self.match_token(TokenType::Order) {
+            self.expect(TokenType::By)?;
+            loop {
+                let _ = self.parse_expr()?;
+                if !self.match_token(TokenType::Asc) {
+                    let _ = self.match_token(TokenType::Desc);
+                }
+                if self.check_keyword("SEPARATOR") || self.peek_type() == &TokenType::RParen {
+                    break;
+                }
+                if !self.match_token(TokenType::Comma) {
+                    break;
+                }
+            }
+        } else {
+            while self.match_token(TokenType::Comma) {
+                args.push(self.parse_expr()?);
+            }
+        }
+
+        if self.match_keyword("SEPARATOR") {
+            args.push(self.parse_expr()?);
+        }
+
+        Ok(args)
     }
 
     /// Try to construct a typed function expression from a parsed function call.
