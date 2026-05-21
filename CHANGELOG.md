@@ -113,3 +113,7 @@ this file records what landed.
 ### SIGNED Cast Hostile Review Fix
 
 - Scoped `SIGNED` cast normalization to MySQL-family reads so Postgres/SQLite unknown `SIGNED` casts stay preserved when targeting SQLite.
+
+### MySQL DATE_FORMAT Parity
+
+- Render MySQL `DATE_FORMAT(expr, format)` as SQLite `STRFTIME(format, expr)` when targeting SQLite.

@@ -25,3 +25,4 @@
 {"id":"mysql-if-to-sqlite","sql":"SELECT IF(a > 0, 'y', 'n') FROM t","read":"mysql","write":"sqlite","tags":["transpile","mysql","sqlite","function"],"source":"manual:mysql-sqlite-gap-inventory","mode":"transpile"}
 {"id":"mysql-cast-signed-to-sqlite","sql":"SELECT CAST(a AS SIGNED) FROM t","read":"mysql","write":"sqlite","tags":["transpile","mysql","sqlite","cast","type"],"source":"manual:mysql-sqlite-gap-inventory","mode":"transpile"}
 {"id":"postgres-cast-signed-to-sqlite","sql":"SELECT CAST(a AS SIGNED) FROM t","read":"postgres","write":"sqlite","tags":["transpile","postgres","sqlite","cast","type"],"source":"manual:hostile-review-signed-scope","mode":"transpile"}
+{"id":"mysql-date-format-to-sqlite","sql":"SELECT DATE_FORMAT(d, '%Y-%m-%d') FROM t","read":"mysql","write":"sqlite","tags":["transpile","mysql","sqlite","function","datetime"],"source":"manual:mysql-sqlite-gap-inventory","mode":"transpile"}

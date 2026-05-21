@@ -2014,6 +2014,16 @@ fn test_time_format_postgres_to_mysql() {
 }
 
 #[test]
+fn test_time_format_mysql_to_sqlite_strftime() {
+    validate_with_dialect(
+        "SELECT DATE_FORMAT(d, '%Y-%m-%d') FROM t",
+        "SELECT STRFTIME('%Y-%m-%d', d) FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_time_format_mysql_to_spark() {
     // MySQL format to Spark Java DateTimeFormatter style
     validate_with_dialect(

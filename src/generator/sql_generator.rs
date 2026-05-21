@@ -2485,7 +2485,14 @@ impl Generator {
                 self.write(")");
             }
             TypedFunction::TimeToStr { expr, format } => {
-                if is_mysql || is_hive_family {
+                if matches!(dialect, Some(Dialect::Sqlite)) {
+                    self.write_keyword("STRFTIME(");
+                    self.gen_expr(format);
+                    self.write(", ");
+                    self.gen_expr(expr);
+                    self.write(")");
+                    return;
+                } else if is_mysql || is_hive_family {
                     self.write_keyword("DATE_FORMAT(");
                 } else if is_bigquery {
                     self.write_keyword("FORMAT_TIMESTAMP(");
