@@ -701,6 +701,7 @@ mod tests {
                 fetch_first: None,
                 qualify: None,
                 window_definitions: vec![],
+                lock: None,
             })),
             negated: false,
         };

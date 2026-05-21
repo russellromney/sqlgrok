@@ -137,6 +137,9 @@ pub struct SelectStatement {
     pub qualify: Option<Expr>,
     /// Named WINDOW definitions
     pub window_definitions: Vec<WindowDefinition>,
+    /// Locking clause such as `FOR UPDATE`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lock: Option<String>,
 }
 
 /// A Common Table Expression: `name [(col1, col2)] AS [NOT] MATERIALIZED (query)`

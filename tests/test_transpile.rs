@@ -340,6 +340,22 @@ fn test_mysql_comma_limit_to_sqlite() {
     );
 }
 
+#[test]
+fn test_postgres_for_update_to_sqlite() {
+    validate_with_dialect(
+        "SELECT a FROM t FOR UPDATE",
+        "SELECT a FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT a FROM t FOR UPDATE",
+        "SELECT a FROM t FOR UPDATE",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – Subqueries
 // (from Python identity.sql)

@@ -314,6 +314,9 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
         Statement::Select(sel) => {
             // Transform LIMIT / TOP / FETCH FIRST for the target dialect
             transform_limit(sel, target);
+            if matches!(target, Dialect::Sqlite) {
+                sel.lock = None;
+            }
             // Transform identifier quoting for the target dialect
             transform_quotes_in_select(sel, target);
 

@@ -862,6 +862,7 @@ impl SelectBuilder {
                 fetch_first: None,
                 qualify: None,
                 window_definitions: Vec::new(),
+                lock: None,
             },
             dialect: Dialect::Ansi,
         }

@@ -506,6 +506,16 @@ impl Parser {
             None
         };
 
+        let lock = if self.match_keyword("FOR") {
+            if self.match_token(TokenType::Update) {
+                Some("FOR UPDATE".to_string())
+            } else {
+                Some(format!("FOR {}", self.expect_name()?.to_uppercase()))
+            }
+        } else {
+            None
+        };
+
         Ok(SelectStatement {
             comments: vec![],
             ctes,
@@ -523,6 +533,7 @@ impl Parser {
             fetch_first,
             qualify,
             window_definitions,
+            lock,
         })
     }
 
@@ -662,6 +673,7 @@ impl Parser {
                     | "RETURNING"
                     | "PIVOT"
                     | "UNPIVOT"
+                    | "FOR"
             ) {
                 let token = self.advance().clone();
                 let qs = quote_style_from_char(token.quote_char);

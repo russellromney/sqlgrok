@@ -93,3 +93,7 @@ this file records what landed.
 ### MySQL LIMIT Parity
 
 - Added parser support for MySQL comma limits (`LIMIT offset, count`) and normalize them to SQLGlot-style `LIMIT count OFFSET offset` when targeting SQLite.
+
+### Postgres Locking Read Parity
+
+- Added `FOR UPDATE` parsing/generation for Postgres-style locking reads and drop the clause when targeting SQLite to match Python SQLGlot.

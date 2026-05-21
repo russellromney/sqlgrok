@@ -396,6 +396,11 @@ impl Generator {
             self.write(" ");
             self.write_keyword("ROWS ONLY");
         }
+
+        if let Some(lock) = &sel.lock {
+            self.sep();
+            self.write_keyword(lock);
+        }
     }
 
     fn gen_ctes(&mut self, ctes: &[Cte]) {
