@@ -1550,6 +1550,14 @@ impl Parser {
         let columns = self.parse_order_by_items()?;
         self.expect(TokenType::RParen)?;
 
+        // Partial index predicate. SQLGlot accepts `WHERE` regardless of read
+        // dialect; SQLite and Postgres render it, others drop it.
+        let where_clause = if self.match_token(TokenType::Where) {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
+
         Ok(CreateIndexStatement {
             comments: vec![],
             name,
@@ -1559,6 +1567,7 @@ impl Parser {
             if_not_exists,
             concurrently,
             using,
+            where_clause,
         })
     }
 

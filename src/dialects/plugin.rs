@@ -592,6 +592,9 @@ fn transform_statement_plugin(statement: &mut Statement, target: &DialectRef) {
             for column in &mut idx.columns {
                 column.expr = transform_expr_plugin(column.expr.clone(), target);
             }
+            if let Some(predicate) = &mut idx.where_clause {
+                *predicate = transform_expr_plugin(predicate.clone(), target);
+            }
         }
         _ => {}
     }

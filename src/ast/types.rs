@@ -1638,6 +1638,9 @@ pub struct CreateIndexStatement {
     pub if_not_exists: bool,
     pub concurrently: bool,
     pub using: Option<String>,
+    /// Partial-index predicate (`WHERE ...`). Supported by SQLite and Postgres.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub where_clause: Option<Expr>,
 }
 
 /// DROP INDEX statement.

@@ -1318,6 +1318,10 @@ impl Generator {
         self.write("(");
         self.gen_order_by_items_inline(&idx.columns);
         self.write(")");
+        if let Some(predicate) = &idx.where_clause {
+            self.write_keyword(" WHERE ");
+            self.gen_expr(predicate);
+        }
     }
 
     fn gen_drop_index(&mut self, idx: &DropIndexStatement) {

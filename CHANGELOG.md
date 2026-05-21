@@ -80,3 +80,7 @@ this file records what landed.
 - Widened index parameters from bare names to `OrderByItem`, adding coverage for expression indexes and descending index keys.
 - Added index statement support to table discovery, AST diffing, dialect/plugin transforms, and comment tests.
 - Updated fixture importer inventory labels for `Create` and `Drop` index coverage.
+
+### Partial Indexes
+
+- Added partial-index support: `CREATE INDEX ... WHERE <predicate>` now parses, stores the predicate on the AST, applies dialect/plugin transforms to the predicate, and renders for SQLite/Postgres (previously a hard parse error). Added MySQL/SQLite-to-SQLite parity cases and a focused regression test.

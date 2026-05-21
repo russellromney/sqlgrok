@@ -868,6 +868,25 @@ fn test_create_index_expressions_to_postgres() {
 }
 
 #[test]
+fn test_create_partial_index() {
+    // SQLGlot accepts a `WHERE` predicate on CREATE INDEX regardless of read
+    // dialect and renders it for SQLite/Postgres (partial indexes).
+    let cases = [
+        (Dialect::Mysql, Dialect::Sqlite),
+        (Dialect::Postgres, Dialect::Postgres),
+        (Dialect::Sqlite, Dialect::Sqlite),
+    ];
+    for (read, write) in cases {
+        validate_with_dialect(
+            "CREATE INDEX idx ON x (a) WHERE a > 0",
+            "CREATE INDEX idx ON x(a) WHERE a > 0",
+            read,
+            write,
+        );
+    }
+}
+
+#[test]
 fn test_create_unique_index_to_sqlite() {
     validate_with_dialect(
         "CREATE UNIQUE INDEX idx ON x (a, b)",
