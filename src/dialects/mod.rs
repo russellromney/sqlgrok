@@ -795,6 +795,9 @@ pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
             DataType::TinyInt | DataType::SmallInt | DataType::Int | DataType::BigInt,
             Dialect::Sqlite,
         ) => DataType::Unknown("INTEGER".to_string()),
+        (DataType::Unknown(name), Dialect::Sqlite) if name.eq_ignore_ascii_case("SIGNED") => {
+            DataType::Unknown("INTEGER".to_string())
+        }
         (DataType::Boolean, Dialect::Sqlite) => DataType::Unknown("INTEGER".to_string()),
         (DataType::Float | DataType::Double, Dialect::Sqlite) => DataType::Real,
         (

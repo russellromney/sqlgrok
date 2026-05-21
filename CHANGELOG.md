@@ -105,3 +105,7 @@ this file records what landed.
 ### MySQL IF Parity
 
 - Added parser support for MySQL `IF(condition, true, false)` expressions and render them as SQLite `IIF(...)` when targeting SQLite.
+
+### MySQL SIGNED Cast Parity
+
+- Mapped MySQL `CAST(... AS SIGNED)` to SQLite `CAST(... AS INTEGER)` to match Python SQLGlot.

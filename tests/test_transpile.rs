@@ -1252,6 +1252,16 @@ fn test_transpile_type_mapping_int_to_bigint() {
 }
 
 #[test]
+fn test_mysql_signed_cast_to_sqlite_integer() {
+    validate_with_dialect(
+        "SELECT CAST(a AS SIGNED) FROM t",
+        "SELECT CAST(a AS INTEGER) FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_transpile_type_mapping_float_to_double() {
     // FLOAT → DOUBLE for BigQuery
     validate_with_dialect(
