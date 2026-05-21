@@ -84,3 +84,8 @@ this file records what landed.
 ### Partial Indexes
 
 - Added partial-index support: `CREATE INDEX ... WHERE <predicate>` now parses, stores the predicate on the AST, applies dialect/plugin transforms to the predicate, and renders for SQLite/Postgres (previously a hard parse error). Added MySQL/SQLite-to-SQLite parity cases and a focused regression test.
+
+### SQLite Function Parity
+
+- Matched Python SQLGlot for Postgres `NOW()` to SQLite by rendering bare `CURRENT_TIMESTAMP`, while preserving MySQL `NOW()` to SQLite as `NOW()`.
+- Matched Python SQLGlot for MySQL `IFNULL(...)` to SQLite by rewriting it to `COALESCE(...)`.

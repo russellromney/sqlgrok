@@ -305,11 +305,11 @@ pub fn transform(statement: &Statement, from: Dialect, to: Dialect) -> Statement
         return statement.clone();
     }
     let mut stmt = statement.clone();
-    transform_statement(&mut stmt, to);
+    transform_statement(&mut stmt, from, to);
     stmt
 }
 
-fn transform_statement(statement: &mut Statement, target: Dialect) {
+fn transform_statement(statement: &mut Statement, source: Dialect, target: Dialect) {
     match statement {
         Statement::Select(sel) => {
             // Transform LIMIT / TOP / FETCH FIRST for the target dialect
@@ -319,34 +319,34 @@ fn transform_statement(statement: &mut Statement, target: Dialect) {
 
             for item in &mut sel.columns {
                 if let SelectItem::Expr { expr, .. } = item {
-                    *expr = transform_expr(expr.clone(), target);
+                    *expr = transform_expr(expr.clone(), source, target);
                 }
             }
             if let Some(wh) = &mut sel.where_clause {
-                *wh = transform_expr(wh.clone(), target);
+                *wh = transform_expr(wh.clone(), source, target);
             }
             for gb in &mut sel.group_by {
-                *gb = transform_expr(gb.clone(), target);
+                *gb = transform_expr(gb.clone(), source, target);
             }
             if let Some(having) = &mut sel.having {
-                *having = transform_expr(having.clone(), target);
+                *having = transform_expr(having.clone(), source, target);
             }
         }
         Statement::Insert(ins) => {
             if let InsertSource::Values(rows) = &mut ins.source {
                 for row in rows {
                     for val in row {
-                        *val = transform_expr(val.clone(), target);
+                        *val = transform_expr(val.clone(), source, target);
                     }
                 }
             }
         }
         Statement::Update(upd) => {
             for (_, val) in &mut upd.assignments {
-                *val = transform_expr(val.clone(), target);
+                *val = transform_expr(val.clone(), source, target);
             }
             if let Some(wh) = &mut upd.where_clause {
-                *wh = transform_expr(wh.clone(), target);
+                *wh = transform_expr(wh.clone(), source, target);
             }
         }
         // DDL: map data types in CREATE TABLE column definitions
@@ -362,18 +362,18 @@ fn transform_statement(statement: &mut Statement, target: Dialect) {
                 }
                 col.data_type = map_data_type(col.data_type.clone(), target);
                 if let Some(default) = &mut col.default {
-                    *default = transform_expr(default.clone(), target);
+                    *default = transform_expr(default.clone(), source, target);
                 }
             }
             // Transform constraints (CHECK expressions)
             for constraint in &mut ct.constraints {
                 if let TableConstraint::Check { expr, .. } = constraint {
-                    *expr = transform_expr(expr.clone(), target);
+                    *expr = transform_expr(expr.clone(), source, target);
                 }
             }
             // Transform AS SELECT subquery
             if let Some(as_select) = &mut ct.as_select {
-                transform_statement(as_select, target);
+                transform_statement(as_select, source, target);
             }
         }
         // DDL: map data types in ALTER TABLE ADD COLUMN
@@ -383,7 +383,7 @@ fn transform_statement(statement: &mut Statement, target: Dialect) {
                     AlterTableAction::AddColumn(col) => {
                         col.data_type = map_data_type(col.data_type.clone(), target);
                         if let Some(default) = &mut col.default {
-                            *default = transform_expr(default.clone(), target);
+                            *default = transform_expr(default.clone(), source, target);
                         }
                     }
                     AlterTableAction::AlterColumnType { data_type, .. } => {
@@ -395,10 +395,10 @@ fn transform_statement(statement: &mut Statement, target: Dialect) {
         }
         Statement::CreateIndex(idx) => {
             for column in &mut idx.columns {
-                column.expr = transform_expr(column.expr.clone(), target);
+                column.expr = transform_expr(column.expr.clone(), source, target);
             }
             if let Some(predicate) = &mut idx.where_clause {
-                *predicate = transform_expr(predicate.clone(), target);
+                *predicate = transform_expr(predicate.clone(), source, target);
             }
         }
         _ => {}
@@ -431,7 +431,7 @@ fn move_single_column_primary_key_to_column(ct: &mut CreateTableStatement) {
 }
 
 /// Transform an expression for the target dialect.
-fn transform_expr(expr: Expr, target: Dialect) -> Expr {
+fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
     match expr {
         // Map function names across dialects
         Expr::Function {
@@ -444,23 +444,37 @@ fn transform_expr(expr: Expr, target: Dialect) -> Expr {
             let new_name = map_function_name(&name, target);
             let new_args: Vec<Expr> = args
                 .into_iter()
-                .map(|a| transform_expr(a, target))
+                .map(|a| transform_expr(a, source, target))
                 .collect();
             Expr::Function {
                 name: new_name,
                 args: new_args,
                 distinct,
-                filter: filter.map(|f| Box::new(transform_expr(*f, target))),
+                filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
                 over,
             }
         }
         // Recurse into typed function child expressions, with special handling
         // for date/time formatting functions that need format string conversion
         Expr::TypedFunction { func, filter, over } => {
-            let transformed_func = transform_typed_function(func, target);
+            if matches!(func, TypedFunction::CurrentTimestamp)
+                && is_postgres_family(source)
+                && matches!(target, Dialect::Sqlite)
+                && filter.is_none()
+                && over.is_none()
+            {
+                return Expr::Column {
+                    table: None,
+                    name: "CURRENT_TIMESTAMP".to_string(),
+                    quote_style: QuoteStyle::None,
+                    table_quote_style: QuoteStyle::None,
+                };
+            }
+
+            let transformed_func = transform_typed_function(func, source, target);
             Expr::TypedFunction {
                 func: transformed_func,
-                filter: filter.map(|f| Box::new(transform_expr(*f, target))),
+                filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
                 over,
             }
         }
@@ -473,14 +487,14 @@ fn transform_expr(expr: Expr, target: Dialect) -> Expr {
         } if !supports_ilike_builtin(target) => Expr::Like {
             expr: Box::new(Expr::TypedFunction {
                 func: TypedFunction::Lower {
-                    expr: Box::new(transform_expr(*expr, target)),
+                    expr: Box::new(transform_expr(*expr, source, target)),
                 },
                 filter: None,
                 over: None,
             }),
             pattern: Box::new(Expr::TypedFunction {
                 func: TypedFunction::Lower {
-                    expr: Box::new(transform_expr(*pattern, target)),
+                    expr: Box::new(transform_expr(*pattern, source, target)),
                 },
                 filter: None,
                 over: None,
@@ -490,20 +504,20 @@ fn transform_expr(expr: Expr, target: Dialect) -> Expr {
         },
         // Map data types in CAST
         Expr::Cast { expr, data_type } => Expr::Cast {
-            expr: Box::new(transform_expr(*expr, target)),
+            expr: Box::new(transform_expr(*expr, source, target)),
             data_type: map_data_type(data_type, target),
         },
         // Recurse into binary ops
         Expr::BinaryOp { left, op, right } => Expr::BinaryOp {
-            left: Box::new(transform_expr(*left, target)),
+            left: Box::new(transform_expr(*left, source, target)),
             op,
-            right: Box::new(transform_expr(*right, target)),
+            right: Box::new(transform_expr(*right, source, target)),
         },
         Expr::UnaryOp { op, expr } => Expr::UnaryOp {
             op,
-            expr: Box::new(transform_expr(*expr, target)),
+            expr: Box::new(transform_expr(*expr, source, target)),
         },
-        Expr::Nested(inner) => Expr::Nested(Box::new(transform_expr(*inner, target))),
+        Expr::Nested(inner) => Expr::Nested(Box::new(transform_expr(*inner, source, target))),
         // Transform quoting on column references
         Expr::Column {
             table,
@@ -541,26 +555,30 @@ fn transform_expr(expr: Expr, target: Dialect) -> Expr {
 ///
 /// For TimeToStr and StrToTime functions, this converts the format string
 /// from the source dialect's convention to the target dialect's convention.
-fn transform_typed_function(func: TypedFunction, target: Dialect) -> TypedFunction {
+fn transform_typed_function(
+    func: TypedFunction,
+    source: Dialect,
+    target: Dialect,
+) -> TypedFunction {
     match func {
         TypedFunction::TimeToStr { expr, format } => {
-            let transformed_expr = Box::new(transform_expr(*expr, target));
-            let transformed_format = transform_format_expr(*format, target);
+            let transformed_expr = Box::new(transform_expr(*expr, source, target));
+            let transformed_format = transform_format_expr(*format, source, target);
             TypedFunction::TimeToStr {
                 expr: transformed_expr,
                 format: Box::new(transformed_format),
             }
         }
         TypedFunction::StrToTime { expr, format } => {
-            let transformed_expr = Box::new(transform_expr(*expr, target));
-            let transformed_format = transform_format_expr(*format, target);
+            let transformed_expr = Box::new(transform_expr(*expr, source, target));
+            let transformed_format = transform_format_expr(*format, source, target);
             TypedFunction::StrToTime {
                 expr: transformed_expr,
                 format: Box::new(transformed_format),
             }
         }
         // For all other typed functions, just transform child expressions
-        other => other.transform_children(&|e| transform_expr(e, target)),
+        other => other.transform_children(&|e| transform_expr(e, source, target)),
     }
 }
 
@@ -568,10 +586,10 @@ fn transform_typed_function(func: TypedFunction, target: Dialect) -> TypedFuncti
 ///
 /// If the expression is a string literal, convert the format specifiers.
 /// Otherwise, just recursively transform child expressions.
-fn transform_format_expr(expr: Expr, target: Dialect) -> Expr {
-    // We need to know the source dialect to convert properly.
-    // Since we don't have access to the source dialect here, we use heuristics
-    // to detect the format style based on the format string content.
+fn transform_format_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
+    // Detect the source style from the literal. This keeps mixed-format tests
+    // useful even while the broader transform pipeline carries source dialect
+    // context for other rewrites.
     match &expr {
         Expr::StringLiteral(s) => {
             let detected_source = detect_format_style(s);
@@ -585,7 +603,7 @@ fn transform_format_expr(expr: Expr, target: Dialect) -> Expr {
                 expr
             }
         }
-        _ => transform_expr(expr, target),
+        _ => transform_expr(expr, source, target),
     }
 }
 
@@ -706,8 +724,7 @@ pub(crate) fn map_function_name(name: &str, target: Dialect) -> String {
         "IFNULL" => {
             if is_tsql_family(target) {
                 "ISNULL".to_string()
-            } else if is_mysql_family(target) || matches!(target, Dialect::Sqlite) {
-                // MySQL family + SQLite natively support IFNULL
+            } else if is_mysql_family(target) {
                 name.to_string()
             } else {
                 "COALESCE".to_string()

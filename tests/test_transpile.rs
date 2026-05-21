@@ -1101,6 +1101,18 @@ fn test_transpile_now_to_current_timestamp() {
         Dialect::Postgres,
         Dialect::Snowflake,
     );
+    validate_with_dialect(
+        "SELECT NOW()",
+        "SELECT CURRENT_TIMESTAMP",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT NOW()",
+        "SELECT NOW()",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]
@@ -1134,6 +1146,12 @@ fn test_transpile_ifnull_to_coalesce() {
         "SELECT COALESCE(a, b) FROM t",
         Dialect::Mysql,
         Dialect::Ansi,
+    );
+    validate_with_dialect(
+        "SELECT IFNULL(a, 0) FROM t",
+        "SELECT COALESCE(a, 0) FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
     );
 }
 
