@@ -101,3 +101,7 @@ this file records what landed.
 ### MySQL REPLACE Parity
 
 - Added parser and generator support for MySQL/SQLite `REPLACE INTO` statements.
+
+### MySQL IF Parity
+
+- Added parser support for MySQL `IF(condition, true, false)` expressions and render them as SQLite `IIF(...)` when targeting SQLite.

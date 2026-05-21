@@ -22,3 +22,4 @@
 {"id":"mysql-comma-limit-to-sqlite","sql":"SELECT a FROM t LIMIT 5, 10","read":"mysql","write":"sqlite","tags":["transpile","mysql","sqlite","limit"],"source":"manual:mysql-sqlite-gap-inventory","mode":"transpile"}
 {"id":"postgres-for-update-to-sqlite","sql":"SELECT a FROM t FOR UPDATE","read":"postgres","write":"sqlite","tags":["transpile","postgres","sqlite","lock"],"source":"manual:postgres-sqlite-gap-inventory","mode":"transpile"}
 {"id":"mysql-replace-into-to-sqlite","sql":"REPLACE INTO t (id, a) VALUES (1, 2)","read":"mysql","write":"sqlite","tags":["transpile","mysql","sqlite","insert"],"source":"manual:mysql-sqlite-gap-inventory","mode":"transpile"}
+{"id":"mysql-if-to-sqlite","sql":"SELECT IF(a > 0, 'y', 'n') FROM t","read":"mysql","write":"sqlite","tags":["transpile","mysql","sqlite","function"],"source":"manual:mysql-sqlite-gap-inventory","mode":"transpile"}

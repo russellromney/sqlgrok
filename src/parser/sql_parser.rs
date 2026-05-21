@@ -2899,6 +2899,26 @@ impl Parser {
             // ── CASE ────────────────────────────────────────────────
             TokenType::Case => self.parse_case_expr(),
 
+            // ── IF(condition, true, false) ──────────────────────────
+            TokenType::If => {
+                self.advance();
+                self.expect(TokenType::LParen)?;
+                let condition = self.parse_expr()?;
+                self.expect(TokenType::Comma)?;
+                let true_val = self.parse_expr()?;
+                let false_val = if self.match_token(TokenType::Comma) {
+                    Some(Box::new(self.parse_expr()?))
+                } else {
+                    None
+                };
+                self.expect(TokenType::RParen)?;
+                Ok(Expr::If {
+                    condition: Box::new(condition),
+                    true_val: Box::new(true_val),
+                    false_val,
+                })
+            }
+
             // ── EXISTS ──────────────────────────────────────────────
             TokenType::Exists => {
                 self.advance();

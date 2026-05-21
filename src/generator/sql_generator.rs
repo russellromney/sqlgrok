@@ -2070,7 +2070,11 @@ impl Generator {
                 true_val,
                 false_val,
             } => {
-                self.write_keyword("IF(");
+                if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                    self.write_keyword("IIF(");
+                } else {
+                    self.write_keyword("IF(");
+                }
                 self.gen_expr(condition);
                 self.write(", ");
                 self.gen_expr(true_val);

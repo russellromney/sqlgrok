@@ -1192,6 +1192,16 @@ fn test_transpile_ifnull_to_coalesce() {
 }
 
 #[test]
+fn test_mysql_if_to_sqlite_iif() {
+    validate_with_dialect(
+        "SELECT IF(a > 0, 'y', 'n') FROM t",
+        "SELECT IIF(a > 0, 'y', 'n') FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_transpile_ilike_to_like_lower() {
     // ILIKE → LOWER(x) LIKE LOWER(pattern) for MySQL/SQLite
     validate_with_dialect(
