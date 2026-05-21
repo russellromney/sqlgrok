@@ -285,6 +285,44 @@ fn test_postgres_string_agg_to_sqlite_group_concat() {
     );
 }
 
+#[test]
+fn test_postgres_json_access_to_sqlite_paths() {
+    validate_with_dialect(
+        "SELECT data->'k' FROM t",
+        "SELECT data -> '$.k' FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT data->>'k' FROM t",
+        "SELECT data ->> '$.k' FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT data->0 FROM t",
+        "SELECT data -> '$[0]' FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_mysql_json_extract_to_sqlite_arrow() {
+    validate_with_dialect(
+        "SELECT JSON_EXTRACT(data, '$.k') FROM t",
+        "SELECT data -> '$.k' FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT JSON_EXTRACT_SCALAR(data, '$.k') FROM t",
+        "SELECT data ->> '$.k' FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET
 // (from Python identity.sql)

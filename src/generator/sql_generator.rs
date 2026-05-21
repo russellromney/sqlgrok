@@ -2122,9 +2122,9 @@ impl Generator {
             } => {
                 self.gen_expr(expr);
                 if *as_text {
-                    self.write("->>");
+                    self.write(" ->> ");
                 } else {
-                    self.write("->");
+                    self.write(" -> ");
                 }
                 self.gen_expr(path);
             }
@@ -2893,7 +2893,12 @@ impl Generator {
 
             // ── JSON ───────────────────────────────────────────────────
             TypedFunction::JSONExtract { expr, path } => {
-                if is_tsql {
+                if matches!(dialect, Some(Dialect::Sqlite)) {
+                    self.gen_expr(expr);
+                    self.write(" -> ");
+                    self.gen_expr(path);
+                    return;
+                } else if is_tsql {
                     self.write_keyword("JSON_VALUE(");
                 } else {
                     self.write_keyword("JSON_EXTRACT(");
@@ -2904,7 +2909,12 @@ impl Generator {
                 self.write(")");
             }
             TypedFunction::JSONExtractScalar { expr, path } => {
-                if is_bigquery {
+                if matches!(dialect, Some(Dialect::Sqlite)) {
+                    self.gen_expr(expr);
+                    self.write(" ->> ");
+                    self.gen_expr(path);
+                    return;
+                } else if is_bigquery {
                     self.write_keyword("JSON_EXTRACT_SCALAR(");
                 } else if is_tsql {
                     self.write_keyword("JSON_VALUE(");

@@ -521,6 +521,15 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             op,
             expr: Box::new(transform_expr(*expr, source, target)),
         },
+        Expr::JsonAccess {
+            expr,
+            path,
+            as_text,
+        } => Expr::JsonAccess {
+            expr: Box::new(transform_expr(*expr, source, target)),
+            path: Box::new(normalize_json_access_path(*path, target)),
+            as_text,
+        },
         Expr::Nested(inner) => Expr::Nested(Box::new(transform_expr(*inner, source, target))),
         // Transform quoting on column references
         Expr::Column {
@@ -548,6 +557,31 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         }
         // Everything else stays the same
         other => other,
+    }
+}
+
+fn normalize_json_access_path(path: Expr, target: Dialect) -> Expr {
+    if !matches!(target, Dialect::Sqlite) {
+        return path;
+    }
+
+    match path {
+        Expr::StringLiteral(key) => Expr::StringLiteral(sqlite_json_key_path(&key)),
+        Expr::Number(index) => Expr::StringLiteral(format!("$[{index}]")),
+        other => other,
+    }
+}
+
+fn sqlite_json_key_path(key: &str) -> String {
+    if key.chars().all(|c| c == '_' || c.is_ascii_alphanumeric())
+        && key
+            .chars()
+            .next()
+            .is_some_and(|c| c == '_' || c.is_ascii_alphabetic())
+    {
+        format!("$.{key}")
+    } else {
+        format!("$.\"{}\"", key.replace('"', "\\\""))
     }
 }
 

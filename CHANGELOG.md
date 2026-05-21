@@ -121,3 +121,7 @@ this file records what landed.
 ### Postgres STRING_AGG Parity
 
 - Map Postgres `string_agg(expr, separator)` to SQLite `GROUP_CONCAT(expr, separator)`.
+
+### SQLite JSON Path Parity
+
+- Normalize Postgres JSON arrow paths for SQLite output and render SQLite JSON extract functions with `->`/`->>` operators.
