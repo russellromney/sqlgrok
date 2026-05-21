@@ -305,6 +305,8 @@ Cut these as issues or run them directly in order:
 
 ### Session 1: Harden The Parity Harness
 
+Status: complete.
+
 Files:
 
 - `tests/sqlglot_parity.rs`
@@ -470,17 +472,135 @@ Files:
 
 Tasks:
 
-- Replace the current parse-and-discard handling for MySQL `CREATE TABLE` options with explicit AST properties where SQLGlot keeps semantic information. Initial coverage for engine, auto-increment, character set, collation, comment, row format, and unknown passthrough options has landed.
+- Replace the current parse-and-discard handling for MySQL `CREATE TABLE` options with explicit AST properties where SQLGlot keeps semantic information.
 - Decide which properties are target-only rendering details, which are source metadata, and which should survive cross-dialect transforms.
 - Add parser/generator coverage for common properties beyond the first ratchet: `ENGINE`, `CHARACTER SET`, `COLLATE`, `COMMENT`, `ROW_FORMAT`, and table-level `AUTO_INCREMENT`.
 - Keep SQLite output behavior aligned with Python SQLGlot while allowing MySQL identity round-trips to preserve useful options.
 - Add fixture metadata for options that Python SQLGlot warns about and intentionally drops for SQLite.
+
+Landed:
+
+- `CreateTableOption` exists in the AST.
+- MySQL-family generation preserves `ENGINE`, table-level `AUTO_INCREMENT`, character set, collation, comment, row format, and unknown passthrough options.
+- SQLite generation drops MySQL-only table options while preserving valid `AUTOINCREMENT` behavior.
+- MySQL table-level single-column primary keys are moved inline for SQLite identity-column output.
+
+Remaining:
+
+- Decide how much warning/drop metadata should live in fixtures versus docs.
+- Broaden DDL fixtures from hand-added ratchets into imported SQLGlot cases.
 
 Done when:
 
 ```bash
 SQLGROK_PARITY_TAG=ddl cargo test sqlglot_python_smoke_parity --features cli -- --nocapture
 cargo test create_table --features cli
+cargo test --features cli
+```
+
+### Session 8: Expand DDL Parity To Indexes And Constraints
+
+Status: next.
+
+Files:
+
+- `parity/cases/*.jsonl`
+- `tests/test_transpile.rs`
+- `src/ast/types.rs`
+- `src/parser/sql_parser.rs`
+- `src/generator/sql_generator.rs`
+- `src/dialects/`
+
+Tasks:
+
+- Add focused Python SQLGlot parity cases for `CREATE INDEX`, `DROP INDEX`, `ALTER TABLE`, table constraints, foreign keys, check constraints, and default expressions.
+- Split failures into parser gaps, AST representation gaps, generator gaps, and dialect-transform gaps.
+- Implement the smallest high-value DDL family first, preferring exact SQLGlot string parity unless a fixture documents an intentional divergence.
+- Add one Rust regression test for each closed parity gap.
+
+Done when:
+
+```bash
+SQLGROK_PARITY_TAG=ddl cargo test sqlglot_python_smoke_parity --features cli -- --nocapture
+cargo test ddl --features cli
+cargo test --features cli
+```
+
+### Session 9: Build The SQLGlot Test Bridge
+
+Status: planned.
+
+Files:
+
+- `src/bin/xtask.rs`
+- `tests/sqlglot_parity.rs`
+- `docs/PARITY.md`
+- `parity/cases/*.jsonl`
+
+Tasks:
+
+- Extend `xtask import-sqlglot-fixtures` so larger chunks of SQLGlot's transpiler cases can run against sqlgrok without hand-copying expectations.
+- Preserve source test file, test function, dialect pair, and reason-for-skip metadata in imported fixtures.
+- Add importer validation that rejects duplicate ids, malformed dialect names, and fixtures without enough oracle context.
+- Keep generated cases split by feature or dialect pair, not a single unreviewable corpus.
+
+Done when:
+
+```bash
+cargo run --bin xtask -- import-sqlglot-fixtures --sqlglot /path/to/sqlglot --family transpile --read mysql --write sqlite --limit 100 --dry-run
+cargo test sqlglot_python_smoke_parity --features cli
+cargo test --features cli
+```
+
+### Session 10: Parser Architecture Cleanup
+
+Status: planned.
+
+Files:
+
+- `docs/ARCHITECTURE.md`
+- `src/parser/sql_parser.rs`
+- `src/tokens/`
+- `tests/`
+
+Tasks:
+
+- Use the Databend parser article as design inspiration for clearer parse units, better error reporting, and syntax/semantic separation.
+- Identify parser hot spots where one-off dialect branches are hiding reusable grammar structure.
+- Introduce small helper APIs only where they reduce repeated parser branching or make parity failures easier to localize.
+- Keep Python SQLGlot as the behavior contract; Databend is architecture inspiration, not an AST oracle.
+
+Done when:
+
+```bash
+cargo test parser --features cli
+cargo test sqlglot_python_smoke_parity --features cli
+cargo test --features cli
+```
+
+### Session 11: Clippy And Documentation Debt Burn-Down
+
+Status: planned.
+
+Files:
+
+- `src/`
+- `tests/`
+- `README.md`
+- `ROADMAP.md`
+- `CHANGELOG.md`
+
+Tasks:
+
+- Reduce the existing clippy warning backlog so new warnings become meaningful.
+- Prioritize warnings that affect public API clarity, unsafe FFI docs, or confusing parser/generator code.
+- Keep behavior-preserving cleanup commits separate from parity feature commits when practical.
+- Update docs only for user-visible behavior, architecture decisions, or completed roadmap movement.
+
+Done when:
+
+```bash
+cargo clippy --features cli --all-targets
 cargo test --features cli
 ```
 

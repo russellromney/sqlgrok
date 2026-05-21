@@ -61,3 +61,9 @@ this file records what landed.
 - Preserved `ENGINE`, table-level `AUTO_INCREMENT`, character set, collation, comment, and row format options through MySQL round-trips.
 - Kept SQLite generation dropping MySQL table options while preserving valid `AUTOINCREMENT` on integer primary keys.
 - Added a table-level primary-key ratchet for MySQL `AUTO_INCREMENT` columns targeting SQLite.
+
+### Roadmap Reconciliation
+
+- Marked the initial parity harness session complete in [ROADMAP.md](ROADMAP.md).
+- Split the next core work into executable sessions for DDL indexes/constraints, SQLGlot test bridging, parser architecture cleanup, and clippy/docs debt.
+- Left future-looking work in the roadmap and kept completed DDL AST behavior summarized here.
