@@ -1316,7 +1316,7 @@ impl Generator {
             self.write(using);
         }
         self.write("(");
-        self.write(&idx.columns.join(", "));
+        self.gen_order_by_items_inline(&idx.columns);
         self.write(")");
     }
 
@@ -1332,6 +1332,27 @@ impl Generator {
         if let Some(table) = &idx.table {
             self.write_keyword(" ON ");
             self.gen_table_ref(table);
+        }
+    }
+
+    fn gen_order_by_items_inline(&mut self, items: &[OrderByItem]) {
+        for (i, item) in items.iter().enumerate() {
+            if i > 0 {
+                self.write(", ");
+            }
+            self.gen_expr(&item.expr);
+            if !item.ascending {
+                self.write(" ");
+                self.write_keyword("DESC");
+            }
+            if let Some(nulls_first) = item.nulls_first {
+                self.write(" ");
+                if nulls_first {
+                    self.write_keyword("NULLS FIRST");
+                } else {
+                    self.write_keyword("NULLS LAST");
+                }
+            }
         }
     }
 

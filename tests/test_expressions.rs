@@ -47,6 +47,19 @@ fn test_find_tables() {
 }
 
 #[test]
+fn test_find_tables_index_statements() {
+    let stmt = parse_stmt("CREATE INDEX idx ON users (email)");
+    let tables = find_tables(&stmt);
+    assert_eq!(tables.len(), 1);
+    assert_eq!(tables[0].name, "users");
+
+    let stmt = parse_stmt("DROP INDEX idx ON users");
+    let tables = find_tables(&stmt);
+    assert_eq!(tables.len(), 1);
+    assert_eq!(tables[0].name, "users");
+}
+
+#[test]
 fn test_find_columns_qualified() {
     let expr = parse_expr("SELECT t.a");
     let cols = find_columns(&expr);

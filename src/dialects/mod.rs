@@ -393,6 +393,11 @@ fn transform_statement(statement: &mut Statement, target: Dialect) {
                 }
             }
         }
+        Statement::CreateIndex(idx) => {
+            for column in &mut idx.columns {
+                column.expr = transform_expr(column.expr.clone(), target);
+            }
+        }
         _ => {}
     }
 }

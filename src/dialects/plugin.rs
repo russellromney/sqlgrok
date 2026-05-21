@@ -588,6 +588,11 @@ fn transform_statement_plugin(statement: &mut Statement, target: &DialectRef) {
                 }
             }
         }
+        Statement::CreateIndex(idx) => {
+            for column in &mut idx.columns {
+                column.expr = transform_expr_plugin(column.expr.clone(), target);
+            }
+        }
         _ => {}
     }
 }

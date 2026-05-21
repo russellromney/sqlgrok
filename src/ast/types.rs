@@ -1633,7 +1633,7 @@ pub struct CreateIndexStatement {
     pub comments: Vec<String>,
     pub name: Option<String>,
     pub table: TableRef,
-    pub columns: Vec<String>,
+    pub columns: Vec<OrderByItem>,
     pub unique: bool,
     pub if_not_exists: bool,
     pub concurrently: bool,
@@ -2285,6 +2285,8 @@ pub fn find_tables(statement: &Statement) -> Vec<&TableRef> {
         Statement::Delete(del) => vec![&del.table],
         Statement::CreateTable(ct) => vec![&ct.table],
         Statement::DropTable(dt) => vec![&dt.table],
+        Statement::CreateIndex(idx) => vec![&idx.table],
+        Statement::DropIndex(idx) => idx.table.iter().collect(),
         _ => vec![],
     }
 }

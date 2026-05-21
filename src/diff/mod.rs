@@ -100,6 +100,8 @@ impl AstDiffer {
             (Delete(s), Delete(t)) => self.diff_delete(s, t),
             (CreateTable(s), CreateTable(t)) => self.diff_create_table(s, t),
             (DropTable(s), DropTable(t)) => self.diff_drop_table(s, t),
+            (CreateIndex(s), CreateIndex(t)) => self.diff_create_index(s, t),
+            (DropIndex(s), DropIndex(t)) => self.diff_drop_index(s, t),
             (SetOperation(s), SetOperation(t)) => self.diff_set_operation(s, t),
             (AlterTable(s), AlterTable(t)) => self.diff_alter_table(s, t),
             (CreateView(s), CreateView(t)) => self.diff_create_view(s, t),
@@ -345,6 +347,36 @@ impl AstDiffer {
             self.changes.push(ChangeAction::Keep(
                 AstNode::Statement(Box::new(Statement::DropTable(source.clone()))),
                 AstNode::Statement(Box::new(Statement::DropTable(target.clone()))),
+            ));
+        }
+    }
+
+    // ── CREATE / DROP INDEX ───────────────────────────────────────────
+
+    fn diff_create_index(&mut self, source: &CreateIndexStatement, target: &CreateIndexStatement) {
+        if source == target {
+            self.changes.push(ChangeAction::Keep(
+                AstNode::Statement(Box::new(Statement::CreateIndex(source.clone()))),
+                AstNode::Statement(Box::new(Statement::CreateIndex(target.clone()))),
+            ));
+        } else {
+            self.changes.push(ChangeAction::Update(
+                AstNode::Statement(Box::new(Statement::CreateIndex(source.clone()))),
+                AstNode::Statement(Box::new(Statement::CreateIndex(target.clone()))),
+            ));
+        }
+    }
+
+    fn diff_drop_index(&mut self, source: &DropIndexStatement, target: &DropIndexStatement) {
+        if source == target {
+            self.changes.push(ChangeAction::Keep(
+                AstNode::Statement(Box::new(Statement::DropIndex(source.clone()))),
+                AstNode::Statement(Box::new(Statement::DropIndex(target.clone()))),
+            ));
+        } else {
+            self.changes.push(ChangeAction::Update(
+                AstNode::Statement(Box::new(Statement::DropIndex(source.clone()))),
+                AstNode::Statement(Box::new(Statement::DropIndex(target.clone()))),
             ));
         }
     }
@@ -1326,5 +1358,22 @@ mod tests {
         let (keeps, _inserts, _removes, updates, _moves) = count_by_action(&changes);
         assert!(keeps > 0);
         assert!(updates > 0, "should have update for b -> c");
+    }
+
+    #[test]
+    fn test_index_statement_diff() {
+        let source = parse("CREATE INDEX idx ON t (a)", Dialect::Ansi).unwrap();
+        let target = parse("CREATE INDEX idx ON t (a)", Dialect::Ansi).unwrap();
+        let changes = diff(&source, &target);
+        let (keeps, inserts, removes, updates, _moves) = count_by_action(&changes);
+        assert!(keeps > 0);
+        assert_eq!(inserts, 0);
+        assert_eq!(removes, 0);
+        assert_eq!(updates, 0);
+
+        let target = parse("CREATE INDEX idx ON t (a DESC)", Dialect::Ansi).unwrap();
+        let changes = diff(&source, &target);
+        let (_keeps, _inserts, _removes, updates, _moves) = count_by_action(&changes);
+        assert!(updates > 0, "should detect changed index parameters");
     }
 }

@@ -846,6 +846,28 @@ fn test_create_index_to_sqlite() {
 }
 
 #[test]
+fn test_create_index_expressions_to_postgres() {
+    let cases = [
+        (
+            "CREATE INDEX idx ON x (a DESC)",
+            "CREATE INDEX idx ON x(a DESC)",
+        ),
+        (
+            "CREATE INDEX idx ON x (LOWER(a))",
+            "CREATE INDEX idx ON x(LOWER(a))",
+        ),
+        (
+            "CREATE INDEX idx ON x USING BTREE (a)",
+            "CREATE INDEX idx ON x USING BTREE(a)",
+        ),
+    ];
+
+    for (source, expected) in cases {
+        validate_with_dialect(source, expected, Dialect::Postgres, Dialect::Postgres);
+    }
+}
+
+#[test]
 fn test_create_unique_index_to_sqlite() {
     validate_with_dialect(
         "CREATE UNIQUE INDEX idx ON x (a, b)",

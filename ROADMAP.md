@@ -521,12 +521,13 @@ Tasks:
 Landed:
 
 - Standalone `CREATE INDEX` and `DROP INDEX` statements have AST, parser, and generator support.
+- Index parameters reuse `OrderByItem`, covering basic expression indexes and sort direction.
 - MySQL-to-SQLite parity fixtures cover standalone indexes, check constraints, foreign keys, and `ALTER TABLE ... ADD CONSTRAINT`.
 - Focused Rust regression tests cover index round-trips and DDL constraint transpilation.
 
 Remaining:
 
-- Expand from name-only index columns to expression indexes, sort direction, included columns, partial indexes, and dialect-specific index options.
+- Expand index support to included columns, partial indexes, and dialect-specific index options.
 - Add imported SQLGlot DDL batches once the importer can filter by feature tag before writing.
 - Broaden `ALTER TABLE` action coverage beyond add/drop/rename/type/constraint basics.
 

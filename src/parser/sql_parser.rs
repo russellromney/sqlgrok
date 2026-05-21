@@ -1547,7 +1547,7 @@ impl Parser {
         };
 
         self.expect(TokenType::LParen)?;
-        let columns = self.parse_name_list()?;
+        let columns = self.parse_order_by_items()?;
         self.expect(TokenType::RParen)?;
 
         Ok(CreateIndexStatement {

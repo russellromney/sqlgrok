@@ -190,7 +190,7 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | Having | query.py:554 | Expression | unsupported | no clear Rust AST representation yet |
 | HistoricalData | query.py:931 | Expression | unsupported | no clear Rust AST representation yet |
 | IfBlock | query.py:2108 | Expression | unsupported | no clear Rust AST representation yet |
-| Index | query.py:558 | Expression | partial | standalone `CREATE INDEX`/`DROP INDEX` statements exist; expression indexes and index parameters remain shallow |
+| Index | query.py:558 | Expression | partial | standalone `CREATE INDEX`/`DROP INDEX` statements exist with basic expression and sort-direction parameters; included columns, predicates, and dialect-specific options remain shallow |
 | IndexTableHint | query.py:927 | Expression | unsupported | no clear Rust AST representation yet |
 | InputOutputFormat | query.py:878 | Expression | unsupported | no clear Rust AST representation yet |
 | Intersect | query.py:1092 | SetOperation | unsupported | no clear Rust AST representation yet |

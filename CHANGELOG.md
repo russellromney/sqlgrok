@@ -74,3 +74,9 @@ this file records what landed.
 - Added MySQL-to-SQLite parity cases for standalone indexes plus table/check/foreign-key constraint DDL.
 - Extended the SQLGlot fixture importer with source file, source line, test name, and automatic DDL/index/constraint tags.
 - Updated the AST inventory to mark standalone index statement coverage as partial.
+
+### DDL Index Hostile Review Fixes
+
+- Widened index parameters from bare names to `OrderByItem`, adding coverage for expression indexes and descending index keys.
+- Added index statement support to table discovery, AST diffing, dialect/plugin transforms, and comment tests.
+- Updated fixture importer inventory labels for `Create` and `Drop` index coverage.

@@ -31,6 +31,8 @@ fn get_comments(sql: &str) -> Vec<String> {
         Statement::Update(s) => s.comments,
         Statement::Delete(s) => s.comments,
         Statement::CreateTable(s) => s.comments,
+        Statement::CreateIndex(s) => s.comments,
+        Statement::DropIndex(s) => s.comments,
         _ => vec![],
     }
 }
@@ -230,6 +232,15 @@ fn test_create_table_comment() {
         }
         _ => panic!("Expected CREATE TABLE"),
     }
+}
+
+#[test]
+fn test_index_statement_comments() {
+    let comments = get_comments("-- create lookup\nCREATE INDEX idx ON users (email)");
+    assert_eq!(comments, vec!["-- create lookup"]);
+
+    let comments = get_comments("-- drop lookup\nDROP INDEX idx ON users");
+    assert_eq!(comments, vec!["-- drop lookup"]);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
