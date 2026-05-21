@@ -275,6 +275,16 @@ fn test_mysql_group_concat_to_sqlite() {
     );
 }
 
+#[test]
+fn test_postgres_string_agg_to_sqlite_group_concat() {
+    validate_with_dialect(
+        "SELECT string_agg(a, ',') FROM t",
+        "SELECT GROUP_CONCAT(a, ',') FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET
 // (from Python identity.sql)

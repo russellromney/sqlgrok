@@ -779,6 +779,9 @@ pub(crate) fn map_function_name(name: &str, target: Dialect) -> String {
             }
         }
 
+        // ── STRING_AGG / GROUP_CONCAT ───────────────────────────────────
+        "STRING_AGG" if matches!(target, Dialect::Sqlite) => "GROUP_CONCAT".to_string(),
+
         // Everything else – preserve original name
         _ => name.to_string(),
     }

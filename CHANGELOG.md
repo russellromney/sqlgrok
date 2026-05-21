@@ -117,3 +117,7 @@ this file records what landed.
 ### MySQL DATE_FORMAT Parity
 
 - Render MySQL `DATE_FORMAT(expr, format)` as SQLite `STRFTIME(format, expr)` when targeting SQLite.
+
+### Postgres STRING_AGG Parity
+
+- Map Postgres `string_agg(expr, separator)` to SQLite `GROUP_CONCAT(expr, separator)`.
