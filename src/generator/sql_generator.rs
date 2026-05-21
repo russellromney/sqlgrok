@@ -743,7 +743,11 @@ impl Generator {
     // ── INSERT ──────────────────────────────────────────────────
 
     fn gen_insert(&mut self, ins: &InsertStatement) {
-        self.write_keyword("INSERT INTO ");
+        if ins.replace {
+            self.write_keyword("REPLACE INTO ");
+        } else {
+            self.write_keyword("INSERT INTO ");
+        }
         self.gen_table_ref(&ins.table);
 
         if !ins.columns.is_empty() {

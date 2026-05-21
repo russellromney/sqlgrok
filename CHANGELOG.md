@@ -97,3 +97,7 @@ this file records what landed.
 ### Postgres Locking Read Parity
 
 - Added `FOR UPDATE` parsing/generation for Postgres-style locking reads and drop the clause when targeting SQLite to match Python SQLGlot.
+
+### MySQL REPLACE Parity
+
+- Added parser and generator support for MySQL/SQLite `REPLACE INTO` statements.

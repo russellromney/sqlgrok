@@ -616,6 +616,16 @@ fn test_identity_insert() {
 }
 
 #[test]
+fn test_mysql_replace_into_to_sqlite() {
+    validate_with_dialect(
+        "REPLACE INTO t (id, a) VALUES (1, 2)",
+        "REPLACE INTO t (id, a) VALUES (1, 2)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_identity_insert_on_conflict() {
     validate_identity("INSERT INTO t (id) VALUES (1) ON CONFLICT (id) DO NOTHING");
     validate_identity(

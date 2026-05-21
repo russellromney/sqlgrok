@@ -296,7 +296,7 @@ impl Parser {
                     })
                 }
             }
-            TokenType::Insert => self.parse_insert().map(Statement::Insert),
+            TokenType::Insert | TokenType::Replace => self.parse_insert().map(Statement::Insert),
             TokenType::Update => self.parse_update().map(Statement::Update),
             TokenType::Delete => self.parse_delete().map(Statement::Delete),
             TokenType::Merge => self.parse_merge().map(Statement::Merge),
@@ -1142,7 +1142,12 @@ impl Parser {
     // ── INSERT ──────────────────────────────────────────────────────
 
     fn parse_insert(&mut self) -> Result<InsertStatement> {
-        self.expect(TokenType::Insert)?;
+        let replace = if self.match_token(TokenType::Replace) {
+            true
+        } else {
+            self.expect(TokenType::Insert)?;
+            false
+        };
         let _ = self.match_token(TokenType::Into);
         let table = self.parse_table_ref()?;
 
@@ -1230,6 +1235,7 @@ impl Parser {
 
         Ok(InsertStatement {
             comments: vec![],
+            replace,
             table,
             columns,
             source,

@@ -1449,6 +1449,9 @@ pub struct InsertStatement {
     /// Comments attached to this statement.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub comments: Vec<String>,
+    /// Whether this statement was written as `REPLACE INTO`.
+    #[serde(default)]
+    pub replace: bool,
     pub table: TableRef,
     pub columns: Vec<String>,
     pub source: InsertSource,
