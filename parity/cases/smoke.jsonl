@@ -24,3 +24,4 @@
 {"id":"mysql-replace-into-to-sqlite","sql":"REPLACE INTO t (id, a) VALUES (1, 2)","read":"mysql","write":"sqlite","tags":["transpile","mysql","sqlite","insert"],"source":"manual:mysql-sqlite-gap-inventory","mode":"transpile"}
 {"id":"mysql-if-to-sqlite","sql":"SELECT IF(a > 0, 'y', 'n') FROM t","read":"mysql","write":"sqlite","tags":["transpile","mysql","sqlite","function"],"source":"manual:mysql-sqlite-gap-inventory","mode":"transpile"}
 {"id":"mysql-cast-signed-to-sqlite","sql":"SELECT CAST(a AS SIGNED) FROM t","read":"mysql","write":"sqlite","tags":["transpile","mysql","sqlite","cast","type"],"source":"manual:mysql-sqlite-gap-inventory","mode":"transpile"}
+{"id":"postgres-cast-signed-to-sqlite","sql":"SELECT CAST(a AS SIGNED) FROM t","read":"postgres","write":"sqlite","tags":["transpile","postgres","sqlite","cast","type"],"source":"manual:hostile-review-signed-scope","mode":"transpile"}

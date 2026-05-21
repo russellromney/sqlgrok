@@ -109,3 +109,7 @@ this file records what landed.
 ### MySQL SIGNED Cast Parity
 
 - Mapped MySQL `CAST(... AS SIGNED)` to SQLite `CAST(... AS INTEGER)` to match Python SQLGlot.
+
+### SIGNED Cast Hostile Review Fix
+
+- Scoped `SIGNED` cast normalization to MySQL-family reads so Postgres/SQLite unknown `SIGNED` casts stay preserved when targeting SQLite.

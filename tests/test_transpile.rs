@@ -1262,6 +1262,16 @@ fn test_mysql_signed_cast_to_sqlite_integer() {
 }
 
 #[test]
+fn test_postgres_signed_cast_to_sqlite_preserves_unknown_type() {
+    validate_with_dialect(
+        "SELECT CAST(a AS SIGNED) FROM t",
+        "SELECT CAST(a AS SIGNED) FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_transpile_type_mapping_float_to_double() {
     // FLOAT → DOUBLE for BigQuery
     validate_with_dialect(

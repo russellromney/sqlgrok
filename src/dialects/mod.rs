@@ -363,7 +363,7 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 {
                     col.auto_increment = false;
                 }
-                col.data_type = map_data_type(col.data_type.clone(), target);
+                col.data_type = map_data_type_for_source(col.data_type.clone(), source, target);
                 if let Some(default) = &mut col.default {
                     *default = transform_expr(default.clone(), source, target);
                 }
@@ -384,13 +384,14 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             for action in &mut alt.actions {
                 match action {
                     AlterTableAction::AddColumn(col) => {
-                        col.data_type = map_data_type(col.data_type.clone(), target);
+                        col.data_type =
+                            map_data_type_for_source(col.data_type.clone(), source, target);
                         if let Some(default) = &mut col.default {
                             *default = transform_expr(default.clone(), source, target);
                         }
                     }
                     AlterTableAction::AlterColumnType { data_type, .. } => {
-                        *data_type = map_data_type(data_type.clone(), target);
+                        *data_type = map_data_type_for_source(data_type.clone(), source, target);
                     }
                     _ => {}
                 }
@@ -508,7 +509,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         // Map data types in CAST
         Expr::Cast { expr, data_type } => Expr::Cast {
             expr: Box::new(transform_expr(*expr, source, target)),
-            data_type: map_data_type(data_type, target),
+            data_type: map_data_type_for_source(data_type, source, target),
         },
         // Recurse into binary ops
         Expr::BinaryOp { left, op, right } => Expr::BinaryOp {
@@ -795,9 +796,6 @@ pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
             DataType::TinyInt | DataType::SmallInt | DataType::Int | DataType::BigInt,
             Dialect::Sqlite,
         ) => DataType::Unknown("INTEGER".to_string()),
-        (DataType::Unknown(name), Dialect::Sqlite) if name.eq_ignore_ascii_case("SIGNED") => {
-            DataType::Unknown("INTEGER".to_string())
-        }
         (DataType::Boolean, Dialect::Sqlite) => DataType::Unknown("INTEGER".to_string()),
         (DataType::Float | DataType::Double, Dialect::Sqlite) => DataType::Real,
         (
@@ -847,6 +845,17 @@ pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
 
         // Everything else is unchanged
         (dt, _) => dt,
+    }
+}
+
+fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> DataType {
+    match (&dt, source, target) {
+        (DataType::Unknown(name), s, Dialect::Sqlite)
+            if is_mysql_family(s) && name.eq_ignore_ascii_case("SIGNED") =>
+        {
+            DataType::Unknown("INTEGER".to_string())
+        }
+        _ => map_data_type(dt, target),
     }
 }
 
