@@ -474,16 +474,22 @@ impl Parser {
             vec![]
         };
 
-        let limit = if self.match_token(TokenType::Limit) {
-            Some(self.parse_expr()?)
+        let (limit, offset) = if self.match_token(TokenType::Limit) {
+            let first = self.parse_expr()?;
+            if self.match_token(TokenType::Comma) {
+                let count = self.parse_expr()?;
+                (Some(count), Some(first))
+            } else {
+                (Some(first), None)
+            }
         } else {
-            None
+            (None, None)
         };
 
-        let offset = if self.match_token(TokenType::Offset) {
+        let offset = if offset.is_none() && self.match_token(TokenType::Offset) {
             Some(self.parse_expr()?)
         } else {
-            None
+            offset
         };
 
         // FETCH FIRST|NEXT n ROWS ONLY (Oracle / ANSI SQL:2008)

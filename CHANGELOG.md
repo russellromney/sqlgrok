@@ -89,3 +89,7 @@ this file records what landed.
 
 - Matched Python SQLGlot for Postgres `NOW()` to SQLite by rendering bare `CURRENT_TIMESTAMP`, while preserving MySQL `NOW()` to SQLite as `NOW()`.
 - Matched Python SQLGlot for MySQL `IFNULL(...)` to SQLite by rewriting it to `COALESCE(...)`.
+
+### MySQL LIMIT Parity
+
+- Added parser support for MySQL comma limits (`LIMIT offset, count`) and normalize them to SQLGlot-style `LIMIT count OFFSET offset` when targeting SQLite.

@@ -330,6 +330,16 @@ fn test_identity_limit_offset() {
     }
 }
 
+#[test]
+fn test_mysql_comma_limit_to_sqlite() {
+    validate_with_dialect(
+        "SELECT a FROM t LIMIT 5, 10",
+        "SELECT a FROM t LIMIT 10 OFFSET 5",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – Subqueries
 // (from Python identity.sql)
