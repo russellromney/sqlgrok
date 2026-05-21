@@ -67,3 +67,10 @@ this file records what landed.
 - Marked the initial parity harness session complete in [ROADMAP.md](ROADMAP.md).
 - Split the next core work into executable sessions for DDL indexes/constraints, SQLGlot test bridging, parser architecture cleanup, and clippy/docs debt.
 - Left future-looking work in the roadmap and kept completed DDL AST behavior summarized here.
+
+### DDL Index And Constraint Ratchets
+
+- Added `CREATE INDEX` and `DROP INDEX` AST, parser, and generator support, including unique indexes, `IF EXISTS`/`IF NOT EXISTS`, PostgreSQL `CONCURRENTLY`, optional `USING`, and MySQL `DROP INDEX ... ON table`.
+- Added MySQL-to-SQLite parity cases for standalone indexes plus table/check/foreign-key constraint DDL.
+- Extended the SQLGlot fixture importer with source file, source line, test name, and automatic DDL/index/constraint tags.
+- Updated the AST inventory to mark standalone index statement coverage as partial.

@@ -265,6 +265,9 @@ struct FixtureCase {
     write: String,
     tags: Vec<String>,
     source: String,
+    source_file: String,
+    source_line: usize,
+    test_name: String,
     mode: String,
 }
 
@@ -446,6 +449,17 @@ def class_dialect_for(parents, node):
                                 return value
     return None
 
+def feature_tags(sql):
+    normalized = sql.strip().lower()
+    tags = ["transpile", read, write, "imported"]
+    if normalized.startswith(("create table", "create index", "drop index", "alter table", "drop table")):
+        tags.append("ddl")
+    if " index " in f" {normalized} " or normalized.startswith(("create index", "drop index")):
+        tags.append("index")
+    if "constraint" in normalized or " foreign key " in f" {normalized} " or " check " in f" {normalized} ":
+        tags.append("constraint")
+    return tags
+
 def make_case(path, lineno, test_name, sql, source_note):
     rel = path.relative_to(root).as_posix()
     case_id = f"sqlglot-{slug(rel.replace('/', '-').replace('.py', ''))}-{lineno:04d}-{slug(test_name)}"
@@ -454,8 +468,11 @@ def make_case(path, lineno, test_name, sql, source_note):
         "sql": sql,
         "read": read,
         "write": write,
-        "tags": ["transpile", read, write, "imported"],
+        "tags": feature_tags(sql),
         "source": f"sqlglot:{rel}:{lineno}:{test_name}:{source_note}",
+        "source_file": rel,
+        "source_line": lineno,
+        "test_name": test_name,
         "mode": "transpile",
     }
 

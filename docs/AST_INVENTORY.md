@@ -31,7 +31,7 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 
 ## Rust AST Surface
 
-- `Statement`: `Select`, `Insert`, `Update`, `Delete`, `CreateTable`, `DropTable`, `SetOperation`, `AlterTable`, `CreateView`, `DropView`, `Truncate`, `Transaction`, `Explain`, `Use`, `Merge`, `Expression`
+- `Statement`: `Select`, `Insert`, `Update`, `Delete`, `CreateTable`, `DropTable`, `CreateIndex`, `DropIndex`, `SetOperation`, `AlterTable`, `CreateView`, `DropView`, `Truncate`, `Transaction`, `Explain`, `Use`, `Merge`, `Expression`
 - `Expr`: `Column`, `Number`, `StringLiteral`, `Boolean`, `Null`, `BinaryOp`, `UnaryOp`, `Function`, `Between`, `InList`, `InSubquery`, `AnyOp`, `AllOp`, `IsNull`, `IsBool`, `Like`, `ILike`, `Case`, `Nested`, `Wildcard`, `Subquery`, `Exists`, `Cast`, `TryCast`, `Extract`, `Interval`, `ArrayLiteral`, `Tuple`, `Coalesce`, `If`, `NullIf`, `Collate`, `Parameter`, `TypeExpr`, `QualifiedWildcard`, `Star`, `Alias`, `ArrayIndex`, `JsonAccess`, `Lambda`, `Default`, `Cube`, `Rollup`, `GroupingSets`, `TypedFunction`, `Commented`
 - `TypedFunction`: `DateAdd`, `DateDiff`, `DateTrunc`, `DateSub`, `CurrentDate`, `CurrentTimestamp`, `StrToTime`, `TimeToStr`, `TsOrDsToDate`, `Year`, `Month`, `Day`, `Trim`, `Substring`, `Upper`, `Lower`, `RegexpLike`, `RegexpExtract`, `RegexpReplace`, `ConcatWs`, `Split`, `Initcap`, `Length`, `Replace`, `Reverse`, `Left`, `Right`, `Lpad`, `Rpad`, `Count`, `Sum`, `Avg`, `Min`, `Max`, `ArrayAgg`, `ApproxDistinct`, `Variance`, `Stddev`, `ArrayConcat`, `ArrayContains`, `ArraySize`, `Explode`, `GenerateSeries`, `Flatten`, `JSONExtract`, `JSONExtractScalar`, `ParseJSON`, `JSONFormat`, `RowNumber`, `Rank`, `DenseRank`, `NTile`, `Lead`, `Lag`, `FirstValue`, `LastValue`, `Abs`, `Ceil`, `Floor`, `Round`, `Log`, `Ln`, `Pow`, `Sqrt`, `Greatest`, `Least`, `Mod`, `Hex`, `Unhex`, `Md5`, `Sha`, `Sha2`
 - `DataType`: `TinyInt`, `SmallInt`, `Int`, `BigInt`, `Float`, `Double`, `Decimal`, `Numeric`, `Real`, `Varchar`, `Char`, `Text`, `String`, `Binary`, `Varbinary`, `Boolean`, `Date`, `Time`, `Timestamp`, `Interval`, `DateTime`, `Blob`, `Bytea`, `Bytes`, `Json`, `Jsonb`, `Uuid`, `Array`, `Map`, `Struct`, `Tuple`, `Null`, `Unknown`, `Variant`, `Object`, `Xml`, `Inet`, `Cidr`, `Macaddr`, `Bit`, `Money`, `Serial`, `BigSerial`, `SmallSerial`, `Regclass`, `Regtype`, `Hstore`, `Geography`, `Geometry`, `Super`
@@ -190,7 +190,7 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 | Having | query.py:554 | Expression | unsupported | no clear Rust AST representation yet |
 | HistoricalData | query.py:931 | Expression | unsupported | no clear Rust AST representation yet |
 | IfBlock | query.py:2108 | Expression | unsupported | no clear Rust AST representation yet |
-| Index | query.py:558 | Expression | unsupported | no clear Rust AST representation yet |
+| Index | query.py:558 | Expression | partial | standalone `CREATE INDEX`/`DROP INDEX` statements exist; expression indexes and index parameters remain shallow |
 | IndexTableHint | query.py:927 | Expression | unsupported | no clear Rust AST representation yet |
 | InputOutputFormat | query.py:878 | Expression | unsupported | no clear Rust AST representation yet |
 | Intersect | query.py:1092 | SetOperation | unsupported | no clear Rust AST representation yet |
@@ -1091,4 +1091,3 @@ This is a planning document, not a conformance claim. `supported` means sqlgrok 
 ```bash
 cargo run --bin xtask -- inventory-ast --sqlglot /path/to/sqlglot
 ```
-

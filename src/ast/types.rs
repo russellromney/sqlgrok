@@ -78,6 +78,10 @@ pub enum Statement {
     Delete(DeleteStatement),
     CreateTable(CreateTableStatement),
     DropTable(DropTableStatement),
+    /// CREATE INDEX ...
+    CreateIndex(CreateIndexStatement),
+    /// DROP INDEX ...
+    DropIndex(DropIndexStatement),
     /// UNION / INTERSECT / EXCEPT between queries
     SetOperation(SetOperationStatement),
     /// ALTER TABLE ...
@@ -1619,6 +1623,33 @@ pub enum ReferentialAction {
     NoAction,
     SetNull,
     SetDefault,
+}
+
+/// CREATE INDEX statement.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CreateIndexStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
+    pub name: Option<String>,
+    pub table: TableRef,
+    pub columns: Vec<String>,
+    pub unique: bool,
+    pub if_not_exists: bool,
+    pub concurrently: bool,
+    pub using: Option<String>,
+}
+
+/// DROP INDEX statement.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DropIndexStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
+    pub name: String,
+    pub table: Option<TableRef>,
+    pub if_exists: bool,
+    pub concurrently: bool,
 }
 
 /// A column definition in CREATE TABLE.

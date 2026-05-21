@@ -201,6 +201,14 @@ impl Generator {
                 self.gen_comments(&s.comments);
                 self.gen_drop_table(s);
             }
+            Statement::CreateIndex(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_create_index(s);
+            }
+            Statement::DropIndex(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_drop_index(s);
+            }
             Statement::SetOperation(s) => {
                 self.gen_comments(&s.comments);
                 self.gen_set_operation(s);
@@ -1279,6 +1287,51 @@ impl Generator {
             ReferentialAction::NoAction => self.write_keyword("NO ACTION"),
             ReferentialAction::SetNull => self.write_keyword("SET NULL"),
             ReferentialAction::SetDefault => self.write_keyword("SET DEFAULT"),
+        }
+    }
+
+    // ── CREATE / DROP INDEX ───────────────────────────────────────
+
+    fn gen_create_index(&mut self, idx: &CreateIndexStatement) {
+        self.write_keyword("CREATE ");
+        if idx.unique {
+            self.write_keyword("UNIQUE ");
+        }
+        self.write_keyword("INDEX ");
+        if idx.concurrently {
+            self.write_keyword("CONCURRENTLY ");
+        }
+        if idx.if_not_exists {
+            self.write_keyword("IF NOT EXISTS ");
+        }
+        if let Some(name) = &idx.name {
+            self.write(name);
+            self.write(" ");
+        }
+        self.write_keyword("ON ");
+        self.gen_table_ref(&idx.table);
+        if let Some(using) = &idx.using {
+            self.write(" ");
+            self.write_keyword("USING ");
+            self.write(using);
+        }
+        self.write("(");
+        self.write(&idx.columns.join(", "));
+        self.write(")");
+    }
+
+    fn gen_drop_index(&mut self, idx: &DropIndexStatement) {
+        self.write_keyword("DROP INDEX ");
+        if idx.concurrently {
+            self.write_keyword("CONCURRENTLY ");
+        }
+        if idx.if_exists {
+            self.write_keyword("IF EXISTS ");
+        }
+        self.write(&idx.name);
+        if let Some(table) = &idx.table {
+            self.write_keyword(" ON ");
+            self.gen_table_ref(table);
         }
     }
 

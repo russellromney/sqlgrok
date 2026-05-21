@@ -500,7 +500,7 @@ cargo test --features cli
 
 ### Session 8: Expand DDL Parity To Indexes And Constraints
 
-Status: next.
+Status: in progress.
 
 Files:
 
@@ -518,6 +518,18 @@ Tasks:
 - Implement the smallest high-value DDL family first, preferring exact SQLGlot string parity unless a fixture documents an intentional divergence.
 - Add one Rust regression test for each closed parity gap.
 
+Landed:
+
+- Standalone `CREATE INDEX` and `DROP INDEX` statements have AST, parser, and generator support.
+- MySQL-to-SQLite parity fixtures cover standalone indexes, check constraints, foreign keys, and `ALTER TABLE ... ADD CONSTRAINT`.
+- Focused Rust regression tests cover index round-trips and DDL constraint transpilation.
+
+Remaining:
+
+- Expand from name-only index columns to expression indexes, sort direction, included columns, partial indexes, and dialect-specific index options.
+- Add imported SQLGlot DDL batches once the importer can filter by feature tag before writing.
+- Broaden `ALTER TABLE` action coverage beyond add/drop/rename/type/constraint basics.
+
 Done when:
 
 ```bash
@@ -528,7 +540,7 @@ cargo test --features cli
 
 ### Session 9: Build The SQLGlot Test Bridge
 
-Status: planned.
+Status: in progress.
 
 Files:
 
@@ -543,6 +555,16 @@ Tasks:
 - Preserve source test file, test function, dialect pair, and reason-for-skip metadata in imported fixtures.
 - Add importer validation that rejects duplicate ids, malformed dialect names, and fixtures without enough oracle context.
 - Keep generated cases split by feature or dialect pair, not a single unreviewable corpus.
+
+Landed:
+
+- Imported fixtures now include `source_file`, `source_line`, and `test_name`.
+- The importer auto-tags obvious DDL, index, and constraint cases.
+
+Remaining:
+
+- Add `--tag` or `--feature` filtering so large SQLGlot batches can be narrowed before writing.
+- Preserve expected target SQL where SQLGlot's test metadata provides it, instead of always recomputing via the oracle at test time.
 
 Done when:
 

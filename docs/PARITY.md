@@ -86,6 +86,10 @@ Use `--output` to choose a different file. The importer currently supports the `
 family and reads straightforward `validate`, `validate_all`, and same-dialect
 `validate_identity` cases from SQLGlot's Python tests.
 
+Imported cases include `source_file`, `source_line`, and `test_name` metadata so
+larger batches can be traced back to the exact SQLGlot test. The importer also
+adds feature tags for obvious DDL, index, and constraint cases.
+
 ## Ratchet
 
 The intended workflow is:

@@ -782,6 +782,28 @@ fn test_mysql_create_table_type_affinity_to_sqlite() {
     );
 }
 
+#[test]
+fn test_mysql_create_table_constraints_to_sqlite() {
+    let cases = [
+        (
+            "CREATE TABLE x (a INT DEFAULT 1, CONSTRAINT ck CHECK (a > 0))",
+            "CREATE TABLE x (a INTEGER DEFAULT 1, CONSTRAINT ck CHECK (a > 0))",
+        ),
+        (
+            "CREATE TABLE x (a INT, CONSTRAINT uq UNIQUE (a))",
+            "CREATE TABLE x (a INTEGER, CONSTRAINT uq UNIQUE (a))",
+        ),
+        (
+            "CREATE TABLE x (a INT, CONSTRAINT fk FOREIGN KEY (a) REFERENCES y (id) ON DELETE CASCADE ON UPDATE SET NULL)",
+            "CREATE TABLE x (a INTEGER, CONSTRAINT fk FOREIGN KEY (a) REFERENCES y (id) ON DELETE CASCADE ON UPDATE SET NULL)",
+        ),
+    ];
+
+    for (source, expected) in cases {
+        validate_with_dialect(source, expected, Dialect::Mysql, Dialect::Sqlite);
+    }
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – DDL: DROP TABLE, CREATE/DROP VIEW
 // (from Python identity.sql)
@@ -813,6 +835,49 @@ fn test_identity_views() {
     }
 }
 
+#[test]
+fn test_create_index_to_sqlite() {
+    validate_with_dialect(
+        "CREATE INDEX idx ON x (a)",
+        "CREATE INDEX idx ON x(a)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_create_unique_index_to_sqlite() {
+    validate_with_dialect(
+        "CREATE UNIQUE INDEX idx ON x (a, b)",
+        "CREATE UNIQUE INDEX idx ON x(a, b)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_drop_index_to_sqlite() {
+    validate_with_dialect(
+        "DROP INDEX idx ON x",
+        "DROP INDEX idx ON x",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_postgres_index_identity() {
+    let cases = [
+        "CREATE INDEX IF NOT EXISTS ON t(c)",
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_table_id ON tbl USING btree(id)",
+        "DROP INDEX IF EXISTS ix_table_id",
+        "DROP INDEX CONCURRENTLY IF EXISTS ix_table_id",
+    ];
+    for sql in &cases {
+        validate_with_dialect(sql, sql, Dialect::Postgres, Dialect::Postgres);
+    }
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – ALTER TABLE
 // (from Python identity.sql: ALTER TABLE section)
@@ -829,6 +894,19 @@ fn test_identity_alter_table() {
     ];
     for sql in &cases {
         validate_identity(sql);
+    }
+}
+
+#[test]
+fn test_alter_table_constraints_to_sqlite() {
+    let cases = [
+        "ALTER TABLE x ADD CONSTRAINT ck CHECK (a > 0)",
+        "ALTER TABLE x ADD CONSTRAINT uq UNIQUE (a)",
+        "ALTER TABLE x ADD CONSTRAINT fk FOREIGN KEY (a) REFERENCES y (id) ON DELETE CASCADE",
+    ];
+
+    for sql in cases {
+        validate_with_dialect(sql, sql, Dialect::Mysql, Dialect::Sqlite);
     }
 }
 

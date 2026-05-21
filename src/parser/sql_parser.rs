@@ -130,6 +130,25 @@ impl Parser {
         }
     }
 
+    fn parse_if_exists(&mut self) -> Result<bool> {
+        if self.match_token(TokenType::If) {
+            self.expect(TokenType::Exists)?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    fn parse_if_not_exists(&mut self) -> Result<bool> {
+        if self.match_token(TokenType::If) {
+            self.expect(TokenType::Not)?;
+            self.expect(TokenType::Exists)?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
     /// Expect a keyword by string value, returning an error if not found.
     fn expect_keyword(&mut self, keyword: &str) -> Result<()> {
         if self.check_keyword(keyword) {
@@ -1435,6 +1454,11 @@ impl Parser {
 
         let temporary = self.match_token(TokenType::Temporary) || self.match_token(TokenType::Temp);
 
+        let unique = self.match_token(TokenType::Unique);
+        if unique || self.peek().token_type == TokenType::Index {
+            return self.parse_create_index(unique).map(Statement::CreateIndex);
+        }
+
         let materialized = self.match_token(TokenType::Materialized);
 
         if self.match_token(TokenType::View) {
@@ -1445,13 +1469,7 @@ impl Parser {
 
         self.expect(TokenType::Table)?;
 
-        let if_not_exists = if self.match_token(TokenType::If) {
-            self.expect(TokenType::Not)?;
-            self.expect(TokenType::Exists)?;
-            true
-        } else {
-            false
-        };
+        let if_not_exists = self.parse_if_not_exists()?;
 
         let table = self.parse_table_ref_no_alias()?;
 
@@ -1509,18 +1527,47 @@ impl Parser {
         }))
     }
 
+    fn parse_create_index(&mut self, unique: bool) -> Result<CreateIndexStatement> {
+        self.expect(TokenType::Index)?;
+        let concurrently = self.match_keyword("CONCURRENTLY");
+        let if_not_exists = self.parse_if_not_exists()?;
+
+        let name = if self.peek().token_type == TokenType::On {
+            None
+        } else {
+            Some(self.expect_name()?)
+        };
+
+        self.expect(TokenType::On)?;
+        let table = self.parse_table_ref_no_alias()?;
+        let using = if self.match_token(TokenType::Using) {
+            Some(self.expect_name()?)
+        } else {
+            None
+        };
+
+        self.expect(TokenType::LParen)?;
+        let columns = self.parse_name_list()?;
+        self.expect(TokenType::RParen)?;
+
+        Ok(CreateIndexStatement {
+            comments: vec![],
+            name,
+            table,
+            columns,
+            unique,
+            if_not_exists,
+            concurrently,
+            using,
+        })
+    }
+
     fn parse_create_view(
         &mut self,
         or_replace: bool,
         materialized: bool,
     ) -> Result<CreateViewStatement> {
-        let if_not_exists = if self.match_token(TokenType::If) {
-            self.expect(TokenType::Not)?;
-            self.expect(TokenType::Exists)?;
-            true
-        } else {
-            false
-        };
+        let if_not_exists = self.parse_if_not_exists()?;
 
         // Parse name without alias (so AS is not consumed as an alias)
         let name = self.parse_table_ref_no_alias()?;
@@ -2041,12 +2088,7 @@ impl Parser {
 
         if self.match_token(TokenType::Materialized) {
             self.expect(TokenType::View)?;
-            let if_exists = if self.match_token(TokenType::If) {
-                self.expect(TokenType::Exists)?;
-                true
-            } else {
-                false
-            };
+            let if_exists = self.parse_if_exists()?;
             let name = self.parse_table_ref()?;
             return Ok(Statement::DropView(DropViewStatement {
                 comments: vec![],
@@ -2056,13 +2098,26 @@ impl Parser {
             }));
         }
 
-        if self.match_token(TokenType::View) {
-            let if_exists = if self.match_token(TokenType::If) {
-                self.expect(TokenType::Exists)?;
-                true
+        if self.match_token(TokenType::Index) {
+            let concurrently = self.match_keyword("CONCURRENTLY");
+            let if_exists = self.parse_if_exists()?;
+            let name = self.expect_name()?;
+            let table = if self.match_token(TokenType::On) {
+                Some(self.parse_table_ref_no_alias()?)
             } else {
-                false
+                None
             };
+            return Ok(Statement::DropIndex(DropIndexStatement {
+                comments: vec![],
+                name,
+                table,
+                if_exists,
+                concurrently,
+            }));
+        }
+
+        if self.match_token(TokenType::View) {
+            let if_exists = self.parse_if_exists()?;
             let name = self.parse_table_ref()?;
             return Ok(Statement::DropView(DropViewStatement {
                 comments: vec![],
@@ -2074,12 +2129,7 @@ impl Parser {
 
         self.expect(TokenType::Table)?;
 
-        let if_exists = if self.match_token(TokenType::If) {
-            self.expect(TokenType::Exists)?;
-            true
-        } else {
-            false
-        };
+        let if_exists = self.parse_if_exists()?;
 
         let table = self.parse_table_ref()?;
         let cascade = self.match_token(TokenType::Cascade);
@@ -2134,12 +2184,7 @@ impl Parser {
             }
         } else if self.match_token(TokenType::Drop) {
             let _ = self.match_keyword("COLUMN");
-            let if_exists = if self.match_token(TokenType::If) {
-                self.expect(TokenType::Exists)?;
-                true
-            } else {
-                false
-            };
+            let if_exists = self.parse_if_exists()?;
             let name = self.expect_name()?;
             Ok(AlterTableAction::DropColumn { name, if_exists })
         } else if self.match_keyword("RENAME") {
@@ -4077,6 +4122,8 @@ fn attach_comments_to_statement(stmt: &mut Statement, comments: Vec<String>) {
         Statement::Delete(s) => s.comments = comments,
         Statement::CreateTable(s) => s.comments = comments,
         Statement::DropTable(s) => s.comments = comments,
+        Statement::CreateIndex(s) => s.comments = comments,
+        Statement::DropIndex(s) => s.comments = comments,
         Statement::SetOperation(s) => s.comments = comments,
         Statement::AlterTable(s) => s.comments = comments,
         Statement::CreateView(s) => s.comments = comments,
