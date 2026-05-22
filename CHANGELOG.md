@@ -141,3 +141,7 @@ this file records what landed.
 ### Postgres ON CONFLICT Spacing Parity
 
 - Render dialect-targeted `ON CONFLICT` column targets without a space before `(` while preserving ANSI identity roundtrips.
+
+### MySQL UNSIGNED Cast Parity
+
+- Map MySQL `CAST(... AS UNSIGNED)` to SQLite `UBIGINT` to match Python SQLGlot.

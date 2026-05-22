@@ -1362,6 +1362,16 @@ fn test_mysql_signed_cast_to_sqlite_integer() {
 }
 
 #[test]
+fn test_mysql_unsigned_cast_to_sqlite_ubigint() {
+    validate_with_dialect(
+        "SELECT CAST(a AS UNSIGNED) FROM t",
+        "SELECT CAST(a AS UBIGINT) FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_postgres_signed_cast_to_sqlite_preserves_unknown_type() {
     validate_with_dialect(
         "SELECT CAST(a AS SIGNED) FROM t",

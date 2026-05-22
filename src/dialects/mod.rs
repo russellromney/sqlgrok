@@ -979,6 +979,11 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
         {
             DataType::Unknown("INTEGER".to_string())
         }
+        (DataType::Unknown(name), s, Dialect::Sqlite)
+            if is_mysql_family(s) && name.eq_ignore_ascii_case("UNSIGNED") =>
+        {
+            DataType::Unknown("UBIGINT".to_string())
+        }
         _ => map_data_type(dt, target),
     }
 }
