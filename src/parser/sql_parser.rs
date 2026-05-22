@@ -1157,6 +1157,7 @@ impl Parser {
             self.expect(TokenType::Insert)?;
             false
         };
+        let ignore = !replace && self.match_token(TokenType::Ignore);
         let _ = self.match_token(TokenType::Into);
         let table = self.parse_table_ref()?;
 
@@ -1269,6 +1270,7 @@ impl Parser {
         Ok(InsertStatement {
             comments: vec![],
             replace,
+            ignore,
             table,
             columns,
             source,

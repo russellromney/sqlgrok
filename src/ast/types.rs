@@ -1455,6 +1455,9 @@ pub struct InsertStatement {
     /// Whether this statement was written as `REPLACE INTO`.
     #[serde(default)]
     pub replace: bool,
+    /// Whether this statement was written as MySQL `INSERT IGNORE`.
+    #[serde(default)]
+    pub ignore: bool,
     pub table: TableRef,
     pub columns: Vec<String>,
     pub source: InsertSource,

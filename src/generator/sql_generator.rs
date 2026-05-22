@@ -752,6 +752,8 @@ impl Generator {
     fn gen_insert(&mut self, ins: &InsertStatement) {
         if ins.replace {
             self.write_keyword("REPLACE INTO ");
+        } else if ins.ignore {
+            self.write_keyword("INSERT IGNORE INTO ");
         } else {
             self.write_keyword("INSERT INTO ");
         }

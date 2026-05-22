@@ -154,3 +154,7 @@ this file records what landed.
 
 - Rewrite simple Postgres `DISTINCT ON` selects to SQLGlot-style SQLite `ROW_NUMBER()` subqueries.
 - Cover `DISTINCT ON` rewrites with explicit ordering, expression outputs, and wildcard projections.
+
+### MySQL INSERT IGNORE Parity
+
+- Parse and render MySQL `INSERT IGNORE` for SQLite-targeted transpilation.

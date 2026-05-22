@@ -1330,6 +1330,16 @@ fn test_mysql_on_duplicate_key_to_sqlite() {
 }
 
 #[test]
+fn test_mysql_insert_ignore_to_sqlite() {
+    validate_with_dialect(
+        "INSERT IGNORE INTO t (id, a) VALUES (1, 2)",
+        "INSERT IGNORE INTO t (id, a) VALUES (1, 2)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_mysql_if_to_sqlite_iif() {
     validate_with_dialect(
         "SELECT IF(a > 0, 'y', 'n') FROM t",
