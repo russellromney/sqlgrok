@@ -1,8 +1,9 @@
 use std::collections::{BTreeMap, HashSet};
 use std::env;
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use serde::{Deserialize, Serialize};
 use sqlgrok::{Dialect, transpile};
@@ -541,7 +542,10 @@ import sys
 
 import sqlglot
 
-sql, read, write = sys.argv[1:4]
+payload = json.load(sys.stdin)
+sql = payload["sql"]
+read = payload["read"]
+write = payload["write"]
 try:
     out = sqlglot.transpile(sql, read=read, write=write)[0]
     print(json.dumps({"ok": True, "sql": out}))
@@ -549,15 +553,33 @@ except Exception as exc:
     print(json.dumps({"ok": False, "error": str(exc)}))
 "#;
 
-    let output = Command::new("python3")
+    let payload = serde_json::json!({
+        "sql": case.sql,
+        "read": case.read,
+        "write": case.write,
+    });
+    let mut child = Command::new("python3")
         .arg("-c")
         .arg(script)
-        .arg(&case.sql)
-        .arg(&case.read)
-        .arg(&case.write)
         .env("PYTHONPATH", sqlglot)
-        .output()
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
         .map_err(|err| format!("failed to run Python SQLGlot oracle: {err}"))?;
+
+    {
+        let Some(mut stdin) = child.stdin.take() else {
+            return Err("failed to open Python SQLGlot oracle stdin".to_string());
+        };
+        stdin
+            .write_all(payload.to_string().as_bytes())
+            .map_err(|err| format!("failed to write Python SQLGlot oracle stdin: {err}"))?;
+    }
+
+    let output = child
+        .wait_with_output()
+        .map_err(|err| format!("failed to wait for Python SQLGlot oracle: {err}"))?;
 
     if !output.status.success() {
         return Err(format!(
@@ -876,20 +898,14 @@ limit = int(sys.argv[5])
 if family != "transpile":
     raise SystemExit(f"unsupported family: {family}")
 
-test_files = [
-    root / "tests" / "test_transpile.py",
-    root / "tests" / "dialects" / f"test_{read}.py",
-    root / "tests" / "dialects" / f"test_{write}.py",
-]
+dialect_dir = root / "tests" / "dialects"
+test_files = [root / "tests" / "test_transpile.py"]
+if dialect_dir.exists():
+    test_files.extend(dialect_dir.glob("test_*.py"))
 test_files = [path for path in dict.fromkeys(test_files) if path.exists()]
 
-def literal(node):
-    if node is None:
-        return None
-    try:
-        return ast.literal_eval(node)
-    except Exception:
-        return None
+UNSUPPORTED = object()
+UNKNOWN = object()
 
 def method_name(call):
     func = call.func
@@ -928,10 +944,82 @@ def class_dialect_for(parents, node):
                 if isinstance(stmt, ast.Assign):
                     for target in stmt.targets:
                         if isinstance(target, ast.Name) and target.id == "dialect":
-                            value = literal(stmt.value)
+                            value = eval_static(stmt.value, {})
                             if isinstance(value, str):
                                 return value
     return None
+
+def eval_static(node, env):
+    if node is None:
+        return None
+    if isinstance(node, ast.Constant):
+        return node.value
+    if isinstance(node, ast.Name):
+        if node.id in env:
+            return env[node.id]
+        if node.id == "UnsupportedError":
+            return UNSUPPORTED
+        return UNKNOWN
+    if isinstance(node, ast.Tuple):
+        values = [eval_static(item, env) for item in node.elts]
+        return UNKNOWN if any(value is UNKNOWN for value in values) else tuple(values)
+    if isinstance(node, ast.List):
+        values = [eval_static(item, env) for item in node.elts]
+        return UNKNOWN if any(value is UNKNOWN for value in values) else values
+    if isinstance(node, ast.Set):
+        values = [eval_static(item, env) for item in node.elts]
+        return UNKNOWN if any(value is UNKNOWN for value in values) else set(values)
+    if isinstance(node, ast.Dict):
+        result = {}
+        for key_node, value_node in zip(node.keys, node.values):
+            key = eval_static(key_node, env)
+            value = eval_static(value_node, env)
+            if key is UNKNOWN or value is UNKNOWN:
+                return UNKNOWN
+            result[key] = value
+        return result
+    if isinstance(node, ast.JoinedStr):
+        parts = []
+        for value in node.values:
+            if isinstance(value, ast.Constant):
+                parts.append(str(value.value))
+            elif isinstance(value, ast.FormattedValue):
+                rendered = eval_static(value.value, env)
+                if rendered is UNKNOWN:
+                    return UNKNOWN
+                parts.append(str(rendered))
+            else:
+                return UNKNOWN
+        return "".join(parts)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left = eval_static(node.left, env)
+        right = eval_static(node.right, env)
+        if left is UNKNOWN or right is UNKNOWN:
+            return UNKNOWN
+        try:
+            return left + right
+        except Exception:
+            return UNKNOWN
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+        value = eval_static(node.operand, env)
+        if isinstance(value, (int, float)):
+            return -value
+        return UNKNOWN
+    if isinstance(node, ast.Attribute):
+        base = eval_static(node.value, env)
+        if base == "exp":
+            return f"exp.{node.attr}"
+        return UNKNOWN
+    return UNKNOWN
+
+def set_target(target, value, env):
+    if value is UNKNOWN:
+        return
+    if isinstance(target, ast.Name):
+        env[target.id] = value
+    elif isinstance(target, (ast.Tuple, ast.List)) and isinstance(value, (tuple, list)):
+        for item, item_value in zip(target.elts, value):
+            set_target(item, item_value, env)
 
 def feature_tags(sql):
     normalized = sql.strip().lower()
@@ -942,6 +1030,14 @@ def feature_tags(sql):
         tags.append("index")
     if "constraint" in normalized or " foreign key " in f" {normalized} " or " check " in f" {normalized} ":
         tags.append("constraint")
+    if " join " in f" {normalized} " or " from " in f" {normalized} " and "," in normalized:
+        tags.append("join")
+    if "group_concat" in normalized or "string_agg" in normalized or "array_agg" in normalized:
+        tags.append("aggregate")
+    if "json" in normalized or "->" in normalized:
+        tags.append("json")
+    if "interval" in normalized or "date" in normalized or "time" in normalized:
+        tags.append("time")
     return tags
 
 def make_case(path, lineno, test_name, sql, source_note):
@@ -960,70 +1056,149 @@ def make_case(path, lineno, test_name, sql, source_note):
         "mode": "transpile",
     }
 
-def cases_from_validate(path, parents, call, kwargs):
-    sql = literal(call.args[0]) if call.args else None
+def source_for_validate(path, parents, call, kwargs, env):
+    sql = eval_static(call.args[0], env) if call.args else None
     if not isinstance(sql, str):
-        return []
+        return None, None
 
-    call_read = literal(kwargs.get("read")) or class_dialect_for(parents, call)
-    call_write = literal(kwargs.get("write"))
-    if call_read == read and call_write == write:
-        return [make_case(path, call.lineno, test_name_for(parents, call), sql, "validate")]
-    return []
+    call_read = eval_static(kwargs.get("read"), env) if "read" in kwargs else None
+    call_write = eval_static(kwargs.get("write"), env) if "write" in kwargs else None
+    if call_read is UNKNOWN or call_write is UNKNOWN:
+        return None, None
 
-def cases_from_validate_all(path, parents, call, kwargs):
-    base_sql = literal(call.args[0]) if call.args else None
-    if not isinstance(base_sql, str):
-        return []
-
-    read_map = literal(kwargs.get("read")) or {}
-    write_map = literal(kwargs.get("write")) or {}
-    if read_map and not isinstance(read_map, dict):
-        return []
-    if write_map and not isinstance(write_map, dict):
-        return []
-    if write not in write_map:
-        return []
-
-    source_sql = read_map.get(read, base_sql)
-    if not isinstance(source_sql, str):
-        return []
-
-    return [make_case(path, call.lineno, test_name_for(parents, call), source_sql, "validate_all")]
-
-def cases_from_validate_identity(path, parents, call, _kwargs):
     class_dialect = class_dialect_for(parents, call)
-    if class_dialect != read or read != write:
+    effective_read = call_read or class_dialect or ""
+    effective_write = call_write or ""
+    if effective_read == read and effective_write == write:
+        return sql, "validate"
+    return None, None
+
+def source_for_validate_all(path, parents, call, kwargs, env):
+    base_sql = eval_static(call.args[0], env) if call.args else None
+    if not isinstance(base_sql, str):
+        return None, None
+
+    read_map = eval_static(kwargs.get("read"), env) if "read" in kwargs else {}
+    write_map = eval_static(kwargs.get("write"), env) if "write" in kwargs else {}
+    if read_map is UNKNOWN or write_map is UNKNOWN:
+        return None, None
+    if read_map and not isinstance(read_map, dict):
+        return None, None
+    if write_map and not isinstance(write_map, dict):
+        return None, None
+    if write in write_map and write_map[write] is UNSUPPORTED:
+        return None, None
+
+    class_dialect = class_dialect_for(parents, call) or ""
+    if isinstance(read_map, dict) and read in read_map:
+        source_sql = read_map[read]
+        source_note = "validate_all:read-map"
+    elif class_dialect == read:
+        source_sql = base_sql
+        source_note = "validate_all:class-dialect"
+    elif not class_dialect and not read_map and read == "":
+        source_sql = base_sql
+        source_note = "validate_all:default-read"
+    else:
+        return None, None
+
+    if not isinstance(source_sql, str):
+        return None, None
+    if isinstance(write_map, dict) and write in write_map:
+        source_note += ":write-map"
+    else:
+        source_note += ":oracle-only"
+    return source_sql, source_note
+
+def source_for_validate_identity(path, parents, call, _kwargs, env):
+    class_dialect = class_dialect_for(parents, call)
+    if class_dialect != read:
+        return None, None
+    sql = eval_static(call.args[0], env) if call.args else None
+    if not isinstance(sql, str):
+        return None, None
+    return sql, "validate_identity"
+
+def cases_from_call(path, parents, call, env):
+    name = method_name(call)
+    kwargs = keyword_map(call)
+    if name == "validate":
+        sql, note = source_for_validate(path, parents, call, kwargs, env)
+    elif name == "validate_all":
+        sql, note = source_for_validate_all(path, parents, call, kwargs, env)
+    elif name == "validate_identity":
+        sql, note = source_for_validate_identity(path, parents, call, kwargs, env)
+    else:
         return []
-    sql = literal(call.args[0]) if call.args else None
+
     if not isinstance(sql, str):
         return []
-    return [make_case(path, call.lineno, test_name_for(parents, call), sql, "validate_identity")]
+    return [make_case(path, call.lineno, test_name_for(parents, call), sql, note)]
+
+def collect_from_expr(path, parents, expr, env, out):
+    for node in ast.walk(expr):
+        if isinstance(node, ast.Call):
+            out.extend(cases_from_call(path, parents, node, env))
+
+def walk_statements(path, parents, statements, env, out):
+    for stmt in statements:
+        if isinstance(stmt, ast.Assign):
+            value = eval_static(stmt.value, env)
+            for target in stmt.targets:
+                set_target(target, value, env)
+        elif isinstance(stmt, ast.AnnAssign):
+            value = eval_static(stmt.value, env)
+            set_target(stmt.target, value, env)
+        elif isinstance(stmt, ast.For):
+            iterable = eval_static(stmt.iter, env)
+            if isinstance(iterable, (list, tuple, set)):
+                for item in iterable:
+                    child_env = dict(env)
+                    set_target(stmt.target, item, child_env)
+                    walk_statements(path, parents, stmt.body, child_env, out)
+        elif isinstance(stmt, ast.With):
+            walk_statements(path, parents, stmt.body, dict(env), out)
+        elif isinstance(stmt, ast.If):
+            walk_statements(path, parents, stmt.body, dict(env), out)
+            walk_statements(path, parents, stmt.orelse, dict(env), out)
+        elif isinstance(stmt, ast.Try):
+            walk_statements(path, parents, stmt.body, dict(env), out)
+            for handler in stmt.handlers:
+                walk_statements(path, parents, handler.body, dict(env), out)
+            walk_statements(path, parents, stmt.orelse, dict(env), out)
+            walk_statements(path, parents, stmt.finalbody, dict(env), out)
+        elif isinstance(stmt, ast.Expr):
+            collect_from_expr(path, parents, stmt.value, env, out)
+        else:
+            for child in ast.iter_child_nodes(stmt):
+                if isinstance(child, ast.expr):
+                    collect_from_expr(path, parents, child, env, out)
 
 cases = []
 for path in sorted(test_files):
     module = ast.parse(path.read_text(), filename=str(path))
     parents = enclosing_tests(module)
-    for call in ast.walk(module):
-        if not isinstance(call, ast.Call):
+    for node in module.body:
+        if not isinstance(node, ast.ClassDef):
             continue
-        name = method_name(call)
-        kwargs = keyword_map(call)
-        if name == "validate":
-            cases.extend(cases_from_validate(path, parents, call, kwargs))
-        elif name == "validate_all":
-            cases.extend(cases_from_validate_all(path, parents, call, kwargs))
-        elif name == "validate_identity":
-            cases.extend(cases_from_validate_identity(path, parents, call, kwargs))
+        for stmt in node.body:
+            if isinstance(stmt, ast.FunctionDef) and stmt.name.startswith("test_"):
+                walk_statements(path, parents, stmt.body, {"exp": "exp"}, cases)
 
 cases.sort(key=lambda case: (case["source"], case["id"]))
 deduped = []
 seen_sql = set()
+seen_ids = {}
 for case in cases:
     key = (case["sql"], case["read"], case["write"])
     if key in seen_sql:
         continue
     seen_sql.add(key)
+    base_id = case["id"]
+    index = seen_ids.get(base_id, 0) + 1
+    seen_ids[base_id] = index
+    if index > 1:
+        case["id"] = f"{base_id}-{index}"
     deduped.append(case)
     if limit and len(deduped) >= limit:
         break

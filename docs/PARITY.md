@@ -83,8 +83,10 @@ cargo run --bin xtask -- import-sqlglot-fixtures \
 
 By default, imported cases are written to `parity/cases/transpile_<read>_<write>.jsonl`.
 Use `--output` to choose a different file. The importer currently supports the `transpile`
-family and reads straightforward `validate`, `validate_all`, and same-dialect
-`validate_identity` cases from SQLGlot's Python tests.
+family and scans SQLGlot's core transpile test plus dialect test files. It extracts
+literal `validate`, `validate_all`, and dialect-class `validate_identity` calls, including
+simple local variables, f-strings, and loops, then uses Python SQLGlot as the oracle for
+the requested read/write dialect pair.
 
 Use `--only-matching` when you want a non-breaking seed file. That mode runs each imported
 candidate through both Python SQLGlot and sqlgrok, then keeps only exact matches:
@@ -99,7 +101,7 @@ cargo run --bin xtask -- import-sqlglot-fixtures \
   --only-matching
 ```
 
-Use `--report-output` to make the rejected cases explicit instead of relying on
+Use `--report-output` to make the full candidate backlog explicit instead of relying on
 manual review. The report is JSONL with each candidate marked as `match`,
 `mismatch`, `rust-error`, or `oracle-error`, including Python's expected output
 and sqlgrok's actual output when available:
