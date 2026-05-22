@@ -33,6 +33,7 @@
 
 pub mod ast;
 pub mod builder;
+pub mod compat;
 pub mod dialects;
 pub mod diff;
 pub mod errors;
@@ -101,6 +102,7 @@ pub use builder::{
     table,
     table_full,
 };
+pub use compat::{ScalarSelectProjection, scalar_select_projection};
 pub use dialects::Dialect;
 pub use dialects::plugin::{
     DialectPlugin, DialectRef, DialectRegistry, register_dialect, resolve_dialect, transpile_ext,
