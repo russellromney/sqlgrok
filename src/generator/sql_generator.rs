@@ -750,6 +750,12 @@ impl Generator {
     // ── INSERT ──────────────────────────────────────────────────
 
     fn gen_insert(&mut self, ins: &InsertStatement) {
+        if ins.replace
+            && let Some(raw_sql) = &ins.raw_sql
+        {
+            self.write(raw_sql);
+            return;
+        }
         if ins.replace {
             self.write_keyword("REPLACE INTO ");
         } else if ins.ignore {
@@ -1713,6 +1719,7 @@ impl Generator {
             BinaryOperator::Minus => " - ",
             BinaryOperator::Multiply => " * ",
             BinaryOperator::Divide => " / ",
+            BinaryOperator::IntDiv => " DIV ",
             BinaryOperator::Modulo => " % ",
             BinaryOperator::Eq => " = ",
             BinaryOperator::Neq => " <> ",
@@ -1789,9 +1796,24 @@ impl Generator {
             }
 
             Expr::BinaryOp { left, op, right } => {
-                self.gen_expr(left);
-                self.write(Self::binary_op_str(op));
-                self.gen_expr(right);
+                if *op == BinaryOperator::IntDiv && self.dialect == Some(Dialect::Sqlite) {
+                    self.write_keyword("CAST(");
+                    self.write_keyword("CAST(");
+                    self.gen_expr(left);
+                    self.write(" ");
+                    self.write_keyword("AS ");
+                    self.write_keyword("REAL");
+                    self.write(") / ");
+                    self.gen_expr(right);
+                    self.write(" ");
+                    self.write_keyword("AS ");
+                    self.write_keyword("INTEGER");
+                    self.write(")");
+                } else {
+                    self.gen_expr(left);
+                    self.write(Self::binary_op_str(op));
+                    self.gen_expr(right);
+                }
             }
             Expr::AnyOp { expr, op, right } => {
                 self.gen_expr(expr);
@@ -2366,7 +2388,25 @@ impl Generator {
                 }
             }
             TypedFunction::DateDiff { start, end, unit } => {
-                if is_tsql || is_snowflake {
+                if dialect == Some(Dialect::Sqlite) {
+                    self.write_keyword("CAST((");
+                    self.write_keyword("JULIANDAY(");
+                    self.gen_expr(start);
+                    self.write(") - ");
+                    self.write_keyword("JULIANDAY(");
+                    self.gen_expr(end);
+                    self.write(")");
+                    match unit.as_ref().unwrap_or(&DateTimeField::Day) {
+                        DateTimeField::Hour => self.write(") * 24.0 "),
+                        DateTimeField::Year => self.write(") / 365.0 "),
+                        DateTimeField::Minute => self.write(") * 1440.0 "),
+                        DateTimeField::Second => self.write(") * 86400.0 "),
+                        _ => self.write(") "),
+                    }
+                    self.write_keyword("AS ");
+                    self.write_keyword("INTEGER");
+                    self.write(")");
+                } else if is_tsql || is_snowflake {
                     self.write_keyword("DATEDIFF(");
                     if let Some(u) = unit {
                         self.gen_datetime_field(u);

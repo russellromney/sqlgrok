@@ -174,3 +174,8 @@ this file records what landed.
 - Add importer report output so non-matching SQLGlot fixture candidates become an explicit ratchet backlog.
 - Support uncapped SQLGlot fixture imports and Markdown report summaries for working through the full backlog.
 - Widen SQLGlot fixture extraction across dialect tests, dialect identity cases, simple variables, f-strings, and loop-expanded cases so MySQL/Postgres-to-SQLite reports cover hundreds of candidates.
+
+### Protocol Shim Transpiler Holes
+
+- Match Python SQLGlot for MySQL-to-SQLite integer `DIV`, `DATEDIFF`, and raw `REPLACE INTO` command formatting.
+- Match Python SQLGlot for Postgres-to-SQLite typed date/time/timestamp literals and `LIMIT ALL`.

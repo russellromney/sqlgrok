@@ -500,6 +500,78 @@ fn test_mysql_comma_limit_to_sqlite() {
 }
 
 #[test]
+fn test_mysql_div_to_sqlite_int_cast() {
+    validate_with_dialect(
+        "SELECT 7 DIV 2",
+        "SELECT CAST(CAST(7 AS REAL) / 2 AS INTEGER)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_mysql_datediff_to_sqlite_julianday() {
+    validate_with_dialect(
+        "SELECT DATEDIFF('2020-01-03','2020-01-01')",
+        "SELECT CAST((JULIANDAY('2020-01-03') - JULIANDAY('2020-01-01')) AS INTEGER)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_postgres_typed_literals_to_sqlite() {
+    validate_with_dialect(
+        "SELECT DATE '2020-01-01'",
+        "SELECT DATE('2020-01-01')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TIME '12:34:56'",
+        "SELECT CAST('12:34:56' AS TIME)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TIMESTAMP '2020-01-01 12:00:00'",
+        "SELECT CAST('2020-01-01 12:00:00' AS TIMESTAMP)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_postgres_extract_from_date_literal_to_sqlite() {
+    validate_with_dialect(
+        "SELECT EXTRACT(YEAR FROM DATE '2020-06-15')",
+        "SELECT EXTRACT(YEAR FROM DATE('2020-06-15'))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_postgres_limit_all_to_sqlite() {
+    validate_with_dialect(
+        "SELECT x FROM t LIMIT ALL",
+        "SELECT x FROM t LIMIT ALL",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_postgres_offset_without_limit_to_sqlite() {
+    validate_with_dialect(
+        "SELECT x FROM t OFFSET 1",
+        "SELECT x FROM t OFFSET 1",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_postgres_for_update_to_sqlite() {
     validate_with_dialect(
         "SELECT a FROM t FOR UPDATE",
@@ -807,6 +879,12 @@ fn test_mysql_replace_into_to_sqlite() {
     validate_with_dialect(
         "REPLACE INTO t (id, a) VALUES (1, 2)",
         "REPLACE INTO t (id, a) VALUES (1, 2)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "REPLACE INTO t (id,a) VALUES (1,2)",
+        "REPLACE INTO t (id,a) VALUES (1,2)",
         Dialect::Mysql,
         Dialect::Sqlite,
     );

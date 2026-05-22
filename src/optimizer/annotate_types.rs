@@ -683,7 +683,7 @@ fn infer_binary_op_type(
         Concat => Some(DataType::Varchar(None)),
 
         // Arithmetic → coerce operand types
-        Plus | Minus | Multiply | Divide | Modulo => match (left, right) {
+        Plus | Minus | Multiply | Divide | IntDiv | Modulo => match (left, right) {
             (Some(l), Some(r)) => Some(coerce_numeric(l, r)),
             (Some(l), None) => Some(l.clone()),
             (None, Some(r)) => Some(r.clone()),

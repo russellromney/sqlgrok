@@ -1411,6 +1411,7 @@ pub enum BinaryOperator {
     Minus,
     Multiply,
     Divide,
+    IntDiv,
     Modulo,
     Eq,
     Neq,
@@ -1459,6 +1460,9 @@ pub struct InsertStatement {
     /// Whether this statement was written as MySQL `INSERT IGNORE`.
     #[serde(default)]
     pub ignore: bool,
+    /// Raw source SQL for statements Python SQLGlot preserves as unsupported commands.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raw_sql: Option<String>,
     pub table: TableRef,
     pub columns: Vec<String>,
     pub source: InsertSource,

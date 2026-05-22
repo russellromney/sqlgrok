@@ -19,6 +19,7 @@ fn quote_style_from_char(c: char) -> QuoteStyle {
 pub struct Parser {
     tokens: Vec<Token>,
     pos: usize,
+    sql: String,
     /// Whether to preserve comments during parsing.
     #[allow(dead_code)]
     preserve_comments: bool,
@@ -34,6 +35,7 @@ impl Parser {
         Ok(Self {
             tokens,
             pos: 0,
+            sql: sql.to_string(),
             preserve_comments: false,
             pending_comments: Vec::new(),
         })
@@ -46,6 +48,7 @@ impl Parser {
         Ok(Self {
             tokens,
             pos: 0,
+            sql: sql.to_string(),
             preserve_comments: true,
             pending_comments: Vec::new(),
         })
@@ -484,7 +487,16 @@ impl Parser {
         };
 
         let (limit, offset) = if self.match_token(TokenType::Limit) {
-            let first = self.parse_expr()?;
+            let first = if self.match_token(TokenType::All) {
+                Expr::Column {
+                    table: None,
+                    name: "ALL".to_string(),
+                    quote_style: QuoteStyle::None,
+                    table_quote_style: QuoteStyle::None,
+                }
+            } else {
+                self.parse_expr()?
+            };
             if self.match_token(TokenType::Comma) {
                 let count = self.parse_expr()?;
                 (Some(count), Some(first))
@@ -1152,6 +1164,7 @@ impl Parser {
     // ── INSERT ──────────────────────────────────────────────────────
 
     fn parse_insert(&mut self) -> Result<InsertStatement> {
+        let start = self.peek().position;
         let replace = if self.match_token(TokenType::Replace) {
             true
         } else {
@@ -1272,6 +1285,11 @@ impl Parser {
             comments: vec![],
             replace,
             ignore,
+            raw_sql: if replace {
+                Some(self.sql[start..self.peek().position.min(self.sql.len())].to_string())
+            } else {
+                None
+            },
             table,
             columns,
             source,
@@ -2617,6 +2635,9 @@ impl Parser {
                 TokenType::Slash => Some(BinaryOperator::Divide),
                 TokenType::Percent2 => Some(BinaryOperator::Modulo),
                 TokenType::BitwiseAnd => Some(BinaryOperator::BitwiseAnd),
+                TokenType::Identifier if self.peek().value.eq_ignore_ascii_case("DIV") => {
+                    Some(BinaryOperator::IntDiv)
+                }
                 _ => None,
             };
             if let Some(op) = op {
@@ -2914,6 +2935,51 @@ impl Parser {
             TokenType::Default => {
                 self.advance();
                 Ok(Expr::Default)
+            }
+            TokenType::Date
+                if self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|next| next.token_type == TokenType::String) =>
+            {
+                self.advance();
+                let value = self.advance().value.clone();
+                Ok(Expr::Function {
+                    name: "DATE".to_string(),
+                    args: vec![Expr::StringLiteral(value)],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                })
+            }
+            TokenType::Time
+                if self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|next| next.token_type == TokenType::String) =>
+            {
+                self.advance();
+                let value = self.advance().value.clone();
+                Ok(Expr::Cast {
+                    expr: Box::new(Expr::StringLiteral(value)),
+                    data_type: DataType::Time { precision: None },
+                })
+            }
+            TokenType::Timestamp
+                if self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|next| next.token_type == TokenType::String) =>
+            {
+                self.advance();
+                let value = self.advance().value.clone();
+                Ok(Expr::Cast {
+                    expr: Box::new(Expr::StringLiteral(value)),
+                    data_type: DataType::Timestamp {
+                        precision: None,
+                        with_tz: false,
+                    },
+                })
             }
             TokenType::Star => {
                 self.advance();
