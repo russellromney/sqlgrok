@@ -333,7 +333,7 @@ impl Parser {
             }
             TokenType::Insert | TokenType::Replace => self.parse_insert().map(Statement::Insert),
             TokenType::Update => self.parse_update().map(Statement::Update),
-            TokenType::Delete => self.parse_delete().map(Statement::Delete),
+            TokenType::Delete => self.parse_delete_or_raw(),
             TokenType::Merge => self.parse_merge().map(Statement::Merge),
             TokenType::Create => self.parse_create_or_raw(),
             TokenType::Drop => self.parse_drop(),
@@ -375,6 +375,48 @@ impl Parser {
                 self.parse_raw_statement()
             }
         }
+    }
+
+    fn parse_delete_or_raw(&mut self) -> Result<Statement> {
+        let saved_pos = self.pos;
+        match self.parse_delete() {
+            Ok(stmt) => Ok(Statement::Delete(stmt)),
+            Err(_) if self.is_mysql_multi_target_delete(saved_pos) => {
+                self.pos = saved_pos;
+                self.parse_raw_statement()
+            }
+            Err(err) => {
+                self.pos = saved_pos;
+                Err(err)
+            }
+        }
+    }
+
+    fn is_mysql_multi_target_delete(&self, start_pos: usize) -> bool {
+        if self.tokens.get(start_pos).map(|t| &t.token_type) != Some(&TokenType::Delete) {
+            return false;
+        }
+
+        let mut pos = start_pos + 1;
+        if self.tokens.get(pos).map(|t| &t.token_type) != Some(&TokenType::From) {
+            return false;
+        }
+        pos += 1;
+
+        let mut saw_comma_before_using = false;
+        while let Some(token) = self.tokens.get(pos) {
+            match token.token_type {
+                TokenType::Comma => saw_comma_before_using = true,
+                TokenType::Using => return saw_comma_before_using,
+                TokenType::Semicolon | TokenType::Eof | TokenType::Where | TokenType::Returning => {
+                    return false;
+                }
+                _ => {}
+            }
+            pos += 1;
+        }
+
+        false
     }
 
     fn parse_raw_statement(&mut self) -> Result<Statement> {
@@ -812,6 +854,12 @@ impl Parser {
             });
         }
 
+        if self.peek().value.eq_ignore_ascii_case("JSON_TABLE")
+            && self.peek_n_type(1) == &TokenType::LParen
+        {
+            return self.parse_raw_table_function_source();
+        }
+
         // Subquery: (SELECT ...)
         if self.peek_type() == &TokenType::LParen {
             let saved = self.pos;
@@ -877,6 +925,37 @@ impl Parser {
         }
 
         Ok(TableSource::Table(table_ref))
+    }
+
+    fn parse_raw_table_function_source(&mut self) -> Result<TableSource> {
+        let start = self.char_pos_to_byte(self.peek().position);
+        self.advance();
+        self.expect(TokenType::LParen)?;
+        let mut depth = 1;
+        while depth > 0 && self.peek_type() != &TokenType::Eof {
+            if self.match_token(TokenType::LParen) {
+                depth += 1;
+            } else if self.match_token(TokenType::RParen) {
+                depth -= 1;
+            } else {
+                self.advance();
+            }
+        }
+        let end = self
+            .tokens
+            .get(self.pos.saturating_sub(1))
+            .map(|token| self.char_pos_to_byte(token.position + token.value.chars().count()))
+            .unwrap_or(start);
+        let sql = self.sql[start..end].trim().to_string();
+        let (alias, alias_quote_style) = match self.parse_optional_alias()? {
+            Some((name, qs)) => (Some(name), qs),
+            None => (None, QuoteStyle::None),
+        };
+        Ok(TableSource::Raw {
+            sql,
+            alias,
+            alias_quote_style,
+        })
     }
 
     fn parse_values_rows(&mut self) -> Result<Vec<Vec<Expr>>> {
@@ -3482,6 +3561,12 @@ impl Parser {
                     // Special: COUNT(*), COUNT(DISTINCT x)
                     let distinct = self.match_token(TokenType::Distinct);
 
+                    if name.eq_ignore_ascii_case("TRIM") {
+                        let expr = self.parse_trim_function()?;
+                        self.expect(TokenType::RParen)?;
+                        return Ok(expr);
+                    }
+
                     let args = if name.eq_ignore_ascii_case("GROUP_CONCAT") {
                         self.parse_group_concat_args()?
                     } else if name.eq_ignore_ascii_case("JSON_VALUE") {
@@ -3772,20 +3857,73 @@ impl Parser {
             return Ok(vec![]);
         }
 
-        let mut args = vec![self.parse_expr()?];
-        if self.match_token(TokenType::Using) {
-            args.push(Expr::Column {
-                table: None,
-                name: "USING".to_string(),
-                quote_style: QuoteStyle::None,
-                table_quote_style: QuoteStyle::None,
-            });
-            args.push(self.parse_primary()?);
-        }
-        while self.match_token(TokenType::Comma) {
+        let mut args = Vec::new();
+        loop {
             args.push(self.parse_expr()?);
+            if self.match_token(TokenType::Using) {
+                args.push(self.parse_primary()?);
+            }
+            if !self.match_token(TokenType::Comma) {
+                break;
+            }
         }
         Ok(args)
+    }
+
+    fn parse_trim_function(&mut self) -> Result<Expr> {
+        if self.peek_type() == &TokenType::RParen {
+            return Ok(Expr::TypedFunction {
+                func: TypedFunction::Trim {
+                    expr: Box::new(Expr::StringLiteral(String::new())),
+                    trim_type: TrimType::Both,
+                    trim_chars: None,
+                },
+                filter: None,
+                over: None,
+            });
+        }
+
+        let trim_type = if self.match_keyword("LEADING") {
+            Some(TrimType::Leading)
+        } else if self.match_keyword("TRAILING") {
+            Some(TrimType::Trailing)
+        } else if self.match_keyword("BOTH") {
+            Some(TrimType::Both)
+        } else {
+            None
+        };
+
+        let (expr, trim_type, trim_chars) = if let Some(trim_type) = trim_type {
+            let trim_chars = if self.peek_type() == &TokenType::From {
+                None
+            } else {
+                Some(Box::new(self.parse_expr()?))
+            };
+            self.expect(TokenType::From)?;
+            (self.parse_expr()?, trim_type, trim_chars)
+        } else {
+            let first = self.parse_expr()?;
+            if self.match_token(TokenType::From) {
+                (self.parse_expr()?, TrimType::Both, Some(Box::new(first)))
+            } else {
+                let trim_chars = if self.match_token(TokenType::Comma) {
+                    Some(Box::new(self.parse_expr()?))
+                } else {
+                    None
+                };
+                (first, TrimType::Both, trim_chars)
+            }
+        };
+
+        Ok(Expr::TypedFunction {
+            func: TypedFunction::Trim {
+                expr: Box::new(expr),
+                trim_type,
+                trim_chars,
+            },
+            filter: None,
+            over: None,
+        })
     }
 
     /// Try to construct a typed function expression from a parsed function call.

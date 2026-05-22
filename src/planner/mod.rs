@@ -561,6 +561,13 @@ impl PlanBuilder {
                 predicate: None,
                 dependencies: vec![],
             })),
+            TableSource::Raw { sql, alias, .. } => Ok(self.add_step(Step::Scan {
+                table: sql.clone(),
+                alias: alias.clone(),
+                projections: vec![],
+                predicate: None,
+                dependencies: vec![],
+            })),
             TableSource::Unnest { expr, alias, .. } => Ok(self.add_step(Step::Scan {
                 table: "UNNEST".to_string(),
                 alias: alias.clone(),

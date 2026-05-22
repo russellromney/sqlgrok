@@ -1729,6 +1729,7 @@ fn test_parse_errors() {
     // Unmatched parentheses should fail
     assert!(parse("1 + (2 + 3", Dialect::Ansi).is_err());
     assert!(parse("SELECT (", Dialect::Ansi).is_err());
+    assert!(parse("DELETE FROM", Dialect::Ansi).is_err());
     // Empty input
     assert!(parse("", Dialect::Ansi).is_err());
 }
@@ -2636,6 +2637,57 @@ fn test_mysql_parser_carriers_to_sqlite() {
         Dialect::Mysql,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "CHAR(77, 77.3, '77.3' USING utf8mb4)",
+        "CHAR(77, 77.3, '77.3', utf8mb4)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "DELETE FROM t1, t2 USING t1 INNER JOIN t2 INNER JOIN t3 WHERE t1.id = t2.id AND t2.id = t3.id",
+        "DELETE FROM t1, t2 USING t1 INNER JOIN t2 INNER JOIN t3 WHERE t1.id = t2.id AND t2.id = t3.id",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_mysql_trim_variants_to_sqlite() {
+    validate_with_dialect(
+        "SELECT TRIM(LEADING 'bla' FROM ' XXX ')",
+        "SELECT LTRIM(' XXX ', 'bla')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TRIM(TRAILING 'bla' FROM ' XXX ')",
+        "SELECT RTRIM(' XXX ', 'bla')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TRIM(BOTH 'bla' FROM ' XXX ')",
+        "SELECT TRIM(' XXX ', 'bla')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TRIM('bla' FROM ' XXX ')",
+        "SELECT TRIM(' XXX ', 'bla')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_mysql_json_table_carrier_to_sqlite() {
+    let result = transpile(
+        "SELECT * FROM source, JSON_TABLE(source.links, '$.org[*]' COLUMNS(row_id FOR ORDINALITY, link VARCHAR(255) PATH '$.link')) AS links",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    )
+    .expect("JSON_TABLE table source should parse");
+    assert!(result.contains("JSON_TABLE("));
 }
 
 #[test]

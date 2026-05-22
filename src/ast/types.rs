@@ -244,6 +244,12 @@ pub enum TableSource {
         #[serde(default)]
         alias_quote_style: QuoteStyle,
     },
+    Raw {
+        sql: String,
+        alias: Option<String>,
+        #[serde(default)]
+        alias_quote_style: QuoteStyle,
+    },
     Values {
         rows: Vec<Vec<Expr>>,
         alias: Option<String>,
@@ -2346,6 +2352,7 @@ fn collect_table_refs_from_source<'a>(source: &'a TableSource, tables: &mut Vec<
         TableSource::Table(table_ref) => tables.push(table_ref),
         TableSource::Subquery { .. } => {}
         TableSource::TableFunction { .. } => {}
+        TableSource::Raw { .. } => {}
         TableSource::Values { .. } => {}
         TableSource::Lateral { source } => collect_table_refs_from_source(source, tables),
         TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {

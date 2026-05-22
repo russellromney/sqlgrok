@@ -8,17 +8,16 @@ Total candidates: `496`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 219 |
-| `mismatch` | 262 |
+| `match` | 229 |
+| `mismatch` | 260 |
 | `oracle-error` | 7 |
-| `rust-error` | 8 |
 
 ## Top Feature Buckets
 
 | Status | Feature | Count |
 | --- | --- | ---: |
-| `mismatch` | `SELECT` | 90 |
-| `match` | `SELECT` | 72 |
+| `mismatch` | `SELECT` | 88 |
+| `match` | `SELECT` | 80 |
 | `mismatch` | `CREATE TABLE` | 45 |
 | `match` | `SET` | 33 |
 | `mismatch` | `ALTER TABLE` | 26 |
@@ -34,37 +33,36 @@ Total candidates: `496`
 | `oracle-error` | `CREATE TABLE` | 7 |
 | `match` | `INSERT` | 6 |
 | `mismatch` | `MATCH()` | 6 |
-| `rust-error` | `SELECT` | 6 |
 | `match` | `ALTER` | 5 |
+| `match` | `CHAR()` | 4 |
 | `mismatch` | `CREATE` | 4 |
 | `mismatch` | `DELETE` | 4 |
 | `mismatch` | `X` | 4 |
-| `match` | `CHAR()` | 3 |
 | `match` | `CREATE` | 3 |
 | `match` | `REGEXP_INSTR()` | 3 |
+| `mismatch` | `DESCRIBE` | 3 |
 
 ## Top Source Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 81 |
-| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 57 |
+| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 63 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_identity` | 32 |
-| `match` | `tests/dialects/test_mysql.py` | `test_ddl` | 24 |
+| `match` | `tests/dialects/test_mysql.py` | `test_ddl` | 25 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 22 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql` | 18 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql_time` | 16 |
 | `match` | `tests/dialects/test_mysql.py` | `test_canonical_functions` | 11 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_valid_interval_units` | 11 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_convert` | 10 |
 | `match` | `tests/dialects/test_mysql.py` | `test_date_format` | 9 |
 | `match` | `tests/dialects/test_mysql.py` | `test_analyze` | 8 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_convert` | 8 |
 | `match` | `tests/dialects/test_mysql.py` | `test_grant` | 7 |
 | `match` | `tests/dialects/test_mysql.py` | `test_revoke` | 7 |
 | `oracle-error` | `tests/dialects/test_mysql.py` | `test_ddl` | 7 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_match_against` | 6 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_types` | 6 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_identity` | 6 |
 | `match` | `tests/dialects/test_mysql.py` | `test_escape` | 5 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_json_value` | 5 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bit_aggs` | 4 |
@@ -72,6 +70,7 @@ Total candidates: `496`
 | `match` | `tests/dialects/test_mysql.py` | `test_null_ordering_simulation_resolves_ordered_against_projection` | 4 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_explain` | 4 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 4 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql_time_python311` | 4 |
 
 ## Non-Matching Examples
 
@@ -105,22 +104,4 @@ Total candidates: `496`
   - error: `<class 'sqlglot.expressions.properties.PartitionByRangeProperty'>`
 - `sqlglot-mysql-to-sqlite-tests-dialects-test-mysql-0263-test-ddl`: `CREATE TABLE t (id INT, region VARCHAR(10)) PARTITION BY LIST (id) (PARTITION p_east VALUES IN (1, 2, 3), PARTITION p_west VALUES IN (4, 5, 6))`
   - error: `<class 'sqlglot.expressions.properties.PartitionByListProperty'>`
-
-### `rust-error`
-
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-mysql-0104-test-ddl`: `DELETE FROM t1, t2 USING t1 INNER JOIN t2 INNER JOIN t3 WHERE t1.id = t2.id AND t2.id = t3.id`
-  - expected: `DELETE FROM t1, t2 USING t1 INNER JOIN t2 INNER JOIN t3 WHERE t1.id = t2.id AND t2.id = t3.id`
-  - error: `Parser error: Expected LParen, got Identifier ('t1') at line 1 col 26`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-mysql-0301-test-identity`: `SELECT TRIM(LEADING 'bla' FROM ' XXX ')`
-  - expected: `SELECT LTRIM(' XXX ', 'bla')`
-  - error: `Parser error: Expected RParen, got String ('bla') at line 1 col 21`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-mysql-0302-test-identity`: `SELECT TRIM(TRAILING 'bla' FROM ' XXX ')`
-  - expected: `SELECT RTRIM(' XXX ', 'bla')`
-  - error: `Parser error: Expected RParen, got String ('bla') at line 1 col 22`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-mysql-0303-test-identity`: `SELECT TRIM(BOTH 'bla' FROM ' XXX ')`
-  - expected: `SELECT TRIM(' XXX ', 'bla')`
-  - error: `Parser error: Expected RParen, got String ('bla') at line 1 col 18`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-mysql-0304-test-identity`: `SELECT TRIM('bla' FROM ' XXX ')`
-  - expected: `SELECT TRIM(' XXX ', 'bla')`
-  - error: `Parser error: Expected RParen, got From ('FROM') at line 1 col 19`
 

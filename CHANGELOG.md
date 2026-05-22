@@ -13,6 +13,8 @@ this file records what landed.
 - Refreshed the generated MySQL/Postgres/SQLite SQLGlot import reports so the remaining backlog is classified as concrete mismatches or narrower parser gaps.
 - Covered `VALUES` table sources across parser, qualification, scope analysis, and planner tests.
 - Cleared the current strict Clippy backlog so `cargo clippy --all-targets -- -D warnings` passes.
+- Closed the remaining MySQL-to-SQLite parser-error backlog in the imported SQLGlot report: `8` rust-errors to `0`.
+- Added MySQL parser/transpile support for `TRIM(... FROM ...)`, `CHAR(... USING ...)`, multi-target `DELETE ... USING`, and a raw `JSON_TABLE(...)` table-source carrier.
 
 ## 2026-05-20
 

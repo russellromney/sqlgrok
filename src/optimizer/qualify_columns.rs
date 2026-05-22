@@ -99,6 +99,12 @@ fn collect_source_columns<S: Schema>(
                 source_map.insert(norm_key, SourceColumns { columns: cols });
             }
         }
+        TableSource::Raw { alias, .. } => {
+            if let Some(alias) = alias {
+                let norm_alias = normalize_identifier(alias, dialect);
+                source_map.insert(norm_alias, SourceColumns { columns: vec![] });
+            }
+        }
         TableSource::Subquery { query, alias, .. } => {
             if let Some(alias) = alias {
                 let norm_alias = normalize_identifier(alias, dialect);
@@ -240,6 +246,10 @@ fn source_key_for(source: &TableSource, dialect: Dialect) -> String {
             normalize_identifier(name, dialect)
         }
         TableSource::Subquery { alias, .. } => alias
+            .as_deref()
+            .map(|a| normalize_identifier(a, dialect))
+            .unwrap_or_default(),
+        TableSource::Raw { alias, .. } => alias
             .as_deref()
             .map(|a| normalize_identifier(a, dialect))
             .unwrap_or_default(),

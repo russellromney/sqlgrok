@@ -510,6 +510,20 @@ impl Generator {
                     self.write_quoted(alias, *alias_quote_style);
                 }
             }
+            TableSource::Raw {
+                sql,
+                alias,
+                alias_quote_style,
+            } => {
+                self.write(sql);
+                if let Some(alias) = alias {
+                    self.write(" ");
+                    if !self.omit_table_alias_as() {
+                        self.write_keyword("AS ");
+                    }
+                    self.write_quoted(alias, *alias_quote_style);
+                }
+            }
             TableSource::Values {
                 rows,
                 alias,
@@ -2655,6 +2669,35 @@ impl Generator {
                 trim_type,
                 trim_chars,
             } => {
+                if matches!(dialect, Some(Dialect::Sqlite)) {
+                    match (trim_type, trim_chars) {
+                        (TrimType::Leading, Some(chars)) => {
+                            self.write_keyword("LTRIM(");
+                            self.gen_expr(expr);
+                            self.write(", ");
+                            self.gen_expr(chars);
+                            self.write(")");
+                            return;
+                        }
+                        (TrimType::Trailing, Some(chars)) => {
+                            self.write_keyword("RTRIM(");
+                            self.gen_expr(expr);
+                            self.write(", ");
+                            self.gen_expr(chars);
+                            self.write(")");
+                            return;
+                        }
+                        (TrimType::Both, Some(chars)) => {
+                            self.write_keyword("TRIM(");
+                            self.gen_expr(expr);
+                            self.write(", ");
+                            self.gen_expr(chars);
+                            self.write(")");
+                            return;
+                        }
+                        _ => {}
+                    }
+                }
                 self.write_keyword("TRIM(");
                 match trim_type {
                     TrimType::Leading => self.write_keyword("LEADING "),
