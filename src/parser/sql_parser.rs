@@ -1221,8 +1221,28 @@ impl Parser {
                 };
                 Some(OnConflict {
                     columns,
+                    duplicate_key: false,
                     compact_target: false,
                     action,
+                })
+            } else if self.match_token(TokenType::Duplicate) {
+                self.expect(TokenType::Key)?;
+                self.expect(TokenType::Update)?;
+                let mut assignments = Vec::new();
+                loop {
+                    let col = self.expect_name()?;
+                    self.expect(TokenType::Eq)?;
+                    let val = self.parse_expr()?;
+                    assignments.push((col, val));
+                    if !self.match_token(TokenType::Comma) {
+                        break;
+                    }
+                }
+                Some(OnConflict {
+                    columns: vec![],
+                    duplicate_key: true,
+                    compact_target: false,
+                    action: ConflictAction::DoUpdate(assignments),
                 })
             } else {
                 None

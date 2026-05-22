@@ -1292,6 +1292,16 @@ fn test_transpile_ifnull_to_coalesce() {
 }
 
 #[test]
+fn test_mysql_on_duplicate_key_to_sqlite() {
+    validate_with_dialect(
+        "INSERT INTO t (id, a) VALUES (1, 2) ON DUPLICATE KEY UPDATE a = 2",
+        "INSERT INTO t (id, a) VALUES (1, 2) ON DUPLICATE KEY UPDATE SET a = 2",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_mysql_if_to_sqlite_iif() {
     validate_with_dialect(
         "SELECT IF(a > 0, 'y', 'n') FROM t",

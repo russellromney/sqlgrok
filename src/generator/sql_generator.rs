@@ -796,15 +796,19 @@ impl Generator {
 
         if let Some(on_conflict) = &ins.on_conflict {
             self.sep();
-            self.write_keyword("ON CONFLICT");
-            if !on_conflict.columns.is_empty() {
-                if on_conflict.compact_target {
-                    self.write("(");
-                } else {
-                    self.write(" (");
+            if on_conflict.duplicate_key {
+                self.write_keyword("ON DUPLICATE KEY UPDATE");
+            } else {
+                self.write_keyword("ON CONFLICT");
+                if !on_conflict.columns.is_empty() {
+                    if on_conflict.compact_target {
+                        self.write("(");
+                    } else {
+                        self.write(" (");
+                    }
+                    self.write(&on_conflict.columns.join(", "));
+                    self.write(")");
                 }
-                self.write(&on_conflict.columns.join(", "));
-                self.write(")");
             }
             match &on_conflict.action {
                 ConflictAction::DoNothing => {
@@ -813,7 +817,11 @@ impl Generator {
                 }
                 ConflictAction::DoUpdate(assignments) => {
                     self.write(" ");
-                    self.write_keyword("DO UPDATE SET ");
+                    if on_conflict.duplicate_key {
+                        self.write_keyword("SET ");
+                    } else {
+                        self.write_keyword("DO UPDATE SET ");
+                    }
                     for (i, (col, val)) in assignments.iter().enumerate() {
                         if i > 0 {
                             self.write(", ");

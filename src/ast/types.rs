@@ -1472,6 +1472,8 @@ pub enum InsertSource {
 pub struct OnConflict {
     pub columns: Vec<String>,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub duplicate_key: bool,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub compact_target: bool,
     pub action: ConflictAction,
 }

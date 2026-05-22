@@ -148,6 +148,7 @@ pub enum TokenType {
     // Additional DML
     Returning,
     Conflict,
+    Duplicate,
     Do,
     Nothing,
     Replace,

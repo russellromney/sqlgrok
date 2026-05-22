@@ -600,6 +600,7 @@ impl Tokenizer {
             "RESTRICT" => TokenType::Restrict,
             "RETURNING" => TokenType::Returning,
             "CONFLICT" => TokenType::Conflict,
+            "DUPLICATE" => TokenType::Duplicate,
             "DO" => TokenType::Do,
             "NOTHING" => TokenType::Nothing,
             "REPLACE" => TokenType::Replace,

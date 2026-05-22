@@ -145,3 +145,7 @@ this file records what landed.
 ### MySQL UNSIGNED Cast Parity
 
 - Map MySQL `CAST(... AS UNSIGNED)` to SQLite `UBIGINT` to match Python SQLGlot.
+
+### MySQL ON DUPLICATE KEY Parity
+
+- Parse and render MySQL `ON DUPLICATE KEY UPDATE` clauses for SQLite-targeted transpilation.
