@@ -193,6 +193,7 @@ impl Parser {
                 | TokenType::Left
                 | TokenType::Right
                 | TokenType::Replace
+                | TokenType::Glob
                 | TokenType::Cube
                 | TokenType::Rollup
                 | TokenType::Grouping
@@ -2474,15 +2475,20 @@ impl Parser {
                     | TokenType::In
                     | TokenType::Like
                     | TokenType::ILike
+                    | TokenType::Glob
                     | TokenType::Between
             ) {
-                // Peek ahead: if NOT, only consume it if followed by IN/LIKE/ILIKE/BETWEEN
+                // Peek ahead: if NOT, only consume it if followed by a predicate operator.
                 if self.peek_type() == &TokenType::Not {
                     let saved_pos = self.pos;
                     self.advance(); // consume NOT
                     if !matches!(
                         self.peek_type(),
-                        TokenType::In | TokenType::Like | TokenType::ILike | TokenType::Between
+                        TokenType::In
+                            | TokenType::Like
+                            | TokenType::ILike
+                            | TokenType::Glob
+                            | TokenType::Between
                     ) {
                         // NOT is not part of a comparison predicate — restore position
                         self.pos = saved_pos;
@@ -2538,6 +2544,21 @@ impl Parser {
                         pattern: Box::new(pattern),
                         negated,
                         escape,
+                    };
+                } else if self.match_token(TokenType::Glob) {
+                    let pattern = self.parse_addition()?;
+                    let glob = Expr::BinaryOp {
+                        left: Box::new(left),
+                        op: BinaryOperator::Glob,
+                        right: Box::new(pattern),
+                    };
+                    left = if negated {
+                        Expr::UnaryOp {
+                            op: UnaryOperator::Not,
+                            expr: Box::new(glob),
+                        }
+                    } else {
+                        glob
                     };
                 } else if self.match_token(TokenType::Between) {
                     let low = self.parse_addition()?;

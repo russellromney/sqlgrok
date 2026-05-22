@@ -524,6 +524,7 @@ impl Tokenizer {
             "NULL" => TokenType::Null,
             "LIKE" => TokenType::Like,
             "ILIKE" => TokenType::ILike,
+            "GLOB" => TokenType::Glob,
             "ESCAPE" => TokenType::Escape,
             "BETWEEN" => TokenType::Between,
             "CASE" => TokenType::Case,

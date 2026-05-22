@@ -162,3 +162,8 @@ this file records what landed.
 ### SQLGlot Fixture Importer Ratchet
 
 - Add `--only-matching` importer mode to seed upstream SQLGlot parity files without introducing known failures.
+
+### SQLite GLOB Parity
+
+- Rewrite SQLite-targeted `GLOB(pattern, value)` calls to SQLGlot's infix `value GLOB pattern` output.
+- Map `LONGVARCHAR` to SQLite `TEXT` for SQLGlot DDL parity.

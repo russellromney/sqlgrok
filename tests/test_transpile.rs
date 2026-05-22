@@ -365,6 +365,39 @@ fn test_mysql_json_extract_to_sqlite_arrow() {
     );
 }
 
+#[test]
+fn test_sqlite_glob_function_to_operator() {
+    validate_identity("SELECT 'xyz' GLOB '*y*'");
+    validate_with_dialect(
+        "SELECT GLOB('*y*', 'xyz')",
+        "SELECT 'xyz' GLOB '*y*'",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT GLOB('*y*', 'xyz')",
+        "SELECT 'xyz' GLOB '*y*'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_longvarchar_to_sqlite_text() {
+    validate_with_dialect(
+        "CREATE TABLE foo (bar LONGVARCHAR)",
+        "CREATE TABLE foo (bar TEXT)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "CREATE TABLE foo (bar LONGVARCHAR)",
+        "CREATE TABLE foo (bar TEXT)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – GROUP BY, HAVING, ORDER BY, LIMIT, OFFSET
 // (from Python identity.sql)

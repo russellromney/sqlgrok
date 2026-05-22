@@ -462,11 +462,25 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             filter,
             over,
         } => {
-            let new_name = map_function_name(&name, target);
             let new_args: Vec<Expr> = args
                 .into_iter()
                 .map(|a| transform_expr(a, source, target))
                 .collect();
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("GLOB")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::BinaryOp {
+                    left: Box::new(new_args[1].clone()),
+                    op: BinaryOperator::Glob,
+                    right: Box::new(new_args[0].clone()),
+                };
+            }
+
+            let new_name = map_function_name(&name, target);
             Expr::Function {
                 name: new_name,
                 args: new_args,
@@ -1139,6 +1153,11 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
             if is_mysql_family(s) && name.eq_ignore_ascii_case("UNSIGNED") =>
         {
             DataType::Unknown("UBIGINT".to_string())
+        }
+        (DataType::Unknown(name), _, Dialect::Sqlite)
+            if name.eq_ignore_ascii_case("LONGVARCHAR") =>
+        {
+            DataType::Text
         }
         _ => map_data_type(dt, target),
     }

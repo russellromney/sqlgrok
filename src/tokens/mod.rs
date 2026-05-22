@@ -51,6 +51,7 @@ pub enum TokenType {
     Null,
     Like,
     ILike,
+    Glob,
     Between,
     Case,
     When,

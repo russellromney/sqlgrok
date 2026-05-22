@@ -1427,6 +1427,7 @@ pub enum BinaryOperator {
     BitwiseXor,
     ShiftLeft,
     ShiftRight,
+    Glob,
     /// `->` JSON access operator
     Arrow,
     /// `->>` JSON text access

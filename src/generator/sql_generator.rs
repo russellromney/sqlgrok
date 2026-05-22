@@ -1729,6 +1729,7 @@ impl Generator {
             BinaryOperator::BitwiseXor => " ^ ",
             BinaryOperator::ShiftLeft => " << ",
             BinaryOperator::ShiftRight => " >> ",
+            BinaryOperator::Glob => " GLOB ",
             BinaryOperator::Arrow => " -> ",
             BinaryOperator::DoubleArrow => " ->> ",
         }
