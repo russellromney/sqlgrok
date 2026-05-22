@@ -8,15 +8,15 @@ Total candidates: `144`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 77 |
-| `mismatch` | 67 |
+| `match` | 79 |
+| `mismatch` | 65 |
 
 ## Top Feature Buckets
 
 | Status | Feature | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 33 |
-| `mismatch` | `SELECT` | 32 |
+| `match` | `SELECT` | 35 |
+| `mismatch` | `SELECT` | 30 |
 | `mismatch` | `PRAGMA` | 12 |
 | `match` | `CREATE` | 9 |
 | `mismatch` | `CREATE TABLE` | 7 |
@@ -45,8 +45,8 @@ Total candidates: `144`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 30 |
-| `mismatch` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 30 |
+| `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 32 |
+| `mismatch` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 28 |
 | `mismatch` | `tests/dialects/test_sqlite.py` | `test_ddl` | 17 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_ddl` | 14 |
 | `mismatch` | `tests/dialects/test_hive.py` | `test_joins_without_on` | 6 |

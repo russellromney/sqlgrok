@@ -1145,6 +1145,7 @@ impl SelectBuilder {
         self.statement.order_by.push(OrderByItem {
             expr,
             ascending,
+            explicit_direction: !ascending,
             nulls_first,
         });
         self
@@ -1450,6 +1451,7 @@ fn parse_order_by_item(s: &str, dialect: Dialect) -> Option<OrderByItem> {
     parse_expr_dialect(expr_str.trim(), dialect).map(|expr| OrderByItem {
         expr,
         ascending,
+        explicit_direction: !ascending || s.to_uppercase().ends_with(" ASC"),
         nulls_first,
     })
 }

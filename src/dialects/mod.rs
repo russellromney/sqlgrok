@@ -721,6 +721,7 @@ fn rewrite_postgres_distinct_on(
             .map(|expr| OrderByItem {
                 expr,
                 ascending: true,
+                explicit_direction: false,
                 nulls_first: None,
             })
             .collect()

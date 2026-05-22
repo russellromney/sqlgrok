@@ -501,7 +501,7 @@ fn test_identity_order_by() {
         "SELECT a FROM test ORDER BY a",
         "SELECT a FROM test ORDER BY a, b",
         "SELECT a FROM test ORDER BY a DESC",
-        // ASC is omitted in output (it's the default)
+        "SELECT a FROM test ORDER BY a ASC",
         "SELECT a FROM test ORDER BY a, b DESC",
         "SELECT a FROM test ORDER BY a NULLS FIRST",
         "SELECT a FROM test ORDER BY a DESC NULLS LAST",
@@ -513,10 +513,25 @@ fn test_identity_order_by() {
 
 #[test]
 fn test_order_by_asc_normalization() {
-    // ASC is default, so it's dropped in output
     validate(
         "SELECT a FROM test ORDER BY a ASC, b DESC",
-        "SELECT a FROM test ORDER BY a, b DESC",
+        "SELECT a FROM test ORDER BY a ASC, b DESC",
+    );
+}
+
+#[test]
+fn test_sqlite_order_by_explicit_asc_parity() {
+    validate_with_dialect(
+        "SELECT fname, lname, age FROM person ORDER BY age DESC NULLS FIRST, fname ASC NULLS LAST, lname",
+        "SELECT fname, lname, age FROM person ORDER BY age DESC NULLS FIRST, fname ASC NULLS LAST, lname",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT item AS \"item\", some AS \"some\" FROM data WHERE (item = 'value_1' COLLATE NOCASE) AND (some = 't' COLLATE NOCASE) ORDER BY item ASC LIMIT 1 OFFSET 0",
+        "SELECT item AS \"item\", some AS \"some\" FROM data WHERE (item = 'value_1' COLLATE NOCASE) AND (some = 't' COLLATE NOCASE) ORDER BY item ASC LIMIT 1 OFFSET 0",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
     );
 }
 

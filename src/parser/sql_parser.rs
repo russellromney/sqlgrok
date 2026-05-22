@@ -1204,11 +1204,12 @@ impl Parser {
         let mut items = Vec::new();
         loop {
             let expr = self.parse_expr()?;
-            let ascending = if self.match_token(TokenType::Desc) {
-                false
+            let (ascending, explicit_direction) = if self.match_token(TokenType::Desc) {
+                (false, true)
+            } else if self.match_token(TokenType::Asc) {
+                (true, true)
             } else {
-                let _ = self.match_token(TokenType::Asc);
-                true
+                (true, false)
             };
 
             let nulls_first = if self.match_token(TokenType::Nulls) {
@@ -1225,6 +1226,7 @@ impl Parser {
             items.push(OrderByItem {
                 expr,
                 ascending,
+                explicit_direction,
                 nulls_first,
             });
             if !self.match_token(TokenType::Comma) {

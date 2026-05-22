@@ -17,6 +17,7 @@ this file records what landed.
 - Added MySQL parser/transpile support for `TRIM(... FROM ...)`, `CHAR(... USING ...)`, multi-target `DELETE ... USING`, and a raw `JSON_TABLE(...)` table-source carrier.
 - Hardened the MySQL parser-carrier cleanup with SQLGlot parity for default `TRIM(LEADING|TRAILING FROM ...)`, empty `TRIM()` rejection, balanced `JSON_TABLE(...)` parsing, and SQLite `JSON_TABLE` `VARCHAR` to `TEXT` output.
 - Added SQLite numeric parity for MySQL float division and Postgres `DIV(...)` integer-division casts.
+- Preserved explicit `ASC` in `ORDER BY` items so SQLite identity and `NULLS LAST` orderings match SQLGlot output.
 
 ## 2026-05-20
 

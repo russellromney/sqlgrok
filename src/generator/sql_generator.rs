@@ -753,6 +753,9 @@ impl Generator {
             if !item.ascending {
                 self.write(" ");
                 self.write_keyword("DESC");
+            } else if item.explicit_direction {
+                self.write(" ");
+                self.write_keyword("ASC");
             }
             if let Some(nulls_first) = item.nulls_first {
                 if nulls_first {
@@ -1438,6 +1441,9 @@ impl Generator {
             if !item.ascending {
                 self.write(" ");
                 self.write_keyword("DESC");
+            } else if item.explicit_direction {
+                self.write(" ");
+                self.write_keyword("ASC");
             }
             if let Some(nulls_first) = item.nulls_first {
                 self.write(" ");
@@ -2309,6 +2315,9 @@ impl Generator {
                 if !item.ascending {
                     self.write(" ");
                     self.write_keyword("DESC");
+                } else if item.explicit_direction {
+                    self.write(" ");
+                    self.write_keyword("ASC");
                 }
                 if let Some(nulls_first) = item.nulls_first {
                     if nulls_first {

@@ -344,6 +344,8 @@ pub enum JoinType {
 pub struct OrderByItem {
     pub expr: Expr,
     pub ascending: bool,
+    #[serde(default)]
+    pub explicit_direction: bool,
     /// NULLS FIRST / NULLS LAST
     pub nulls_first: Option<bool>,
 }
