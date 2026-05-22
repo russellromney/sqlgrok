@@ -515,7 +515,7 @@ impl Generator {
                 alias,
                 alias_quote_style,
             } => {
-                self.write(sql);
+                self.write_raw_table_source_sql(sql);
                 if let Some(alias) = alias {
                     self.write(" ");
                     if !self.omit_table_alias_as() {
@@ -651,6 +651,18 @@ impl Generator {
     /// Returns true if the target dialect forbids `AS` in table aliases.
     fn omit_table_alias_as(&self) -> bool {
         matches!(self.dialect, Some(Dialect::Oracle))
+    }
+
+    fn write_raw_table_source_sql(&mut self, sql: &str) {
+        if matches!(self.dialect, Some(Dialect::Sqlite))
+            && sql
+                .get(..10)
+                .is_some_and(|prefix| prefix.eq_ignore_ascii_case("JSON_TABLE"))
+        {
+            self.write(&rewrite_json_table_sqlite_types(sql));
+        } else {
+            self.write(sql);
+        }
     }
 
     fn gen_table_ref(&mut self, table: &TableRef) {
@@ -2687,6 +2699,18 @@ impl Generator {
                             self.write(")");
                             return;
                         }
+                        (TrimType::Leading, None) => {
+                            self.write_keyword("LTRIM(");
+                            self.gen_expr(expr);
+                            self.write(")");
+                            return;
+                        }
+                        (TrimType::Trailing, None) => {
+                            self.write_keyword("RTRIM(");
+                            self.gen_expr(expr);
+                            self.write(")");
+                            return;
+                        }
                         (TrimType::Both, Some(chars)) => {
                             self.write_keyword("TRIM(");
                             self.gen_expr(expr);
@@ -3283,6 +3307,41 @@ impl Default for Generator {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn rewrite_json_table_sqlite_types(sql: &str) -> String {
+    let bytes = sql.as_bytes();
+    let mut out = String::with_capacity(sql.len());
+    let mut i = 0;
+    let mut in_single_quote = false;
+
+    while i < bytes.len() {
+        if bytes[i] == b'\'' {
+            out.push('\'');
+            i += 1;
+            if in_single_quote && i < bytes.len() && bytes[i] == b'\'' {
+                out.push('\'');
+                i += 1;
+            } else {
+                in_single_quote = !in_single_quote;
+            }
+            continue;
+        }
+
+        if !in_single_quote
+            && bytes[i..].len() >= 7
+            && bytes[i..i + 7].eq_ignore_ascii_case(b"VARCHAR")
+        {
+            out.push_str("TEXT");
+            i += 7;
+            continue;
+        }
+
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+
+    out
 }
 
 #[cfg(test)]

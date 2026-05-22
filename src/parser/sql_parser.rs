@@ -941,6 +941,15 @@ impl Parser {
                 self.advance();
             }
         }
+        if depth > 0 {
+            let token = self.peek();
+            return Err(SqlglotError::ParserError {
+                message: format!(
+                    "Expected RParen, got {:?} ('{}') at line {} col {}",
+                    token.token_type, token.value, token.line, token.col
+                ),
+            });
+        }
         let end = self
             .tokens
             .get(self.pos.saturating_sub(1))
@@ -3872,14 +3881,12 @@ impl Parser {
 
     fn parse_trim_function(&mut self) -> Result<Expr> {
         if self.peek_type() == &TokenType::RParen {
-            return Ok(Expr::TypedFunction {
-                func: TypedFunction::Trim {
-                    expr: Box::new(Expr::StringLiteral(String::new())),
-                    trim_type: TrimType::Both,
-                    trim_chars: None,
-                },
-                filter: None,
-                over: None,
+            let token = self.peek();
+            return Err(SqlglotError::ParserError {
+                message: format!(
+                    "Expected expression, got {:?} ('{}') at line {} col {}",
+                    token.token_type, token.value, token.line, token.col
+                ),
             });
         }
 

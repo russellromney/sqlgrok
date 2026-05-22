@@ -8,16 +8,16 @@ Total candidates: `496`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 229 |
-| `mismatch` | 260 |
+| `match` | 231 |
+| `mismatch` | 258 |
 | `oracle-error` | 7 |
 
 ## Top Feature Buckets
 
 | Status | Feature | Count |
 | --- | --- | ---: |
-| `mismatch` | `SELECT` | 88 |
-| `match` | `SELECT` | 80 |
+| `mismatch` | `SELECT` | 87 |
+| `match` | `SELECT` | 81 |
 | `mismatch` | `CREATE TABLE` | 45 |
 | `match` | `SET` | 33 |
 | `mismatch` | `ALTER TABLE` | 26 |
@@ -35,21 +35,21 @@ Total candidates: `496`
 | `mismatch` | `MATCH()` | 6 |
 | `match` | `ALTER` | 5 |
 | `match` | `CHAR()` | 4 |
-| `mismatch` | `CREATE` | 4 |
+| `match` | `CREATE` | 4 |
 | `mismatch` | `DELETE` | 4 |
 | `mismatch` | `X` | 4 |
-| `match` | `CREATE` | 3 |
 | `match` | `REGEXP_INSTR()` | 3 |
+| `mismatch` | `CREATE` | 3 |
 | `mismatch` | `DESCRIBE` | 3 |
 
 ## Top Source Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 81 |
-| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 63 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_identity` | 32 |
-| `match` | `tests/dialects/test_mysql.py` | `test_ddl` | 25 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 80 |
+| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 64 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_identity` | 31 |
+| `match` | `tests/dialects/test_mysql.py` | `test_ddl` | 26 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 22 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql` | 18 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql_time` | 16 |

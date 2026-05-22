@@ -1730,6 +1730,8 @@ fn test_parse_errors() {
     assert!(parse("1 + (2 + 3", Dialect::Ansi).is_err());
     assert!(parse("SELECT (", Dialect::Ansi).is_err());
     assert!(parse("DELETE FROM", Dialect::Ansi).is_err());
+    assert!(parse("SELECT TRIM()", Dialect::Mysql).is_err());
+    assert!(parse("SELECT * FROM JSON_TABLE(data, '$.x'", Dialect::Mysql).is_err());
     // Empty input
     assert!(parse("", Dialect::Ansi).is_err());
 }
@@ -2677,6 +2679,24 @@ fn test_mysql_trim_variants_to_sqlite() {
         Dialect::Mysql,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "SELECT TRIM(LEADING FROM ' XXX ')",
+        "SELECT LTRIM(' XXX ')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TRIM(TRAILING FROM ' XXX ')",
+        "SELECT RTRIM(' XXX ')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TRIM(BOTH FROM ' XXX ')",
+        "SELECT TRIM(' XXX ')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]
@@ -2687,7 +2707,10 @@ fn test_mysql_json_table_carrier_to_sqlite() {
         Dialect::Sqlite,
     )
     .expect("JSON_TABLE table source should parse");
-    assert!(result.contains("JSON_TABLE("));
+    assert_eq!(
+        result,
+        "SELECT * FROM source, JSON_TABLE(source.links, '$.org[*]' COLUMNS(row_id FOR ORDINALITY, link TEXT(255) PATH '$.link')) AS links"
+    );
 }
 
 #[test]
