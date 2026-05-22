@@ -1509,6 +1509,28 @@ fn test_transpile_ifnull_to_coalesce() {
 }
 
 #[test]
+fn test_bit_aggregates_to_sqlite() {
+    for read in [Dialect::Mysql, Dialect::Postgres] {
+        validate_with_dialect("BIT_AND(x)", "BITWISE_AND_AGG(x)", read, Dialect::Sqlite);
+        validate_with_dialect("BIT_OR(x)", "BITWISE_OR_AGG(x)", read, Dialect::Sqlite);
+        validate_with_dialect("BIT_XOR(x)", "BITWISE_XOR_AGG(x)", read, Dialect::Sqlite);
+    }
+    validate_with_dialect(
+        "BIT_COUNT(x)",
+        "BITWISE_COUNT(x)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "BIT_COUNT(x)",
+        "BIT_COUNT(x)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect("BIT_AND(x)", "BIT_AND(x)", Dialect::Sqlite, Dialect::Sqlite);
+}
+
+#[test]
 fn test_mysql_on_duplicate_key_to_sqlite() {
     validate_with_dialect(
         "INSERT INTO t (id, a) VALUES (1, 2) ON DUPLICATE KEY UPDATE a = 2",

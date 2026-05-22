@@ -118,6 +118,12 @@ this file records what landed.
 
 - Render MySQL `DATE_FORMAT(expr, format)` as SQLite `STRFTIME(format, expr)` when targeting SQLite.
 
+### SQLite Transpile Report Baseline
+
+- Added the generated SQLite-to-SQLite transpile report for the current SQLGlot importer coverage.
+- Applied dialect transforms to standalone expression statements, closing a class of generated-report mismatches.
+- Matched Python SQLGlot for MySQL/Postgres bit aggregates targeting SQLite: `BIT_AND`, `BIT_OR`, `BIT_XOR`, and MySQL `BIT_COUNT`.
+
 ### Postgres STRING_AGG Parity
 
 - Map Postgres `string_agg(expr, separator)` to SQLite `GROUP_CONCAT(expr, separator)`.

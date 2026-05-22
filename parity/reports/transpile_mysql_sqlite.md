@@ -8,8 +8,8 @@ Total candidates: `496`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 126 |
-| `mismatch` | 145 |
+| `match` | 134 |
+| `mismatch` | 137 |
 | `oracle-error` | 7 |
 | `rust-error` | 218 |
 
@@ -27,7 +27,7 @@ Total candidates: `496`
 | `rust-error` | `DATE_ADD()` | 11 |
 | `match` | `GROUP_CONCAT()` | 8 |
 | `rust-error` | `ANALYZE` | 8 |
-| `mismatch` | `CAST()` | 7 |
+| `match` | `CAST()` | 7 |
 | `oracle-error` | `CREATE TABLE` | 7 |
 | `rust-error` | `CREATE` | 7 |
 | `rust-error` | `GRANT` | 7 |
@@ -37,9 +37,9 @@ Total candidates: `496`
 | `rust-error` | `ALTER` | 5 |
 | `match` | `INSERT` | 4 |
 | `mismatch` | `CREATE TABLE` | 4 |
-| `match` | `CAST()` | 3 |
 | `match` | `CHAR()` | 3 |
 | `match` | `REGEXP_INSTR()` | 3 |
+| `mismatch` | `CAST()` | 3 |
 | `mismatch` | `DELETE` | 3 |
 | `mismatch` | `DESCRIBE` | 3 |
 
@@ -50,10 +50,10 @@ Total candidates: `496`
 | `rust-error` | `tests/dialects/test_mysql.py` | `test_ddl` | 87 |
 | `rust-error` | `tests/dialects/test_mysql.py` | `test_identity` | 52 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_identity` | 25 |
-| `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 19 |
+| `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 21 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 18 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql_time` | 16 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql` | 15 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql` | 13 |
 | `match` | `tests/dialects/test_mysql.py` | `test_canonical_functions` | 11 |
 | `rust-error` | `tests/dialects/test_mysql.py` | `test_valid_interval_units` | 11 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 10 |
@@ -66,9 +66,9 @@ Total candidates: `496`
 | `rust-error` | `tests/dialects/test_mysql.py` | `test_revoke` | 7 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_match_against` | 6 |
 | `rust-error` | `tests/dialects/test_mysql.py` | `test_mysql` | 6 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bit_aggs` | 4 |
 | `match` | `tests/dialects/test_dialect.py` | `test_localtime_and_localtimestamp` | 4 |
 | `match` | `tests/dialects/test_mysql.py` | `test_null_ordering_simulation_resolves_ordered_against_projection` | 4 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bit_aggs` | 4 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_explain` | 4 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql_time_python311` | 4 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_number_format` | 4 |
@@ -80,18 +80,18 @@ Total candidates: `496`
 - `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-1530-test-bigquery`: `DATEDIFF(CAST('2010-07-07' AS DATE), CAST('2008-12-25' AS DATE))`
   - expected: `CAST((JULIANDAY(DATE('2010-07-07')) - JULIANDAY(DATE('2008-12-25'))) AS INTEGER)`
   - actual: `CAST((JULIANDAY(CAST('2010-07-07' AS DATE)) - JULIANDAY(CAST('2008-12-25' AS DATE))) AS INTEGER)`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-3558-test-bit-aggs`: `BIT_AND(x)`
-  - expected: `BITWISE_AND_AGG(x)`
-  - actual: `BIT_AND(x)`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-3578-test-bit-aggs`: `BIT_OR(x)`
-  - expected: `BITWISE_OR_AGG(x)`
-  - actual: `BIT_OR(x)`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-3598-test-bit-aggs`: `BIT_XOR(x)`
-  - expected: `BITWISE_XOR_AGG(x)`
-  - actual: `BIT_XOR(x)`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-3616-test-bit-aggs`: `BIT_COUNT(x)`
-  - expected: `BITWISE_COUNT(x)`
-  - actual: `BIT_COUNT(x)`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-0709-test-bigquery`: `SELECT MAKETIME(15, 30, 00)`
+  - expected: `SELECT TIME_FROM_PARTS(15, 30, 00)`
+  - actual: `SELECT MAKETIME(15, 30, 00)`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-0759-test-bigquery`: `TIMESTAMPDIFF(month, b, a)`
+  - expected: `TIMESTAMPDIFF(a, b, MONTH)`
+  - actual: `CAST((JULIANDAY(month) - JULIANDAY(b)) AS INTEGER)`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-clickhouse-0444-test-clickhouse`: `SELECT 1 XOR 0`
+  - expected: `SELECT 1 XOR 0`
+  - actual: `SELECT 1`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-clickhouse-0461-test-clickhouse`: `SELECT 1 XOR 0 XOR 1`
+  - expected: `SELECT 1 XOR 0 XOR 1`
+  - actual: `SELECT 1`
 
 ### `oracle-error`
 

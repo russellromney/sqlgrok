@@ -369,6 +369,9 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 *wh = transform_expr(wh.clone(), source, target);
             }
         }
+        Statement::Expression(expr) => {
+            *expr = transform_expr(expr.clone(), source, target);
+        }
         // DDL: map data types in CREATE TABLE column definitions
         Statement::CreateTable(ct) => {
             if matches!(target, Dialect::Sqlite) {
@@ -480,7 +483,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
 
-            let new_name = map_function_name(&name, target);
+            let new_name = map_function_name_for_source(&name, source, target);
             Expr::Function {
                 name: new_name,
                 args: new_args,
@@ -941,6 +944,10 @@ fn detect_format_style(format_str: &str) -> time::TimeFormatStyle {
 
 /// Map function names between dialects.
 pub(crate) fn map_function_name(name: &str, target: Dialect) -> String {
+    map_function_name_for_source(name, Dialect::Ansi, target)
+}
+
+fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) -> String {
     let upper = name.to_uppercase();
     match upper.as_str() {
         // ── NOW / CURRENT_TIMESTAMP / GETDATE ────────────────────────────
@@ -1069,6 +1076,29 @@ pub(crate) fn map_function_name(name: &str, target: Dialect) -> String {
 
         // ── STRING_AGG / GROUP_CONCAT ───────────────────────────────────
         "STRING_AGG" if matches!(target, Dialect::Sqlite) => "GROUP_CONCAT".to_string(),
+
+        // ── BIT aggregate functions ─────────────────────────────────────
+        "BIT_AND"
+            if matches!(target, Dialect::Sqlite)
+                && (is_mysql_family(source) || is_postgres_family(source)) =>
+        {
+            "BITWISE_AND_AGG".to_string()
+        }
+        "BIT_OR"
+            if matches!(target, Dialect::Sqlite)
+                && (is_mysql_family(source) || is_postgres_family(source)) =>
+        {
+            "BITWISE_OR_AGG".to_string()
+        }
+        "BIT_XOR"
+            if matches!(target, Dialect::Sqlite)
+                && (is_mysql_family(source) || is_postgres_family(source)) =>
+        {
+            "BITWISE_XOR_AGG".to_string()
+        }
+        "BIT_COUNT" if matches!(target, Dialect::Sqlite) && is_mysql_family(source) => {
+            "BITWISE_COUNT".to_string()
+        }
 
         // ── UUID functions ──────────────────────────────────────────────
         "GEN_RANDOM_UUID" if matches!(target, Dialect::Sqlite) => "UUID".to_string(),

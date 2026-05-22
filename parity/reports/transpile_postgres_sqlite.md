@@ -8,8 +8,8 @@ Total candidates: `682`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 190 |
-| `mismatch` | 226 |
+| `match` | 216 |
+| `mismatch` | 200 |
 | `rust-error` | 266 |
 
 ## Top Feature Buckets
@@ -23,32 +23,32 @@ Total candidates: `682`
 | `rust-error` | `CREATE TABLE` | 34 |
 | `rust-error` | `REVOKE` | 20 |
 | `match` | `CREATE TABLE` | 18 |
+| `match` | `CAST()` | 17 |
 | `rust-error` | `GRANT` | 17 |
-| `mismatch` | `X` | 16 |
-| `match` | `CAST()` | 14 |
+| `mismatch` | `X` | 13 |
 | `mismatch` | `BEGIN` | 11 |
 | `match` | `INTERVAL` | 9 |
 | `match` | `WITH` | 9 |
 | `rust-error` | `ALTER TABLE` | 9 |
-| `mismatch` | `CAST()` | 7 |
+| `match` | `ROUND()` | 7 |
 | `mismatch` | `TRUNCATE` | 7 |
 | `mismatch` | `CREATE INDEX` | 6 |
 | `rust-error` | `X` | 6 |
 | `match` | `MERGE` | 5 |
-| `mismatch` | `ROUND()` | 5 |
 | `mismatch` | `WITH` | 5 |
 | `rust-error` | `INSERT` | 5 |
 | `match` | `DROP INDEX` | 4 |
 | `match` | `INSERT` | 4 |
 | `match` | `REGEXP_INSTR()` | 4 |
+| `mismatch` | `A` | 4 |
 
 ## Top Source Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 112 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 102 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 87 |
 | `rust-error` | `tests/dialects/test_postgres.py` | `test_ddl` | 79 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 77 |
 | `rust-error` | `tests/dialects/test_postgres.py` | `test_postgres` | 74 |
 | `rust-error` | `tests/dialects/test_postgres.py` | `test_postgres_create_trigger` | 34 |
 | `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 23 |
@@ -57,12 +57,12 @@ Total candidates: `682`
 | `rust-error` | `tests/dialects/test_postgres.py` | `test_grant` | 17 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_begin_transaction` | 11 |
 | `match` | `tests/dialects/test_postgres.py` | `test_interval_span` | 10 |
+| `match` | `tests/dialects/test_postgres.py` | `test_round` | 7 |
 | `mismatch` | `tests/dialects/test_dune.py` | `test_dune` | 7 |
 | `match` | `tests/dialects/test_doris.py` | `test_doris` | 6 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 6 |
 | `rust-error` | `tests/dialects/test_postgres.py` | `test_xmlelement` | 6 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 5 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_round` | 5 |
 | `mismatch` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 5 |
 | `match` | `tests/dialects/test_dialect.py` | `test_localtime_and_localtimestamp` | 4 |
 | `match` | `tests/dialects/test_dialect.py` | `test_regexp_instr` | 4 |
@@ -70,27 +70,27 @@ Total candidates: `682`
 | `match` | `tests/dialects/test_postgres.py` | `test_json_extract` | 4 |
 | `match` | `tests/dialects/test_postgres.py` | `test_locks` | 4 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_heredoc_strings` | 4 |
-| `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 4 |
+| `rust-error` | `tests/dialects/test_postgres.py` | `test_analyze` | 4 |
 
 ## Non-Matching Examples
 
 ### `mismatch`
 
-- `sqlglot-postgres-to-sqlite-tests-dialects-test-bigquery-3558-test-bit-aggs`: `BIT_AND(x)`
-  - expected: `BITWISE_AND_AGG(x)`
-  - actual: `BIT_AND(x)`
-- `sqlglot-postgres-to-sqlite-tests-dialects-test-bigquery-3578-test-bit-aggs`: `BIT_OR(x)`
-  - expected: `BITWISE_OR_AGG(x)`
-  - actual: `BIT_OR(x)`
-- `sqlglot-postgres-to-sqlite-tests-dialects-test-bigquery-3598-test-bit-aggs`: `BIT_XOR(x)`
-  - expected: `BITWISE_XOR_AGG(x)`
-  - actual: `BIT_XOR(x)`
 - `sqlglot-postgres-to-sqlite-tests-dialects-test-bigquery-0709-test-bigquery`: `SELECT MAKE_TIME(15, 30, 00)`
   - expected: `SELECT TIME_FROM_PARTS(15, 30, 00)`
   - actual: `SELECT MAKE_TIME(15, 30, 00)`
 - `sqlglot-postgres-to-sqlite-tests-dialects-test-clickhouse-0131-test-clickhouse`: `TRUNC(3.14159, 2)`
   - expected: `TRUNC(3.14159)`
   - actual: `TRUNC(3.14159, 2)`
+- `sqlglot-postgres-to-sqlite-tests-dialects-test-clickhouse-0309-test-clickhouse`: `SELECT TO_DATE('05 12 2000', 'DD MM YYYY')`
+  - expected: `SELECT STR_TO_DATE('05 12 2000', '%d %m %Y')`
+  - actual: `SELECT TO_DATE('05 12 2000', 'DD MM YYYY')`
+- `sqlglot-postgres-to-sqlite-tests-dialects-test-clickhouse-0348-test-clickhouse`: `x = any(array[1])`
+  - expected: `x = ANY(ARRAY(1))`
+  - actual: `x = ANY(ARRAY[1])`
+- `sqlglot-postgres-to-sqlite-tests-dialects-test-clickhouse-0372-test-clickhouse`: `SELECT TIMESTAMP '2020-01-01' + INTERVAL '500 us'`
+  - expected: `SELECT CAST('2020-01-01' AS TIMESTAMP) + INTERVAL '500' MICROSECOND`
+  - actual: `SELECT CAST('2020-01-01' AS TIMESTAMP) + INTERVAL '500 us'`
 
 ### `rust-error`
 
