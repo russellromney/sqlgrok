@@ -129,3 +129,7 @@ this file records what landed.
 ### Postgres UUID Function Parity
 
 - Map Postgres `gen_random_uuid()` to SQLite `UUID()` to match Python SQLGlot.
+
+### Postgres Interval Literal Parity
+
+- Split Postgres packed interval literals such as `INTERVAL '1 day'` into SQLite-style `INTERVAL '1' DAY`.

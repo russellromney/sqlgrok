@@ -296,6 +296,16 @@ fn test_postgres_gen_random_uuid_to_sqlite_uuid() {
 }
 
 #[test]
+fn test_postgres_interval_literal_to_sqlite() {
+    validate_with_dialect(
+        "SELECT NOW() - INTERVAL '1 day'",
+        "SELECT CURRENT_TIMESTAMP - INTERVAL '1' DAY",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_postgres_json_access_to_sqlite_paths() {
     validate_with_dialect(
         "SELECT data->'k' FROM t",

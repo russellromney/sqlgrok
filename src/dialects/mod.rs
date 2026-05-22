@@ -521,6 +521,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             op,
             expr: Box::new(transform_expr(*expr, source, target)),
         },
+        Expr::Interval { value, unit } => transform_interval(*value, unit, source, target),
         Expr::JsonAccess {
             expr,
             path,
@@ -557,6 +558,58 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         }
         // Everything else stays the same
         other => other,
+    }
+}
+
+fn transform_interval(
+    value: Expr,
+    unit: Option<DateTimeField>,
+    source: Dialect,
+    target: Dialect,
+) -> Expr {
+    let transformed_value = transform_expr(value, source, target);
+    if is_postgres_family(source)
+        && matches!(target, Dialect::Sqlite)
+        && unit.is_none()
+        && let Expr::StringLiteral(literal) = &transformed_value
+        && let Some((amount, parsed_unit)) = split_postgres_interval_literal(literal)
+    {
+        return Expr::Interval {
+            value: Box::new(Expr::StringLiteral(amount.to_string())),
+            unit: Some(parsed_unit),
+        };
+    }
+
+    Expr::Interval {
+        value: Box::new(transformed_value),
+        unit,
+    }
+}
+
+fn split_postgres_interval_literal(literal: &str) -> Option<(&str, DateTimeField)> {
+    let mut parts = literal.split_whitespace();
+    let amount = parts.next()?;
+    let unit = parts.next()?;
+    if parts.next().is_some() {
+        return None;
+    }
+
+    parse_interval_unit(unit).map(|field| (amount, field))
+}
+
+fn parse_interval_unit(unit: &str) -> Option<DateTimeField> {
+    match unit.trim_end_matches('s').to_ascii_uppercase().as_str() {
+        "YEAR" => Some(DateTimeField::Year),
+        "QUARTER" => Some(DateTimeField::Quarter),
+        "MONTH" => Some(DateTimeField::Month),
+        "WEEK" => Some(DateTimeField::Week),
+        "DAY" => Some(DateTimeField::Day),
+        "HOUR" => Some(DateTimeField::Hour),
+        "MINUTE" => Some(DateTimeField::Minute),
+        "SECOND" => Some(DateTimeField::Second),
+        "MILLISECOND" => Some(DateTimeField::Millisecond),
+        "MICROSECOND" => Some(DateTimeField::Microsecond),
+        _ => None,
     }
 }
 
