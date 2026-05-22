@@ -331,6 +331,7 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             for gb in &mut sel.group_by {
                 *gb = transform_expr(gb.clone(), source, target);
             }
+            transform_order_by_items(&mut sel.order_by, source, target);
             if let Some(having) = &mut sel.having {
                 *having = transform_expr(having.clone(), source, target);
             }
@@ -479,7 +480,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             Expr::TypedFunction {
                 func: transformed_func,
                 filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
-                over,
+                over: over.map(|spec| transform_window_spec(spec, source, target)),
             }
         }
         // ILIKE → LOWER(expr) LIKE LOWER(pattern) for non-supporting dialects
@@ -558,6 +559,26 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         }
         // Everything else stays the same
         other => other,
+    }
+}
+
+fn transform_window_spec(mut spec: WindowSpec, source: Dialect, target: Dialect) -> WindowSpec {
+    for expr in &mut spec.partition_by {
+        *expr = transform_expr(expr.clone(), source, target);
+    }
+    transform_order_by_items(&mut spec.order_by, source, target);
+    spec
+}
+
+fn transform_order_by_items(items: &mut [OrderByItem], source: Dialect, target: Dialect) {
+    for item in items {
+        item.expr = transform_expr(item.expr.clone(), source, target);
+        if is_postgres_family(source)
+            && matches!(target, Dialect::Sqlite)
+            && item.nulls_first.is_none()
+        {
+            item.nulls_first = Some(!item.ascending);
+        }
     }
 }
 

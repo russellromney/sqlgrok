@@ -306,6 +306,28 @@ fn test_postgres_interval_literal_to_sqlite() {
 }
 
 #[test]
+fn test_postgres_order_by_nulls_to_sqlite() {
+    validate_with_dialect(
+        "SELECT a FROM t ORDER BY b",
+        "SELECT a FROM t ORDER BY b NULLS LAST",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT ROW_NUMBER() OVER (PARTITION BY a ORDER BY b) FROM t",
+        "SELECT ROW_NUMBER() OVER (PARTITION BY a ORDER BY b NULLS LAST) FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT ROW_NUMBER() OVER (ORDER BY b DESC) FROM t",
+        "SELECT ROW_NUMBER() OVER (ORDER BY b DESC NULLS FIRST) FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_postgres_json_access_to_sqlite_paths() {
     validate_with_dialect(
         "SELECT data->'k' FROM t",

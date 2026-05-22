@@ -133,3 +133,7 @@ this file records what landed.
 ### Postgres Interval Literal Parity
 
 - Split Postgres packed interval literals such as `INTERVAL '1 day'` into SQLite-style `INTERVAL '1' DAY`.
+
+### Postgres ORDER BY Null Ordering Parity
+
+- Add SQLGlot-style default `NULLS LAST` / `NULLS FIRST` ordering for Postgres-to-SQLite `ORDER BY` clauses, including window specs.
