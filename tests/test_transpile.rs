@@ -380,10 +380,16 @@ fn test_sqlite_glob_function_to_operator() {
         Dialect::Postgres,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "SELECT GLOB(a, b, c) FROM t",
+        "SELECT b GLOB a FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]
-fn test_longvarchar_to_sqlite_text() {
+fn test_mysql_text_affinity_to_sqlite() {
     validate_with_dialect(
         "CREATE TABLE foo (bar LONGVARCHAR)",
         "CREATE TABLE foo (bar TEXT)",
@@ -394,6 +400,36 @@ fn test_longvarchar_to_sqlite_text() {
         "CREATE TABLE foo (bar LONGVARCHAR)",
         "CREATE TABLE foo (bar TEXT)",
         Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "CREATE TABLE foo (bar LONGTEXT)",
+        "CREATE TABLE foo (bar TEXT)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "CREATE TABLE foo (bar MEDIUMTEXT)",
+        "CREATE TABLE foo (bar TEXT)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "CREATE TABLE foo (bar TINYTEXT)",
+        "CREATE TABLE foo (bar TEXT)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "CREATE TABLE foo (bar LONGBLOB)",
+        "CREATE TABLE foo (bar BLOB)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "CREATE TABLE foo (bar MEDIUMBLOB)",
+        "CREATE TABLE foo (bar BLOB)",
+        Dialect::Mysql,
         Dialect::Sqlite,
     );
 }

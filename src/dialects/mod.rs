@@ -471,7 +471,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && !distinct
                 && filter.is_none()
                 && over.is_none()
-                && new_args.len() == 2
+                && new_args.len() >= 2
             {
                 return Expr::BinaryOp {
                     left: Box::new(new_args[1].clone()),
@@ -1155,9 +1155,20 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
             DataType::Unknown("UBIGINT".to_string())
         }
         (DataType::Unknown(name), _, Dialect::Sqlite)
-            if name.eq_ignore_ascii_case("LONGVARCHAR") =>
+            if matches!(
+                name.to_ascii_uppercase().as_str(),
+                "LONGVARCHAR" | "TINYTEXT" | "MEDIUMTEXT" | "LONGTEXT"
+            ) =>
         {
             DataType::Text
+        }
+        (DataType::Unknown(name), _, Dialect::Sqlite)
+            if matches!(
+                name.to_ascii_uppercase().as_str(),
+                "MEDIUMBLOB" | "LONGBLOB"
+            ) =>
+        {
+            DataType::Blob
         }
         _ => map_data_type(dt, target),
     }
