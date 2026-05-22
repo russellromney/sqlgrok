@@ -86,6 +86,10 @@ impl Parser {
         &self.peek().token_type
     }
 
+    fn peek_n_type(&self, offset: usize) -> &TokenType {
+        &self.tokens[(self.pos + offset).min(self.tokens.len() - 1)].token_type
+    }
+
     fn advance(&mut self) -> &Token {
         let token = &self.tokens[self.pos.min(self.tokens.len() - 1)];
         if self.pos < self.tokens.len() {
@@ -300,13 +304,21 @@ impl Parser {
                     })
                 }
             }
+            TokenType::Set
+            | TokenType::Analyze
+            | TokenType::Grant
+            | TokenType::Revoke
+            | TokenType::Show => self.parse_raw_statement(),
+            TokenType::Insert if self.peek_n_type(1) == &TokenType::Or => {
+                self.parse_raw_statement()
+            }
             TokenType::Insert | TokenType::Replace => self.parse_insert().map(Statement::Insert),
             TokenType::Update => self.parse_update().map(Statement::Update),
             TokenType::Delete => self.parse_delete().map(Statement::Delete),
             TokenType::Merge => self.parse_merge().map(Statement::Merge),
-            TokenType::Create => self.parse_create(),
+            TokenType::Create => self.parse_create_or_raw(),
             TokenType::Drop => self.parse_drop(),
-            TokenType::Alter => self.parse_alter_table().map(Statement::AlterTable),
+            TokenType::Alter => self.parse_alter_or_raw(),
             TokenType::Truncate => self.parse_truncate().map(Statement::Truncate),
             TokenType::Begin | TokenType::Commit | TokenType::Rollback | TokenType::Savepoint => {
                 self.parse_transaction().map(Statement::Transaction)
@@ -319,6 +331,47 @@ impl Parser {
             attach_comments_to_statement(&mut stmt, comments);
         }
         Ok(stmt)
+    }
+
+    fn parse_create_or_raw(&mut self) -> Result<Statement> {
+        let saved_pos = self.pos;
+        match self.parse_create() {
+            Ok(stmt) => Ok(stmt),
+            Err(_) => {
+                self.pos = saved_pos;
+                self.parse_raw_statement()
+            }
+        }
+    }
+
+    fn parse_alter_or_raw(&mut self) -> Result<Statement> {
+        let saved_pos = self.pos;
+        match self.parse_alter_table() {
+            Ok(stmt) => Ok(Statement::AlterTable(stmt)),
+            Err(_) => {
+                self.pos = saved_pos;
+                self.parse_raw_statement()
+            }
+        }
+    }
+
+    fn parse_raw_statement(&mut self) -> Result<Statement> {
+        let start = self.char_pos_to_byte(self.peek().position);
+        while !matches!(self.peek_type(), TokenType::Semicolon | TokenType::Eof) {
+            self.advance();
+        }
+        let end = self.char_pos_to_byte(self.peek().position);
+        Ok(Statement::Raw(RawStatement {
+            comments: vec![],
+            sql: self.sql[start..end].trim().to_string(),
+        }))
+    }
+
+    fn char_pos_to_byte(&self, char_pos: usize) -> usize {
+        self.sql
+            .char_indices()
+            .nth(char_pos)
+            .map_or(self.sql.len(), |(byte_pos, _)| byte_pos)
     }
 
     /// Parse multiple statements separated by semicolons.
@@ -4318,6 +4371,7 @@ fn attach_comments_to_statement(stmt: &mut Statement, comments: Vec<String>) {
         Statement::Explain(s) => s.comments = comments,
         Statement::Use(s) => s.comments = comments,
         Statement::Merge(s) => s.comments = comments,
+        Statement::Raw(s) => s.comments = comments,
         // Transaction and Expression don't have comment fields
         Statement::Transaction(_) | Statement::Expression(_) => {}
     }

@@ -8,9 +8,9 @@ Total candidates: `144`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 57 |
-| `mismatch` | 57 |
-| `rust-error` | 30 |
+| `match` | 76 |
+| `mismatch` | 60 |
+| `rust-error` | 8 |
 
 ## Top Feature Buckets
 
@@ -19,19 +19,18 @@ Total candidates: `144`
 | `match` | `SELECT` | 32 |
 | `mismatch` | `SELECT` | 25 |
 | `mismatch` | `PRAGMA` | 12 |
-| `rust-error` | `CREATE` | 8 |
+| `match` | `CREATE` | 9 |
 | `rust-error` | `SELECT` | 8 |
-| `rust-error` | `CREATE TABLE` | 6 |
+| `mismatch` | `CREATE TABLE` | 7 |
+| `match` | `INSERT` | 5 |
 | `match` | `X` | 5 |
-| `mismatch` | `CREATE TABLE` | 5 |
-| `rust-error` | `INSERT` | 5 |
+| `match` | `CREATE TABLE` | 4 |
 | `mismatch` | `ATTACH` | 4 |
 | `mismatch` | `DATEDIFF()` | 3 |
+| `match` | `ANALYZE` | 2 |
 | `match` | `LOG()` | 2 |
 | `mismatch` | `MIN()` | 2 |
-| `rust-error` | `ANALYZE` | 2 |
 | `match` | `ALTER TABLE` | 1 |
-| `match` | `CREATE` | 1 |
 | `match` | `CREATE INDEX` | 1 |
 | `match` | `CURRENT_DATE` | 1 |
 | `match` | `CURRENT_TIME` | 1 |
@@ -41,30 +40,31 @@ Total candidates: `144`
 | `match` | `INSTR()` | 1 |
 | `match` | `LOWER()` | 1 |
 | `match` | `MIN()` | 1 |
+| `match` | `RANDOM()` | 1 |
 
 ## Top Source Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 30 |
-| `mismatch` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 23 |
-| `rust-error` | `tests/dialects/test_sqlite.py` | `test_ddl` | 16 |
-| `mismatch` | `tests/dialects/test_sqlite.py` | `test_ddl` | 15 |
-| `rust-error` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 7 |
+| `mismatch` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 24 |
+| `mismatch` | `tests/dialects/test_sqlite.py` | `test_ddl` | 17 |
+| `match` | `tests/dialects/test_sqlite.py` | `test_ddl` | 14 |
 | `mismatch` | `tests/dialects/test_hive.py` | `test_joins_without_on` | 6 |
+| `rust-error` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 6 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 4 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_strftime` | 4 |
 | `match` | `tests/dialects/test_dialect.py` | `test_limit` | 3 |
+| `match` | `tests/dialects/test_sqlite.py` | `test_create_trigger` | 3 |
 | `mismatch` | `tests/dialects/test_sqlite.py` | `test_datediff` | 3 |
-| `rust-error` | `tests/dialects/test_sqlite.py` | `test_create_trigger` | 3 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 2 |
 | `match` | `tests/dialects/test_dialect.py` | `test_escaped_identifier_delimiter` | 2 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 2 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 2 |
+| `match` | `tests/dialects/test_sqlite.py` | `test_analyze` | 2 |
 | `match` | `tests/dialects/test_teradata.py` | `test_time` | 2 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 2 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_logarithm` | 2 |
-| `rust-error` | `tests/dialects/test_sqlite.py` | `test_analyze` | 2 |
 | `match` | `tests/dialects/test_dialect.py` | `test_random` | 1 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 1 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_trunc` | 1 |

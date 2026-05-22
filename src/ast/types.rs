@@ -100,8 +100,18 @@ pub enum Statement {
     Use(UseStatement),
     /// MERGE INTO ... USING ... WHEN MATCHED / WHEN NOT MATCHED
     Merge(MergeStatement),
+    /// Opaque command preserved textually until sqlgrok grows a typed AST for it.
+    Raw(RawStatement),
     /// Raw / passthrough expression (for expressions that don't fit a specific statement type)
     Expression(Expr),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RawStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
+    pub sql: String,
 }
 
 // ═══════════════════════════════════════════════════════════════════════

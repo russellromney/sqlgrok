@@ -1551,6 +1551,56 @@ fn test_mysql_insert_ignore_to_sqlite() {
 }
 
 #[test]
+fn test_opaque_command_parse_carriers() {
+    validate_with_dialect(
+        "SET @var_name = expr",
+        "SET @var_name = expr",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "ANALYZE LOCAL TABLE tbl",
+        "ANALYZE LOCAL TABLE tbl",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "REVOKE SELECT ON TABLE users FROM role1",
+        "REVOKE SELECT ON TABLE users FROM role1",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "CREATE VIRTUAL TABLE docs USING fts5(title, content)",
+        "CREATE VIRTUAL TABLE docs USING fts5(title, content)",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "ALTER TABLE t1 SET LOGGED",
+        "ALTER TABLE t1 SET LOGGED",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "CREATE TABLE foo (id INTEGER PRIMARY KEY ASC)",
+        "CREATE TABLE foo (id INTEGER PRIMARY KEY ASC)",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_sqlite_insert_or_conflict_carrier() {
+    validate_with_dialect(
+        "INSERT OR ABORT INTO foo (x, y) VALUES (1, 2)",
+        "INSERT OR ABORT INTO foo (x, y) VALUES (1, 2)",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_mysql_if_to_sqlite_iif() {
     validate_with_dialect(
         "SELECT IF(a > 0, 'y', 'n') FROM t",

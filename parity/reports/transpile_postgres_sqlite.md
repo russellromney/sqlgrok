@@ -8,9 +8,9 @@ Total candidates: `682`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 216 |
-| `mismatch` | 200 |
-| `rust-error` | 266 |
+| `match` | 263 |
+| `mismatch` | 307 |
+| `rust-error` | 112 |
 
 ## Top Feature Buckets
 
@@ -19,42 +19,41 @@ Total candidates: `682`
 | `mismatch` | `SELECT` | 88 |
 | `rust-error` | `SELECT` | 76 |
 | `match` | `SELECT` | 71 |
-| `rust-error` | `CREATE` | 66 |
-| `rust-error` | `CREATE TABLE` | 34 |
-| `rust-error` | `REVOKE` | 20 |
-| `match` | `CREATE TABLE` | 18 |
+| `mismatch` | `CREATE` | 63 |
+| `mismatch` | `CREATE TABLE` | 36 |
+| `match` | `CREATE TABLE` | 20 |
+| `match` | `REVOKE` | 19 |
 | `match` | `CAST()` | 17 |
-| `rust-error` | `GRANT` | 17 |
+| `match` | `GRANT` | 16 |
 | `mismatch` | `X` | 13 |
 | `mismatch` | `BEGIN` | 11 |
 | `match` | `INTERVAL` | 9 |
 | `match` | `WITH` | 9 |
-| `rust-error` | `ALTER TABLE` | 9 |
+| `mismatch` | `CREATE INDEX` | 9 |
+| `mismatch` | `ALTER TABLE` | 8 |
 | `match` | `ROUND()` | 7 |
 | `mismatch` | `TRUNCATE` | 7 |
-| `mismatch` | `CREATE INDEX` | 6 |
 | `rust-error` | `X` | 6 |
 | `match` | `MERGE` | 5 |
 | `mismatch` | `WITH` | 5 |
 | `rust-error` | `INSERT` | 5 |
+| `match` | `ANALYZE` | 4 |
 | `match` | `DROP INDEX` | 4 |
 | `match` | `INSERT` | 4 |
 | `match` | `REGEXP_INSTR()` | 4 |
-| `mismatch` | `A` | 4 |
 
 ## Top Source Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 102 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 87 |
-| `rust-error` | `tests/dialects/test_postgres.py` | `test_ddl` | 79 |
-| `rust-error` | `tests/dialects/test_postgres.py` | `test_postgres` | 74 |
-| `rust-error` | `tests/dialects/test_postgres.py` | `test_postgres_create_trigger` | 34 |
-| `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 23 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 20 |
-| `rust-error` | `tests/dialects/test_postgres.py` | `test_revoke` | 20 |
-| `rust-error` | `tests/dialects/test_postgres.py` | `test_grant` | 17 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 89 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 88 |
+| `rust-error` | `tests/dialects/test_postgres.py` | `test_postgres` | 72 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres_create_trigger` | 34 |
+| `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 29 |
+| `match` | `tests/dialects/test_postgres.py` | `test_revoke` | 19 |
+| `match` | `tests/dialects/test_postgres.py` | `test_grant` | 16 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_begin_transaction` | 11 |
 | `match` | `tests/dialects/test_postgres.py` | `test_interval_span` | 10 |
 | `match` | `tests/dialects/test_postgres.py` | `test_round` | 7 |
@@ -64,13 +63,14 @@ Total candidates: `682`
 | `rust-error` | `tests/dialects/test_postgres.py` | `test_xmlelement` | 6 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 5 |
 | `mismatch` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 5 |
+| `rust-error` | `tests/dialects/test_postgres.py` | `test_ddl` | 5 |
 | `match` | `tests/dialects/test_dialect.py` | `test_localtime_and_localtimestamp` | 4 |
 | `match` | `tests/dialects/test_dialect.py` | `test_regexp_instr` | 4 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 4 |
+| `match` | `tests/dialects/test_postgres.py` | `test_analyze` | 4 |
 | `match` | `tests/dialects/test_postgres.py` | `test_json_extract` | 4 |
 | `match` | `tests/dialects/test_postgres.py` | `test_locks` | 4 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_heredoc_strings` | 4 |
-| `rust-error` | `tests/dialects/test_postgres.py` | `test_analyze` | 4 |
 
 ## Non-Matching Examples
 

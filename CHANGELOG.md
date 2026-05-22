@@ -124,6 +124,12 @@ this file records what landed.
 - Applied dialect transforms to standalone expression statements, closing a class of generated-report mismatches.
 - Matched Python SQLGlot for MySQL/Postgres bit aggregates targeting SQLite: `BIT_AND`, `BIT_OR`, `BIT_XOR`, and MySQL `BIT_COUNT`.
 
+### Parser Carrier Ratchet
+
+- Added an opaque raw statement carrier for unsupported command and DDL shapes so generated reports distinguish parser gaps from transpiler mismatches.
+- Preserved MySQL/Postgres/SQLite command families such as `SET`, `ANALYZE`, `GRANT`, `REVOKE`, `CREATE VIRTUAL TABLE`, and unsupported `CREATE`/`ALTER` forms instead of failing at parse time.
+- Added SQLite `INSERT OR ...` identity coverage and fixed raw SQL extraction for non-ASCII source text.
+
 ### Postgres STRING_AGG Parity
 
 - Map Postgres `string_agg(expr, separator)` to SQLite `GROUP_CONCAT(expr, separator)`.

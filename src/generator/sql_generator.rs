@@ -242,6 +242,10 @@ impl Generator {
                 self.gen_comments(&s.comments);
                 self.gen_merge(s);
             }
+            Statement::Raw(s) => {
+                self.gen_comments(&s.comments);
+                self.write(&s.sql);
+            }
             Statement::Expression(e) => self.gen_expr(e),
         }
     }

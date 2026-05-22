@@ -8,10 +8,10 @@ Total candidates: `496`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 134 |
-| `mismatch` | 137 |
+| `match` | 206 |
+| `mismatch` | 210 |
 | `oracle-error` | 7 |
-| `rust-error` | 218 |
+| `rust-error` | 73 |
 
 ## Top Feature Buckets
 
@@ -19,53 +19,53 @@ Total candidates: `496`
 | --- | --- | ---: |
 | `mismatch` | `SELECT` | 68 |
 | `match` | `SELECT` | 64 |
-| `rust-error` | `CREATE TABLE` | 42 |
+| `mismatch` | `CREATE TABLE` | 45 |
 | `rust-error` | `SELECT` | 36 |
-| `rust-error` | `SET` | 34 |
-| `rust-error` | `ALTER TABLE` | 32 |
-| `match` | `CREATE TABLE` | 12 |
+| `match` | `SET` | 33 |
+| `mismatch` | `ALTER TABLE` | 26 |
+| `match` | `CREATE TABLE` | 13 |
 | `rust-error` | `DATE_ADD()` | 11 |
+| `match` | `ALTER TABLE` | 8 |
+| `match` | `ANALYZE` | 8 |
 | `match` | `GROUP_CONCAT()` | 8 |
-| `rust-error` | `ANALYZE` | 8 |
 | `match` | `CAST()` | 7 |
+| `match` | `GRANT` | 7 |
+| `match` | `REVOKE` | 7 |
 | `oracle-error` | `CREATE TABLE` | 7 |
-| `rust-error` | `CREATE` | 7 |
-| `rust-error` | `GRANT` | 7 |
-| `rust-error` | `REVOKE` | 7 |
 | `mismatch` | `MATCH()` | 6 |
 | `rust-error` | `CAST()` | 6 |
-| `rust-error` | `ALTER` | 5 |
+| `match` | `ALTER` | 5 |
 | `match` | `INSERT` | 4 |
-| `mismatch` | `CREATE TABLE` | 4 |
+| `mismatch` | `CREATE` | 4 |
 | `match` | `CHAR()` | 3 |
+| `match` | `CREATE` | 3 |
 | `match` | `REGEXP_INSTR()` | 3 |
 | `mismatch` | `CAST()` | 3 |
 | `mismatch` | `DELETE` | 3 |
-| `mismatch` | `DESCRIBE` | 3 |
 
 ## Top Source Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_ddl` | 87 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_identity` | 52 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_identity` | 25 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 77 |
+| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 52 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_identity` | 27 |
+| `match` | `tests/dialects/test_mysql.py` | `test_ddl` | 22 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 21 |
-| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 18 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql_time` | 16 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql` | 13 |
+| `rust-error` | `tests/dialects/test_mysql.py` | `test_identity` | 16 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql` | 14 |
 | `match` | `tests/dialects/test_mysql.py` | `test_canonical_functions` | 11 |
 | `rust-error` | `tests/dialects/test_mysql.py` | `test_valid_interval_units` | 11 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 10 |
 | `rust-error` | `tests/dialects/test_mysql.py` | `test_convert` | 10 |
 | `match` | `tests/dialects/test_mysql.py` | `test_date_format` | 9 |
-| `match` | `tests/dialects/test_mysql.py` | `test_ddl` | 9 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_analyze` | 8 |
+| `match` | `tests/dialects/test_mysql.py` | `test_analyze` | 8 |
+| `match` | `tests/dialects/test_mysql.py` | `test_grant` | 7 |
+| `match` | `tests/dialects/test_mysql.py` | `test_revoke` | 7 |
 | `oracle-error` | `tests/dialects/test_mysql.py` | `test_ddl` | 7 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_grant` | 7 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_revoke` | 7 |
+| `rust-error` | `tests/dialects/test_mysql.py` | `test_ddl` | 7 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_match_against` | 6 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_mysql` | 6 |
+| `rust-error` | `tests/dialects/test_mysql.py` | `test_mysql` | 5 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bit_aggs` | 4 |
 | `match` | `tests/dialects/test_dialect.py` | `test_localtime_and_localtimestamp` | 4 |
 | `match` | `tests/dialects/test_mysql.py` | `test_null_ordering_simulation_resolves_ordered_against_projection` | 4 |
