@@ -685,6 +685,15 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
             negated,
             escape,
         },
+        Expr::SimilarTo {
+            expr,
+            pattern,
+            escape,
+        } => Expr::SimilarTo {
+            expr: Box::new(transform_expr_plugin(*expr, target)),
+            pattern: Box::new(transform_expr_plugin(*pattern, target)),
+            escape: escape.map(|e| Box::new(transform_expr_plugin(*e, target))),
+        },
         Expr::BinaryOp { left, op, right } => Expr::BinaryOp {
             left: Box::new(transform_expr_plugin(*left, target)),
             op,

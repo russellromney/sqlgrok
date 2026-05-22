@@ -241,6 +241,9 @@ fn eval_expr_impl(
             let matches = like_match(&v.to_string_val(), &p.to_string_val(), false);
             Ok(Value::Boolean(if *negated { !matches } else { matches }))
         }
+        Expr::SimilarTo { .. } => Err(SqlglotError::Internal(
+            "SIMILAR TO execution is not supported".to_string(),
+        )),
 
         // ── Control flow ─────────────────────────────────────────────
         Expr::Case {

@@ -693,6 +693,7 @@ impl Tokenizer {
             "NULL" => TokenType::Null,
             "LIKE" => TokenType::Like,
             "ILIKE" => TokenType::ILike,
+            "SIMILAR" => TokenType::Similar,
             "GLOB" => TokenType::Glob,
             "ESCAPE" => TokenType::Escape,
             "BETWEEN" => TokenType::Between,

@@ -2875,5 +2875,17 @@ fn test_postgres_parser_carriers_to_sqlite() {
         Dialect::Postgres,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "SELECT '%' SIMILAR TO '^%' ESCAPE '^'",
+        "SELECT '%' SIMILAR TO '^%' ESCAPE '^'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT a NOT SIMILAR TO b FROM t",
+        "SELECT NOT a SIMILAR TO b FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
     assert!(transpile("SELECT ~~x", Dialect::Postgres, Dialect::Sqlite).is_err());
 }

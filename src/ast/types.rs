@@ -455,6 +455,12 @@ pub enum Expr {
         negated: bool,
         escape: Option<Box<Expr>>,
     },
+    /// `expr SIMILAR TO pattern [ESCAPE escape_char]` (PostgreSQL)
+    SimilarTo {
+        expr: Box<Expr>,
+        pattern: Box<Expr>,
+        escape: Option<Box<Expr>>,
+    },
     /// `CASE [operand] WHEN ... THEN ... ELSE ... END`
     Case {
         operand: Option<Box<Expr>>,
@@ -1955,7 +1961,9 @@ impl Expr {
                 expr.walk(visitor);
                 right.walk(visitor);
             }
-            Expr::Like { expr, pattern, .. } | Expr::ILike { expr, pattern, .. } => {
+            Expr::Like { expr, pattern, .. }
+            | Expr::ILike { expr, pattern, .. }
+            | Expr::SimilarTo { expr, pattern, .. } => {
                 expr.walk(visitor);
                 pattern.walk(visitor);
             }
@@ -2211,6 +2219,15 @@ impl Expr {
                 expr: Box::new(expr.transform(func)),
                 pattern: Box::new(pattern.transform(func)),
                 negated,
+                escape: escape.map(|e| Box::new(e.transform(func))),
+            },
+            Expr::SimilarTo {
+                expr,
+                pattern,
+                escape,
+            } => Expr::SimilarTo {
+                expr: Box::new(expr.transform(func)),
+                pattern: Box::new(pattern.transform(func)),
                 escape: escape.map(|e| Box::new(e.transform(func))),
             },
             Expr::TryCast { expr, data_type } => Expr::TryCast {

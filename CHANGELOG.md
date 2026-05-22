@@ -21,6 +21,7 @@ this file records what landed.
 - Matched SQLGlot date-diff parity for SQLite `DATEDIFF(a, b, 'unit')` and SQLite-targeted `CAST(... AS DATE)` rendering as `DATE(...)`.
 - Matched SQLGlot Postgres regex match operators `~`, `~*`, `!~`, and `!~*` when targeting SQLite.
 - Hardened the date/regex parity ratchets with parity fixtures and edge coverage for Postgres `~~` aliases, double bitwise-not, invalid `~~x`, and non-unit three-argument `DATEDIFF`.
+- Added a first-class Postgres `SIMILAR TO` predicate carrier so SQLite-targeted transpilation no longer drops the predicate as a bogus alias.
 
 ## 2026-05-20
 

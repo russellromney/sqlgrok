@@ -204,6 +204,7 @@ impl Parser {
                 | TokenType::Insert
                 | TokenType::Like
                 | TokenType::ILike
+                | TokenType::Similar
                 | TokenType::Some
                 | TokenType::Table
                 | TokenType::Temp
@@ -2873,6 +2874,7 @@ impl Parser {
                     | TokenType::In
                     | TokenType::Like
                     | TokenType::ILike
+                    | TokenType::Similar
                     | TokenType::Glob
                     | TokenType::Between
             ) {
@@ -2885,6 +2887,7 @@ impl Parser {
                         TokenType::In
                             | TokenType::Like
                             | TokenType::ILike
+                            | TokenType::Similar
                             | TokenType::Glob
                             | TokenType::Between
                     ) {
@@ -2942,6 +2945,31 @@ impl Parser {
                         pattern: Box::new(pattern),
                         negated,
                         escape,
+                    };
+                } else if self.match_token(TokenType::Similar) {
+                    if !self.match_keyword("TO") {
+                        return Err(SqlglotError::ParserError {
+                            message: "Expected TO after SIMILAR".to_string(),
+                        });
+                    }
+                    let pattern = self.parse_addition()?;
+                    let escape = if self.match_token(TokenType::Escape) {
+                        Some(Box::new(self.parse_primary()?))
+                    } else {
+                        None
+                    };
+                    let similar = Expr::SimilarTo {
+                        expr: Box::new(left),
+                        pattern: Box::new(pattern),
+                        escape,
+                    };
+                    left = if negated {
+                        Expr::UnaryOp {
+                            op: UnaryOperator::Not,
+                            expr: Box::new(similar),
+                        }
+                    } else {
+                        similar
                     };
                 } else if self.match_token(TokenType::Glob) {
                     let pattern = self.parse_addition()?;

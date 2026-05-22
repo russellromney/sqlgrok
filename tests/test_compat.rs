@@ -35,10 +35,10 @@ fn scalar_select_projection_is_structural_not_substring_based() {
 }
 
 #[test]
-fn scalar_select_projection_rejects_partially_parsed_fragments() {
-    assert!(
-        scalar_select_projection("SELECT 'abc' SIMILAR TO '%b%'", Dialect::Postgres)
-            .unwrap()
-            .is_none()
-    );
+fn scalar_select_projection_handles_similar_to_structurally() {
+    let projection = scalar_select_projection("SELECT 'abc' SIMILAR TO '%b%'", Dialect::Postgres)
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(projection.expression_sql, "'abc' SIMILAR TO '%b%'");
 }

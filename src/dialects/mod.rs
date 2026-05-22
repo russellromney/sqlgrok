@@ -558,6 +558,15 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             negated,
             escape,
         },
+        Expr::SimilarTo {
+            expr,
+            pattern,
+            escape,
+        } => Expr::SimilarTo {
+            expr: Box::new(transform_expr(*expr, source, target)),
+            pattern: Box::new(transform_expr(*pattern, source, target)),
+            escape: escape.map(|e| Box::new(transform_expr(*e, source, target))),
+        },
         // Map data types in CAST
         Expr::Cast { expr, data_type } => {
             let expr = transform_expr(*expr, source, target);

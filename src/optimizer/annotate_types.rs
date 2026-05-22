@@ -372,6 +372,11 @@ fn annotate_children<S: Schema>(
             pattern,
             escape,
             ..
+        }
+        | Expr::SimilarTo {
+            expr: e,
+            pattern,
+            escape,
         } => {
             annotate_expr(e, ctx, ann);
             annotate_expr(pattern, ctx, ann);
@@ -587,6 +592,7 @@ fn infer_type<S: Schema>(
         | Expr::IsBool { .. }
         | Expr::Like { .. }
         | Expr::ILike { .. }
+        | Expr::SimilarTo { .. }
         | Expr::AnyOp { .. }
         | Expr::AllOp { .. } => Some(DataType::Boolean),
 

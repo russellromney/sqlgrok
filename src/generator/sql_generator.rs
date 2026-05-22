@@ -2070,6 +2070,21 @@ impl Generator {
                     self.gen_expr(esc);
                 }
             }
+            Expr::SimilarTo {
+                expr,
+                pattern,
+                escape,
+            } => {
+                self.gen_expr(expr);
+                self.write(" ");
+                self.write_keyword("SIMILAR TO ");
+                self.gen_expr(pattern);
+                if let Some(esc) = escape {
+                    self.write(" ");
+                    self.write_keyword("ESCAPE ");
+                    self.gen_expr(esc);
+                }
+            }
             Expr::Case {
                 operand,
                 when_clauses,

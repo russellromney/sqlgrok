@@ -600,6 +600,11 @@ fn walk_expr_for_subqueries(expr: &Expr, scope: &mut Scope) {
             expr: inner,
             pattern,
             ..
+        }
+        | Expr::SimilarTo {
+            expr: inner,
+            pattern,
+            ..
         } => {
             collect_subqueries_from_expr(inner, scope);
             collect_subqueries_from_expr(pattern, scope);

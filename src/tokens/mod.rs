@@ -201,6 +201,7 @@ pub enum TokenType {
     Isnull,
     Notnull,
     Escape,
+    Similar,
 
     // Existence checks
     Qualify,
