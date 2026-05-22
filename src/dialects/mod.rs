@@ -586,6 +586,10 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 }
             }
         }
+        Expr::Extract { field, expr } => Expr::Extract {
+            field,
+            expr: Box::new(transform_expr(*expr, source, target)),
+        },
         // Recurse into binary ops
         Expr::BinaryOp { left, op, right } => {
             let left = transform_expr(*left, source, target);

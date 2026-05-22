@@ -713,6 +713,12 @@ fn test_postgres_time_functions_to_sqlite() {
         Dialect::Sqlite,
     );
     validate_with_dialect(
+        "SELECT EXTRACT(QUARTER FROM CAST('2025-04-26' AS DATE))",
+        "SELECT EXTRACT(QUARTER FROM DATE('2025-04-26'))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
         "DATE_TRUNC('day', x)",
         "DATE_TRUNC('DAY', x)",
         Dialect::Sqlite,
