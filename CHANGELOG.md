@@ -179,3 +179,4 @@ this file records what landed.
 
 - Match Python SQLGlot for MySQL-to-SQLite integer `DIV`, `DATEDIFF`, and raw `REPLACE INTO` command formatting.
 - Match Python SQLGlot for Postgres-to-SQLite typed date/time/timestamp literals and `LIMIT ALL`.
+- Match Python SQLGlot for standalone MySQL `GROUP_CONCAT(...)` expressions, including ignored `ORDER BY`, separators, distinct arguments, and multi-expression concatenation.

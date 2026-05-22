@@ -276,6 +276,48 @@ fn test_mysql_group_concat_to_sqlite() {
 }
 
 #[test]
+fn test_mysql_standalone_group_concat_to_sqlite() {
+    let cases = [
+        (
+            "GROUP_CONCAT(DISTINCT x ORDER BY y DESC)",
+            "GROUP_CONCAT(DISTINCT x)",
+        ),
+        (
+            "GROUP_CONCAT(x ORDER BY y SEPARATOR z)",
+            "GROUP_CONCAT(x, z)",
+        ),
+        (
+            "GROUP_CONCAT(DISTINCT x ORDER BY y DESC SEPARATOR '')",
+            "GROUP_CONCAT(DISTINCT x, '')",
+        ),
+        (
+            "GROUP_CONCAT(a, b, c SEPARATOR ',')",
+            "GROUP_CONCAT(a || b || c, ',')",
+        ),
+        (
+            "GROUP_CONCAT(a, b, c SEPARATOR '')",
+            "GROUP_CONCAT(a || b || c, '')",
+        ),
+        (
+            "GROUP_CONCAT(DISTINCT a, b, c SEPARATOR '')",
+            "GROUP_CONCAT(DISTINCT a || b || c, '')",
+        ),
+        (
+            "GROUP_CONCAT(a, b, c ORDER BY d SEPARATOR '')",
+            "GROUP_CONCAT(a || b || c, '')",
+        ),
+        (
+            "GROUP_CONCAT(DISTINCT a, b, c ORDER BY d SEPARATOR '')",
+            "GROUP_CONCAT(DISTINCT a || b || c, '')",
+        ),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Mysql, Dialect::Sqlite);
+    }
+}
+
+#[test]
 fn test_postgres_string_agg_to_sqlite_group_concat() {
     validate_with_dialect(
         "SELECT string_agg(a, ',') FROM t",

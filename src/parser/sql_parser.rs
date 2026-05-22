@@ -313,9 +313,7 @@ impl Parser {
             }
             TokenType::Explain => self.parse_explain().map(Statement::Explain),
             TokenType::Use => self.parse_use().map(Statement::Use),
-            _ => Err(SqlglotError::UnexpectedToken {
-                token: self.peek().clone(),
-            }),
+            _ => self.parse_expr().map(Statement::Expression),
         }?;
         if !comments.is_empty() {
             attach_comments_to_statement(&mut stmt, comments);
@@ -3304,7 +3302,11 @@ impl Parser {
             return Ok(vec![]);
         }
 
-        let mut args = vec![self.parse_expr()?];
+        let mut value_args = vec![self.parse_expr()?];
+
+        while self.match_token(TokenType::Comma) {
+            value_args.push(self.parse_expr()?);
+        }
 
         if self.match_token(TokenType::Order) {
             self.expect(TokenType::By)?;
@@ -3320,12 +3322,9 @@ impl Parser {
                     break;
                 }
             }
-        } else {
-            while self.match_token(TokenType::Comma) {
-                args.push(self.parse_expr()?);
-            }
         }
 
+        let mut args = vec![concat_exprs(value_args)];
         if self.match_keyword("SEPARATOR") {
             args.push(self.parse_expr()?);
         }
@@ -4286,6 +4285,18 @@ mod tests {
             _ => panic!("Expected SELECT"),
         }
     }
+}
+
+fn concat_exprs(mut exprs: Vec<Expr>) -> Expr {
+    let mut expr = exprs.remove(0);
+    for next in exprs {
+        expr = Expr::BinaryOp {
+            left: Box::new(expr),
+            op: BinaryOperator::Concat,
+            right: Box::new(next),
+        };
+    }
+    expr
 }
 
 /// Attach comments to the appropriate field on a parsed statement.

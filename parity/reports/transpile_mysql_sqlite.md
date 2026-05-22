@@ -8,90 +8,90 @@ Total candidates: `496`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 82 |
-| `mismatch` | 85 |
+| `match` | 126 |
+| `mismatch` | 145 |
 | `oracle-error` | 7 |
-| `rust-error` | 322 |
+| `rust-error` | 218 |
 
 ## Top Feature Buckets
 
 | Status | Feature | Count |
 | --- | --- | ---: |
-| `mismatch` | `SELECT` | 71 |
-| `match` | `SELECT` | 62 |
+| `mismatch` | `SELECT` | 68 |
+| `match` | `SELECT` | 64 |
 | `rust-error` | `CREATE TABLE` | 42 |
-| `rust-error` | `SELECT` | 35 |
+| `rust-error` | `SELECT` | 36 |
 | `rust-error` | `SET` | 34 |
 | `rust-error` | `ALTER TABLE` | 32 |
-| `rust-error` | `CAST()` | 16 |
 | `match` | `CREATE TABLE` | 12 |
-| `rust-error` | `DATE_ADD()` | 12 |
+| `rust-error` | `DATE_ADD()` | 11 |
+| `match` | `GROUP_CONCAT()` | 8 |
 | `rust-error` | `ANALYZE` | 8 |
-| `rust-error` | `GROUP_CONCAT()` | 8 |
+| `mismatch` | `CAST()` | 7 |
 | `oracle-error` | `CREATE TABLE` | 7 |
 | `rust-error` | `CREATE` | 7 |
 | `rust-error` | `GRANT` | 7 |
 | `rust-error` | `REVOKE` | 7 |
-| `rust-error` | `MATCH()` | 6 |
+| `mismatch` | `MATCH()` | 6 |
+| `rust-error` | `CAST()` | 6 |
 | `rust-error` | `ALTER` | 5 |
-| `rust-error` | `X` | 5 |
 | `match` | `INSERT` | 4 |
 | `mismatch` | `CREATE TABLE` | 4 |
-| `rust-error` | `CHAR()` | 4 |
+| `match` | `CAST()` | 3 |
+| `match` | `CHAR()` | 3 |
+| `match` | `REGEXP_INSTR()` | 3 |
 | `mismatch` | `DELETE` | 3 |
-| `rust-error` | `DESCRIBE` | 3 |
-| `rust-error` | `REGEXP_INSTR()` | 3 |
-| `rust-error` | `SHOW` | 3 |
+| `mismatch` | `DESCRIBE` | 3 |
 
 ## Top Source Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `rust-error` | `tests/dialects/test_mysql.py` | `test_ddl` | 87 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_identity` | 62 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_identity` | 20 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_mysql` | 20 |
-| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 13 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_mysql_time` | 12 |
+| `rust-error` | `tests/dialects/test_mysql.py` | `test_identity` | 52 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_identity` | 25 |
+| `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 19 |
+| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 18 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql_time` | 16 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql` | 15 |
+| `match` | `tests/dialects/test_mysql.py` | `test_canonical_functions` | 11 |
 | `rust-error` | `tests/dialects/test_mysql.py` | `test_valid_interval_units` | 11 |
-| `match` | `tests/dialects/test_mysql.py` | `test_canonical_functions` | 10 |
-| `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 10 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 10 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql` | 10 |
 | `rust-error` | `tests/dialects/test_mysql.py` | `test_convert` | 10 |
 | `match` | `tests/dialects/test_mysql.py` | `test_date_format` | 9 |
 | `match` | `tests/dialects/test_mysql.py` | `test_ddl` | 9 |
 | `rust-error` | `tests/dialects/test_mysql.py` | `test_analyze` | 8 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_escape` | 8 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_types` | 8 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql_time` | 7 |
 | `oracle-error` | `tests/dialects/test_mysql.py` | `test_ddl` | 7 |
 | `rust-error` | `tests/dialects/test_mysql.py` | `test_grant` | 7 |
 | `rust-error` | `tests/dialects/test_mysql.py` | `test_revoke` | 7 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_match_against` | 6 |
-| `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 5 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_match_against` | 6 |
+| `rust-error` | `tests/dialects/test_mysql.py` | `test_mysql` | 6 |
 | `match` | `tests/dialects/test_dialect.py` | `test_localtime_and_localtimestamp` | 4 |
 | `match` | `tests/dialects/test_mysql.py` | `test_null_ordering_simulation_resolves_ordered_against_projection` | 4 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bit_aggs` | 4 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_explain` | 4 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql_time_python311` | 4 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_number_format` | 4 |
 
 ## Non-Matching Examples
 
 ### `mismatch`
 
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-0709-test-bigquery`: `SELECT MAKETIME(15, 30, 00)`
-  - expected: `SELECT TIME_FROM_PARTS(15, 30, 00)`
-  - actual: `SELECT MAKETIME(15, 30, 00)`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-clickhouse-0444-test-clickhouse`: `SELECT 1 XOR 0`
-  - expected: `SELECT 1 XOR 0`
-  - actual: `SELECT 1`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-clickhouse-0461-test-clickhouse`: `SELECT 1 XOR 0 XOR 1`
-  - expected: `SELECT 1 XOR 0 XOR 1`
-  - actual: `SELECT 1`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-dialect-2881-test-alias`: `SELECT 1 'foo'`
-  - expected: `SELECT 1 AS "foo"`
-  - actual: `SELECT 1`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-dialect-2976-test-hash-comments`: `SELECT 1 # arbitrary content,,, until end-of-line`
-  - expected: `SELECT 1 /* arbitrary content,,, until end-of-line */`
-  - actual: `SELECT 1`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-1530-test-bigquery`: `DATEDIFF(CAST('2010-07-07' AS DATE), CAST('2008-12-25' AS DATE))`
+  - expected: `CAST((JULIANDAY(DATE('2010-07-07')) - JULIANDAY(DATE('2008-12-25'))) AS INTEGER)`
+  - actual: `CAST((JULIANDAY(CAST('2010-07-07' AS DATE)) - JULIANDAY(CAST('2008-12-25' AS DATE))) AS INTEGER)`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-3558-test-bit-aggs`: `BIT_AND(x)`
+  - expected: `BITWISE_AND_AGG(x)`
+  - actual: `BIT_AND(x)`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-3578-test-bit-aggs`: `BIT_OR(x)`
+  - expected: `BITWISE_OR_AGG(x)`
+  - actual: `BIT_OR(x)`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-3598-test-bit-aggs`: `BIT_XOR(x)`
+  - expected: `BITWISE_XOR_AGG(x)`
+  - actual: `BIT_XOR(x)`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-3616-test-bit-aggs`: `BIT_COUNT(x)`
+  - expected: `BITWISE_COUNT(x)`
+  - actual: `BIT_COUNT(x)`
 
 ### `oracle-error`
 
@@ -108,19 +108,19 @@ Total candidates: `496`
 
 ### `rust-error`
 
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-1171-test-bigquery`: `REGEXP_LIKE('foo', '.*')`
-  - expected: `REGEXP_LIKE('foo', '.*')`
-  - error: `Unexpected token: Token { token_type: Identifier, value: "REGEXP_LIKE", line: 1, col: 1, position: 0, quote_char: '\0' }`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-1530-test-bigquery`: `DATEDIFF(CAST('2010-07-07' AS DATE), CAST('2008-12-25' AS DATE))`
-  - expected: `CAST((JULIANDAY(DATE('2010-07-07')) - JULIANDAY(DATE('2008-12-25'))) AS INTEGER)`
-  - error: `Unexpected token: Token { token_type: Identifier, value: "DATEDIFF", line: 1, col: 1, position: 0, quote_char: '\0' }`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-3558-test-bit-aggs`: `BIT_AND(x)`
-  - expected: `BITWISE_AND_AGG(x)`
-  - error: `Unexpected token: Token { token_type: Identifier, value: "BIT_AND", line: 1, col: 1, position: 0, quote_char: '\0' }`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-3578-test-bit-aggs`: `BIT_OR(x)`
-  - expected: `BITWISE_OR_AGG(x)`
-  - error: `Unexpected token: Token { token_type: Identifier, value: "BIT_OR", line: 1, col: 1, position: 0, quote_char: '\0' }`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-3598-test-bit-aggs`: `BIT_XOR(x)`
-  - expected: `BITWISE_XOR_AGG(x)`
-  - error: `Unexpected token: Token { token_type: Identifier, value: "BIT_XOR", line: 1, col: 1, position: 0, quote_char: '\0' }`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-dialect-2248-test-operators`: `POSITION(needle in haystack)`
+  - expected: `INSTR(haystack, needle)`
+  - error: `Parser error: Expected LParen, got Identifier ('haystack') at line 1 col 20`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-dialect-2951-test-nullsafe-eq`: `SELECT a <=> b`
+  - expected: `SELECT a IS NOT DISTINCT FROM b`
+  - error: `Unexpected token: Token { token_type: Gt, value: ">", line: 1, col: 12, position: 11, quote_char: '\0' }`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-dialect-4922-test-is-unknown`: `x IS UNKNOWN`
+  - expected: `x IS NULL`
+  - error: `Parser error: Expected Null, got Identifier ('UNKNOWN') at line 1 col 6`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-dialect-4936-test-is-unknown`: `x IS NOT UNKNOWN`
+  - expected: `NOT x IS NULL`
+  - error: `Parser error: Expected Null, got Identifier ('UNKNOWN') at line 1 col 10`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-duckdb-1827-test-time`: `SELECT DATE '2020-01-01' + INTERVAL -1 DAY`
+  - expected: `SELECT DATE('2020-01-01') + INTERVAL '-1' DAY`
+  - error: `Unexpected token: Token { token_type: Minus, value: "-", line: 1, col: 37, position: 36, quote_char: '\0' }`
 
