@@ -8,8 +8,8 @@ Total candidates: `496`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 231 |
-| `mismatch` | 258 |
+| `match` | 232 |
+| `mismatch` | 257 |
 | `oracle-error` | 7 |
 
 ## Top Feature Buckets

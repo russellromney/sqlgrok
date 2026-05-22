@@ -483,6 +483,23 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     right: Box::new(new_args[0].clone()),
                 };
             }
+            if matches!(target, Dialect::Sqlite)
+                && is_postgres_family(source)
+                && name.eq_ignore_ascii_case("DIV")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return sqlite_real_cast(Expr::Cast {
+                    expr: Box::new(Expr::BinaryOp {
+                        left: Box::new(sqlite_real_cast(new_args[0].clone())),
+                        op: BinaryOperator::Divide,
+                        right: Box::new(new_args[1].clone()),
+                    }),
+                    data_type: DataType::Unknown("INTEGER".to_string()),
+                });
+            }
 
             let new_name = map_function_name_for_source(&name, source, target);
             Expr::Function {
@@ -547,11 +564,26 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             data_type: map_data_type_for_source(data_type, source, target),
         },
         // Recurse into binary ops
-        Expr::BinaryOp { left, op, right } => Expr::BinaryOp {
-            left: Box::new(transform_expr(*left, source, target)),
-            op,
-            right: Box::new(transform_expr(*right, source, target)),
-        },
+        Expr::BinaryOp { left, op, right } => {
+            let left = transform_expr(*left, source, target);
+            let right = transform_expr(*right, source, target);
+            if matches!(target, Dialect::Sqlite)
+                && is_mysql_family(source)
+                && op == BinaryOperator::Divide
+            {
+                Expr::BinaryOp {
+                    left: Box::new(sqlite_real_cast(left)),
+                    op,
+                    right: Box::new(right),
+                }
+            } else {
+                Expr::BinaryOp {
+                    left: Box::new(left),
+                    op,
+                    right: Box::new(right),
+                }
+            }
+        }
         Expr::UnaryOp { op, expr } => Expr::UnaryOp {
             op,
             expr: Box::new(transform_expr(*expr, source, target)),
@@ -593,6 +625,13 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         }
         // Everything else stays the same
         other => other,
+    }
+}
+
+fn sqlite_real_cast(expr: Expr) -> Expr {
+    Expr::Cast {
+        expr: Box::new(expr),
+        data_type: DataType::Real,
     }
 }
 

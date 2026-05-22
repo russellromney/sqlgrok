@@ -552,6 +552,44 @@ fn test_mysql_div_to_sqlite_int_cast() {
 }
 
 #[test]
+fn test_mysql_divide_to_sqlite_float_division() {
+    validate_with_dialect(
+        "SELECT a / b FROM t",
+        "SELECT CAST(a AS REAL) / b FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT a + b / c FROM t",
+        "SELECT a + CAST(b AS REAL) / c FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_postgres_div_function_to_sqlite() {
+    validate_with_dialect(
+        "SELECT DIV(4, 2)",
+        "SELECT CAST(CAST(CAST(4 AS REAL) / 2 AS INTEGER) AS REAL)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT 1 / DIV(4, 2)",
+        "SELECT 1 / CAST(CAST(CAST(4 AS REAL) / 2 AS INTEGER) AS REAL)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT CAST(DIV(4, 2) AS DECIMAL(5, 3))",
+        "SELECT CAST(CAST(CAST(CAST(4 AS REAL) / 2 AS INTEGER) AS REAL) AS REAL(5, 3))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_mysql_datediff_to_sqlite_julianday() {
     validate_with_dialect(
         "SELECT DATEDIFF('2020-01-03','2020-01-01')",
