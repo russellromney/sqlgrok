@@ -849,6 +849,7 @@ impl SelectBuilder {
                 comments: Vec::new(),
                 ctes: Vec::new(),
                 distinct: false,
+                distinct_on: Vec::new(),
                 top: None,
                 columns: Vec::new(),
                 from: None,

@@ -120,6 +120,9 @@ pub struct SelectStatement {
     /// Common Table Expressions (WITH clause)
     pub ctes: Vec<Cte>,
     pub distinct: bool,
+    /// PostgreSQL `DISTINCT ON (expr, ...)`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub distinct_on: Vec<Expr>,
     /// TOP N (TSQL-style)
     pub top: Option<Box<Expr>>,
     pub columns: Vec<SelectItem>,

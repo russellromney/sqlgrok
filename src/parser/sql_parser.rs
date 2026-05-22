@@ -412,6 +412,14 @@ impl Parser {
         self.expect(TokenType::Select)?;
 
         let distinct = self.match_token(TokenType::Distinct);
+        let distinct_on = if distinct && self.match_token(TokenType::On) {
+            self.expect(TokenType::LParen)?;
+            let exprs = self.parse_expr_list()?;
+            self.expect(TokenType::RParen)?;
+            exprs
+        } else {
+            vec![]
+        };
 
         // TOP N (SQL Server style)
         // Use parse_primary() instead of parse_expr() to prevent the parser
@@ -520,6 +528,7 @@ impl Parser {
             comments: vec![],
             ctes,
             distinct,
+            distinct_on,
             top,
             columns,
             from,

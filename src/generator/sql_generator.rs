@@ -259,6 +259,13 @@ impl Generator {
         if sel.distinct {
             self.write(" ");
             self.write_keyword("DISTINCT");
+            if !sel.distinct_on.is_empty() {
+                self.write(" ");
+                self.write_keyword("ON");
+                self.write(" (");
+                self.gen_expr_list(&sel.distinct_on);
+                self.write(")");
+            }
         }
         if let Some(top) = &sel.top {
             self.write(" ");

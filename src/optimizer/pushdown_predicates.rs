@@ -688,6 +688,7 @@ mod tests {
                 comments: vec![],
                 ctes: vec![],
                 distinct: false,
+                distinct_on: vec![],
                 top: None,
                 columns: vec![],
                 from: None,

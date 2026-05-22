@@ -331,9 +331,15 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             for gb in &mut sel.group_by {
                 *gb = transform_expr(gb.clone(), source, target);
             }
+            for expr in &mut sel.distinct_on {
+                *expr = transform_expr(expr.clone(), source, target);
+            }
             transform_order_by_items(&mut sel.order_by, source, target);
             if let Some(having) = &mut sel.having {
                 *having = transform_expr(having.clone(), source, target);
+            }
+            if let Some(rewritten) = rewrite_postgres_distinct_on(sel, source, target) {
+                *sel = rewritten;
             }
         }
         Statement::Insert(ins) => {
@@ -589,6 +595,125 @@ fn transform_order_by_items(items: &mut [OrderByItem], source: Dialect, target: 
         {
             item.nulls_first = Some(!item.ascending);
         }
+    }
+}
+
+fn rewrite_postgres_distinct_on(
+    sel: &SelectStatement,
+    source: Dialect,
+    target: Dialect,
+) -> Option<SelectStatement> {
+    if !is_postgres_family(source)
+        || !matches!(target, Dialect::Sqlite)
+        || sel.distinct_on.is_empty()
+    {
+        return None;
+    }
+
+    let mut inner_columns = Vec::with_capacity(sel.columns.len() + 1);
+    let mut outer_columns = Vec::with_capacity(sel.columns.len());
+
+    for item in &sel.columns {
+        let SelectItem::Expr { expr, alias, .. } = item else {
+            return None;
+        };
+        let output_name = alias
+            .clone()
+            .or_else(|| column_name(expr))
+            .unwrap_or_else(|| format!("_col_{}", inner_columns.len()));
+
+        inner_columns.push(SelectItem::Expr {
+            expr: expr.clone(),
+            alias: Some(output_name.clone()),
+            alias_quote_style: QuoteStyle::None,
+        });
+        outer_columns.push(SelectItem::Expr {
+            expr: column_expr(&output_name),
+            alias: None,
+            alias_quote_style: QuoteStyle::None,
+        });
+    }
+
+    let order_by = if sel.order_by.is_empty() {
+        sel.distinct_on
+            .iter()
+            .cloned()
+            .map(|expr| OrderByItem {
+                expr,
+                ascending: true,
+                nulls_first: None,
+            })
+            .collect()
+    } else {
+        sel.order_by.clone()
+    };
+
+    inner_columns.push(SelectItem::Expr {
+        expr: Expr::TypedFunction {
+            func: TypedFunction::RowNumber,
+            filter: None,
+            over: Some(WindowSpec {
+                window_ref: None,
+                partition_by: sel.distinct_on.clone(),
+                order_by,
+                frame: None,
+            }),
+        },
+        alias: Some("_row_number".to_string()),
+        alias_quote_style: QuoteStyle::None,
+    });
+
+    let mut inner = sel.clone();
+    inner.distinct = false;
+    inner.distinct_on.clear();
+    inner.columns = inner_columns;
+    inner.order_by.clear();
+
+    Some(SelectStatement {
+        comments: vec![],
+        ctes: vec![],
+        distinct: false,
+        distinct_on: vec![],
+        top: None,
+        columns: outer_columns,
+        from: Some(FromClause {
+            source: TableSource::Subquery {
+                query: Box::new(Statement::Select(inner)),
+                alias: Some("_t".to_string()),
+                alias_quote_style: QuoteStyle::None,
+            },
+        }),
+        joins: vec![],
+        where_clause: Some(Expr::BinaryOp {
+            left: Box::new(column_expr("_row_number")),
+            op: BinaryOperator::Eq,
+            right: Box::new(Expr::Number("1".to_string())),
+        }),
+        group_by: vec![],
+        having: None,
+        order_by: vec![],
+        limit: None,
+        offset: None,
+        fetch_first: None,
+        qualify: None,
+        window_definitions: vec![],
+        lock: None,
+    })
+}
+
+fn column_name(expr: &Expr) -> Option<String> {
+    match expr {
+        Expr::Column { name, .. } => Some(name.clone()),
+        _ => None,
+    }
+}
+
+fn column_expr(name: &str) -> Expr {
+    Expr::Column {
+        table: None,
+        name: name.to_string(),
+        quote_style: QuoteStyle::None,
+        table_quote_style: QuoteStyle::None,
     }
 }
 

@@ -149,3 +149,7 @@ this file records what landed.
 ### MySQL ON DUPLICATE KEY Parity
 
 - Parse and render MySQL `ON DUPLICATE KEY UPDATE` clauses for SQLite-targeted transpilation.
+
+### Postgres DISTINCT ON Parity
+
+- Rewrite simple Postgres `DISTINCT ON` selects to SQLGlot-style SQLite `ROW_NUMBER()` subqueries.

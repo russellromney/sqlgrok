@@ -446,6 +446,16 @@ fn test_postgres_for_update_to_sqlite() {
     );
 }
 
+#[test]
+fn test_postgres_distinct_on_to_sqlite_row_number() {
+    validate_with_dialect(
+        "SELECT DISTINCT ON (a) a, b FROM t",
+        "SELECT a, b FROM (SELECT a AS a, b AS b, ROW_NUMBER() OVER (PARTITION BY a ORDER BY a) AS _row_number FROM t) AS _t WHERE _row_number = 1",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – Subqueries
 // (from Python identity.sql)
