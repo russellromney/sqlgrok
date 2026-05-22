@@ -612,26 +612,49 @@ fn rewrite_postgres_distinct_on(
 
     let mut inner_columns = Vec::with_capacity(sel.columns.len() + 1);
     let mut outer_columns = Vec::with_capacity(sel.columns.len());
+    let mut has_wildcard = false;
 
     for item in &sel.columns {
-        let SelectItem::Expr { expr, alias, .. } = item else {
-            return None;
-        };
-        let output_name = alias
-            .clone()
-            .or_else(|| column_name(expr))
-            .unwrap_or_else(|| format!("_col_{}", inner_columns.len()));
+        match item {
+            SelectItem::Wildcard => {
+                has_wildcard = true;
+                inner_columns.push(SelectItem::Wildcard);
+            }
+            SelectItem::QualifiedWildcard { table } => {
+                has_wildcard = true;
+                inner_columns.push(SelectItem::QualifiedWildcard {
+                    table: table.clone(),
+                });
+            }
+            SelectItem::Expr { expr, alias, .. } if has_wildcard => {
+                inner_columns.push(SelectItem::Expr {
+                    expr: expr.clone(),
+                    alias: alias.clone(),
+                    alias_quote_style: QuoteStyle::None,
+                });
+            }
+            SelectItem::Expr { expr, alias, .. } => {
+                let output_name = alias
+                    .clone()
+                    .or_else(|| column_name(expr))
+                    .unwrap_or_else(|| generated_column_alias(inner_columns.len()));
 
-        inner_columns.push(SelectItem::Expr {
-            expr: expr.clone(),
-            alias: Some(output_name.clone()),
-            alias_quote_style: QuoteStyle::None,
-        });
-        outer_columns.push(SelectItem::Expr {
-            expr: column_expr(&output_name),
-            alias: None,
-            alias_quote_style: QuoteStyle::None,
-        });
+                inner_columns.push(SelectItem::Expr {
+                    expr: expr.clone(),
+                    alias: Some(output_name.clone()),
+                    alias_quote_style: QuoteStyle::None,
+                });
+                outer_columns.push(SelectItem::Expr {
+                    expr: column_expr(&output_name),
+                    alias: None,
+                    alias_quote_style: QuoteStyle::None,
+                });
+            }
+        }
+    }
+
+    if has_wildcard {
+        outer_columns = vec![SelectItem::Wildcard];
     }
 
     let order_by = if sel.order_by.is_empty() {
@@ -705,6 +728,14 @@ fn column_name(expr: &Expr) -> Option<String> {
     match expr {
         Expr::Column { name, .. } => Some(name.clone()),
         _ => None,
+    }
+}
+
+fn generated_column_alias(index: usize) -> String {
+    if index == 0 {
+        "_col".to_string()
+    } else {
+        format!("_col_{}", index + 1)
     }
 }
 
