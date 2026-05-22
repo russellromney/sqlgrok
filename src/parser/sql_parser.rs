@@ -2786,23 +2786,33 @@ impl Parser {
                 };
             } else if matches!(
                 self.peek_type(),
-                TokenType::PostgresNotLike | TokenType::PostgresNotILike
+                TokenType::PostgresLike
+                    | TokenType::PostgresILike
+                    | TokenType::PostgresNotLike
+                    | TokenType::PostgresNotILike
             ) {
-                let case_insensitive = self.peek_type() == &TokenType::PostgresNotILike;
+                let negated = matches!(
+                    self.peek_type(),
+                    TokenType::PostgresNotLike | TokenType::PostgresNotILike
+                );
+                let case_insensitive = matches!(
+                    self.peek_type(),
+                    TokenType::PostgresILike | TokenType::PostgresNotILike
+                );
                 self.advance();
                 let pattern = self.parse_addition()?;
                 left = if case_insensitive {
                     Expr::ILike {
                         expr: Box::new(left),
                         pattern: Box::new(pattern),
-                        negated: true,
+                        negated,
                         escape: None,
                     }
                 } else {
                     Expr::Like {
                         expr: Box::new(left),
                         pattern: Box::new(pattern),
-                        negated: true,
+                        negated,
                         escape: None,
                     }
                 };
@@ -3029,7 +3039,7 @@ impl Parser {
         match self.peek_type() {
             TokenType::Minus => {
                 self.advance();
-                let expr = self.parse_postfix()?;
+                let expr = self.parse_unary()?;
                 Ok(Expr::UnaryOp {
                     op: UnaryOperator::Minus,
                     expr: Box::new(expr),
@@ -3037,7 +3047,7 @@ impl Parser {
             }
             TokenType::Plus => {
                 self.advance();
-                let expr = self.parse_postfix()?;
+                let expr = self.parse_unary()?;
                 Ok(Expr::UnaryOp {
                     op: UnaryOperator::Plus,
                     expr: Box::new(expr),
@@ -3045,7 +3055,7 @@ impl Parser {
             }
             TokenType::BitwiseNot => {
                 self.advance();
-                let expr = self.parse_postfix()?;
+                let expr = self.parse_unary()?;
                 Ok(Expr::UnaryOp {
                     op: UnaryOperator::BitwiseNot,
                     expr: Box::new(expr),
@@ -4026,30 +4036,11 @@ impl Parser {
                 let second = it.next()?;
                 let third = it.next();
                 if let Some(third_arg) = third {
-                    if upper == "DATEDIFF" {
-                        if let Some(unit) = Self::expr_to_datetime_field(&first) {
-                            // DATEDIFF(unit, start, end) — TSQL/Snowflake
-                            TypedFunction::DateDiff {
-                                start: Box::new(second),
-                                end: Box::new(third_arg),
-                                unit: Some(unit),
-                            }
-                        } else {
-                            // DATEDIFF(start, end, unit) — SQLite-style SQLGlot fixture form
-                            let unit = Self::expr_to_datetime_field(&third_arg);
-                            TypedFunction::DateDiff {
-                                start: Box::new(first),
-                                end: Box::new(second),
-                                unit,
-                            }
-                        }
-                    } else {
-                        let unit = Self::expr_to_datetime_field(&third_arg);
-                        TypedFunction::DateDiff {
-                            start: Box::new(first),
-                            end: Box::new(second),
-                            unit,
-                        }
+                    let unit = Self::expr_to_datetime_field(&third_arg);
+                    TypedFunction::DateDiff {
+                        start: Box::new(first),
+                        end: Box::new(second),
+                        unit,
                     }
                 } else {
                     TypedFunction::DateDiff {

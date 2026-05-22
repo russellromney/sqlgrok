@@ -20,6 +20,7 @@ this file records what landed.
 - Preserved explicit `ASC` in `ORDER BY` items so SQLite identity and `NULLS LAST` orderings match SQLGlot output.
 - Matched SQLGlot date-diff parity for SQLite `DATEDIFF(a, b, 'unit')` and SQLite-targeted `CAST(... AS DATE)` rendering as `DATE(...)`.
 - Matched SQLGlot Postgres regex match operators `~`, `~*`, `!~`, and `!~*` when targeting SQLite.
+- Hardened the date/regex parity ratchets with parity fixtures and edge coverage for Postgres `~~` aliases, double bitwise-not, invalid `~~x`, and non-unit three-argument `DATEDIFF`.
 
 ## 2026-05-20
 

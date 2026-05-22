@@ -640,6 +640,18 @@ fn test_sqlite_datediff_unit_identity() {
         Dialect::Sqlite,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "DATEDIFF(day, b, a)",
+        "CAST((JULIANDAY(day) - JULIANDAY(b)) AS INTEGER)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "DATEDIFF(a, b, c)",
+        "CAST((JULIANDAY(a) - JULIANDAY(b)) AS INTEGER)",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]
@@ -2857,4 +2869,11 @@ fn test_postgres_parser_carriers_to_sqlite() {
         Dialect::Postgres,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "SELECT ~ ~x",
+        "SELECT ~~x",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    assert!(transpile("SELECT ~~x", Dialect::Postgres, Dialect::Sqlite).is_err());
 }

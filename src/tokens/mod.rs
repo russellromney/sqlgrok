@@ -242,6 +242,8 @@ pub enum TokenType {
     RegexIMatch,      // ~*
     RegexNotMatch,    // !~
     RegexNotIMatch,   // !~*
+    PostgresLike,     // ~~
+    PostgresILike,    // ~~*
     PostgresNotLike,  // !~~
     PostgresNotILike, // !~~*
     Concat,           // ||

@@ -156,9 +156,21 @@ impl Tokenizer {
                     self.advance();
                     if self.peek() == Some('*') {
                         self.advance();
-                        Ok(self.make_token(TokenType::ILike, "~~*", start, start_line, start_col))
+                        Ok(self.make_token(
+                            TokenType::PostgresILike,
+                            "~~*",
+                            start,
+                            start_line,
+                            start_col,
+                        ))
                     } else {
-                        Ok(self.make_token(TokenType::Like, "~~", start, start_line, start_col))
+                        Ok(self.make_token(
+                            TokenType::PostgresLike,
+                            "~~",
+                            start,
+                            start_line,
+                            start_col,
+                        ))
                     }
                 } else if self.peek() == Some('*') {
                     self.advance();
@@ -889,6 +901,30 @@ mod tests {
         assert_eq!(tokens[1].token_type, TokenType::GtEq);
         assert_eq!(tokens[3].token_type, TokenType::And);
         assert_eq!(tokens[5].token_type, TokenType::Neq);
+    }
+
+    #[test]
+    fn test_tokenize_postgres_pattern_operators() {
+        let mut tokenizer = Tokenizer::new("~ ~* !~ !~* ~~ ~~* !~~ !~~*");
+        let tokens = tokenizer.tokenize().unwrap();
+        let token_types: Vec<_> = tokens
+            .iter()
+            .map(|token| token.token_type.clone())
+            .collect();
+        assert_eq!(
+            token_types,
+            vec![
+                TokenType::BitwiseNot,
+                TokenType::RegexIMatch,
+                TokenType::RegexNotMatch,
+                TokenType::RegexNotIMatch,
+                TokenType::PostgresLike,
+                TokenType::PostgresILike,
+                TokenType::PostgresNotLike,
+                TokenType::PostgresNotILike,
+                TokenType::Eof,
+            ]
+        );
     }
 
     #[test]
