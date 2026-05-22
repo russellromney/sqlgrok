@@ -24,6 +24,7 @@ this file records what landed.
 - Added a first-class Postgres `SIMILAR TO` predicate carrier so SQLite-targeted transpilation no longer drops the predicate as a bogus alias.
 - Matched Postgres-to-SQLite `DATE_TRUNC`/`DATE_PART` time-function output while preserving SQLite identity behavior.
 - Fixed `EXTRACT(... FROM CAST(... AS DATE))` child expression transforms for Postgres-to-SQLite parity.
+- Added Postgres JSON path parity for `#>`, `#>>`, and `JSON_EXTRACT_PATH(_TEXT)` SQLite-targeted output.
 
 ## 2026-05-20
 

@@ -500,6 +500,24 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     data_type: DataType::Unknown("INTEGER".to_string()),
                 });
             }
+            if matches!(target, Dialect::Sqlite)
+                && is_postgres_family(source)
+                && matches!(
+                    name.to_ascii_uppercase().as_str(),
+                    "JSON_EXTRACT_PATH" | "JSON_EXTRACT_PATH_TEXT"
+                )
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() >= 2
+            {
+                let as_text = name.eq_ignore_ascii_case("JSON_EXTRACT_PATH_TEXT");
+                return Expr::JsonAccess {
+                    expr: Box::new(new_args[0].clone()),
+                    path: Box::new(postgres_json_extract_path_arg(&new_args[1..])),
+                    as_text,
+                };
+            }
 
             let new_name = map_function_name_for_source(&name, source, target);
             Expr::Function {
@@ -919,6 +937,41 @@ fn sqlite_json_key_path(key: &str) -> String {
         format!("$.{key}")
     } else {
         format!("$.\"{}\"", key.replace('"', "\\\""))
+    }
+}
+
+fn postgres_json_extract_path_arg(path_args: &[Expr]) -> Expr {
+    if path_args
+        .iter()
+        .all(|arg| matches!(arg, Expr::StringLiteral(_)))
+    {
+        let mut path = "$".to_string();
+        for arg in path_args {
+            let Expr::StringLiteral(segment) = arg else {
+                unreachable!("all path args are string literals");
+            };
+            path.push_str(&sqlite_json_path_segment(segment));
+        }
+        Expr::StringLiteral(path)
+    } else {
+        path_args[0].clone()
+    }
+}
+
+fn sqlite_json_path_segment(segment: &str) -> String {
+    if segment.chars().all(|c| c.is_ascii_digit()) {
+        format!("[{segment}]")
+    } else if segment
+        .chars()
+        .all(|c| c == '_' || c.is_ascii_alphanumeric())
+        && segment
+            .chars()
+            .next()
+            .is_some_and(|c| c == '_' || c.is_ascii_alphabetic())
+    {
+        format!(".{segment}")
+    } else {
+        format!(".\"{}\"", segment.replace('"', "\\\""))
     }
 }
 

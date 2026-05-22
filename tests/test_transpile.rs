@@ -389,6 +389,36 @@ fn test_postgres_json_access_to_sqlite_paths() {
         Dialect::Postgres,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "x #> 'y'",
+        "JSONB_EXTRACT(x, 'y')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "x #>> 'y'",
+        "JSONB_EXTRACT_SCALAR(x, 'y')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "JSON_EXTRACT_PATH('{\"f2\":{\"f3\":1},\"f4\":{\"f5\":99,\"f6\":\"foo\"}}','f4')",
+        "'{\"f2\":{\"f3\":1},\"f4\":{\"f5\":99,\"f6\":\"foo\"}}' -> '$.f4'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "JSON_EXTRACT_PATH_TEXT('{\"farm\": [\"a\", \"b\", \"c\"]}', 'farm', '0')",
+        "'{\"farm\": [\"a\", \"b\", \"c\"]}' ->> '$.farm[0]'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT JSON_EXTRACT_PATH_TEXT(x, k1, k2, k3) FROM t",
+        "SELECT x ->> k1 FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]

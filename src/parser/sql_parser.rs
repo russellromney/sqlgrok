@@ -3132,6 +3132,24 @@ impl Parser {
                     path: Box::new(path),
                     as_text: true,
                 };
+            } else if self.match_token(TokenType::HashArrow) {
+                let path = self.parse_primary()?;
+                expr = Expr::Function {
+                    name: "JSONB_EXTRACT".to_string(),
+                    args: vec![expr, path],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            } else if self.match_token(TokenType::HashDoubleArrow) {
+                let path = self.parse_primary()?;
+                expr = Expr::Function {
+                    name: "JSONB_EXTRACT_SCALAR".to_string(),
+                    args: vec![expr, path],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
             } else {
                 break;
             }
