@@ -19,6 +19,7 @@ this file records what landed.
 - Added SQLite numeric parity for MySQL float division and Postgres `DIV(...)` integer-division casts.
 - Preserved explicit `ASC` in `ORDER BY` items so SQLite identity and `NULLS LAST` orderings match SQLGlot output.
 - Matched SQLGlot date-diff parity for SQLite `DATEDIFF(a, b, 'unit')` and SQLite-targeted `CAST(... AS DATE)` rendering as `DATE(...)`.
+- Matched SQLGlot Postgres regex match operators `~`, `~*`, `!~`, and `!~*` when targeting SQLite.
 
 ## 2026-05-20
 

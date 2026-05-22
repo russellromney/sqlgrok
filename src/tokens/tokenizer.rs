@@ -151,7 +151,22 @@ impl Tokenizer {
             ';' => Ok(self.make_token(TokenType::Semicolon, ";", start, start_line, start_col)),
             '.' => Ok(self.make_token(TokenType::Dot, ".", start, start_line, start_col)),
             '+' => Ok(self.make_token(TokenType::Plus, "+", start, start_line, start_col)),
-            '~' => Ok(self.make_token(TokenType::BitwiseNot, "~", start, start_line, start_col)),
+            '~' => {
+                if self.peek() == Some('~') {
+                    self.advance();
+                    if self.peek() == Some('*') {
+                        self.advance();
+                        Ok(self.make_token(TokenType::ILike, "~~*", start, start_line, start_col))
+                    } else {
+                        Ok(self.make_token(TokenType::Like, "~~", start, start_line, start_col))
+                    }
+                } else if self.peek() == Some('*') {
+                    self.advance();
+                    Ok(self.make_token(TokenType::RegexIMatch, "~*", start, start_line, start_col))
+                } else {
+                    Ok(self.make_token(TokenType::BitwiseNot, "~", start, start_line, start_col))
+                }
+            }
             '@' => Ok(self.make_token(TokenType::AtSign, "@", start, start_line, start_col)),
             '=' => {
                 if self.peek() == Some('>') {
@@ -315,7 +330,27 @@ impl Tokenizer {
                     Ok(self.make_token(TokenType::Neq, "!=", start, start_line, start_col))
                 } else if self.peek() == Some('~') {
                     self.advance();
-                    if self.peek() == Some('*') {
+                    if self.peek() == Some('~') {
+                        self.advance();
+                        if self.peek() == Some('*') {
+                            self.advance();
+                            Ok(self.make_token(
+                                TokenType::PostgresNotILike,
+                                "!~~*",
+                                start,
+                                start_line,
+                                start_col,
+                            ))
+                        } else {
+                            Ok(self.make_token(
+                                TokenType::PostgresNotLike,
+                                "!~~",
+                                start,
+                                start_line,
+                                start_col,
+                            ))
+                        }
+                    } else if self.peek() == Some('*') {
                         self.advance();
                         Ok(self.make_token(
                             TokenType::RegexNotIMatch,

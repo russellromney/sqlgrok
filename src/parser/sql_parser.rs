@@ -2742,23 +2742,69 @@ impl Parser {
                 }
             } else if matches!(
                 self.peek_type(),
-                TokenType::RegexNotMatch | TokenType::RegexNotIMatch
+                TokenType::BitwiseNot
+                    | TokenType::RegexIMatch
+                    | TokenType::RegexNotMatch
+                    | TokenType::RegexNotIMatch
             ) {
-                let case_insensitive = self.peek_type() == &TokenType::RegexNotIMatch;
+                let negated = matches!(
+                    self.peek_type(),
+                    TokenType::RegexNotMatch | TokenType::RegexNotIMatch
+                );
+                let case_insensitive = matches!(
+                    self.peek_type(),
+                    TokenType::RegexIMatch | TokenType::RegexNotIMatch
+                );
                 self.advance();
                 let pattern = self.parse_addition()?;
-                let regexp = Expr::TypedFunction {
-                    func: TypedFunction::RegexpLike {
+                let regexp = if case_insensitive {
+                    Expr::Function {
+                        name: "REGEXP_I_LIKE".to_string(),
+                        args: vec![left, pattern],
+                        distinct: false,
+                        filter: None,
+                        over: None,
+                    }
+                } else {
+                    Expr::TypedFunction {
+                        func: TypedFunction::RegexpLike {
+                            expr: Box::new(left),
+                            pattern: Box::new(pattern),
+                            flags: None,
+                        },
+                        filter: None,
+                        over: None,
+                    }
+                };
+                left = if negated {
+                    Expr::UnaryOp {
+                        op: UnaryOperator::Not,
+                        expr: Box::new(regexp),
+                    }
+                } else {
+                    regexp
+                };
+            } else if matches!(
+                self.peek_type(),
+                TokenType::PostgresNotLike | TokenType::PostgresNotILike
+            ) {
+                let case_insensitive = self.peek_type() == &TokenType::PostgresNotILike;
+                self.advance();
+                let pattern = self.parse_addition()?;
+                left = if case_insensitive {
+                    Expr::ILike {
                         expr: Box::new(left),
                         pattern: Box::new(pattern),
-                        flags: case_insensitive.then(|| Box::new(Expr::StringLiteral("i".into()))),
-                    },
-                    filter: None,
-                    over: None,
-                };
-                left = Expr::UnaryOp {
-                    op: UnaryOperator::Not,
-                    expr: Box::new(regexp),
+                        negated: true,
+                        escape: None,
+                    }
+                } else {
+                    Expr::Like {
+                        expr: Box::new(left),
+                        pattern: Box::new(pattern),
+                        negated: true,
+                        escape: None,
+                    }
                 };
             } else if self.peek_type() == &TokenType::Is {
                 self.advance();

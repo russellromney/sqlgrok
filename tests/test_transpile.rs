@@ -2815,8 +2815,45 @@ fn test_postgres_parser_carriers_to_sqlite() {
         Dialect::Sqlite,
     );
     validate_with_dialect(
+        "SELECT x ~ 'y' FROM t",
+        "SELECT REGEXP_LIKE(x, 'y') FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT x ~* 'y' FROM t",
+        "SELECT REGEXP_I_LIKE(x, 'y') FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
         "SELECT x !~ 'y' FROM t",
         "SELECT NOT REGEXP_LIKE(x, 'y') FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT x !~* 'y' FROM t",
+        "SELECT NOT REGEXP_I_LIKE(x, 'y') FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect("x ~~ 'y'", "x LIKE 'y'", Dialect::Postgres, Dialect::Sqlite);
+    validate_with_dialect(
+        "x ~~* 'y'",
+        "LOWER(x) LIKE LOWER('y')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "x !~~ 'y'",
+        "x NOT LIKE 'y'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "x !~~* 'y'",
+        "LOWER(x) NOT LIKE LOWER('y')",
         Dialect::Postgres,
         Dialect::Sqlite,
     );

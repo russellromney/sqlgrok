@@ -236,25 +236,28 @@ pub enum TokenType {
     Gt,
     LtEq,
     GtEq,
-    NullSafeEq,      // <=>
-    ColonEq,         // :=
-    FatArrow,        // =>
-    RegexNotMatch,   // !~
-    RegexNotIMatch,  // !~*
-    Concat,          // ||
-    BitwiseAnd,      // &
-    BitwiseOr,       // |
-    BitwiseXor,      // ^
-    BitwiseNot,      // ~
-    ShiftLeft,       // <<
-    ShiftRight,      // >>
-    DoubleColon,     // :: (Postgres cast)
-    Arrow,           // ->
-    DoubleArrow,     // ->>
-    HashArrow,       // #>
-    HashDoubleArrow, // #>>
-    AtSign,          // @
-    Scope,           // ::
+    NullSafeEq,       // <=>
+    ColonEq,          // :=
+    FatArrow,         // =>
+    RegexIMatch,      // ~*
+    RegexNotMatch,    // !~
+    RegexNotIMatch,   // !~*
+    PostgresNotLike,  // !~~
+    PostgresNotILike, // !~~*
+    Concat,           // ||
+    BitwiseAnd,       // &
+    BitwiseOr,        // |
+    BitwiseXor,       // ^
+    BitwiseNot,       // ~
+    ShiftLeft,        // <<
+    ShiftRight,       // >>
+    DoubleColon,      // :: (Postgres cast)
+    Arrow,            // ->
+    DoubleArrow,      // ->>
+    HashArrow,        // #>
+    HashDoubleArrow,  // #>>
+    AtSign,           // @
+    Scope,            // ::
 
     // ── Punctuation ────────────────────────────────────────────────
     LParen,

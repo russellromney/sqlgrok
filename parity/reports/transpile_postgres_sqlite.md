@@ -8,25 +8,26 @@ Total candidates: `682`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 291 |
-| `mismatch` | 334 |
+| `match` | 301 |
+| `mismatch` | 324 |
 | `rust-error` | 57 |
 
 ## Top Feature Buckets
 
 | Status | Feature | Count |
 | --- | --- | ---: |
-| `mismatch` | `SELECT` | 108 |
-| `match` | `SELECT` | 85 |
+| `mismatch` | `SELECT` | 105 |
+| `match` | `SELECT` | 88 |
 | `mismatch` | `CREATE` | 63 |
 | `rust-error` | `SELECT` | 42 |
 | `mismatch` | `CREATE TABLE` | 36 |
 | `match` | `CREATE TABLE` | 20 |
 | `match` | `REVOKE` | 19 |
 | `match` | `CAST()` | 18 |
-| `mismatch` | `X` | 18 |
 | `match` | `GRANT` | 16 |
+| `match` | `X` | 11 |
 | `mismatch` | `BEGIN` | 11 |
+| `mismatch` | `X` | 11 |
 | `match` | `INTERVAL` | 9 |
 | `match` | `WITH` | 9 |
 | `mismatch` | `CREATE INDEX` | 9 |
@@ -40,14 +41,13 @@ Total candidates: `682`
 | `match` | `ANALYZE` | 4 |
 | `match` | `DROP INDEX` | 4 |
 | `match` | `REGEXP_INSTR()` | 4 |
-| `match` | `STRING_AGG()` | 4 |
 
 ## Top Source Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 121 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 107 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 114 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 114 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 88 |
 | `rust-error` | `tests/dialects/test_postgres.py` | `test_postgres` | 35 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres_create_trigger` | 34 |
@@ -57,20 +57,20 @@ Total candidates: `682`
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_begin_transaction` | 11 |
 | `match` | `tests/dialects/test_postgres.py` | `test_interval_span` | 10 |
 | `match` | `tests/dialects/test_postgres.py` | `test_round` | 7 |
-| `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 7 |
 | `mismatch` | `tests/dialects/test_dune.py` | `test_dune` | 7 |
 | `match` | `tests/dialects/test_doris.py` | `test_doris` | 6 |
 | `rust-error` | `tests/dialects/test_postgres.py` | `test_xmlelement` | 6 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 5 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 5 |
+| `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 5 |
 | `mismatch` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 5 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 4 |
 | `match` | `tests/dialects/test_dialect.py` | `test_heredoc_strings` | 4 |
 | `match` | `tests/dialects/test_dialect.py` | `test_localtime_and_localtimestamp` | 4 |
 | `match` | `tests/dialects/test_dialect.py` | `test_regexp_instr` | 4 |
 | `match` | `tests/dialects/test_doris.py` | `test_table_alias_conversion` | 4 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 4 |
 | `match` | `tests/dialects/test_postgres.py` | `test_analyze` | 4 |
-| `match` | `tests/dialects/test_postgres.py` | `test_json_extract` | 4 |
 
 ## Non-Matching Examples
 
