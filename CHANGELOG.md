@@ -125,3 +125,7 @@ this file records what landed.
 ### SQLite JSON Path Parity
 
 - Normalize Postgres JSON arrow paths for SQLite output and render SQLite JSON extract functions with `->`/`->>` operators.
+
+### Postgres UUID Function Parity
+
+- Map Postgres `gen_random_uuid()` to SQLite `UUID()` to match Python SQLGlot.

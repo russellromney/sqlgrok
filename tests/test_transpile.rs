@@ -286,6 +286,16 @@ fn test_postgres_string_agg_to_sqlite_group_concat() {
 }
 
 #[test]
+fn test_postgres_gen_random_uuid_to_sqlite_uuid() {
+    validate_with_dialect(
+        "SELECT gen_random_uuid()",
+        "SELECT UUID()",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_postgres_json_access_to_sqlite_paths() {
     validate_with_dialect(
         "SELECT data->'k' FROM t",
