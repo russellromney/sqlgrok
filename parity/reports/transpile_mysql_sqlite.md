@@ -8,8 +8,8 @@ Total candidates: `496`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 232 |
-| `mismatch` | 257 |
+| `match` | 233 |
+| `mismatch` | 256 |
 | `oracle-error` | 7 |
 
 ## Top Feature Buckets
@@ -65,20 +65,17 @@ Total candidates: `496`
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_types` | 6 |
 | `match` | `tests/dialects/test_mysql.py` | `test_escape` | 5 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_json_value` | 5 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 4 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bit_aggs` | 4 |
 | `match` | `tests/dialects/test_dialect.py` | `test_localtime_and_localtimestamp` | 4 |
 | `match` | `tests/dialects/test_mysql.py` | `test_null_ordering_simulation_resolves_ordered_against_projection` | 4 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_explain` | 4 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 4 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql_time_python311` | 4 |
 
 ## Non-Matching Examples
 
 ### `mismatch`
 
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-1530-test-bigquery`: `DATEDIFF(CAST('2010-07-07' AS DATE), CAST('2008-12-25' AS DATE))`
-  - expected: `CAST((JULIANDAY(DATE('2010-07-07')) - JULIANDAY(DATE('2008-12-25'))) AS INTEGER)`
-  - actual: `CAST((JULIANDAY(CAST('2010-07-07' AS DATE)) - JULIANDAY(CAST('2008-12-25' AS DATE))) AS INTEGER)`
 - `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-0709-test-bigquery`: `SELECT MAKETIME(15, 30, 00)`
   - expected: `SELECT TIME_FROM_PARTS(15, 30, 00)`
   - actual: `SELECT MAKETIME(15, 30, 00)`
@@ -91,6 +88,9 @@ Total candidates: `496`
 - `sqlglot-mysql-to-sqlite-tests-dialects-test-clickhouse-0461-test-clickhouse`: `SELECT 1 XOR 0 XOR 1`
   - expected: `SELECT 1 XOR 0 XOR 1`
   - actual: `SELECT 1`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-clickhouse-0473-test-clickhouse`: `CONCAT(a, b)`
+  - expected: `a || b`
+  - actual: `CONCAT(a, b)`
 
 ### `oracle-error`
 

@@ -8,16 +8,16 @@ Total candidates: `682`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 290 |
-| `mismatch` | 335 |
+| `match` | 291 |
+| `mismatch` | 334 |
 | `rust-error` | 57 |
 
 ## Top Feature Buckets
 
 | Status | Feature | Count |
 | --- | --- | ---: |
-| `mismatch` | `SELECT` | 109 |
-| `match` | `SELECT` | 84 |
+| `mismatch` | `SELECT` | 108 |
+| `match` | `SELECT` | 85 |
 | `mismatch` | `CREATE` | 63 |
 | `rust-error` | `SELECT` | 42 |
 | `mismatch` | `CREATE TABLE` | 36 |
@@ -46,8 +46,8 @@ Total candidates: `682`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 122 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 106 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 121 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 107 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 88 |
 | `rust-error` | `tests/dialects/test_postgres.py` | `test_postgres` | 35 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres_create_trigger` | 34 |

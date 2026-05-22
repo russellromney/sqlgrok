@@ -559,10 +559,24 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             escape,
         },
         // Map data types in CAST
-        Expr::Cast { expr, data_type } => Expr::Cast {
-            expr: Box::new(transform_expr(*expr, source, target)),
-            data_type: map_data_type_for_source(data_type, source, target),
-        },
+        Expr::Cast { expr, data_type } => {
+            let expr = transform_expr(*expr, source, target);
+            let data_type = map_data_type_for_source(data_type, source, target);
+            if matches!(target, Dialect::Sqlite) && matches!(data_type, DataType::Date) {
+                Expr::Function {
+                    name: "DATE".to_string(),
+                    args: vec![expr],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                }
+            } else {
+                Expr::Cast {
+                    expr: Box::new(expr),
+                    data_type,
+                }
+            }
+        }
         // Recurse into binary ops
         Expr::BinaryOp { left, op, right } => {
             let left = transform_expr(*left, source, target);

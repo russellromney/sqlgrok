@@ -612,6 +612,34 @@ fn test_mysql_datediff_to_sqlite_julianday() {
         Dialect::Mysql,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "DATEDIFF(CAST('2010-07-07' AS DATE), CAST('2008-12-25' AS DATE))",
+        "CAST((JULIANDAY(DATE('2010-07-07')) - JULIANDAY(DATE('2008-12-25'))) AS INTEGER)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_sqlite_datediff_unit_identity() {
+    validate_with_dialect(
+        "DATEDIFF(a, b, 'day')",
+        "CAST((JULIANDAY(a) - JULIANDAY(b)) AS INTEGER)",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "DATEDIFF(a, b, 'hour')",
+        "CAST((JULIANDAY(a) - JULIANDAY(b)) * 24.0 AS INTEGER)",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "DATEDIFF(a, b, 'year')",
+        "CAST((JULIANDAY(a) - JULIANDAY(b)) / 365.0 AS INTEGER)",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]

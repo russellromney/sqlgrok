@@ -8,8 +8,8 @@ Total candidates: `144`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 79 |
-| `mismatch` | 65 |
+| `match` | 82 |
+| `mismatch` | 62 |
 
 ## Top Feature Buckets
 
@@ -24,7 +24,7 @@ Total candidates: `144`
 | `match` | `X` | 5 |
 | `match` | `CREATE TABLE` | 4 |
 | `mismatch` | `ATTACH` | 4 |
-| `mismatch` | `DATEDIFF()` | 3 |
+| `match` | `DATEDIFF()` | 3 |
 | `match` | `ANALYZE` | 2 |
 | `match` | `LOG()` | 2 |
 | `mismatch` | `MIN()` | 2 |
@@ -54,7 +54,7 @@ Total candidates: `144`
 | `match` | `tests/dialects/test_sqlite.py` | `test_strftime` | 4 |
 | `match` | `tests/dialects/test_dialect.py` | `test_limit` | 3 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_create_trigger` | 3 |
-| `mismatch` | `tests/dialects/test_sqlite.py` | `test_datediff` | 3 |
+| `match` | `tests/dialects/test_sqlite.py` | `test_datediff` | 3 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 2 |
 | `match` | `tests/dialects/test_dialect.py` | `test_escaped_identifier_delimiter` | 2 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 2 |

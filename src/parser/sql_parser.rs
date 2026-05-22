@@ -3981,12 +3981,21 @@ impl Parser {
                 let third = it.next();
                 if let Some(third_arg) = third {
                     if upper == "DATEDIFF" {
-                        // DATEDIFF(unit, start, end) — TSQL/Snowflake
-                        let unit = Self::expr_to_datetime_field(&first);
-                        TypedFunction::DateDiff {
-                            start: Box::new(second),
-                            end: Box::new(third_arg),
-                            unit,
+                        if let Some(unit) = Self::expr_to_datetime_field(&first) {
+                            // DATEDIFF(unit, start, end) — TSQL/Snowflake
+                            TypedFunction::DateDiff {
+                                start: Box::new(second),
+                                end: Box::new(third_arg),
+                                unit: Some(unit),
+                            }
+                        } else {
+                            // DATEDIFF(start, end, unit) — SQLite-style SQLGlot fixture form
+                            let unit = Self::expr_to_datetime_field(&third_arg);
+                            TypedFunction::DateDiff {
+                                start: Box::new(first),
+                                end: Box::new(second),
+                                unit,
+                            }
                         }
                     } else {
                         let unit = Self::expr_to_datetime_field(&third_arg);
