@@ -291,7 +291,10 @@ fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
     match func {
         TypedFunction::DateAdd { .. } => "DATE_ADD",
         TypedFunction::DateDiff { .. } => "DATE_DIFF",
+        TypedFunction::DatePart { .. } => "DATE_PART",
+        TypedFunction::ExtractPart { .. } => "EXTRACT",
         TypedFunction::DateTrunc { .. } => "DATE_TRUNC",
+        TypedFunction::TimestampTrunc { .. } => "TIMESTAMP_TRUNC",
         TypedFunction::DateSub { .. } => "DATE_SUB",
         TypedFunction::CurrentDate => "CURRENT_DATE",
         TypedFunction::CurrentTimestamp => "NOW",
@@ -397,7 +400,10 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         | TypedFunction::Stddev { expr }
         | TypedFunction::FirstValue { expr }
         | TypedFunction::LastValue { expr } => vec![*expr.clone()],
-        TypedFunction::DateTrunc { unit, expr } => {
+        TypedFunction::DatePart { part, expr } | TypedFunction::ExtractPart { part, expr } => {
+            vec![*part.clone(), *expr.clone()]
+        }
+        TypedFunction::DateTrunc { unit, expr } | TypedFunction::TimestampTrunc { unit, expr } => {
             vec![Expr::StringLiteral(format!("{unit:?}")), *expr.clone()]
         }
         TypedFunction::DateAdd { expr, interval, .. }

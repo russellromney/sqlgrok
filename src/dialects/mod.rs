@@ -629,6 +629,18 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             quote_style,
             table_quote_style,
         } => {
+            if table.is_none()
+                && is_postgres_family(source)
+                && matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("current_date")
+            {
+                return Expr::Column {
+                    table: None,
+                    name: "CURRENT_DATE".to_string(),
+                    quote_style: QuoteStyle::None,
+                    table_quote_style: QuoteStyle::None,
+                };
+            }
             let new_qs = if quote_style.is_quoted() {
                 QuoteStyle::for_dialect(target)
             } else {
@@ -934,6 +946,22 @@ fn transform_typed_function(
             TypedFunction::StrToTime {
                 expr: transformed_expr,
                 format: Box::new(transformed_format),
+            }
+        }
+        TypedFunction::DatePart { part, expr }
+            if matches!(source, Dialect::Postgres) && matches!(target, Dialect::Sqlite) =>
+        {
+            TypedFunction::ExtractPart {
+                part: Box::new(transform_expr(*part, source, target)),
+                expr: Box::new(transform_expr(*expr, source, target)),
+            }
+        }
+        TypedFunction::DateTrunc { unit, expr }
+            if matches!(source, Dialect::Postgres) && matches!(target, Dialect::Sqlite) =>
+        {
+            TypedFunction::TimestampTrunc {
+                unit,
+                expr: Box::new(transform_expr(*expr, source, target)),
             }
         }
         // For all other typed functions, just transform child expressions

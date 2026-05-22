@@ -4078,6 +4078,15 @@ impl Parser {
                     }
                 }
             }
+            "DATE_PART" => {
+                let mut it = args.into_iter();
+                let part = it.next()?;
+                let expr = it.next()?;
+                TypedFunction::DatePart {
+                    part: Box::new(part),
+                    expr: Box::new(expr),
+                }
+            }
             "DATE_TRUNC" | "DATETRUNC" => {
                 let mut it = args.into_iter();
                 let first = it.next()?;

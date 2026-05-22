@@ -870,8 +870,11 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
         TypedFunction::DateAdd { .. }
         | TypedFunction::DateSub { .. }
         | TypedFunction::DateTrunc { .. }
+        | TypedFunction::TimestampTrunc { .. }
         | TypedFunction::TsOrDsToDate { .. } => Some(DataType::Date),
-        TypedFunction::DateDiff { .. } => Some(DataType::Int),
+        TypedFunction::DateDiff { .. }
+        | TypedFunction::DatePart { .. }
+        | TypedFunction::ExtractPart { .. } => Some(DataType::Int),
         TypedFunction::CurrentDate => Some(DataType::Date),
         TypedFunction::CurrentTimestamp => Some(DataType::Timestamp {
             precision: None,

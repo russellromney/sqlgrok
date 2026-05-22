@@ -2527,6 +2527,31 @@ impl Generator {
                     self.write(")");
                 }
             }
+            TypedFunction::DatePart { part, expr } => {
+                self.write_keyword("DATE_PART(");
+                self.gen_expr(part);
+                self.write(", ");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::ExtractPart { part, expr } => {
+                self.write_keyword("EXTRACT(");
+                if let Expr::StringLiteral(part) = part.as_ref() {
+                    self.write(part);
+                } else {
+                    self.gen_expr(part);
+                }
+                self.write_keyword(" FROM ");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::TimestampTrunc { unit, expr } => {
+                self.write_keyword("TIMESTAMP_TRUNC(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_datetime_field(unit);
+                self.write(")");
+            }
             TypedFunction::DateTrunc { unit, expr } => {
                 if is_tsql {
                     self.write_keyword("DATETRUNC(");

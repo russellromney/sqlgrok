@@ -659,8 +659,17 @@ pub enum TypedFunction {
         end: Box<Expr>,
         unit: Option<DateTimeField>,
     },
+    /// `DATE_PART(part, expr)` — extract a date/time field expression
+    DatePart { part: Box<Expr>, expr: Box<Expr> },
+    /// `EXTRACT(part FROM expr)` where `part` is itself an expression
+    ExtractPart { part: Box<Expr>, expr: Box<Expr> },
     /// `DATE_TRUNC(unit, expr)` — truncate to the given precision
     DateTrunc {
+        unit: DateTimeField,
+        expr: Box<Expr>,
+    },
+    /// `TIMESTAMP_TRUNC(expr, unit)`
+    TimestampTrunc {
         unit: DateTimeField,
         expr: Box<Expr>,
     },
@@ -905,7 +914,13 @@ impl TypedFunction {
                 start.walk(visitor);
                 end.walk(visitor);
             }
-            TypedFunction::DateTrunc { expr, .. } => expr.walk(visitor),
+            TypedFunction::DatePart { part, expr } | TypedFunction::ExtractPart { part, expr } => {
+                part.walk(visitor);
+                expr.walk(visitor);
+            }
+            TypedFunction::DateTrunc { expr, .. } | TypedFunction::TimestampTrunc { expr, .. } => {
+                expr.walk(visitor);
+            }
             TypedFunction::CurrentDate | TypedFunction::CurrentTimestamp => {}
             TypedFunction::StrToTime { expr, format }
             | TypedFunction::TimeToStr { expr, format } => {
@@ -1138,7 +1153,19 @@ impl TypedFunction {
                 end: Box::new(end.transform(func)),
                 unit,
             },
+            TypedFunction::DatePart { part, expr } => TypedFunction::DatePart {
+                part: Box::new(part.transform(func)),
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::ExtractPart { part, expr } => TypedFunction::ExtractPart {
+                part: Box::new(part.transform(func)),
+                expr: Box::new(expr.transform(func)),
+            },
             TypedFunction::DateTrunc { unit, expr } => TypedFunction::DateTrunc {
+                unit,
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::TimestampTrunc { unit, expr } => TypedFunction::TimestampTrunc {
                 unit,
                 expr: Box::new(expr.transform(func)),
             },

@@ -22,6 +22,7 @@ this file records what landed.
 - Matched SQLGlot Postgres regex match operators `~`, `~*`, `!~`, and `!~*` when targeting SQLite.
 - Hardened the date/regex parity ratchets with parity fixtures and edge coverage for Postgres `~~` aliases, double bitwise-not, invalid `~~x`, and non-unit three-argument `DATEDIFF`.
 - Added a first-class Postgres `SIMILAR TO` predicate carrier so SQLite-targeted transpilation no longer drops the predicate as a bogus alias.
+- Matched Postgres-to-SQLite `DATE_TRUNC`/`DATE_PART` time-function output while preserving SQLite identity behavior.
 
 ## 2026-05-20
 

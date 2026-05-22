@@ -687,6 +687,40 @@ fn test_postgres_extract_from_date_literal_to_sqlite() {
 }
 
 #[test]
+fn test_postgres_time_functions_to_sqlite() {
+    validate_with_dialect(
+        "DATE_TRUNC('day', x)",
+        "TIMESTAMP_TRUNC(x, DAY)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "DATE_TRUNC('day', x::DATE)",
+        "TIMESTAMP_TRUNC(DATE(x), DAY)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT DATE_PART('minute', timestamp '2023-01-04 04:05:06.789')",
+        "SELECT EXTRACT(minute FROM CAST('2023-01-04 04:05:06.789' AS TIMESTAMP))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT DATE_PART('isodow'::varchar(6), current_date)",
+        "SELECT EXTRACT(CAST('isodow' AS TEXT(6)) FROM CURRENT_DATE)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "DATE_TRUNC('day', x)",
+        "DATE_TRUNC('DAY', x)",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_postgres_limit_all_to_sqlite() {
     validate_with_dialect(
         "SELECT x FROM t LIMIT ALL",
