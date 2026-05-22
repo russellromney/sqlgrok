@@ -400,10 +400,8 @@ fn collect_correlation_predicates(
                 | BinaryOperator::GtEq
                 | BinaryOperator::Neq,
             ..
-        } => {
-            if is_cross_table_predicate(expr) {
-                non_eq_preds.push(expr.clone());
-            }
+        } if is_cross_table_predicate(expr) => {
+            non_eq_preds.push(expr.clone());
         }
 
         _ => {}

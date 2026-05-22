@@ -150,13 +150,13 @@ impl Generator {
     /// Normalize a comment for the target dialect.
     /// Converts MySQL `#` comments to `--` when targeting non-MySQL dialects.
     fn normalize_comment(&self, comment: &str) -> String {
-        if comment.starts_with('#') {
+        if let Some(stripped) = comment.strip_prefix('#') {
             let is_mysql_target = matches!(
                 self.dialect,
                 Some(Dialect::Mysql | Dialect::Doris | Dialect::SingleStore | Dialect::StarRocks)
             );
             if !is_mysql_target {
-                return format!("--{}", &comment[1..]);
+                return format!("--{stripped}");
             }
         }
         comment.to_string()

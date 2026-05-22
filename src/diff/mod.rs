@@ -712,18 +712,13 @@ impl AstDiffer {
             (Expr::Coalesce(sa), Expr::Coalesce(ta)) => self.diff_expr_lists(sa, ta),
             (Expr::ArrayLiteral(sa), Expr::ArrayLiteral(ta)) => self.diff_expr_lists(sa, ta),
             (Expr::Tuple(sa), Expr::Tuple(ta)) => self.diff_expr_lists(sa, ta),
-            (Expr::TypedFunction { func: sf, .. }, Expr::TypedFunction { func: tf, .. }) => {
-                if std::mem::discriminant(sf) == std::mem::discriminant(tf) && source == target {
-                    self.changes.push(ChangeAction::Keep(
-                        AstNode::Expr(source.clone()),
-                        AstNode::Expr(target.clone()),
-                    ));
-                } else {
-                    self.changes.push(ChangeAction::Update(
-                        AstNode::Expr(source.clone()),
-                        AstNode::Expr(target.clone()),
-                    ));
-                }
+            (Expr::TypedFunction { func: sf, .. }, Expr::TypedFunction { func: tf, .. })
+                if std::mem::discriminant(sf) == std::mem::discriminant(tf) && source == target =>
+            {
+                self.changes.push(ChangeAction::Keep(
+                    AstNode::Expr(source.clone()),
+                    AstNode::Expr(target.clone()),
+                ));
             }
             // Different variant types → leaf-level update
             _ => {

@@ -753,6 +753,13 @@ mod tests {
         assert!(dt.sources.contains_key("t"));
     }
 
+    #[test]
+    fn test_values_alias_source() {
+        let scope = scope_for("SELECT v.column1 FROM (VALUES (1, 2)) AS v");
+        assert!(scope.sources.contains_key("v"));
+        assert!(scope.derived_table_scopes.is_empty());
+    }
+
     // ── CTEs ─────────────────────────────────────────────────────────
 
     #[test]

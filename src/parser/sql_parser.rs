@@ -4470,6 +4470,43 @@ impl Parser {
     }
 }
 
+fn concat_exprs(mut exprs: Vec<Expr>) -> Expr {
+    let mut expr = exprs.remove(0);
+    for next in exprs {
+        expr = Expr::BinaryOp {
+            left: Box::new(expr),
+            op: BinaryOperator::Concat,
+            right: Box::new(next),
+        };
+    }
+    expr
+}
+
+/// Attach comments to the appropriate field on a parsed statement.
+fn attach_comments_to_statement(stmt: &mut Statement, comments: Vec<String>) {
+    match stmt {
+        Statement::Select(s) => s.comments = comments,
+        Statement::Insert(s) => s.comments = comments,
+        Statement::Update(s) => s.comments = comments,
+        Statement::Delete(s) => s.comments = comments,
+        Statement::CreateTable(s) => s.comments = comments,
+        Statement::DropTable(s) => s.comments = comments,
+        Statement::CreateIndex(s) => s.comments = comments,
+        Statement::DropIndex(s) => s.comments = comments,
+        Statement::SetOperation(s) => s.comments = comments,
+        Statement::AlterTable(s) => s.comments = comments,
+        Statement::CreateView(s) => s.comments = comments,
+        Statement::DropView(s) => s.comments = comments,
+        Statement::Truncate(s) => s.comments = comments,
+        Statement::Explain(s) => s.comments = comments,
+        Statement::Use(s) => s.comments = comments,
+        Statement::Merge(s) => s.comments = comments,
+        Statement::Raw(s) => s.comments = comments,
+        // Transaction and Expression don't have comment fields
+        Statement::Transaction(_) | Statement::Expression(_) => {}
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4631,6 +4668,31 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_values_in_from() {
+        let stmt =
+            Parser::new("SELECT column1 FROM (VALUES (1, 2), (3, 4)) AS v(column1, column2)")
+                .unwrap()
+                .parse_statement()
+                .unwrap();
+        match stmt {
+            Statement::Select(sel) => {
+                let Some(from) = &sel.from else {
+                    panic!("Expected FROM");
+                };
+                match &from.source {
+                    TableSource::Values { rows, alias, .. } => {
+                        assert_eq!(rows.len(), 2);
+                        assert_eq!(rows[0].len(), 2);
+                        assert_eq!(alias.as_deref(), Some("v"));
+                    }
+                    _ => panic!("Expected VALUES table source"),
+                }
+            }
+            _ => panic!("Expected SELECT"),
+        }
+    }
+
+    #[test]
     fn test_parse_exists() {
         let stmt = Parser::new("SELECT * FROM t WHERE EXISTS (SELECT 1 FROM t2)")
             .unwrap()
@@ -4740,42 +4802,5 @@ mod tests {
             }
             _ => panic!("Expected SELECT"),
         }
-    }
-}
-
-fn concat_exprs(mut exprs: Vec<Expr>) -> Expr {
-    let mut expr = exprs.remove(0);
-    for next in exprs {
-        expr = Expr::BinaryOp {
-            left: Box::new(expr),
-            op: BinaryOperator::Concat,
-            right: Box::new(next),
-        };
-    }
-    expr
-}
-
-/// Attach comments to the appropriate field on a parsed statement.
-fn attach_comments_to_statement(stmt: &mut Statement, comments: Vec<String>) {
-    match stmt {
-        Statement::Select(s) => s.comments = comments,
-        Statement::Insert(s) => s.comments = comments,
-        Statement::Update(s) => s.comments = comments,
-        Statement::Delete(s) => s.comments = comments,
-        Statement::CreateTable(s) => s.comments = comments,
-        Statement::DropTable(s) => s.comments = comments,
-        Statement::CreateIndex(s) => s.comments = comments,
-        Statement::DropIndex(s) => s.comments = comments,
-        Statement::SetOperation(s) => s.comments = comments,
-        Statement::AlterTable(s) => s.comments = comments,
-        Statement::CreateView(s) => s.comments = comments,
-        Statement::DropView(s) => s.comments = comments,
-        Statement::Truncate(s) => s.comments = comments,
-        Statement::Explain(s) => s.comments = comments,
-        Statement::Use(s) => s.comments = comments,
-        Statement::Merge(s) => s.comments = comments,
-        Statement::Raw(s) => s.comments = comments,
-        // Transaction and Expression don't have comment fields
-        Statement::Transaction(_) | Statement::Expression(_) => {}
     }
 }

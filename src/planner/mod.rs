@@ -912,6 +912,21 @@ mod tests {
     }
 
     #[test]
+    fn test_values_in_from_virtual_scan() {
+        let ast = parse("SELECT column1 FROM (VALUES (1, 2)) AS v", Dialect::Ansi).unwrap();
+        let p = plan(&ast).unwrap();
+        assert!(p.steps().iter().any(|step| matches!(
+            step,
+            Step::Scan {
+                table,
+                alias: Some(alias),
+                projections,
+                ..
+            } if table == "VALUES" && alias == "v" && projections.len() == 2
+        )));
+    }
+
+    #[test]
     fn test_complex_query() {
         let ast = parse(
             "SELECT a, SUM(b) AS total FROM t WHERE c > 0 GROUP BY a HAVING SUM(b) > 10 ORDER BY total DESC LIMIT 5",

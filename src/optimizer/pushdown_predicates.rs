@@ -203,7 +203,7 @@ fn try_push_into_join(join: &mut JoinClause, pred: &Expr, tables: &HashSet<Strin
 fn recurse_into_source(source: &mut TableSource) {
     match source {
         TableSource::Subquery { query, .. } => {
-            *query = Box::new(pushdown_predicates(*query.clone()));
+            **query = pushdown_predicates(*query.clone());
         }
         TableSource::Lateral { source } => {
             recurse_into_source(source);
@@ -326,10 +326,10 @@ fn is_pushdown_safe_target(sel: &SelectStatement) -> bool {
     }
     // Check for window functions in SELECT list
     for item in &sel.columns {
-        if let SelectItem::Expr { expr, .. } = item {
-            if contains_window_function(expr) {
-                return false;
-            }
+        if let SelectItem::Expr { expr, .. } = item
+            && contains_window_function(expr)
+        {
+            return false;
         }
     }
     true
@@ -434,10 +434,10 @@ fn rewrite_predicate_for_derived_table(
             name,
             ..
         } = e
+            && t == outer_alias
+            && !column_map.contains_key(name.as_str())
         {
-            if t == outer_alias && !column_map.contains_key(name.as_str()) {
-                can_rewrite = false;
-            }
+            can_rewrite = false;
         }
         can_rewrite
     });
@@ -468,17 +468,15 @@ fn rewrite_predicate_for_derived_table(
                 name,
                 ..
             } = e
+                && t == outer_alias
+                && let Some(inner_expr) = column_map.get(name.as_str())
             {
-                if t == outer_alias {
-                    if let Some(inner_expr) = column_map.get(name.as_str()) {
-                        let inner_name = match inner_expr {
-                            Expr::Column { name: n, .. } => n.clone(),
-                            _ => name.clone(),
-                        };
-                        if !grouped_names.contains(&inner_name) {
-                            all_grouped = false;
-                        }
-                    }
+                let inner_name = match inner_expr {
+                    Expr::Column { name: n, .. } => n.clone(),
+                    _ => name.clone(),
+                };
+                if !grouped_names.contains(&inner_name) {
+                    all_grouped = false;
                 }
             }
             all_grouped

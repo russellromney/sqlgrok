@@ -71,6 +71,7 @@ impl QuoteStyle {
 ///
 /// Corresponds to the top-level node in sqlglot's expression tree.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
 pub enum Statement {
     Select(SelectStatement),
     Insert(InsertStatement),

@@ -11,6 +11,8 @@ this file records what landed.
 - Added parser/generator carriers for MySQL user variables, `:=`, `<=>`, `&&`, hex literals, qualified upsert/update assignments, `VALUES(...)`, and common cast/type suffix forms.
 - Added Postgres tokenizer/parser support for dollar-quoted strings, psycopg `%s` parameters, `!~`/`!~*`, `VALUES` table sources, ordered aggregate argument carriers, window `EXCLUDE` parsing, and `IS DISTINCT FROM`.
 - Refreshed the generated MySQL/Postgres/SQLite SQLGlot import reports so the remaining backlog is classified as concrete mismatches or narrower parser gaps.
+- Covered `VALUES` table sources across parser, qualification, scope analysis, and planner tests.
+- Cleared the current strict Clippy backlog so `cargo clippy --all-targets -- -D warnings` passes.
 
 ## 2026-05-20
 

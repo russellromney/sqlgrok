@@ -193,6 +193,7 @@ impl Dialect {
     }
 
     /// Parse a dialect name (case-insensitive) into a `Dialect`.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Dialect> {
         match s.to_lowercase().as_str() {
             "" | "ansi" => Some(Dialect::Ansi),
@@ -1233,10 +1234,10 @@ fn transform_limit(sel: &mut SelectStatement, target: Dialect) {
             }
         }
         // Also move fetch_first → top when no offset
-        if sel.offset.is_none() {
-            if let Some(fetch) = sel.fetch_first.take() {
-                sel.top = Some(Box::new(fetch));
-            }
+        if sel.offset.is_none()
+            && let Some(fetch) = sel.fetch_first.take()
+        {
+            sel.top = Some(Box::new(fetch));
         }
     } else if matches!(target, Dialect::Oracle) {
         // Oracle prefers FETCH FIRST n ROWS ONLY (SQL:2008 syntax)
@@ -1248,15 +1249,15 @@ fn transform_limit(sel: &mut SelectStatement, target: Dialect) {
         }
     } else {
         // All other dialects: normalize to LIMIT
-        if let Some(top) = sel.top.take() {
-            if sel.limit.is_none() {
-                sel.limit = Some(*top);
-            }
+        if let Some(top) = sel.top.take()
+            && sel.limit.is_none()
+        {
+            sel.limit = Some(*top);
         }
-        if let Some(fetch) = sel.fetch_first.take() {
-            if sel.limit.is_none() {
-                sel.limit = Some(fetch);
-            }
+        if let Some(fetch) = sel.fetch_first.take()
+            && sel.limit.is_none()
+        {
+            sel.limit = Some(fetch);
         }
     }
 }

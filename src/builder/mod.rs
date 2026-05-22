@@ -772,6 +772,7 @@ impl ConditionBuilder {
 
     /// Negate the current condition with NOT.
     #[must_use]
+    #[allow(clippy::should_implement_trait)]
     pub fn not(self) -> Self {
         let expr = self.expr.map(|e| Expr::UnaryOp {
             op: crate::ast::UnaryOperator::Not,

@@ -417,12 +417,7 @@ fn qualify_table_source<S: Schema>(
 ) {
     match source {
         TableSource::Subquery { query, .. } => {
-            *query = Box::new(qualify_columns_inner(
-                *query.clone(),
-                schema,
-                dialect,
-                cte_columns,
-            ));
+            **query = qualify_columns_inner(*query.clone(), schema, dialect, cte_columns);
         }
         TableSource::Lateral { source: inner } => {
             qualify_table_source(inner, schema, dialect, cte_columns);
@@ -675,6 +670,15 @@ mod tests {
         assert_eq!(
             qualify("SELECT id, name FROM users AS u", &schema),
             "SELECT u.id, u.name FROM users AS u"
+        );
+    }
+
+    #[test]
+    fn test_qualify_values_alias_default_columns() {
+        let schema = make_schema();
+        assert_eq!(
+            qualify("SELECT column1 FROM (VALUES (1, 2)) AS v", &schema),
+            "SELECT v.column1 FROM (VALUES (1, 2)) AS v"
         );
     }
 
