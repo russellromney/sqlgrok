@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use serde::{Deserialize, Serialize};
+use sqlgrok::{Dialect, transpile};
 
 fn main() {
     if let Err(err) = run() {
@@ -34,21 +35,29 @@ fn usage() -> String {
 fn run_import(args: ImportArgs) -> Result<(), String> {
     args.validate()?;
 
-    let mut cases = import_sqlglot_fixtures(&args)?;
+    let raw_cases = import_sqlglot_fixtures(&args)?;
+    let raw_count = raw_cases.len();
+    let mut cases = if args.only_matching {
+        filter_matching_cases(raw_cases, &args)?
+    } else {
+        raw_cases
+    };
     validate_cases(&cases)?;
 
     cases.sort_by(|left, right| left.id.cmp(&right.id));
 
     let jsonl = render_jsonl(&cases)?;
     eprintln!(
-        "imported {} {} cases from {} (read={}, write={}, limit={}, dry_run={})",
+        "imported {} {} cases from {} (read={}, write={}, limit={}, dry_run={}, only_matching={}, raw_candidates={})",
         cases.len(),
         args.family,
         args.sqlglot.display(),
         args.read,
         args.write,
         args.limit,
-        args.dry_run
+        args.dry_run,
+        args.only_matching,
+        raw_count
     );
 
     if args.dry_run {
@@ -95,6 +104,7 @@ struct ImportArgs {
     write: String,
     limit: usize,
     dry_run: bool,
+    only_matching: bool,
     output: PathBuf,
 }
 
@@ -107,6 +117,7 @@ impl ImportArgs {
         let mut write = None;
         let mut limit = 25;
         let mut dry_run = false;
+        let mut only_matching = false;
         let mut output = None;
 
         while let Some(arg) = args.next() {
@@ -122,6 +133,7 @@ impl ImportArgs {
                         .map_err(|_| format!("--limit must be a positive integer, got {raw:?}"))?;
                 }
                 "--dry-run" => dry_run = true,
+                "--only-matching" => only_matching = true,
                 "--output" => output = Some(next_value(&mut args, "--output")?.into()),
                 "-h" | "--help" => return Err(Self::usage()),
                 _ => return Err(format!("unknown argument {arg:?}\n\n{}", Self::usage())),
@@ -143,6 +155,7 @@ impl ImportArgs {
             write,
             limit,
             dry_run,
+            only_matching,
             output,
         })
     }
@@ -179,7 +192,7 @@ impl ImportArgs {
     }
 
     fn usage() -> String {
-        "usage: cargo run --bin xtask -- import-sqlglot-fixtures --sqlglot /path/to/sqlglot --family transpile --read mysql --write sqlite --limit 25 [--dry-run] [--output parity/cases/transpile_mysql_sqlite.jsonl]".to_string()
+        "usage: cargo run --bin xtask -- import-sqlglot-fixtures --sqlglot /path/to/sqlglot --family transpile --read mysql --write sqlite --limit 25 [--dry-run] [--only-matching] [--output parity/cases/transpile_mysql_sqlite.jsonl]".to_string()
     }
 }
 
@@ -271,6 +284,13 @@ struct FixtureCase {
     mode: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct OracleOutput {
+    ok: bool,
+    sql: Option<String>,
+    error: Option<String>,
+}
+
 fn import_sqlglot_fixtures(args: &ImportArgs) -> Result<Vec<FixtureCase>, String> {
     let output = Command::new("python3")
         .arg("-c")
@@ -294,6 +314,94 @@ fn import_sqlglot_fixtures(args: &ImportArgs) -> Result<Vec<FixtureCase>, String
     serde_json::from_slice(&output.stdout).map_err(|err| {
         format!(
             "invalid fixture importer JSON: {err}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        )
+    })
+}
+
+fn filter_matching_cases(
+    cases: Vec<FixtureCase>,
+    args: &ImportArgs,
+) -> Result<Vec<FixtureCase>, String> {
+    let read = Dialect::from_str(&args.read)
+        .ok_or_else(|| format!("unknown read dialect {:?}", args.read))?;
+    let write = Dialect::from_str(&args.write)
+        .ok_or_else(|| format!("unknown write dialect {:?}", args.write))?;
+
+    let mut matched = Vec::new();
+    let mut rust_errors = 0usize;
+    let mut oracle_errors = 0usize;
+    let mut mismatches = 0usize;
+
+    for case in cases {
+        let oracle = python_oracle_transpile(&args.sqlglot, &case)?;
+        if !oracle.ok {
+            oracle_errors += 1;
+            if let Some(error) = oracle.error {
+                eprintln!("{}: skipping oracle error: {error}", case.id);
+            }
+            continue;
+        }
+        let Some(expected) = oracle.sql else {
+            oracle_errors += 1;
+            continue;
+        };
+
+        match transpile(&case.sql, read, write) {
+            Ok(actual) if actual == expected => matched.push(case),
+            Ok(_) => mismatches += 1,
+            Err(_) => rust_errors += 1,
+        }
+    }
+
+    eprintln!(
+        "only-matching filter: kept={}, mismatches={}, rust_errors={}, oracle_errors={}",
+        matched.len(),
+        mismatches,
+        rust_errors,
+        oracle_errors
+    );
+
+    Ok(matched)
+}
+
+fn python_oracle_transpile(sqlglot: &PathBuf, case: &FixtureCase) -> Result<OracleOutput, String> {
+    let script = r#"
+import json
+import sys
+
+import sqlglot
+
+sql, read, write = sys.argv[1:4]
+try:
+    out = sqlglot.transpile(sql, read=read, write=write)[0]
+    print(json.dumps({"ok": True, "sql": out}))
+except Exception as exc:
+    print(json.dumps({"ok": False, "error": str(exc)}))
+"#;
+
+    let output = Command::new("python3")
+        .arg("-c")
+        .arg(script)
+        .arg(&case.sql)
+        .arg(&case.read)
+        .arg(&case.write)
+        .env("PYTHONPATH", sqlglot)
+        .output()
+        .map_err(|err| format!("failed to run Python SQLGlot oracle: {err}"))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "Python SQLGlot oracle exited with {}\nstderr:\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+
+    serde_json::from_slice(&output.stdout).map_err(|err| {
+        format!(
+            "invalid Python SQLGlot oracle JSON: {err}\nstdout:\n{}\nstderr:\n{}",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         )
@@ -462,7 +570,7 @@ def feature_tags(sql):
 
 def make_case(path, lineno, test_name, sql, source_note):
     rel = path.relative_to(root).as_posix()
-    case_id = f"sqlglot-{slug(rel.replace('/', '-').replace('.py', ''))}-{lineno:04d}-{slug(test_name)}"
+    case_id = f"sqlglot-{read}-to-{write}-{slug(rel.replace('/', '-').replace('.py', ''))}-{lineno:04d}-{slug(test_name)}"
     return {
         "id": case_id,
         "sql": sql,

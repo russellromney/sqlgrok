@@ -158,3 +158,7 @@ this file records what landed.
 ### MySQL INSERT IGNORE Parity
 
 - Parse and render MySQL `INSERT IGNORE` for SQLite-targeted transpilation.
+
+### SQLGlot Fixture Importer Ratchet
+
+- Add `--only-matching` importer mode to seed upstream SQLGlot parity files without introducing known failures.
