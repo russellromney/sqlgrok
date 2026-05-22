@@ -236,6 +236,11 @@ pub enum TokenType {
     Gt,
     LtEq,
     GtEq,
+    NullSafeEq,      // <=>
+    ColonEq,         // :=
+    FatArrow,        // =>
+    RegexNotMatch,   // !~
+    RegexNotIMatch,  // !~*
     Concat,          // ||
     BitwiseAnd,      // &
     BitwiseOr,       // |

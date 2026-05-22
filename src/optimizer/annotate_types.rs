@@ -290,6 +290,9 @@ fn register_table_source<S: Schema>(source: &TableSource, ctx: &mut AnnotationCo
         TableSource::TableFunction { alias, .. } => {
             let _ = alias;
         }
+        TableSource::Values { alias, .. } => {
+            let _ = alias;
+        }
         TableSource::Lateral { source } => register_table_source(source, ctx),
         TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
             register_table_source(source, ctx);
@@ -452,6 +455,7 @@ fn annotate_children<S: Schema>(
         // Leaf nodes — no children to annotate
         Expr::Column { .. }
         | Expr::Number(_)
+        | Expr::HexString(_)
         | Expr::StringLiteral(_)
         | Expr::Boolean(_)
         | Expr::Null
@@ -490,6 +494,7 @@ fn infer_type<S: Schema>(
     match expr {
         // ── Literals ───────────────────────────────────────────────────
         Expr::Number(s) => Some(infer_number_type(s)),
+        Expr::HexString(_) => Some(DataType::Binary(None)),
         Expr::StringLiteral(_) => Some(DataType::Varchar(None)),
         Expr::Boolean(_) => Some(DataType::Boolean),
         Expr::Null => Some(DataType::Null),
@@ -674,7 +679,7 @@ fn infer_binary_op_type(
     use BinaryOperator::*;
     match op {
         // Comparison operators → Boolean
-        Eq | Neq | Lt | Gt | LtEq | GtEq | Glob => Some(DataType::Boolean),
+        Eq | Neq | Lt | Gt | LtEq | GtEq | NullSafeEq | Glob => Some(DataType::Boolean),
 
         // Logical operators → Boolean
         And | Or | Xor => Some(DataType::Boolean),
@@ -701,6 +706,7 @@ fn infer_binary_op_type(
         // JSON operators
         Arrow => Some(DataType::Json),
         DoubleArrow => Some(DataType::Text),
+        Assign => right.cloned().or_else(|| left.cloned()),
     }
 }
 

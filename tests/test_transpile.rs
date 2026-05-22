@@ -2604,3 +2604,64 @@ fn test_non_oracle_keeps_table_alias_as() {
         Dialect::Postgres,
     );
 }
+
+#[test]
+fn test_sqlite_window_exclude_parses_without_crashing() {
+    let result = transpile(
+        "SELECT SUM(X) OVER (ORDER BY X ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE NO OTHERS) FROM t",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    )
+    .expect("window EXCLUDE should parse");
+    assert!(!result.is_empty());
+}
+
+#[test]
+fn test_mysql_parser_carriers_to_sqlite() {
+    validate_with_dialect(
+        "SELECT 0xCC",
+        "SELECT x'CC'",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT @var1 := 1, @var2",
+        "SELECT @var1 := 1, @var2",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "INSERT INTO x VALUES (1, 'a', 2.0) ON DUPLICATE KEY UPDATE x.id = 1",
+        "INSERT INTO x VALUES (1, 'a', 2.0) ON DUPLICATE KEY UPDATE SET x.id = 1",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_postgres_parser_carriers_to_sqlite() {
+    validate_with_dialect(
+        "SELECT * FROM (VALUES (1)) AS t1",
+        "SELECT * FROM (VALUES (1)) AS t1",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT $$Dianne's horse$$",
+        "SELECT 'Dianne''s horse'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM foo WHERE id = %s",
+        "SELECT * FROM foo WHERE id = ?",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT x !~ 'y' FROM t",
+        "SELECT NOT REGEXP_LIKE(x, 'y') FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}

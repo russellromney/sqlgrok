@@ -106,6 +106,14 @@ fn collect_source_columns<S: Schema>(
                 source_map.insert(norm_alias, SourceColumns { columns: cols });
             }
         }
+        TableSource::Values { alias, rows, .. } => {
+            if let Some(alias) = alias {
+                let norm_alias = normalize_identifier(alias, dialect);
+                let width = rows.iter().map(Vec::len).max().unwrap_or(0);
+                let columns = (1..=width).map(|idx| format!("column{idx}")).collect();
+                source_map.insert(norm_alias, SourceColumns { columns });
+            }
+        }
         TableSource::Lateral { source: inner } => {
             collect_source_columns(inner, schema, dialect, cte_columns, source_map);
         }
@@ -232,6 +240,10 @@ fn source_key_for(source: &TableSource, dialect: Dialect) -> String {
             normalize_identifier(name, dialect)
         }
         TableSource::Subquery { alias, .. } => alias
+            .as_deref()
+            .map(|a| normalize_identifier(a, dialect))
+            .unwrap_or_default(),
+        TableSource::Values { alias, .. } => alias
             .as_deref()
             .map(|a| normalize_identifier(a, dialect))
             .unwrap_or_default(),

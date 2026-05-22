@@ -571,6 +571,18 @@ impl PlanBuilder {
                 predicate: None,
                 dependencies: vec![],
             })),
+            TableSource::Values { rows, alias, .. } => Ok(self.add_step(Step::Scan {
+                table: "VALUES".to_string(),
+                alias: alias.clone(),
+                projections: rows
+                    .iter()
+                    .flat_map(|row| row.iter())
+                    .cloned()
+                    .map(|expr| Projection { expr, alias: None })
+                    .collect(),
+                predicate: None,
+                dependencies: vec![],
+            })),
             TableSource::Pivot { source, alias, .. }
             | TableSource::Unpivot { source, alias, .. } => {
                 // Plan the underlying source; the pivot/unpivot is treated

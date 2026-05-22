@@ -153,9 +153,38 @@ impl Tokenizer {
             '+' => Ok(self.make_token(TokenType::Plus, "+", start, start_line, start_col)),
             '~' => Ok(self.make_token(TokenType::BitwiseNot, "~", start, start_line, start_col)),
             '@' => Ok(self.make_token(TokenType::AtSign, "@", start, start_line, start_col)),
-            '=' => Ok(self.make_token(TokenType::Eq, "=", start, start_line, start_col)),
+            '=' => {
+                if self.peek() == Some('>') {
+                    self.advance();
+                    Ok(self.make_token(TokenType::FatArrow, "=>", start, start_line, start_col))
+                } else {
+                    Ok(self.make_token(TokenType::Eq, "=", start, start_line, start_col))
+                }
+            }
             '*' => Ok(self.make_token(TokenType::Star, "*", start, start_line, start_col)),
-            '%' => Ok(self.make_token(TokenType::Percent2, "%", start, start_line, start_col)),
+            '%' => {
+                if self.peek().is_some_and(|c| c.is_ascii_alphabetic()) {
+                    let mut value = String::from("%");
+                    while self
+                        .peek()
+                        .is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
+                    {
+                        value.push(self.advance().unwrap());
+                    }
+                    Ok(self.make_token(TokenType::Parameter, value, start, start_line, start_col))
+                } else if self.peek() == Some('(') {
+                    let mut value = String::from("%");
+                    while self.peek().is_some_and(|c| !c.is_whitespace() && c != ',') {
+                        value.push(self.advance().unwrap());
+                        if value.ends_with(")s") {
+                            break;
+                        }
+                    }
+                    Ok(self.make_token(TokenType::Parameter, value, start, start_line, start_col))
+                } else {
+                    Ok(self.make_token(TokenType::Percent2, "%", start, start_line, start_col))
+                }
+            }
             '^' => Ok(self.make_token(TokenType::BitwiseXor, "^", start, start_line, start_col)),
 
             // ── Colon ───────────────────────────────────────────────
@@ -163,6 +192,9 @@ impl Tokenizer {
                 if self.peek() == Some(':') {
                     self.advance();
                     Ok(self.make_token(TokenType::DoubleColon, "::", start, start_line, start_col))
+                } else if self.peek() == Some('=') {
+                    self.advance();
+                    Ok(self.make_token(TokenType::ColonEq, ":=", start, start_line, start_col))
                 } else {
                     Ok(self.make_token(TokenType::Colon, ":", start, start_line, start_col))
                 }
@@ -245,7 +277,11 @@ impl Tokenizer {
 
             // ── Less-than variants ──────────────────────────────────
             '<' => {
-                if self.peek() == Some('=') {
+                if self.peek() == Some('=') && self.peek_at(1) == Some('>') {
+                    self.advance();
+                    self.advance();
+                    Ok(self.make_token(TokenType::NullSafeEq, "<=>", start, start_line, start_col))
+                } else if self.peek() == Some('=') {
                     self.advance();
                     Ok(self.make_token(TokenType::LtEq, "<=", start, start_line, start_col))
                 } else if self.peek() == Some('>') {
@@ -277,6 +313,26 @@ impl Tokenizer {
                 if self.peek() == Some('=') {
                     self.advance();
                     Ok(self.make_token(TokenType::Neq, "!=", start, start_line, start_col))
+                } else if self.peek() == Some('~') {
+                    self.advance();
+                    if self.peek() == Some('*') {
+                        self.advance();
+                        Ok(self.make_token(
+                            TokenType::RegexNotIMatch,
+                            "!~*",
+                            start,
+                            start_line,
+                            start_col,
+                        ))
+                    } else {
+                        Ok(self.make_token(
+                            TokenType::RegexNotMatch,
+                            "!~",
+                            start,
+                            start_line,
+                            start_col,
+                        ))
+                    }
                 } else {
                     Err(SqlglotError::TokenizerError {
                         message: format!("Unexpected character: {ch}"),
@@ -296,7 +352,14 @@ impl Tokenizer {
             }
 
             // ── Ampersand ───────────────────────────────────────────
-            '&' => Ok(self.make_token(TokenType::BitwiseAnd, "&", start, start_line, start_col)),
+            '&' => {
+                if self.peek() == Some('&') {
+                    self.advance();
+                    Ok(self.make_token(TokenType::And, "&&", start, start_line, start_col))
+                } else {
+                    Ok(self.make_token(TokenType::BitwiseAnd, "&", start, start_line, start_col))
+                }
+            }
 
             // ── Hash ────────────────────────────────────────────────
             '#' => {
@@ -345,7 +408,12 @@ impl Tokenizer {
 
             // ── Identifiers and keywords ────────────────────────────
             c if c.is_ascii_alphabetic() || c == '_' => {
-                self.read_identifier(start, start_line, start_col, c)
+                if (c == 'e' || c == 'E') && self.peek() == Some('\'') {
+                    self.advance();
+                    self.read_string(start, start_line, start_col)
+                } else {
+                    self.read_identifier(start, start_line, start_col, c)
+                }
             }
 
             // ── Quoted identifiers (double quote) ───────────────────
@@ -356,7 +424,50 @@ impl Tokenizer {
 
             // ── Parameter markers ───────────────────────────────────
             '$' => {
-                if self.peek().is_some_and(|c| c.is_ascii_digit()) {
+                if self.peek() == Some('$')
+                    || self
+                        .peek()
+                        .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+                {
+                    let mut delimiter = String::from("$");
+                    while self
+                        .peek()
+                        .is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
+                    {
+                        delimiter.push(self.advance().unwrap());
+                    }
+                    if self.peek() == Some('$') {
+                        delimiter.push(self.advance().unwrap());
+                    } else {
+                        return Ok(self.make_token(
+                            TokenType::Parameter,
+                            "$",
+                            start,
+                            start_line,
+                            start_col,
+                        ));
+                    }
+
+                    let mut value = String::new();
+                    loop {
+                        if self.starts_with(&delimiter) {
+                            for _ in 0..delimiter.chars().count() {
+                                self.advance();
+                            }
+                            break;
+                        }
+                        match self.advance() {
+                            Some(c) => value.push(c),
+                            None => {
+                                return Err(SqlglotError::TokenizerError {
+                                    message: "Unterminated dollar-quoted string".into(),
+                                    position: start,
+                                });
+                            }
+                        }
+                    }
+                    Ok(self.make_token(TokenType::String, value, start, start_line, start_col))
+                } else if self.peek().is_some_and(|c| c.is_ascii_digit()) {
                     let mut value = String::from("$");
                     while self.peek().is_some_and(|c| c.is_ascii_digit()) {
                         value.push(self.advance().unwrap());
@@ -374,6 +485,13 @@ impl Tokenizer {
                 position: start,
             }),
         }
+    }
+
+    fn starts_with(&self, needle: &str) -> bool {
+        needle
+            .chars()
+            .enumerate()
+            .all(|(i, c)| self.peek_at(i) == Some(c))
     }
 
     fn read_string(&mut self, start: usize, start_line: usize, start_col: usize) -> Result<Token> {
@@ -395,6 +513,10 @@ impl Tokenizer {
                     }
                 }
                 Some('\\') => match self.peek() {
+                    Some('\'') => {
+                        self.advance();
+                        value.push('\'');
+                    }
                     Some('\\') => {
                         self.advance();
                         value.push('\\');

@@ -200,6 +200,16 @@ impl Parser {
                 | TokenType::Left
                 | TokenType::Right
                 | TokenType::Replace
+                | TokenType::Any
+                | TokenType::Insert
+                | TokenType::Like
+                | TokenType::ILike
+                | TokenType::Some
+                | TokenType::Table
+                | TokenType::Temp
+                | TokenType::Truncate
+                | TokenType::Unnest
+                | TokenType::Values
                 | TokenType::Glob
                 | TokenType::Cube
                 | TokenType::Rollup
@@ -213,6 +223,15 @@ impl Parser {
     /// Consume a name token (identifier or unreserved keyword used as identifier).
     fn expect_name(&mut self) -> Result<String> {
         let (name, _) = self.expect_name_with_quote()?;
+        Ok(name)
+    }
+
+    fn parse_assignment_name(&mut self) -> Result<String> {
+        let mut name = self.expect_name()?;
+        while self.match_token(TokenType::Dot) {
+            name.push('.');
+            name.push_str(&self.expect_name()?);
+        }
         Ok(name)
     }
 
@@ -319,6 +338,9 @@ impl Parser {
             TokenType::Create => self.parse_create_or_raw(),
             TokenType::Drop => self.parse_drop(),
             TokenType::Alter => self.parse_alter_or_raw(),
+            TokenType::Truncate if self.peek_n_type(1) == &TokenType::LParen => {
+                self.parse_expr().map(Statement::Expression)
+            }
             TokenType::Truncate => self.parse_truncate().map(Statement::Truncate),
             TokenType::Begin | TokenType::Commit | TokenType::Rollback | TokenType::Savepoint => {
                 self.parse_transaction().map(Statement::Transaction)
@@ -742,6 +764,7 @@ impl Parser {
                     | "WINDOW"
                     | "QUALIFY"
                     | "INTO"
+                    | "VALUES"
                     | "SET"
                     | "RETURNING"
                     | "PIVOT"
@@ -806,7 +829,27 @@ impl Parser {
                     alias_quote_style,
                 });
             }
+            if self.peek_type() == &TokenType::Values {
+                let rows = self.parse_values_rows()?;
+                self.expect(TokenType::RParen)?;
+                let (alias, alias_quote_style) = self.parse_table_alias_with_column_list()?;
+                return Ok(TableSource::Values {
+                    rows,
+                    alias,
+                    alias_quote_style,
+                });
+            }
             self.pos = saved;
+        }
+
+        if self.peek_type() == &TokenType::Values {
+            let rows = self.parse_values_rows()?;
+            let (alias, alias_quote_style) = self.parse_table_alias_with_column_list()?;
+            return Ok(TableSource::Values {
+                rows,
+                alias,
+                alias_quote_style,
+            });
         }
 
         // Regular table reference (possibly with function syntax)
@@ -834,6 +877,42 @@ impl Parser {
         }
 
         Ok(TableSource::Table(table_ref))
+    }
+
+    fn parse_values_rows(&mut self) -> Result<Vec<Vec<Expr>>> {
+        self.expect(TokenType::Values)?;
+        let mut rows = Vec::new();
+        loop {
+            self.expect(TokenType::LParen)?;
+            let row = if self.peek_type() == &TokenType::RParen {
+                vec![]
+            } else {
+                self.parse_expr_list()?
+            };
+            self.expect(TokenType::RParen)?;
+            rows.push(row);
+            if !self.match_token(TokenType::Comma) {
+                break;
+            }
+        }
+        Ok(rows)
+    }
+
+    fn parse_table_alias_with_column_list(&mut self) -> Result<(Option<String>, QuoteStyle)> {
+        let (alias, alias_quote_style) = match self.parse_optional_alias()? {
+            Some((name, qs)) => (Some(name), qs),
+            None => (None, QuoteStyle::None),
+        };
+        if self.match_token(TokenType::LParen) {
+            if self.peek_type() != &TokenType::RParen {
+                let _ = self.expect_name()?;
+                while self.match_token(TokenType::Comma) {
+                    let _ = self.expect_name()?;
+                }
+            }
+            self.expect(TokenType::RParen)?;
+        }
+        Ok((alias, alias_quote_style))
     }
 
     /// After parsing a base table source, check if PIVOT or UNPIVOT follows.
@@ -1284,7 +1363,7 @@ impl Parser {
                     self.expect(TokenType::Set)?;
                     let mut assignments = Vec::new();
                     loop {
-                        let col = self.expect_name()?;
+                        let col = self.parse_assignment_name()?;
                         self.expect(TokenType::Eq)?;
                         let val = self.parse_expr()?;
                         assignments.push((col, val));
@@ -1305,7 +1384,7 @@ impl Parser {
                 self.expect(TokenType::Update)?;
                 let mut assignments = Vec::new();
                 loop {
-                    let col = self.expect_name()?;
+                    let col = self.parse_assignment_name()?;
                     self.expect(TokenType::Eq)?;
                     let val = self.parse_expr()?;
                     assignments.push((col, val));
@@ -1354,11 +1433,12 @@ impl Parser {
     fn parse_update(&mut self) -> Result<UpdateStatement> {
         self.expect(TokenType::Update)?;
         let table = self.parse_table_ref()?;
+        let _ = self.parse_joins()?;
         self.expect(TokenType::Set)?;
 
         let mut assignments = Vec::new();
         loop {
-            let col = self.expect_name()?;
+            let col = self.parse_assignment_name()?;
             self.expect(TokenType::Eq)?;
             let val = self.parse_expr()?;
             assignments.push((col, val));
@@ -1401,8 +1481,15 @@ impl Parser {
 
     fn parse_delete(&mut self) -> Result<DeleteStatement> {
         self.expect(TokenType::Delete)?;
-        self.expect(TokenType::From)?;
+        if !self.match_token(TokenType::From) {
+            let _ = self.parse_assignment_name()?;
+            while self.match_token(TokenType::Comma) {
+                let _ = self.parse_assignment_name()?;
+            }
+            self.expect(TokenType::From)?;
+        }
         let table = self.parse_table_ref()?;
+        let _ = self.parse_joins()?;
 
         let using = if self.match_token(TokenType::Using) {
             Some(FromClause {
@@ -2110,6 +2197,16 @@ impl Parser {
                 self.advance();
                 Ok(DataType::Interval)
             }
+            TokenType::Set => {
+                self.advance();
+                self.consume_balanced_parentheses();
+                Ok(DataType::Unknown("SET".to_string()))
+            }
+            TokenType::Year => {
+                self.advance();
+                self.consume_balanced_parentheses();
+                Ok(DataType::Unknown("YEAR".to_string()))
+            }
             TokenType::Blob => {
                 self.advance();
                 Ok(DataType::Blob)
@@ -2144,6 +2241,15 @@ impl Parser {
                 let name = token.value.to_uppercase();
                 self.advance();
                 match name.as_str() {
+                    "SIGNED" | "UNSIGNED"
+                        if matches!(
+                            self.peek_type(),
+                            TokenType::Int | TokenType::Integer | TokenType::BigInt
+                        ) =>
+                    {
+                        let next = self.advance().value.to_uppercase();
+                        Ok(DataType::Unknown(format!("{name} {next}")))
+                    }
                     "STRING" => Ok(DataType::String),
                     "BINARY" => {
                         let len = self.parse_single_type_param()?;
@@ -2175,7 +2281,10 @@ impl Parser {
                     "GEOGRAPHY" => Ok(DataType::Geography),
                     "GEOMETRY" => Ok(DataType::Geometry),
                     "SUPER" => Ok(DataType::Super),
-                    _ => Ok(DataType::Unknown(name)),
+                    _ => {
+                        self.consume_balanced_parentheses();
+                        Ok(DataType::Unknown(name))
+                    }
                 }
             }
             _ => Err(SqlglotError::ParserError {
@@ -2185,6 +2294,13 @@ impl Parser {
 
         // PostgreSQL opt_array_bounds: typename[], typename[N], typename[][]...
         let mut dt = type_result?;
+        if self.peek_type() == &TokenType::Char
+            && self.peek().value.eq_ignore_ascii_case("CHARACTER")
+        {
+            self.advance();
+            let _ = self.match_token(TokenType::Set);
+            let _ = self.expect_name();
+        }
         while self.match_token(TokenType::LBracket) {
             // Consume optional integer bound (PostgreSQL ignores it but accepts it)
             let _ = self.match_token(TokenType::Number);
@@ -2192,6 +2308,22 @@ impl Parser {
             dt = DataType::Array(Some(Box::new(dt)));
         }
         Ok(dt)
+    }
+
+    fn consume_balanced_parentheses(&mut self) {
+        if !self.match_token(TokenType::LParen) {
+            return;
+        }
+        let mut depth = 1;
+        while depth > 0 && self.peek_type() != &TokenType::Eof {
+            if self.match_token(TokenType::LParen) {
+                depth += 1;
+            } else if self.match_token(TokenType::RParen) {
+                depth -= 1;
+            } else {
+                self.advance();
+            }
+        }
     }
 
     fn parse_type_params(&mut self) -> Result<(Option<u32>, Option<u32>)> {
@@ -2471,6 +2603,8 @@ impl Parser {
             let op = match self.peek_type() {
                 TokenType::Eq => Some(BinaryOperator::Eq),
                 TokenType::Neq => Some(BinaryOperator::Neq),
+                TokenType::NullSafeEq => Some(BinaryOperator::NullSafeEq),
+                TokenType::ColonEq => Some(BinaryOperator::Assign),
                 TokenType::Lt => Some(BinaryOperator::Lt),
                 TokenType::Gt => Some(BinaryOperator::Gt),
                 TokenType::LtEq => Some(BinaryOperator::LtEq),
@@ -2516,10 +2650,42 @@ impl Parser {
                         right: Box::new(right),
                     };
                 }
+            } else if matches!(
+                self.peek_type(),
+                TokenType::RegexNotMatch | TokenType::RegexNotIMatch
+            ) {
+                let case_insensitive = self.peek_type() == &TokenType::RegexNotIMatch;
+                self.advance();
+                let pattern = self.parse_addition()?;
+                let regexp = Expr::TypedFunction {
+                    func: TypedFunction::RegexpLike {
+                        expr: Box::new(left),
+                        pattern: Box::new(pattern),
+                        flags: case_insensitive.then(|| Box::new(Expr::StringLiteral("i".into()))),
+                    },
+                    filter: None,
+                    over: None,
+                };
+                left = Expr::UnaryOp {
+                    op: UnaryOperator::Not,
+                    expr: Box::new(regexp),
+                };
             } else if self.peek_type() == &TokenType::Is {
                 self.advance();
                 let negated = self.match_token(TokenType::Not);
-                if self.match_token(TokenType::True) {
+                if self.match_token(TokenType::Distinct) {
+                    self.expect(TokenType::From)?;
+                    let right = self.parse_addition()?;
+                    left = Expr::BinaryOp {
+                        left: Box::new(left),
+                        op: if negated {
+                            BinaryOperator::Eq
+                        } else {
+                            BinaryOperator::Neq
+                        },
+                        right: Box::new(right),
+                    };
+                } else if self.match_token(TokenType::True) {
                     left = Expr::IsBool {
                         expr: Box::new(left),
                         value: true,
@@ -2531,11 +2697,28 @@ impl Parser {
                         value: false,
                         negated,
                     };
-                } else {
-                    self.expect(TokenType::Null)?;
+                } else if self.match_token(TokenType::Null) {
                     left = Expr::IsNull {
                         expr: Box::new(left),
                         negated,
+                    };
+                } else {
+                    let right = self.parse_addition()?;
+                    left = if negated {
+                        Expr::UnaryOp {
+                            op: UnaryOperator::Not,
+                            expr: Box::new(Expr::BinaryOp {
+                                left: Box::new(left),
+                                op: BinaryOperator::Eq,
+                                right: Box::new(right),
+                            }),
+                        }
+                    } else {
+                        Expr::BinaryOp {
+                            left: Box::new(left),
+                            op: BinaryOperator::Eq,
+                            right: Box::new(right),
+                        }
                     };
                 }
             } else if matches!(
@@ -2756,6 +2939,11 @@ impl Parser {
                     expr: Box::new(expr),
                     index: Box::new(index),
                 };
+            } else if self.match_token(TokenType::Collate) {
+                expr = Expr::Collate {
+                    expr: Box::new(expr),
+                    collation: self.expect_name()?,
+                };
             } else if self.match_token(TokenType::Arrow) {
                 let path = self.parse_primary()?;
                 expr = Expr::JsonAccess {
@@ -2899,6 +3087,7 @@ impl Parser {
         } else {
             None
         };
+        self.consume_window_exclude_clause();
 
         Ok(WindowSpec {
             window_ref,
@@ -2936,6 +3125,20 @@ impl Parser {
         }
     }
 
+    fn consume_window_exclude_clause(&mut self) {
+        if !self.match_keyword("EXCLUDE") {
+            return;
+        }
+
+        if self.match_keyword("NO") {
+            let _ = self.match_keyword("OTHERS");
+        } else if self.match_keyword("CURRENT") {
+            let _ = self.match_keyword("ROW");
+        } else {
+            let _ = self.match_keyword("GROUP") || self.match_keyword("TIES");
+        }
+    }
+
     fn parse_window_frame_bound(&mut self) -> Result<WindowFrameBound> {
         if self.check_keyword("CURRENT") {
             self.advance();
@@ -2966,6 +3169,16 @@ impl Parser {
             TokenType::Number => {
                 self.advance();
                 Ok(Expr::Number(token.value))
+            }
+            TokenType::HexString => {
+                self.advance();
+                let hex = token
+                    .value
+                    .strip_prefix("0x")
+                    .or_else(|| token.value.strip_prefix("0X"))
+                    .unwrap_or(&token.value)
+                    .to_string();
+                Ok(Expr::HexString(hex))
             }
             TokenType::String => {
                 self.advance();
@@ -3038,7 +3251,25 @@ impl Parser {
             }
             TokenType::Parameter => {
                 self.advance();
-                Ok(Expr::Parameter(token.value))
+                Ok(Expr::Parameter(if token.value.starts_with('%') {
+                    "?".to_string()
+                } else {
+                    token.value
+                }))
+            }
+            TokenType::AtSign => {
+                self.advance();
+                let mut name = "@".to_string();
+                if self.match_token(TokenType::AtSign) {
+                    name.push('@');
+                }
+                name.push_str(&self.expect_name()?);
+                Ok(Expr::Column {
+                    table: None,
+                    name,
+                    quote_style: QuoteStyle::None,
+                    table_quote_style: QuoteStyle::None,
+                })
             }
 
             // ── CAST ────────────────────────────────────────────────
@@ -3125,9 +3356,33 @@ impl Parser {
 
             // ── INTERVAL ────────────────────────────────────────────
             TokenType::Interval => {
+                if matches!(
+                    self.peek_n_type(1),
+                    TokenType::Rows
+                        | TokenType::Range
+                        | TokenType::RParen
+                        | TokenType::Comma
+                        | TokenType::Asc
+                        | TokenType::Desc
+                        | TokenType::Eof
+                ) {
+                    self.advance();
+                    return Ok(Expr::Column {
+                        table: None,
+                        name: "INTERVAL".to_string(),
+                        quote_style: QuoteStyle::None,
+                        table_quote_style: QuoteStyle::None,
+                    });
+                }
                 self.advance();
-                let value = self.parse_primary()?;
+                let value = self.parse_addition()?;
                 let unit = self.try_parse_datetime_field();
+                if unit.is_none()
+                    && matches!(self.peek_type(), TokenType::Identifier)
+                    && self.peek().value.contains('_')
+                {
+                    self.advance();
+                }
                 Ok(Expr::Interval {
                     value: Box::new(value),
                     unit,
@@ -3204,6 +3459,22 @@ impl Parser {
                 let name = name_token.value.clone();
                 let name_qs = quote_style_from_char(name_token.quote_char);
 
+                if self.peek_type() == &TokenType::String
+                    && matches!(
+                        name.to_uppercase().as_str(),
+                        "BOX" | "CIRCLE" | "LINE" | "LSEG" | "PATH" | "POINT" | "POLYGON"
+                    )
+                {
+                    let value = self.advance().value.clone();
+                    return Ok(Expr::Function {
+                        name,
+                        args: vec![Expr::StringLiteral(value)],
+                        distinct: false,
+                        filter: None,
+                        over: None,
+                    });
+                }
+
                 // Function call: name(...)
                 if self.peek_type() == &TokenType::LParen {
                     self.advance();
@@ -3213,6 +3484,23 @@ impl Parser {
 
                     let args = if name.eq_ignore_ascii_case("GROUP_CONCAT") {
                         self.parse_group_concat_args()?
+                    } else if name.eq_ignore_ascii_case("JSON_VALUE") {
+                        self.parse_json_value_args()?
+                    } else if matches!(
+                        name.to_uppercase().as_str(),
+                        "ARRAY_AGG" | "JSON_AGG" | "STRING_AGG"
+                    ) {
+                        self.parse_ordered_function_args()?
+                    } else if name.eq_ignore_ascii_case("POSITION") {
+                        self.parse_position_args()?
+                    } else if name.eq_ignore_ascii_case("SUBSTRING")
+                        || name.eq_ignore_ascii_case("SUBSTR")
+                    {
+                        self.parse_substring_args()?
+                    } else if name.eq_ignore_ascii_case("CHAR")
+                        || name.eq_ignore_ascii_case("CONVERT")
+                    {
+                        self.parse_using_function_args()?
                     } else if self.peek_type() == &TokenType::RParen {
                         vec![]
                     } else if self.peek_type() == &TokenType::Star {
@@ -3382,6 +3670,121 @@ impl Parser {
             args.push(self.parse_expr()?);
         }
 
+        Ok(args)
+    }
+
+    fn parse_ordered_function_args(&mut self) -> Result<Vec<Expr>> {
+        if self.peek_type() == &TokenType::RParen {
+            return Ok(vec![]);
+        }
+
+        let mut args = vec![self.parse_expr()?];
+        while self.match_token(TokenType::Comma) {
+            if self.peek_type() == &TokenType::Order {
+                break;
+            }
+            args.push(self.parse_expr()?);
+        }
+        if self.match_token(TokenType::Order) {
+            self.expect(TokenType::By)?;
+            let _ = self.parse_order_by_items()?;
+        }
+        Ok(args)
+    }
+
+    fn parse_json_value_args(&mut self) -> Result<Vec<Expr>> {
+        let mut args = if self.peek_type() == &TokenType::RParen {
+            vec![]
+        } else {
+            vec![self.parse_expr()?]
+        };
+        while self.match_token(TokenType::Comma) {
+            args.push(self.parse_expr()?);
+        }
+        if self.match_token(TokenType::Returning) {
+            let _ = self.parse_data_type()?;
+        }
+        while !matches!(self.peek_type(), TokenType::RParen | TokenType::Eof) {
+            if self.match_token(TokenType::Null)
+                || self.match_token(TokenType::Default)
+                || self.match_keyword("ERROR")
+            {
+                if self.tokens[self.pos - 1].token_type == TokenType::Default {
+                    let _ = self.parse_expr();
+                }
+                if self.match_token(TokenType::On) {
+                    let _ = self.match_keyword("EMPTY") || self.match_keyword("ERROR");
+                }
+            } else {
+                self.advance();
+            }
+        }
+        Ok(args)
+    }
+
+    fn parse_position_args(&mut self) -> Result<Vec<Expr>> {
+        if self.peek_type() == &TokenType::RParen {
+            return Ok(vec![]);
+        }
+
+        let needle = self.parse_addition()?;
+        if self.match_token(TokenType::In) {
+            let haystack = self.parse_expr()?;
+            Ok(vec![needle, haystack])
+        } else {
+            let mut args = vec![needle];
+            while self.match_token(TokenType::Comma) {
+                args.push(self.parse_expr()?);
+            }
+            Ok(args)
+        }
+    }
+
+    fn parse_substring_args(&mut self) -> Result<Vec<Expr>> {
+        if self.peek_type() == &TokenType::RParen {
+            return Ok(vec![]);
+        }
+
+        let expr = self.parse_expr()?;
+        if self.match_token(TokenType::From) {
+            let start = self.parse_expr()?;
+            let length = if self.match_keyword("FOR") {
+                Some(self.parse_expr()?)
+            } else {
+                None
+            };
+            let mut args = vec![expr, start];
+            if let Some(length) = length {
+                args.push(length);
+            }
+            Ok(args)
+        } else {
+            let mut args = vec![expr];
+            while self.match_token(TokenType::Comma) {
+                args.push(self.parse_expr()?);
+            }
+            Ok(args)
+        }
+    }
+
+    fn parse_using_function_args(&mut self) -> Result<Vec<Expr>> {
+        if self.peek_type() == &TokenType::RParen {
+            return Ok(vec![]);
+        }
+
+        let mut args = vec![self.parse_expr()?];
+        if self.match_token(TokenType::Using) {
+            args.push(Expr::Column {
+                table: None,
+                name: "USING".to_string(),
+                quote_style: QuoteStyle::None,
+                table_quote_style: QuoteStyle::None,
+            });
+            args.push(self.parse_primary()?);
+        }
+        while self.match_token(TokenType::Comma) {
+            args.push(self.parse_expr()?);
+        }
         Ok(args)
     }
 

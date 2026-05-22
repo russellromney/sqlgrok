@@ -8,23 +8,23 @@ Total candidates: `496`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 206 |
-| `mismatch` | 210 |
+| `match` | 219 |
+| `mismatch` | 262 |
 | `oracle-error` | 7 |
-| `rust-error` | 73 |
+| `rust-error` | 8 |
 
 ## Top Feature Buckets
 
 | Status | Feature | Count |
 | --- | --- | ---: |
-| `mismatch` | `SELECT` | 68 |
-| `match` | `SELECT` | 64 |
+| `mismatch` | `SELECT` | 90 |
+| `match` | `SELECT` | 72 |
 | `mismatch` | `CREATE TABLE` | 45 |
-| `rust-error` | `SELECT` | 36 |
 | `match` | `SET` | 33 |
 | `mismatch` | `ALTER TABLE` | 26 |
 | `match` | `CREATE TABLE` | 13 |
-| `rust-error` | `DATE_ADD()` | 11 |
+| `mismatch` | `DATE_ADD()` | 12 |
+| `mismatch` | `CAST()` | 9 |
 | `match` | `ALTER TABLE` | 8 |
 | `match` | `ANALYZE` | 8 |
 | `match` | `GROUP_CONCAT()` | 8 |
@@ -32,46 +32,46 @@ Total candidates: `496`
 | `match` | `GRANT` | 7 |
 | `match` | `REVOKE` | 7 |
 | `oracle-error` | `CREATE TABLE` | 7 |
+| `match` | `INSERT` | 6 |
 | `mismatch` | `MATCH()` | 6 |
-| `rust-error` | `CAST()` | 6 |
+| `rust-error` | `SELECT` | 6 |
 | `match` | `ALTER` | 5 |
-| `match` | `INSERT` | 4 |
 | `mismatch` | `CREATE` | 4 |
+| `mismatch` | `DELETE` | 4 |
+| `mismatch` | `X` | 4 |
 | `match` | `CHAR()` | 3 |
 | `match` | `CREATE` | 3 |
 | `match` | `REGEXP_INSTR()` | 3 |
-| `mismatch` | `CAST()` | 3 |
-| `mismatch` | `DELETE` | 3 |
 
 ## Top Source Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 77 |
-| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 52 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_identity` | 27 |
-| `match` | `tests/dialects/test_mysql.py` | `test_ddl` | 22 |
-| `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 21 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 81 |
+| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 57 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_identity` | 32 |
+| `match` | `tests/dialects/test_mysql.py` | `test_ddl` | 24 |
+| `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 22 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql` | 18 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql_time` | 16 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_identity` | 16 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql` | 14 |
 | `match` | `tests/dialects/test_mysql.py` | `test_canonical_functions` | 11 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_valid_interval_units` | 11 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_convert` | 10 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_valid_interval_units` | 11 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_convert` | 10 |
 | `match` | `tests/dialects/test_mysql.py` | `test_date_format` | 9 |
 | `match` | `tests/dialects/test_mysql.py` | `test_analyze` | 8 |
 | `match` | `tests/dialects/test_mysql.py` | `test_grant` | 7 |
 | `match` | `tests/dialects/test_mysql.py` | `test_revoke` | 7 |
 | `oracle-error` | `tests/dialects/test_mysql.py` | `test_ddl` | 7 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_ddl` | 7 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_match_against` | 6 |
-| `rust-error` | `tests/dialects/test_mysql.py` | `test_mysql` | 5 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_types` | 6 |
+| `rust-error` | `tests/dialects/test_mysql.py` | `test_identity` | 6 |
+| `match` | `tests/dialects/test_mysql.py` | `test_escape` | 5 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_json_value` | 5 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bit_aggs` | 4 |
 | `match` | `tests/dialects/test_dialect.py` | `test_localtime_and_localtimestamp` | 4 |
 | `match` | `tests/dialects/test_mysql.py` | `test_null_ordering_simulation_resolves_ordered_against_projection` | 4 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_explain` | 4 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql_time_python311` | 4 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_number_format` | 4 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 4 |
 
 ## Non-Matching Examples
 
@@ -108,19 +108,19 @@ Total candidates: `496`
 
 ### `rust-error`
 
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-dialect-2248-test-operators`: `POSITION(needle in haystack)`
-  - expected: `INSTR(haystack, needle)`
-  - error: `Parser error: Expected LParen, got Identifier ('haystack') at line 1 col 20`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-dialect-2951-test-nullsafe-eq`: `SELECT a <=> b`
-  - expected: `SELECT a IS NOT DISTINCT FROM b`
-  - error: `Unexpected token: Token { token_type: Gt, value: ">", line: 1, col: 12, position: 11, quote_char: '\0' }`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-dialect-4922-test-is-unknown`: `x IS UNKNOWN`
-  - expected: `x IS NULL`
-  - error: `Parser error: Expected Null, got Identifier ('UNKNOWN') at line 1 col 6`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-dialect-4936-test-is-unknown`: `x IS NOT UNKNOWN`
-  - expected: `NOT x IS NULL`
-  - error: `Parser error: Expected Null, got Identifier ('UNKNOWN') at line 1 col 10`
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-duckdb-1827-test-time`: `SELECT DATE '2020-01-01' + INTERVAL -1 DAY`
-  - expected: `SELECT DATE('2020-01-01') + INTERVAL '-1' DAY`
-  - error: `Unexpected token: Token { token_type: Minus, value: "-", line: 1, col: 37, position: 36, quote_char: '\0' }`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-mysql-0104-test-ddl`: `DELETE FROM t1, t2 USING t1 INNER JOIN t2 INNER JOIN t3 WHERE t1.id = t2.id AND t2.id = t3.id`
+  - expected: `DELETE FROM t1, t2 USING t1 INNER JOIN t2 INNER JOIN t3 WHERE t1.id = t2.id AND t2.id = t3.id`
+  - error: `Parser error: Expected LParen, got Identifier ('t1') at line 1 col 26`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-mysql-0301-test-identity`: `SELECT TRIM(LEADING 'bla' FROM ' XXX ')`
+  - expected: `SELECT LTRIM(' XXX ', 'bla')`
+  - error: `Parser error: Expected RParen, got String ('bla') at line 1 col 21`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-mysql-0302-test-identity`: `SELECT TRIM(TRAILING 'bla' FROM ' XXX ')`
+  - expected: `SELECT RTRIM(' XXX ', 'bla')`
+  - error: `Parser error: Expected RParen, got String ('bla') at line 1 col 22`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-mysql-0303-test-identity`: `SELECT TRIM(BOTH 'bla' FROM ' XXX ')`
+  - expected: `SELECT TRIM(' XXX ', 'bla')`
+  - error: `Parser error: Expected RParen, got String ('bla') at line 1 col 18`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-mysql-0304-test-identity`: `SELECT TRIM('bla' FROM ' XXX ')`
+  - expected: `SELECT TRIM(' XXX ', 'bla')`
+  - error: `Parser error: Expected RParen, got From ('FROM') at line 1 col 19`
 

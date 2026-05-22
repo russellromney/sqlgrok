@@ -510,6 +510,30 @@ impl Generator {
                     self.write_quoted(alias, *alias_quote_style);
                 }
             }
+            TableSource::Values {
+                rows,
+                alias,
+                alias_quote_style,
+            } => {
+                self.write("(");
+                self.write_keyword("VALUES ");
+                for (i, row) in rows.iter().enumerate() {
+                    if i > 0 {
+                        self.write(", ");
+                    }
+                    self.write("(");
+                    self.gen_expr_list(row);
+                    self.write(")");
+                }
+                self.write(")");
+                if let Some(alias) = alias {
+                    self.write(" ");
+                    if !self.omit_table_alias_as() {
+                        self.write_keyword("AS ");
+                    }
+                    self.write_quoted(alias, *alias_quote_style);
+                }
+            }
             TableSource::Lateral { source } => {
                 self.write_keyword("LATERAL ");
                 self.gen_table_source(source);
@@ -1731,6 +1755,8 @@ impl Generator {
             BinaryOperator::Gt => " > ",
             BinaryOperator::LtEq => " <= ",
             BinaryOperator::GtEq => " >= ",
+            BinaryOperator::NullSafeEq => " <=> ",
+            BinaryOperator::Assign => " := ",
             BinaryOperator::And => " AND ",
             BinaryOperator::Or => " OR ",
             BinaryOperator::Xor => " XOR ",
@@ -1770,6 +1796,11 @@ impl Generator {
                 self.write_quoted(name, *quote_style);
             }
             Expr::Number(n) => self.write(n),
+            Expr::HexString(s) => {
+                self.write("x'");
+                self.write(s);
+                self.write("'");
+            }
             Expr::StringLiteral(s) => {
                 self.write("'");
                 self.write(&s.replace('\'', "''"));

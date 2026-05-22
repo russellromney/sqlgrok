@@ -243,6 +243,12 @@ pub enum TableSource {
         #[serde(default)]
         alias_quote_style: QuoteStyle,
     },
+    Values {
+        rows: Vec<Vec<Expr>>,
+        alias: Option<String>,
+        #[serde(default)]
+        alias_quote_style: QuoteStyle,
+    },
     /// LATERAL subquery or function
     Lateral {
         source: Box<TableSource>,
@@ -361,6 +367,8 @@ pub enum Expr {
     },
     /// A numeric literal.
     Number(String),
+    /// A hexadecimal literal, generated as `x'...'`.
+    HexString(String),
     /// A string literal.
     StringLiteral(String),
     /// A boolean literal.
@@ -1429,6 +1437,8 @@ pub enum BinaryOperator {
     Gt,
     LtEq,
     GtEq,
+    NullSafeEq,
+    Assign,
     And,
     Or,
     Xor,
@@ -2011,6 +2021,7 @@ impl Expr {
             // Leaf nodes
             Expr::Column { .. }
             | Expr::Number(_)
+            | Expr::HexString(_)
             | Expr::StringLiteral(_)
             | Expr::Boolean(_)
             | Expr::Null
@@ -2281,7 +2292,11 @@ impl Expr {
     pub fn is_literal(&self) -> bool {
         matches!(
             self,
-            Expr::Number(_) | Expr::StringLiteral(_) | Expr::Boolean(_) | Expr::Null
+            Expr::Number(_)
+                | Expr::HexString(_)
+                | Expr::StringLiteral(_)
+                | Expr::Boolean(_)
+                | Expr::Null
         )
     }
 
@@ -2330,6 +2345,7 @@ fn collect_table_refs_from_source<'a>(source: &'a TableSource, tables: &mut Vec<
         TableSource::Table(table_ref) => tables.push(table_ref),
         TableSource::Subquery { .. } => {}
         TableSource::TableFunction { .. } => {}
+        TableSource::Values { .. } => {}
         TableSource::Lateral { source } => collect_table_refs_from_source(source, tables),
         TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
             collect_table_refs_from_source(source, tables);

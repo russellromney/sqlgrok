@@ -3,6 +3,15 @@
 Quick summaries of completed sqlgrok work. The roadmap says what should happen next;
 this file records what landed.
 
+## 2026-05-22
+
+### Parser Coverage Ratchet
+
+- Reduced imported SQLGlot rust-errors for SQLite->SQLite from 8 to 0, MySQL->SQLite from 73 to 8, and Postgres->SQLite from 112 to 62.
+- Added parser/generator carriers for MySQL user variables, `:=`, `<=>`, `&&`, hex literals, qualified upsert/update assignments, `VALUES(...)`, and common cast/type suffix forms.
+- Added Postgres tokenizer/parser support for dollar-quoted strings, psycopg `%s` parameters, `!~`/`!~*`, `VALUES` table sources, ordered aggregate argument carriers, window `EXCLUDE` parsing, and `IS DISTINCT FROM`.
+- Refreshed the generated MySQL/Postgres/SQLite SQLGlot import reports so the remaining backlog is classified as concrete mismatches or narrower parser gaps.
+
 ## 2026-05-20
 
 ### Project Foundation

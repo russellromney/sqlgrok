@@ -95,6 +95,7 @@ fn eval_expr_impl(
                 })?))
             }
         }
+        Expr::HexString(s) => Ok(Value::String(s.clone())),
 
         Expr::StringLiteral(s) => Ok(Value::String(s.clone())),
         Expr::Boolean(b) => Ok(Value::Boolean(*b)),
@@ -369,6 +370,8 @@ fn eval_binary_op(left: &Value, op: &BinaryOperator, right: &Value) -> Result<Va
     // NULL propagation.
     if left.is_null() || right.is_null() {
         return match op {
+            BinaryOperator::NullSafeEq => Ok(Value::Boolean(left.is_null() && right.is_null())),
+            BinaryOperator::Assign => Ok(right.clone()),
             BinaryOperator::Eq
             | BinaryOperator::Neq
             | BinaryOperator::Lt
@@ -396,6 +399,8 @@ fn eval_binary_op(left: &Value, op: &BinaryOperator, right: &Value) -> Result<Va
     match op {
         BinaryOperator::Eq => Ok(Value::Boolean(left == right)),
         BinaryOperator::Neq => Ok(Value::Boolean(left != right)),
+        BinaryOperator::NullSafeEq => Ok(Value::Boolean(left == right)),
+        BinaryOperator::Assign => Ok(right.clone()),
         BinaryOperator::Lt => Ok(Value::Boolean(
             left.partial_cmp(right)
                 .is_some_and(|c| c == std::cmp::Ordering::Less),
