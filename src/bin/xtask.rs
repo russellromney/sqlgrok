@@ -37,8 +37,12 @@ fn run_import(args: ImportArgs) -> Result<(), String> {
 
     let raw_cases = import_sqlglot_fixtures(&args)?;
     let raw_count = raw_cases.len();
-    let mut cases = if args.only_matching {
-        filter_matching_cases(raw_cases, &args)?
+    let mut cases = if args.only_matching || args.report_output.is_some() {
+        let outcomes = evaluate_cases(raw_cases, &args)?;
+        if let Some(report_output) = &args.report_output {
+            write_report(report_output, &outcomes)?;
+        }
+        filter_matching_outcomes(outcomes)
     } else {
         raw_cases
     };
@@ -105,6 +109,7 @@ struct ImportArgs {
     limit: usize,
     dry_run: bool,
     only_matching: bool,
+    report_output: Option<PathBuf>,
     output: PathBuf,
 }
 
@@ -118,6 +123,7 @@ impl ImportArgs {
         let mut limit = 25;
         let mut dry_run = false;
         let mut only_matching = false;
+        let mut report_output = None;
         let mut output = None;
 
         while let Some(arg) = args.next() {
@@ -134,6 +140,9 @@ impl ImportArgs {
                 }
                 "--dry-run" => dry_run = true,
                 "--only-matching" => only_matching = true,
+                "--report-output" => {
+                    report_output = Some(next_value(&mut args, "--report-output")?.into())
+                }
                 "--output" => output = Some(next_value(&mut args, "--output")?.into()),
                 "-h" | "--help" => return Err(Self::usage()),
                 _ => return Err(format!("unknown argument {arg:?}\n\n{}", Self::usage())),
@@ -156,6 +165,7 @@ impl ImportArgs {
             limit,
             dry_run,
             only_matching,
+            report_output,
             output,
         })
     }
@@ -192,7 +202,7 @@ impl ImportArgs {
     }
 
     fn usage() -> String {
-        "usage: cargo run --bin xtask -- import-sqlglot-fixtures --sqlglot /path/to/sqlglot --family transpile --read mysql --write sqlite --limit 25 [--dry-run] [--only-matching] [--output parity/cases/transpile_mysql_sqlite.jsonl]".to_string()
+        "usage: cargo run --bin xtask -- import-sqlglot-fixtures --sqlglot /path/to/sqlglot --family transpile --read mysql --write sqlite --limit 25 [--dry-run] [--only-matching] [--report-output parity/reports/mysql_sqlite.jsonl] [--output parity/cases/transpile_mysql_sqlite.jsonl]".to_string()
     }
 }
 
@@ -291,6 +301,25 @@ struct OracleOutput {
     error: Option<String>,
 }
 
+#[derive(Debug, Serialize)]
+struct CaseOutcome {
+    #[serde(flatten)]
+    case: FixtureCase,
+    status: OutcomeStatus,
+    expected: Option<String>,
+    actual: Option<String>,
+    error: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum OutcomeStatus {
+    Match,
+    Mismatch,
+    RustError,
+    OracleError,
+}
+
 fn import_sqlglot_fixtures(args: &ImportArgs) -> Result<Vec<FixtureCase>, String> {
     let output = Command::new("python3")
         .arg("-c")
@@ -320,16 +349,14 @@ fn import_sqlglot_fixtures(args: &ImportArgs) -> Result<Vec<FixtureCase>, String
     })
 }
 
-fn filter_matching_cases(
-    cases: Vec<FixtureCase>,
-    args: &ImportArgs,
-) -> Result<Vec<FixtureCase>, String> {
+fn evaluate_cases(cases: Vec<FixtureCase>, args: &ImportArgs) -> Result<Vec<CaseOutcome>, String> {
     let read = Dialect::from_str(&args.read)
         .ok_or_else(|| format!("unknown read dialect {:?}", args.read))?;
     let write = Dialect::from_str(&args.write)
         .ok_or_else(|| format!("unknown write dialect {:?}", args.write))?;
 
-    let mut matched = Vec::new();
+    let mut outcomes = Vec::new();
+    let mut matched = 0usize;
     let mut rust_errors = 0usize;
     let mut oracle_errors = 0usize;
     let mut mismatches = 0usize;
@@ -338,32 +365,97 @@ fn filter_matching_cases(
         let oracle = python_oracle_transpile(&args.sqlglot, &case)?;
         if !oracle.ok {
             oracle_errors += 1;
-            if let Some(error) = oracle.error {
+            if let Some(error) = &oracle.error {
                 eprintln!("{}: skipping oracle error: {error}", case.id);
             }
+            outcomes.push(CaseOutcome {
+                case,
+                status: OutcomeStatus::OracleError,
+                expected: None,
+                actual: None,
+                error: oracle.error,
+            });
             continue;
         }
         let Some(expected) = oracle.sql else {
             oracle_errors += 1;
+            outcomes.push(CaseOutcome {
+                case,
+                status: OutcomeStatus::OracleError,
+                expected: None,
+                actual: None,
+                error: Some("oracle returned ok without sql".to_string()),
+            });
             continue;
         };
 
         match transpile(&case.sql, read, write) {
-            Ok(actual) if actual == expected => matched.push(case),
-            Ok(_) => mismatches += 1,
-            Err(_) => rust_errors += 1,
+            Ok(actual) if actual == expected => {
+                matched += 1;
+                outcomes.push(CaseOutcome {
+                    case,
+                    status: OutcomeStatus::Match,
+                    expected: Some(expected),
+                    actual: Some(actual),
+                    error: None,
+                });
+            }
+            Ok(actual) => {
+                mismatches += 1;
+                outcomes.push(CaseOutcome {
+                    case,
+                    status: OutcomeStatus::Mismatch,
+                    expected: Some(expected),
+                    actual: Some(actual),
+                    error: None,
+                });
+            }
+            Err(err) => {
+                rust_errors += 1;
+                outcomes.push(CaseOutcome {
+                    case,
+                    status: OutcomeStatus::RustError,
+                    expected: Some(expected),
+                    actual: None,
+                    error: Some(err.to_string()),
+                });
+            }
         }
     }
 
     eprintln!(
         "only-matching filter: kept={}, mismatches={}, rust_errors={}, oracle_errors={}",
-        matched.len(),
-        mismatches,
-        rust_errors,
-        oracle_errors
+        matched, mismatches, rust_errors, oracle_errors
     );
 
-    Ok(matched)
+    Ok(outcomes)
+}
+
+fn filter_matching_outcomes(outcomes: Vec<CaseOutcome>) -> Vec<FixtureCase> {
+    outcomes
+        .into_iter()
+        .filter_map(|outcome| match outcome.status {
+            OutcomeStatus::Match => Some(outcome.case),
+            OutcomeStatus::Mismatch | OutcomeStatus::RustError | OutcomeStatus::OracleError => None,
+        })
+        .collect()
+}
+
+fn write_report(path: &PathBuf, outcomes: &[CaseOutcome]) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|err| format!("failed to create {}: {err}", parent.display()))?;
+    }
+    let mut output = String::new();
+    for outcome in outcomes {
+        let line = serde_json::to_string(outcome)
+            .map_err(|err| format!("failed to serialize {}: {err}", outcome.case.id))?;
+        output.push_str(&line);
+        output.push('\n');
+    }
+    fs::write(path, output).map_err(|err| format!("failed to write {}: {err}", path.display()))?;
+    eprintln!("wrote {}", path.display());
+    Ok(())
 }
 
 fn python_oracle_transpile(sqlglot: &PathBuf, case: &FixtureCase) -> Result<OracleOutput, String> {

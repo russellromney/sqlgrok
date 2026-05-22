@@ -168,3 +168,7 @@ this file records what landed.
 - Rewrite SQLite-targeted `GLOB(pattern, value)` calls to SQLGlot's infix `value GLOB pattern` output.
 - Map `LONGVARCHAR` to SQLite `TEXT` for SQLGlot DDL parity.
 - Cover SQLGlot's MySQL text/blob SQLite affinity mappings for `TINYTEXT`, `MEDIUMTEXT`, `LONGTEXT`, `MEDIUMBLOB`, and `LONGBLOB`.
+
+### SQLGlot Import Reports
+
+- Add importer report output so non-matching SQLGlot fixture candidates become an explicit ratchet backlog.

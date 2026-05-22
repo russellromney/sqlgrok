@@ -99,6 +99,22 @@ cargo run --bin xtask -- import-sqlglot-fixtures \
   --only-matching
 ```
 
+Use `--report-output` to make the rejected cases explicit instead of relying on
+manual review. The report is JSONL with each candidate marked as `match`,
+`mismatch`, `rust-error`, or `oracle-error`, including Python's expected output
+and sqlgrok's actual output when available:
+
+```bash
+cargo run --bin xtask -- import-sqlglot-fixtures \
+  --sqlglot /path/to/sqlglot \
+  --family transpile \
+  --read mysql \
+  --write sqlite \
+  --limit 100 \
+  --only-matching \
+  --report-output parity/reports/transpile_mysql_sqlite.jsonl
+```
+
 Imported cases include `source_file`, `source_line`, and `test_name` metadata so
 larger batches can be traced back to the exact SQLGlot test. The importer also
 adds feature tags for obvious DDL, index, and constraint cases.
