@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -23,13 +23,19 @@ fn run() -> Result<(), String> {
     match command.as_str() {
         "import-sqlglot-fixtures" => run_import(ImportArgs::parse(raw_args)?),
         "inventory-ast" => run_inventory(InventoryArgs::parse(raw_args)?),
+        "summarize-report" => run_summarize_report(SummarizeReportArgs::parse(raw_args)?),
         "-h" | "--help" => Err(usage()),
         _ => Err(format!("unknown command {command:?}\n\n{}", usage())),
     }
 }
 
 fn usage() -> String {
-    [ImportArgs::usage(), InventoryArgs::usage()].join("\n")
+    [
+        ImportArgs::usage(),
+        InventoryArgs::usage(),
+        SummarizeReportArgs::usage(),
+    ]
+    .join("\n")
 }
 
 fn run_import(args: ImportArgs) -> Result<(), String> {
@@ -100,6 +106,26 @@ fn run_inventory(args: InventoryArgs) -> Result<(), String> {
     Ok(())
 }
 
+fn run_summarize_report(args: SummarizeReportArgs) -> Result<(), String> {
+    args.validate()?;
+
+    let summary = summarize_report(&args)?;
+    if args.dry_run {
+        print!("{summary}");
+        return Ok(());
+    }
+
+    if let Some(parent) = args.output.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|err| format!("failed to create {}: {err}", parent.display()))?;
+    }
+    fs::write(&args.output, summary)
+        .map_err(|err| format!("failed to write {}: {err}", args.output.display()))?;
+    eprintln!("wrote {}", args.output.display());
+
+    Ok(())
+}
+
 #[derive(Debug)]
 struct ImportArgs {
     sqlglot: PathBuf,
@@ -134,10 +160,11 @@ impl ImportArgs {
                 "--write" => write = Some(next_value(&mut args, "--write")?),
                 "--limit" => {
                     let raw = next_value(&mut args, "--limit")?;
-                    limit = raw
-                        .parse()
-                        .map_err(|_| format!("--limit must be a positive integer, got {raw:?}"))?;
+                    limit = raw.parse().map_err(|_| {
+                        format!("--limit must be a non-negative integer, got {raw:?}")
+                    })?;
                 }
+                "--all" => limit = 0,
                 "--dry-run" => dry_run = true,
                 "--only-matching" => only_matching = true,
                 "--report-output" => {
@@ -183,9 +210,6 @@ impl ImportArgs {
         if self.write.trim().is_empty() {
             return Err("--write must not be empty".to_string());
         }
-        if self.limit == 0 {
-            return Err("--limit must be greater than zero".to_string());
-        }
         if !self.sqlglot.join("sqlglot/__init__.py").is_file() {
             return Err(format!(
                 "{} does not look like a Python SQLGlot checkout",
@@ -202,7 +226,7 @@ impl ImportArgs {
     }
 
     fn usage() -> String {
-        "usage: cargo run --bin xtask -- import-sqlglot-fixtures --sqlglot /path/to/sqlglot --family transpile --read mysql --write sqlite --limit 25 [--dry-run] [--only-matching] [--report-output parity/reports/mysql_sqlite.jsonl] [--output parity/cases/transpile_mysql_sqlite.jsonl]".to_string()
+        "usage: cargo run --bin xtask -- import-sqlglot-fixtures --sqlglot /path/to/sqlglot --family transpile --read mysql --write sqlite [--limit 25|--all] [--dry-run] [--only-matching] [--report-output parity/reports/mysql_sqlite.jsonl] [--output parity/cases/transpile_mysql_sqlite.jsonl]".to_string()
     }
 }
 
@@ -267,6 +291,58 @@ impl InventoryArgs {
     }
 }
 
+#[derive(Debug)]
+struct SummarizeReportArgs {
+    input: PathBuf,
+    output: PathBuf,
+    dry_run: bool,
+}
+
+impl SummarizeReportArgs {
+    fn parse(args: impl Iterator<Item = String>) -> Result<Self, String> {
+        let mut args = args.peekable();
+        let mut input: Option<PathBuf> = None;
+        let mut output: Option<PathBuf> = None;
+        let mut dry_run = false;
+
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "--input" => input = Some(next_value(&mut args, "--input")?.into()),
+                "--output" => output = Some(next_value(&mut args, "--output")?.into()),
+                "--dry-run" => dry_run = true,
+                "-h" | "--help" => return Err(Self::usage()),
+                _ => return Err(format!("unknown argument {arg:?}\n\n{}", Self::usage())),
+            }
+        }
+
+        let input = input.ok_or_else(|| "--input is required".to_string())?;
+        let output = output.unwrap_or_else(|| {
+            let stem = input
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("report");
+            PathBuf::from("parity/reports").join(format!("{stem}.md"))
+        });
+
+        Ok(Self {
+            input,
+            output,
+            dry_run,
+        })
+    }
+
+    fn validate(&self) -> Result<(), String> {
+        if !self.input.is_file() {
+            return Err(format!("{} does not exist", self.input.display()));
+        }
+        Ok(())
+    }
+
+    fn usage() -> String {
+        "usage: cargo run --bin xtask -- summarize-report --input parity/reports/transpile_mysql_sqlite.jsonl [--output parity/reports/transpile_mysql_sqlite.md] [--dry-run]".to_string()
+    }
+}
+
 fn next_value(
     args: &mut std::iter::Peekable<impl Iterator<Item = String>>,
     flag: &str,
@@ -301,7 +377,7 @@ struct OracleOutput {
     error: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct CaseOutcome {
     #[serde(flatten)]
     case: FixtureCase,
@@ -311,7 +387,7 @@ struct CaseOutcome {
     error: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum OutcomeStatus {
     Match,
@@ -556,6 +632,214 @@ fn render_jsonl(cases: &[FixtureCase]) -> Result<String, String> {
     Ok(output)
 }
 
+fn summarize_report(args: &SummarizeReportArgs) -> Result<String, String> {
+    let text = fs::read_to_string(&args.input)
+        .map_err(|err| format!("failed to read {}: {err}", args.input.display()))?;
+    let mut outcomes = Vec::new();
+    for (index, line) in text.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let outcome: CaseOutcome = serde_json::from_str(line).map_err(|err| {
+            format!(
+                "{}:{}: invalid report JSON: {err}",
+                args.input.display(),
+                index + 1
+            )
+        })?;
+        outcomes.push(outcome);
+    }
+
+    let mut status_counts = BTreeMap::<String, usize>::new();
+    let mut feature_counts = BTreeMap::<(String, String), usize>::new();
+    let mut source_counts = BTreeMap::<(String, String, String), usize>::new();
+    let mut examples = BTreeMap::<String, Vec<&CaseOutcome>>::new();
+
+    for outcome in &outcomes {
+        let status = outcome.status.as_str().to_string();
+        *status_counts.entry(status.clone()).or_default() += 1;
+        *feature_counts
+            .entry((status.clone(), feature_key(&outcome.case.sql)))
+            .or_default() += 1;
+        *source_counts
+            .entry((
+                status.clone(),
+                outcome.case.source_file.clone(),
+                outcome.case.test_name.clone(),
+            ))
+            .or_default() += 1;
+        if status != "match" {
+            let bucket = examples.entry(status).or_default();
+            if bucket.len() < 5 {
+                bucket.push(outcome);
+            }
+        }
+    }
+
+    let mut output = String::new();
+    output.push_str("# SQLGlot Import Report\n\n");
+    output.push_str(&format!("Source: `{}`\n\n", args.input.display()));
+    output.push_str(&format!("Total candidates: `{}`\n\n", outcomes.len()));
+
+    output.push_str("## Status Counts\n\n");
+    output.push_str("| Status | Count |\n| --- | ---: |\n");
+    for (status, count) in &status_counts {
+        output.push_str(&format!("| `{status}` | {count} |\n"));
+    }
+
+    output.push_str("\n## Top Feature Buckets\n\n");
+    output.push_str("| Status | Feature | Count |\n| --- | --- | ---: |\n");
+    for ((status, feature), count) in top_counts(&feature_counts, 25) {
+        output.push_str(&format!("| `{status}` | `{feature}` | {count} |\n"));
+    }
+
+    output.push_str("\n## Top Source Buckets\n\n");
+    output.push_str("| Status | Source | Test | Count |\n| --- | --- | --- | ---: |\n");
+    for ((status, source_file, test_name), count) in top_counts(&source_counts, 25) {
+        output.push_str(&format!(
+            "| `{status}` | `{source_file}` | `{test_name}` | {count} |\n"
+        ));
+    }
+
+    output.push_str("\n## Non-Matching Examples\n\n");
+    if examples.is_empty() {
+        output.push_str("All imported candidates match.\n");
+    } else {
+        for (status, rows) in examples {
+            output.push_str(&format!("### `{status}`\n\n"));
+            for outcome in rows {
+                output.push_str(&format!(
+                    "- `{}`: {}\n",
+                    outcome.case.id,
+                    code_span(&outcome.case.sql)
+                ));
+                if let Some(expected) = &outcome.expected {
+                    output.push_str(&format!("  - expected: {}\n", code_span(expected)));
+                }
+                if let Some(actual) = &outcome.actual {
+                    output.push_str(&format!("  - actual: {}\n", code_span(actual)));
+                }
+                if let Some(error) = &outcome.error {
+                    output.push_str(&format!("  - error: {}\n", code_span(error)));
+                }
+            }
+            output.push('\n');
+        }
+    }
+
+    Ok(output)
+}
+
+impl OutcomeStatus {
+    fn as_str(&self) -> &'static str {
+        match self {
+            OutcomeStatus::Match => "match",
+            OutcomeStatus::Mismatch => "mismatch",
+            OutcomeStatus::RustError => "rust-error",
+            OutcomeStatus::OracleError => "oracle-error",
+        }
+    }
+}
+
+fn top_counts<K>(counts: &BTreeMap<K, usize>, limit: usize) -> Vec<(K, usize)>
+where
+    K: Clone + Ord,
+{
+    let mut rows: Vec<_> = counts
+        .iter()
+        .map(|(key, count)| (key.clone(), *count))
+        .collect();
+    rows.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.cmp(&right.0)));
+    rows.truncate(limit);
+    rows
+}
+
+fn feature_key(sql: &str) -> String {
+    let trimmed = sql.trim();
+    let upper = trimmed.to_ascii_uppercase();
+    if upper.starts_with("CREATE TABLE") {
+        return "CREATE TABLE".to_string();
+    }
+    if upper.starts_with("CREATE INDEX") {
+        return "CREATE INDEX".to_string();
+    }
+    if upper.starts_with("DROP INDEX") {
+        return "DROP INDEX".to_string();
+    }
+    if upper.starts_with("ALTER TABLE") {
+        return "ALTER TABLE".to_string();
+    }
+    if let Some(function) = leading_function_name(trimmed) {
+        return format!("{function}()");
+    }
+    if upper.starts_with("SELECT ") {
+        return "SELECT".to_string();
+    }
+    upper
+        .split_whitespace()
+        .next()
+        .unwrap_or("UNKNOWN")
+        .to_string()
+}
+
+fn leading_function_name(sql: &str) -> Option<String> {
+    let mut chars = sql.trim_start().chars().peekable();
+    let mut name = String::new();
+    while let Some(ch) = chars.peek().copied() {
+        if ch == '_' || ch.is_ascii_alphanumeric() {
+            name.push(ch);
+            chars.next();
+        } else {
+            break;
+        }
+    }
+    if name.is_empty() {
+        return None;
+    }
+    while matches!(chars.peek(), Some(ch) if ch.is_whitespace()) {
+        chars.next();
+    }
+    if matches!(chars.peek(), Some('(')) {
+        Some(name.to_ascii_uppercase())
+    } else {
+        None
+    }
+}
+
+fn one_line(text: &str) -> String {
+    let mut sanitized = String::new();
+    let mut chars = text.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '\x1b' {
+            if matches!(chars.peek(), Some('[')) {
+                chars.next();
+                for next in chars.by_ref() {
+                    if next.is_ascii_alphabetic() {
+                        break;
+                    }
+                }
+            }
+            continue;
+        }
+        if ch.is_control() && ch != '\n' && ch != '\t' {
+            continue;
+        }
+        sanitized.push(ch);
+    }
+    sanitized.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn code_span(text: &str) -> String {
+    let text = one_line(text);
+    let max_backticks = text.split(|ch| ch != '`').map(str::len).max().unwrap_or(0);
+    let fence = "`".repeat(max_backticks + 1);
+    if text.contains('`') {
+        format!("{fence} {text} {fence}")
+    } else {
+        format!("{fence}{text}{fence}")
+    }
+}
+
 fn generate_ast_inventory(args: &InventoryArgs) -> Result<String, String> {
     let output = Command::new("python3")
         .arg("-c")
@@ -741,7 +1025,7 @@ for case in cases:
         continue
     seen_sql.add(key)
     deduped.append(case)
-    if len(deduped) >= limit:
+    if limit and len(deduped) >= limit:
         break
 
 print(json.dumps(deduped, sort_keys=False))

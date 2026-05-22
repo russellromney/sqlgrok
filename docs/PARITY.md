@@ -95,7 +95,7 @@ cargo run --bin xtask -- import-sqlglot-fixtures \
   --family transpile \
   --read postgres \
   --write sqlite \
-  --limit 25 \
+  --all \
   --only-matching
 ```
 
@@ -110,9 +110,17 @@ cargo run --bin xtask -- import-sqlglot-fixtures \
   --family transpile \
   --read mysql \
   --write sqlite \
-  --limit 100 \
+  --all \
   --only-matching \
   --report-output parity/reports/transpile_mysql_sqlite.jsonl
+```
+
+Summarize a report to choose the next work item:
+
+```bash
+cargo run --bin xtask -- summarize-report \
+  --input parity/reports/transpile_mysql_sqlite.jsonl \
+  --output parity/reports/transpile_mysql_sqlite.md
 ```
 
 Imported cases include `source_file`, `source_line`, and `test_name` metadata so

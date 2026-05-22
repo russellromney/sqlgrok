@@ -172,3 +172,4 @@ this file records what landed.
 ### SQLGlot Import Reports
 
 - Add importer report output so non-matching SQLGlot fixture candidates become an explicit ratchet backlog.
+- Support uncapped SQLGlot fixture imports and Markdown report summaries for working through the full backlog.
