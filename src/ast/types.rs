@@ -1471,6 +1471,8 @@ pub enum InsertSource {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OnConflict {
     pub columns: Vec<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub compact_target: bool,
     pub action: ConflictAction,
 }
 

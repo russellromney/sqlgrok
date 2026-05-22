@@ -798,7 +798,11 @@ impl Generator {
             self.sep();
             self.write_keyword("ON CONFLICT");
             if !on_conflict.columns.is_empty() {
-                self.write(" (");
+                if on_conflict.compact_target {
+                    self.write("(");
+                } else {
+                    self.write(" (");
+                }
                 self.write(&on_conflict.columns.join(", "));
                 self.write(")");
             }

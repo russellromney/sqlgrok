@@ -1219,7 +1219,11 @@ impl Parser {
                     }
                     ConflictAction::DoUpdate(assignments)
                 };
-                Some(OnConflict { columns, action })
+                Some(OnConflict {
+                    columns,
+                    compact_target: false,
+                    action,
+                })
             } else {
                 None
             }

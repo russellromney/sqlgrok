@@ -344,6 +344,16 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                     }
                 }
             }
+            if let Some(on_conflict) = &mut ins.on_conflict {
+                if is_postgres_family(source) && matches!(target, Dialect::Sqlite) {
+                    on_conflict.compact_target = true;
+                }
+                if let ConflictAction::DoUpdate(assignments) = &mut on_conflict.action {
+                    for (_, val) in assignments {
+                        *val = transform_expr(val.clone(), source, target);
+                    }
+                }
+            }
         }
         Statement::Update(upd) => {
             for (_, val) in &mut upd.assignments {

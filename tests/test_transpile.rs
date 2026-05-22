@@ -724,6 +724,16 @@ fn test_identity_insert_on_conflict() {
 }
 
 #[test]
+fn test_postgres_on_conflict_to_sqlite_spacing() {
+    validate_with_dialect(
+        "INSERT INTO t (id, a) VALUES (1, 2) ON CONFLICT (id) DO UPDATE SET a = excluded.a",
+        "INSERT INTO t (id, a) VALUES (1, 2) ON CONFLICT(id) DO UPDATE SET a = excluded.a",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_identity_insert_returning() {
     validate_identity("INSERT INTO users (name) VALUES ('Alice') RETURNING id");
 }

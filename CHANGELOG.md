@@ -137,3 +137,7 @@ this file records what landed.
 ### Postgres ORDER BY Null Ordering Parity
 
 - Add SQLGlot-style default `NULLS LAST` / `NULLS FIRST` ordering for Postgres-to-SQLite `ORDER BY` clauses, including window specs.
+
+### Postgres ON CONFLICT Spacing Parity
+
+- Render dialect-targeted `ON CONFLICT` column targets without a space before `(` while preserving ANSI identity roundtrips.
