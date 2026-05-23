@@ -1643,6 +1643,28 @@ fn test_identity_array() {
     validate_identity("SELECT ARRAY[1, 2, 3]");
 }
 
+#[test]
+fn test_postgres_array_literal_to_sqlite() {
+    validate_with_dialect(
+        "SELECT ARRAY[1, 2, 3]",
+        "SELECT ARRAY(1, 2, 3)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT ARRAY[ARRAY[1, 2], ARRAY[3, 4]]",
+        "SELECT ARRAY(ARRAY(1, 2), ARRAY(3, 4))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT ARRAY[a, b] FROM t",
+        "SELECT ARRAY(a, b) FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – Postgres-style cast (::)
 // (from Python test_transpile.py::test_types)

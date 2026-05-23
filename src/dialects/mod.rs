@@ -725,6 +725,23 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             expr: Box::new(transform_expr(*expr, source, target)),
         },
         Expr::Interval { value, unit } => transform_interval(*value, unit, source, target),
+        Expr::ArrayLiteral(items) => {
+            let items: Vec<Expr> = items
+                .into_iter()
+                .map(|item| transform_expr(item, source, target))
+                .collect();
+            if is_postgres_family(source) && matches!(target, Dialect::Sqlite) {
+                Expr::Function {
+                    name: "ARRAY".to_string(),
+                    args: items,
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                }
+            } else {
+                Expr::ArrayLiteral(items)
+            }
+        }
         Expr::JsonAccess {
             expr,
             path,

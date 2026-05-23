@@ -34,6 +34,7 @@ this file records what landed.
 - Matched SQLGlot SQLite-targeted function rewrites for Postgres `strpos`, `chr`, `ascii`, `greatest`/`least`, `bool_and`/`bool_or`, `split_part`, `position`, `substring ... FROM ... FOR`, and MySQL `CURDATE()`.
 - Matched Postgres-to-SQLite operator parity for `^` power and `#` bitwise XOR.
 - Matched SQLGlot spacing for `ROLLUP (...)`, `CUBE (...)`, and `GROUPING SETS (...)` generation.
+- Matched Postgres-to-SQLite array literal output by rendering `ARRAY[...]` as SQLGlot-style `ARRAY(...)`, including nested array literals.
 
 ## 2026-05-20
 
