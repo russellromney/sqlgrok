@@ -441,6 +441,15 @@ fn eval_binary_op(left: &Value, op: &BinaryOperator, right: &Value) -> Result<Va
         BinaryOperator::Plus => eval_arithmetic(left, right, |a, b| a + b, |a, b| a + b),
         BinaryOperator::Minus => eval_arithmetic(left, right, |a, b| a - b, |a, b| a - b),
         BinaryOperator::Multiply => eval_arithmetic(left, right, |a, b| a * b, |a, b| a * b),
+        BinaryOperator::Power => {
+            let a = left
+                .to_f64()
+                .ok_or_else(|| SqlglotError::Internal("Invalid power operand".to_string()))?;
+            let b = right
+                .to_f64()
+                .ok_or_else(|| SqlglotError::Internal("Invalid power operand".to_string()))?;
+            Ok(Value::Float(a.powf(b)))
+        }
         BinaryOperator::Divide => {
             if let (Some(a), Some(b)) = (left.to_f64(), right.to_f64()) {
                 if b == 0.0 {

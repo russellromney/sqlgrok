@@ -70,6 +70,7 @@ fn fold_expr(expr: Expr) -> Expr {
                     BinaryOperator::Minus => Some(lv - rv),
                     BinaryOperator::Multiply => Some(lv * rv),
                     BinaryOperator::Divide if rv != 0.0 => Some(lv / rv),
+                    BinaryOperator::Power => Some(lv.powf(rv)),
                     BinaryOperator::Modulo if rv != 0.0 => Some(lv % rv),
                     _ => None,
                 };

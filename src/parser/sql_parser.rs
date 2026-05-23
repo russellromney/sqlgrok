@@ -3015,6 +3015,7 @@ impl Parser {
                 TokenType::Minus => Some(BinaryOperator::Minus),
                 TokenType::Concat => Some(BinaryOperator::Concat),
                 TokenType::BitwiseOr => Some(BinaryOperator::BitwiseOr),
+                TokenType::BitwiseXor if self.peek().value == "^" => Some(BinaryOperator::Power),
                 TokenType::BitwiseXor => Some(BinaryOperator::BitwiseXor),
                 TokenType::ShiftLeft => Some(BinaryOperator::ShiftLeft),
                 TokenType::ShiftRight => Some(BinaryOperator::ShiftRight),

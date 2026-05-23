@@ -1471,6 +1471,7 @@ pub enum BinaryOperator {
     Minus,
     Multiply,
     Divide,
+    Power,
     IntDiv,
     Modulo,
     Eq,

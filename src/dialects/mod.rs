@@ -701,6 +701,17 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     op,
                     right: Box::new(right),
                 }
+            } else if matches!(target, Dialect::Sqlite)
+                && is_postgres_family(source)
+                && op == BinaryOperator::Power
+            {
+                Expr::Function {
+                    name: "POWER".to_string(),
+                    args: vec![left, right],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                }
             } else {
                 Expr::BinaryOp {
                     left: Box::new(left),

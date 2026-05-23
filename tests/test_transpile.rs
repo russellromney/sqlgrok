@@ -128,6 +128,22 @@ fn test_identity_bitwise() {
 }
 
 #[test]
+fn test_postgres_power_and_bitwise_xor_to_sqlite() {
+    validate_with_dialect(
+        "SELECT 2 ^ 3",
+        "SELECT POWER(2, 3)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT 5 # 3",
+        "SELECT 5 ^ 3",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_identity_string_concat() {
     validate_identity("SELECT 'a' || 'b'");
     validate_identity("SELECT a || b || c");

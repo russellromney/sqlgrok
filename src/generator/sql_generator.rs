@@ -1779,6 +1779,7 @@ impl Generator {
             BinaryOperator::Minus => " - ",
             BinaryOperator::Multiply => " * ",
             BinaryOperator::Divide => " / ",
+            BinaryOperator::Power => " ^ ",
             BinaryOperator::IntDiv => " DIV ",
             BinaryOperator::Modulo => " % ",
             BinaryOperator::Eq => " = ",

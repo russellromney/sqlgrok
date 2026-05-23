@@ -75,6 +75,23 @@ impl Tokenizer {
         self.input.get(self.pos + offset).copied()
     }
 
+    fn hash_looks_like_numeric_operator(&self, start: usize) -> bool {
+        let has_left_operand = self.input[..start]
+            .iter()
+            .rev()
+            .take_while(|ch| **ch != '\n')
+            .any(|ch| !ch.is_whitespace());
+        if !has_left_operand {
+            return false;
+        }
+
+        self.input[self.pos..]
+            .iter()
+            .copied()
+            .find(|ch| !ch.is_whitespace())
+            .is_some_and(|ch| ch.is_ascii_digit())
+    }
+
     fn advance(&mut self) -> Option<char> {
         let ch = self.input.get(self.pos).copied();
         if let Some(c) = ch {
@@ -430,6 +447,8 @@ impl Tokenizer {
                             start_col,
                         ))
                     }
+                } else if self.hash_looks_like_numeric_operator(start) {
+                    Ok(self.make_token(TokenType::BitwiseXor, "#", start, start_line, start_col))
                 } else {
                     let mut value = String::from("#");
                     while self.peek().is_some_and(|c| c != '\n') {
