@@ -249,7 +249,7 @@ fn test_where_like() {
 fn test_similar_to_scalar_execution() {
     let tables = sample_tables();
     let result = execute(
-        "SELECT 'abc' SIMILAR TO 'a_c', 'axyzc' SIMILAR TO 'a%c', 'abc' SIMILAR TO '(abc|def)'",
+        "SELECT 'abc' SIMILAR TO 'a_c', 'axyzc' SIMILAR TO 'a%c', 'abc' SIMILAR TO '(abc|def)', 'abc' NOT SIMILAR TO 'z%'",
         &tables,
     )
     .unwrap();
@@ -257,6 +257,7 @@ fn test_similar_to_scalar_execution() {
     assert_eq!(
         result.rows[0],
         vec![
+            Value::Boolean(true),
             Value::Boolean(true),
             Value::Boolean(true),
             Value::Boolean(true)
@@ -279,6 +280,47 @@ fn test_similar_to_escape_execution() {
             Value::Boolean(true),
             Value::Boolean(false),
             Value::Boolean(true)
+        ]
+    );
+}
+
+#[test]
+fn test_similar_to_regex_execution_edges() {
+    let tables = sample_tables();
+    let result = execute(
+        "SELECT 'abbbc' SIMILAR TO 'ab{2,3}c', 'abc' SIMILAR TO '[ab]%', 'zbc' SIMILAR TO '[^z]%', 'a.c' SIMILAR TO 'a.c', 'abc' SIMILAR TO 'a.c', 'a*c' SIMILAR TO 'a#*c' ESCAPE '#'",
+        &tables,
+    )
+    .unwrap();
+
+    assert_eq!(
+        result.rows[0],
+        vec![
+            Value::Boolean(true),
+            Value::Boolean(true),
+            Value::Boolean(false),
+            Value::Boolean(true),
+            Value::Boolean(false),
+            Value::Boolean(true),
+        ]
+    );
+}
+
+#[test]
+fn test_similar_to_unbalanced_regex_delimiters_are_literals() {
+    let tables = sample_tables();
+    let result = execute(
+        "SELECT 'a[c' SIMILAR TO 'a[c', 'a{2' SIMILAR TO 'a{2', 'abc' SIMILAR TO 'a[c'",
+        &tables,
+    )
+    .unwrap();
+
+    assert_eq!(
+        result.rows[0],
+        vec![
+            Value::Boolean(true),
+            Value::Boolean(true),
+            Value::Boolean(false)
         ]
     );
 }

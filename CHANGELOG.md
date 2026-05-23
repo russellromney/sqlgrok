@@ -27,6 +27,7 @@ this file records what landed.
 - Added Postgres JSON path parity for `#>`, `#>>`, and `JSON_EXTRACT_PATH(_TEXT)` SQLite-targeted output.
 - Hardened JSON path parity around cast-chained `#>`/`#>>`, quoted path segments, numeric path segments, and deterministic mixed-segment `JSON_EXTRACT_PATH(_TEXT)` path combinations.
 - Added local executor support for a practical `SIMILAR TO` subset with `%`, `_`, explicit escapes, and common regex operators.
+- Extended `SIMILAR TO` coverage for `NOT`, alternation, quantifiers, character classes, escaped regex operators, literal dots, and unbalanced delimiter literals.
 
 ## 2026-05-20
 

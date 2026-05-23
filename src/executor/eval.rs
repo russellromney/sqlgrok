@@ -1252,14 +1252,18 @@ fn similar_to_match(value: &str, pattern: &str, escape: Option<char>) -> Result<
 
 fn similar_pattern_to_regex(pattern: &str, escape: Option<char>) -> String {
     let mut regex = String::from("(?s:^");
-    let mut chars = pattern.chars().peekable();
+    let chars: Vec<char> = pattern.chars().collect();
+    let mut i = 0;
 
-    while let Some(ch) = chars.next() {
+    while i < chars.len() {
+        let ch = chars[i];
         if Some(ch) == escape {
-            if let Some(next) = chars.next() {
+            if let Some(next) = chars.get(i + 1) {
                 regex.push_str(&regex::escape(&next.to_string()));
+                i += 2;
             } else {
                 regex.push_str(&regex::escape(&ch.to_string()));
+                i += 1;
             }
             continue;
         }
@@ -1267,14 +1271,52 @@ fn similar_pattern_to_regex(pattern: &str, escape: Option<char>) -> String {
         match ch {
             '%' => regex.push_str(".*"),
             '_' => regex.push('.'),
-            '|' | '*' | '+' | '?' | '(' | ')' | '[' | ']' | '{' | '}' => regex.push(ch),
-            '.' | '^' | '$' | '\\' => regex.push_str(&regex::escape(&ch.to_string())),
-            _ => regex.push(ch),
+            '[' => {
+                if let Some(end) = find_unescaped_similar_delimiter(&chars, i + 1, ']', escape) {
+                    regex.extend(chars[i..=end].iter());
+                    i = end + 1;
+                    continue;
+                }
+                regex.push_str(r"\[");
+            }
+            '{' => {
+                if let Some(end) = find_unescaped_similar_delimiter(&chars, i + 1, '}', escape) {
+                    regex.extend(chars[i..=end].iter());
+                    i = end + 1;
+                    continue;
+                }
+                regex.push_str(r"\{");
+            }
+            '|' | '*' | '+' | '?' | '(' | ')' => regex.push(ch),
+            ']' | '}' | '.' | '^' | '$' | '\\' => regex.push_str(&regex::escape(&ch.to_string())),
+            _ => regex.push_str(&regex::escape(&ch.to_string())),
         }
+
+        i += 1;
     }
 
     regex.push_str("$)");
     regex
+}
+
+fn find_unescaped_similar_delimiter(
+    chars: &[char],
+    start: usize,
+    delimiter: char,
+    escape: Option<char>,
+) -> Option<usize> {
+    let mut i = start;
+    while i < chars.len() {
+        if Some(chars[i]) == escape {
+            i += 2;
+            continue;
+        }
+        if chars[i] == delimiter {
+            return Some(i);
+        }
+        i += 1;
+    }
+    None
 }
 
 // ═══════════════════════════════════════════════════════════════════════

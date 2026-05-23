@@ -3023,6 +3023,30 @@ fn test_postgres_parser_carriers_to_sqlite() {
         Dialect::Sqlite,
     );
     validate_with_dialect(
+        "SELECT 'abc' SIMILAR TO '(abc|def)'",
+        "SELECT 'abc' SIMILAR TO '(abc|def)'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT 'abbbc' SIMILAR TO 'ab{2,3}c'",
+        "SELECT 'abbbc' SIMILAR TO 'ab{2,3}c'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT 'a*c' SIMILAR TO 'a#*c' ESCAPE '#'",
+        "SELECT 'a*c' SIMILAR TO 'a#*c' ESCAPE '#'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT 'abc' SIMILAR TO '[ab]%'",
+        "SELECT 'abc' SIMILAR TO '[ab]%'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
         "SELECT a NOT SIMILAR TO b FROM t",
         "SELECT NOT a SIMILAR TO b FROM t",
         Dialect::Postgres,
