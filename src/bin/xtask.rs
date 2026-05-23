@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::env;
 use std::fs;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use serde::{Deserialize, Serialize};
@@ -23,6 +23,9 @@ fn run() -> Result<(), String> {
 
     match command.as_str() {
         "import-sqlglot-fixtures" => run_import(ImportArgs::parse(raw_args)?),
+        "check-sqlite-correctness" => {
+            run_check_sqlite_correctness(CheckSqliteCorrectnessArgs::parse(raw_args)?)
+        }
         "inventory-ast" => run_inventory(InventoryArgs::parse(raw_args)?),
         "summarize-report" => run_summarize_report(SummarizeReportArgs::parse(raw_args)?),
         "-h" | "--help" => Err(usage()),
@@ -33,6 +36,7 @@ fn run() -> Result<(), String> {
 fn usage() -> String {
     [
         ImportArgs::usage(),
+        CheckSqliteCorrectnessArgs::usage(),
         InventoryArgs::usage(),
         SummarizeReportArgs::usage(),
     ]
@@ -83,6 +87,92 @@ fn run_import(args: ImportArgs) -> Result<(), String> {
     fs::write(&args.output, jsonl)
         .map_err(|err| format!("failed to write {}: {err}", args.output.display()))?;
     eprintln!("wrote {}", args.output.display());
+
+    Ok(())
+}
+
+fn run_check_sqlite_correctness(args: CheckSqliteCorrectnessArgs) -> Result<(), String> {
+    args.validate()?;
+
+    let cases = read_correctness_cases(&args.input)?;
+    let mut outcomes = Vec::new();
+    let mut status_counts = BTreeMap::<String, usize>::new();
+
+    for case in cases {
+        let oracle = python_oracle_transpile_sql(&args.sqlglot, &case.sql, &case.read, "sqlite")?;
+        let outcome = if !oracle.ok {
+            CorrectnessOutcome {
+                case,
+                oracle_sql: None,
+                sqlgrok_sql: None,
+                parity_status: CorrectnessParityStatus::OracleError,
+                status: CorrectnessStatus::OracleError,
+                sqlite_stdout: None,
+                sqlite_stderr: oracle.error,
+            }
+        } else if let Some(oracle_sql) = oracle.sql {
+            let (sqlgrok_sql, parity_status) =
+                evaluate_correctness_parity(&case.sql, &case.read, &oracle_sql);
+            let sqlite = run_sqlite(&case.setup_sql, &oracle_sql)?;
+            let status = if sqlite.ok {
+                CorrectnessStatus::SqliteOk
+            } else {
+                CorrectnessStatus::SqliteError
+            };
+            CorrectnessOutcome {
+                case,
+                oracle_sql: Some(oracle_sql),
+                sqlgrok_sql,
+                parity_status,
+                status,
+                sqlite_stdout: sqlite.stdout,
+                sqlite_stderr: sqlite.stderr,
+            }
+        } else {
+            CorrectnessOutcome {
+                case,
+                oracle_sql: None,
+                sqlgrok_sql: None,
+                parity_status: CorrectnessParityStatus::OracleError,
+                status: CorrectnessStatus::OracleError,
+                sqlite_stdout: None,
+                sqlite_stderr: Some("oracle returned ok without sql".to_string()),
+            }
+        };
+        *status_counts
+            .entry(outcome.status.as_str().to_string())
+            .or_default() += 1;
+        outcomes.push(outcome);
+    }
+
+    if !args.dry_run
+        && let Some(jsonl_output) = &args.jsonl_output
+    {
+        write_correctness_jsonl(jsonl_output, &outcomes)?;
+    }
+
+    let markdown = summarize_correctness(&args.input, &outcomes);
+    if args.dry_run {
+        print!("{markdown}");
+    } else {
+        if let Some(parent) = args.markdown_output.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|err| format!("failed to create {}: {err}", parent.display()))?;
+        }
+        fs::write(&args.markdown_output, markdown)
+            .map_err(|err| format!("failed to write {}: {err}", args.markdown_output.display()))?;
+        eprintln!("wrote {}", args.markdown_output.display());
+    }
+
+    eprintln!(
+        "checked {} SQLite correctness cases: {}",
+        outcomes.len(),
+        status_counts
+            .iter()
+            .map(|(status, count)| format!("{status}={count}"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
 
     Ok(())
 }
@@ -228,6 +318,88 @@ impl ImportArgs {
 
     fn usage() -> String {
         "usage: cargo run --bin xtask -- import-sqlglot-fixtures --sqlglot /path/to/sqlglot --family transpile --read mysql --write sqlite [--limit 25|--all] [--dry-run] [--only-matching] [--report-output parity/reports/mysql_sqlite.jsonl] [--output parity/cases/transpile_mysql_sqlite.jsonl]".to_string()
+    }
+}
+
+#[derive(Debug)]
+struct CheckSqliteCorrectnessArgs {
+    sqlglot: PathBuf,
+    input: PathBuf,
+    jsonl_output: Option<PathBuf>,
+    markdown_output: PathBuf,
+    dry_run: bool,
+}
+
+impl CheckSqliteCorrectnessArgs {
+    fn parse(args: impl Iterator<Item = String>) -> Result<Self, String> {
+        let mut args = args.peekable();
+        let mut sqlglot = None;
+        let mut input: Option<PathBuf> = None;
+        let mut jsonl_output: Option<PathBuf> = None;
+        let mut markdown_output: Option<PathBuf> = None;
+        let mut dry_run = false;
+
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "--sqlglot" => sqlglot = Some(next_value(&mut args, "--sqlglot")?.into()),
+                "--input" => input = Some(next_value(&mut args, "--input")?.into()),
+                "--jsonl-output" => {
+                    jsonl_output = Some(next_value(&mut args, "--jsonl-output")?.into())
+                }
+                "--markdown-output" => {
+                    markdown_output = Some(next_value(&mut args, "--markdown-output")?.into())
+                }
+                "--dry-run" => dry_run = true,
+                "-h" | "--help" => return Err(Self::usage()),
+                _ => return Err(format!("unknown argument {arg:?}\n\n{}", Self::usage())),
+            }
+        }
+
+        let sqlglot = sqlglot.ok_or_else(|| "--sqlglot is required".to_string())?;
+        let input = input.unwrap_or_else(|| PathBuf::from("correctness/cases/cinch_sqlite.jsonl"));
+        let markdown_output = markdown_output.unwrap_or_else(|| {
+            let stem = input
+                .file_stem()
+                .and_then(|value| value.to_str())
+                .unwrap_or("sqlite_correctness");
+            PathBuf::from("correctness/reports").join(format!("{stem}.md"))
+        });
+
+        Ok(Self {
+            sqlglot,
+            input,
+            jsonl_output,
+            markdown_output,
+            dry_run,
+        })
+    }
+
+    fn validate(&self) -> Result<(), String> {
+        if !self.sqlglot.join("sqlglot/__init__.py").is_file() {
+            return Err(format!(
+                "{} does not look like a Python SQLGlot checkout",
+                self.sqlglot.display()
+            ));
+        }
+        if !self.input.is_file() {
+            return Err(format!("{} does not exist", self.input.display()));
+        }
+        let sqlite = Command::new("sqlite3")
+            .arg("-version")
+            .output()
+            .map_err(|err| format!("failed to run sqlite3 -version: {err}"))?;
+        if !sqlite.status.success() {
+            return Err(format!(
+                "sqlite3 -version exited with {}\nstderr:\n{}",
+                sqlite.status,
+                String::from_utf8_lossy(&sqlite.stderr)
+            ));
+        }
+        Ok(())
+    }
+
+    fn usage() -> String {
+        "usage: cargo run --bin xtask -- check-sqlite-correctness --sqlglot /path/to/sqlglot [--input correctness/cases/cinch_sqlite.jsonl] [--jsonl-output correctness/reports/cinch_sqlite.jsonl] [--markdown-output correctness/reports/cinch_sqlite.md] [--dry-run]".to_string()
     }
 }
 
@@ -389,6 +561,56 @@ struct CaseOutcome {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+struct CorrectnessCase {
+    id: String,
+    sql: String,
+    read: String,
+    #[serde(default)]
+    setup_sql: String,
+    #[serde(default)]
+    tags: Vec<String>,
+    #[serde(default)]
+    source: String,
+    #[serde(default)]
+    note: String,
+}
+
+#[derive(Debug, Serialize)]
+struct CorrectnessOutcome {
+    #[serde(flatten)]
+    case: CorrectnessCase,
+    oracle_sql: Option<String>,
+    sqlgrok_sql: Option<String>,
+    parity_status: CorrectnessParityStatus,
+    status: CorrectnessStatus,
+    sqlite_stdout: Option<String>,
+    sqlite_stderr: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum CorrectnessParityStatus {
+    Match,
+    Mismatch,
+    RustError,
+    OracleError,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum CorrectnessStatus {
+    SqliteOk,
+    SqliteError,
+    OracleError,
+}
+
+struct SqliteRun {
+    ok: bool,
+    stdout: Option<String>,
+    stderr: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum OutcomeStatus {
     Match,
@@ -536,6 +758,15 @@ fn write_report(path: &PathBuf, outcomes: &[CaseOutcome]) -> Result<(), String> 
 }
 
 fn python_oracle_transpile(sqlglot: &PathBuf, case: &FixtureCase) -> Result<OracleOutput, String> {
+    python_oracle_transpile_sql(sqlglot, &case.sql, &case.read, &case.write)
+}
+
+fn python_oracle_transpile_sql(
+    sqlglot: &PathBuf,
+    sql: &str,
+    read: &str,
+    write: &str,
+) -> Result<OracleOutput, String> {
     let script = r#"
 import json
 import sys
@@ -554,9 +785,9 @@ except Exception as exc:
 "#;
 
     let payload = serde_json::json!({
-        "sql": case.sql,
-        "read": case.read,
-        "write": case.write,
+        "sql": sql,
+        "read": read,
+        "write": write,
     });
     let mut child = Command::new("python3")
         .arg("-c")
@@ -596,6 +827,133 @@ except Exception as exc:
             String::from_utf8_lossy(&output.stderr)
         )
     })
+}
+
+fn read_correctness_cases(path: &PathBuf) -> Result<Vec<CorrectnessCase>, String> {
+    let text = fs::read_to_string(path)
+        .map_err(|err| format!("failed to read {}: {err}", path.display()))?;
+    let mut cases = Vec::new();
+    let mut ids = HashSet::new();
+    for (index, line) in text.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let case: CorrectnessCase = serde_json::from_str(line)
+            .map_err(|err| format!("{}:{}: invalid JSON: {err}", path.display(), index + 1))?;
+        if case.id.trim().is_empty() {
+            return Err(format!(
+                "{}:{}: id must not be empty",
+                path.display(),
+                index + 1
+            ));
+        }
+        if !ids.insert(case.id.clone()) {
+            return Err(format!("duplicate correctness case id {:?}", case.id));
+        }
+        if case.sql.trim().is_empty() {
+            return Err(format!("{}: sql must not be empty", case.id));
+        }
+        if case.read.trim().is_empty() {
+            return Err(format!("{}: read must not be empty", case.id));
+        }
+        for tag in &case.tags {
+            if !is_valid_tag(tag) {
+                return Err(format!(
+                    "{}: invalid tag {:?}; use lowercase kebab-case",
+                    case.id, tag
+                ));
+            }
+        }
+        cases.push(case);
+    }
+    if cases.is_empty() {
+        return Err(format!("{} contains no correctness cases", path.display()));
+    }
+    Ok(cases)
+}
+
+fn evaluate_correctness_parity(
+    sql: &str,
+    read: &str,
+    oracle_sql: &str,
+) -> (Option<String>, CorrectnessParityStatus) {
+    let Some(read) = Dialect::from_str(read) else {
+        return (None, CorrectnessParityStatus::RustError);
+    };
+    let Some(write) = Dialect::from_str("sqlite") else {
+        return (None, CorrectnessParityStatus::RustError);
+    };
+
+    match transpile(sql, read, write) {
+        Ok(sqlgrok_sql) if sqlgrok_sql == oracle_sql => {
+            (Some(sqlgrok_sql), CorrectnessParityStatus::Match)
+        }
+        Ok(sqlgrok_sql) => (Some(sqlgrok_sql), CorrectnessParityStatus::Mismatch),
+        Err(_) => (None, CorrectnessParityStatus::RustError),
+    }
+}
+
+fn run_sqlite(setup_sql: &str, oracle_sql: &str) -> Result<SqliteRun, String> {
+    let mut input = String::new();
+    if !setup_sql.trim().is_empty() {
+        input.push_str(setup_sql.trim());
+        if !input.ends_with(';') {
+            input.push(';');
+        }
+        input.push('\n');
+    }
+    input.push_str(oracle_sql.trim());
+    if !input.ends_with(';') {
+        input.push(';');
+    }
+    input.push('\n');
+
+    let output = Command::new("sqlite3")
+        .arg(":memory:")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(input.as_bytes())?;
+            }
+            child.wait_with_output()
+        })
+        .map_err(|err| format!("failed to run sqlite3: {err}"))?;
+
+    let stdout = one_line(&String::from_utf8_lossy(&output.stdout));
+    let stderr = one_line(&String::from_utf8_lossy(&output.stderr));
+    Ok(SqliteRun {
+        ok: output.status.success(),
+        stdout: if stdout.is_empty() {
+            None
+        } else {
+            Some(stdout)
+        },
+        stderr: if stderr.is_empty() {
+            None
+        } else {
+            Some(stderr)
+        },
+    })
+}
+
+fn write_correctness_jsonl(path: &PathBuf, outcomes: &[CorrectnessOutcome]) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|err| format!("failed to create {}: {err}", parent.display()))?;
+    }
+    let mut output = String::new();
+    for outcome in outcomes {
+        let line = serde_json::to_string(outcome)
+            .map_err(|err| format!("failed to serialize {}: {err}", outcome.case.id))?;
+        output.push_str(&line);
+        output.push('\n');
+    }
+    fs::write(path, output).map_err(|err| format!("failed to write {}: {err}", path.display()))?;
+    eprintln!("wrote {}", path.display());
+    Ok(())
 }
 
 fn validate_cases(cases: &[FixtureCase]) -> Result<(), String> {
@@ -752,6 +1110,81 @@ fn summarize_report(args: &SummarizeReportArgs) -> Result<String, String> {
     Ok(output)
 }
 
+fn summarize_correctness(input: &Path, outcomes: &[CorrectnessOutcome]) -> String {
+    let mut status_counts = BTreeMap::<String, usize>::new();
+    let mut parity_counts = BTreeMap::<String, usize>::new();
+    let mut tag_counts = BTreeMap::<(String, String), usize>::new();
+
+    for outcome in outcomes {
+        let status = outcome.status.as_str().to_string();
+        *status_counts.entry(status.clone()).or_default() += 1;
+        *parity_counts
+            .entry(outcome.parity_status.as_str().to_string())
+            .or_default() += 1;
+        for tag in &outcome.case.tags {
+            *tag_counts.entry((status.clone(), tag.clone())).or_default() += 1;
+        }
+    }
+
+    let mut output = String::new();
+    output.push_str("# SQLite Correctness Report\n\n");
+    output.push_str(&format!("Source: `{}`\n\n", input.display()));
+    output.push_str("This report runs Python SQLGlot's SQLite-targeted output against stock `sqlite3`. A `sqlite-error` row is not a sqlgrok parity failure by itself; it is a cinch correctness or upstream SQLGlot candidate to investigate.\n\n");
+    output.push_str(&format!("Total candidates: `{}`\n\n", outcomes.len()));
+
+    output.push_str("## Status Counts\n\n");
+    output.push_str("| Status | Count |\n| --- | ---: |\n");
+    for (status, count) in &status_counts {
+        output.push_str(&format!("| `{status}` | {count} |\n"));
+    }
+
+    output.push_str("\n## SQLGlot Parity Counts\n\n");
+    output.push_str("| Parity | Count |\n| --- | ---: |\n");
+    for (status, count) in &parity_counts {
+        output.push_str(&format!("| `{status}` | {count} |\n"));
+    }
+
+    output.push_str("\n## Tag Buckets\n\n");
+    output.push_str("| Status | Tag | Count |\n| --- | --- | ---: |\n");
+    for ((status, tag), count) in top_counts(&tag_counts, 25) {
+        output.push_str(&format!("| `{status}` | `{tag}` | {count} |\n"));
+    }
+
+    output.push_str("\n## Candidates\n\n");
+    for outcome in outcomes {
+        output.push_str(&format!(
+            "### `{}` ({})\n\n",
+            outcome.case.id,
+            outcome.status.as_str()
+        ));
+        output.push_str(&format!("- source: {}\n", code_span(&outcome.case.sql)));
+        if let Some(oracle_sql) = &outcome.oracle_sql {
+            output.push_str(&format!("- sqlglot sqlite: {}\n", code_span(oracle_sql)));
+        }
+        output.push_str(&format!(
+            "- sqlgrok parity: `{}`\n",
+            outcome.parity_status.as_str()
+        ));
+        if let Some(sqlgrok_sql) = &outcome.sqlgrok_sql
+            && Some(sqlgrok_sql) != outcome.oracle_sql.as_ref()
+        {
+            output.push_str(&format!("- sqlgrok sqlite: {}\n", code_span(sqlgrok_sql)));
+        }
+        if let Some(stderr) = &outcome.sqlite_stderr {
+            output.push_str(&format!("- sqlite stderr: {}\n", code_span(stderr)));
+        }
+        if let Some(stdout) = &outcome.sqlite_stdout {
+            output.push_str(&format!("- sqlite stdout: {}\n", code_span(stdout)));
+        }
+        if !outcome.case.note.trim().is_empty() {
+            output.push_str(&format!("- note: {}\n", outcome.case.note.trim()));
+        }
+        output.push('\n');
+    }
+
+    output
+}
+
 impl OutcomeStatus {
     fn as_str(&self) -> &'static str {
         match self {
@@ -759,6 +1192,27 @@ impl OutcomeStatus {
             OutcomeStatus::Mismatch => "mismatch",
             OutcomeStatus::RustError => "rust-error",
             OutcomeStatus::OracleError => "oracle-error",
+        }
+    }
+}
+
+impl CorrectnessStatus {
+    fn as_str(&self) -> &'static str {
+        match self {
+            CorrectnessStatus::SqliteOk => "sqlite-ok",
+            CorrectnessStatus::SqliteError => "sqlite-error",
+            CorrectnessStatus::OracleError => "oracle-error",
+        }
+    }
+}
+
+impl CorrectnessParityStatus {
+    fn as_str(&self) -> &'static str {
+        match self {
+            CorrectnessParityStatus::Match => "match",
+            CorrectnessParityStatus::Mismatch => "mismatch",
+            CorrectnessParityStatus::RustError => "rust-error",
+            CorrectnessParityStatus::OracleError => "oracle-error",
         }
     }
 }

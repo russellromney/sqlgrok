@@ -25,6 +25,7 @@ The project docs are split by purpose:
 - [ROADMAP.md](ROADMAP.md): future work, execution sessions, and acceptance checks.
 - [CHANGELOG.md](CHANGELOG.md): quick summaries of completed changes.
 - [docs/PARITY.md](docs/PARITY.md): parity fixture format and SQLGlot oracle workflow.
+- [docs/CINCH_CORRECTNESS.md](docs/CINCH_CORRECTNESS.md): SQLite execution checks for cinch/upstream candidates beyond SQLGlot string parity.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): parser architecture notes and outside influences.
 - [docs/AST_INVENTORY.md](docs/AST_INVENTORY.md): SQLGlot expression coverage map.
 

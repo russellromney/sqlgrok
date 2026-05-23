@@ -2,6 +2,15 @@
 
 sqlgrok uses Python SQLGlot as a behavioral oracle while keeping the implementation pure Rust.
 
+String parity is the default product contract: when sqlgrok transpiles the same input
+and dialect pair as Python SQLGlot, the output should match exactly.
+
+There is a separate cinch correctness lane for testing whether SQLGlot's SQLite-targeted
+output is actually accepted by stock SQLite. See [CINCH_CORRECTNESS.md](CINCH_CORRECTNESS.md).
+Those findings are upstream/cinch candidates and should not change sqlgrok's default
+output unless Python SQLGlot changes or sqlgrok grows an explicit opt-in compatibility
+mode.
+
 ## Case Format
 
 Parity cases are JSON Lines files under `parity/cases/`:

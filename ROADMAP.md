@@ -27,6 +27,7 @@ What this roadmap must prevent:
 ## Operating Principles
 
 - Python SQLGlot is the behavioral oracle until sqlgrok reaches mature parity.
+- Cinch correctness checks are a separate lane: they can prove that SQLGlot's SQLite-targeted output is not stock-SQLite executable, but they do not change sqlgrok's default output away from SQLGlot parity without an explicit compatibility-mode decision.
 - The Rust implementation stays native Rust; Python is allowed in tests, fixtures, and tooling.
 - Every bug fix should add one narrow Rust regression test and, when possible, one parity case.
 - Known divergences must be explicit in fixture metadata, not hidden in assertions.
@@ -41,6 +42,8 @@ Start here when opening a new implementation session:
 - `tests/sqlglot_parity.rs`: Rust parity harness that calls Python SQLGlot.
 - `parity/cases/*.jsonl`: parity corpus loaded by the smoke harness.
 - `docs/PARITY.md`: fixture format and ratchet workflow.
+- `docs/CINCH_CORRECTNESS.md`: SQLite execution checks for SQLGlot/cinch upstream candidates.
+- `correctness/cases/*.jsonl`: cinch correctness candidates that run SQLGlot output against stock SQLite.
 - `docs/ARCHITECTURE.md`: parser architecture notes and non-SQLGlot design influences.
 - `CHANGELOG.md`: quick summaries of completed work.
 - `tests/test_transpile.rs`: focused transpiler regressions.
@@ -63,6 +66,14 @@ Use this loop for parity work:
 7. Update docs or fixture metadata if the behavior is still intentionally divergent.
 
 Do not import a large upstream fixture family until filtering, tags, and summary output exist.
+
+Use this loop for cinch correctness work:
+
+1. Confirm sqlgrok's default output still matches Python SQLGlot.
+2. Add the source SQL to `correctness/cases/` with minimal SQLite setup SQL.
+3. Run `xtask check-sqlite-correctness` to prove whether SQLGlot's SQLite output executes.
+4. If SQLite rejects the SQLGlot output, classify it as an upstream SQLGlot candidate, an explicit sqlgrok compatibility-mode candidate, or a downstream execution concern.
+5. Do not alter default transpilation away from Python SQLGlot unless the chosen fix is to track an upstream SQLGlot change.
 
 ## Milestone 0: Project Foundation
 

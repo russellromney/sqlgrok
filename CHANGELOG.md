@@ -7,6 +7,7 @@ this file records what landed.
 
 ### Parser Coverage Ratchet
 
+- Added a separate cinch correctness lane with an `xtask check-sqlite-correctness` command, documentation, and seed cases that run Python SQLGlot's SQLite-targeted output against stock SQLite.
 - Reduced imported SQLGlot rust-errors for SQLite->SQLite from 8 to 0, MySQL->SQLite from 73 to 8, and Postgres->SQLite from 112 to 62.
 - Added parser/generator carriers for MySQL user variables, `:=`, `<=>`, `&&`, hex literals, qualified upsert/update assignments, `VALUES(...)`, and common cast/type suffix forms.
 - Added Postgres tokenizer/parser support for dollar-quoted strings, psycopg `%s` parameters, `!~`/`!~*`, `VALUES` table sources, ordered aggregate argument carriers, window `EXCLUDE` parsing, and `IS DISTINCT FROM`.
