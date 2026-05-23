@@ -35,6 +35,7 @@ this file records what landed.
 - Matched Postgres-to-SQLite operator parity for `^` power and `#` bitwise XOR.
 - Matched SQLGlot spacing for `ROLLUP (...)`, `CUBE (...)`, and `GROUPING SETS (...)` generation.
 - Matched Postgres-to-SQLite array literal output by rendering `ARRAY[...]` as SQLGlot-style `ARRAY(...)`, including nested array literals.
+- Matched SQLGlot normalization for raw Postgres `CREATE TYPE ... AS ENUM (...)` statements targeting SQLite.
 
 ## 2026-05-20
 

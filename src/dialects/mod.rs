@@ -426,8 +426,36 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 *predicate = transform_expr(predicate.clone(), source, target);
             }
         }
+        Statement::Raw(raw) => {
+            if is_postgres_family(source)
+                && matches!(target, Dialect::Sqlite)
+                && let Some(sql) = normalize_postgres_create_type_enum(&raw.sql)
+            {
+                raw.sql = sql;
+            }
+        }
         _ => {}
     }
+}
+
+fn normalize_postgres_create_type_enum(sql: &str) -> Option<String> {
+    let trimmed = sql.trim();
+    let upper = trimmed.to_ascii_uppercase();
+    let create_type = "CREATE TYPE ";
+    let as_enum = " AS ENUM";
+    if !upper.starts_with(create_type) {
+        return None;
+    }
+    let as_enum_index = upper.find(as_enum)?;
+    let name = trimmed[create_type.len()..as_enum_index].trim();
+    if name.is_empty() {
+        return None;
+    }
+    let values = trimmed[as_enum_index + as_enum.len()..].trim_start();
+    if !values.starts_with('(') {
+        return None;
+    }
+    Some(format!("CREATE TYPE {name} AS ENUM{values}"))
 }
 
 fn move_single_column_primary_key_to_column(ct: &mut CreateTableStatement) {

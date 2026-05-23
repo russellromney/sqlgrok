@@ -160,6 +160,22 @@ fn test_postgres_grouping_modifiers_spacing_to_sqlite() {
 }
 
 #[test]
+fn test_postgres_create_type_enum_to_sqlite() {
+    validate_with_dialect(
+        "CREATE TYPE mood AS ENUM ('sad', 'ok')",
+        "CREATE TYPE mood AS ENUM('sad', 'ok')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "create type public.mood as enum ('sad')",
+        "CREATE TYPE public.mood AS ENUM('sad')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_identity_string_concat() {
     validate_identity("SELECT 'a' || 'b'");
     validate_identity("SELECT a || b || c");
