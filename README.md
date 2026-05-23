@@ -26,6 +26,7 @@ The project docs are split by purpose:
 - [CHANGELOG.md](CHANGELOG.md): quick summaries of completed changes.
 - [docs/PARITY.md](docs/PARITY.md): parity fixture format and SQLGlot oracle workflow.
 - [docs/CINCH_CORRECTNESS.md](docs/CINCH_CORRECTNESS.md): SQLite execution checks for cinch/upstream candidates beyond SQLGlot string parity.
+- [docs/PERFORMANCE.md](docs/PERFORMANCE.md): repeatable sqlgrok vs Python SQLGlot benchmark workflow.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): parser architecture notes and outside influences.
 - [docs/AST_INVENTORY.md](docs/AST_INVENTORY.md): SQLGlot expression coverage map.
 
