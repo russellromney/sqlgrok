@@ -752,6 +752,15 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             op,
             expr: Box::new(transform_expr(*expr, source, target)),
         },
+        Expr::If {
+            condition,
+            true_val,
+            false_val,
+        } => Expr::If {
+            condition: Box::new(transform_expr(*condition, source, target)),
+            true_val: Box::new(transform_expr(*true_val, source, target)),
+            false_val: false_val.map(|expr| Box::new(transform_expr(*expr, source, target))),
+        },
         Expr::Interval { value, unit } => transform_interval(*value, unit, source, target),
         Expr::ArrayLiteral(items) => {
             let items: Vec<Expr> = items
@@ -1478,12 +1487,16 @@ pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
 fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> DataType {
     match (&dt, source, target) {
         (DataType::Unknown(name), s, Dialect::Sqlite)
-            if is_mysql_family(s) && name.eq_ignore_ascii_case("SIGNED") =>
+            if is_mysql_family(s)
+                && (name.eq_ignore_ascii_case("SIGNED")
+                    || name.eq_ignore_ascii_case("SIGNED INTEGER")) =>
         {
             DataType::Unknown("INTEGER".to_string())
         }
         (DataType::Unknown(name), s, Dialect::Sqlite)
-            if is_mysql_family(s) && name.eq_ignore_ascii_case("UNSIGNED") =>
+            if is_mysql_family(s)
+                && (name.eq_ignore_ascii_case("UNSIGNED")
+                    || name.eq_ignore_ascii_case("UNSIGNED INTEGER")) =>
         {
             DataType::Unknown("UBIGINT".to_string())
         }

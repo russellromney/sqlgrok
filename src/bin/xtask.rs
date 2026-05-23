@@ -900,7 +900,7 @@ fn bench_cases() -> Vec<BenchCase> {
         },
         BenchCase {
             id: "mysql-if-cast-division",
-            sql: "SELECT IF(a > 0, a, 7 DIV 2), x / y FROM metrics",
+            sql: "SELECT IF(a > 0, CAST(a AS SIGNED INTEGER), 7 DIV 2), x / y FROM metrics",
             read: "mysql",
             write: "sqlite",
             feature: "expression",

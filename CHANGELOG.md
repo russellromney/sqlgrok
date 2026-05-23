@@ -38,6 +38,8 @@ this file records what landed.
 - Matched SQLGlot normalization for raw Postgres `CREATE TYPE ... AS ENUM (...)` statements targeting SQLite.
 - Added a Postgres `E'...'` escaped-string AST carrier and matched the fixed SQLGlot fork's quoted SQLite-targeted rendering.
 - Added an `xtask bench-sqlglot` benchmark harness and performance notes for comparing sqlgrok against Python SQLGlot on parity-clean MySQL/Postgres-to-SQLite workloads.
+- Extended MySQL `SIGNED`/`UNSIGNED` cast parity to the `SIGNED INTEGER` and `UNSIGNED INTEGER` spellings used by SQLGlot.
+- Fixed MySQL `IF(...)` child expression transforms so nested casts and division rewrites still run before SQLite generation.
 
 ## 2026-05-20
 

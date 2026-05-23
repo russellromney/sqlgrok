@@ -2020,12 +2020,30 @@ fn test_mysql_signed_cast_to_sqlite_integer() {
         Dialect::Mysql,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "SELECT CAST(a AS SIGNED INTEGER) FROM t",
+        "SELECT CAST(a AS INTEGER) FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT IF(a > 0, CAST(a AS SIGNED INTEGER), 7 DIV 2), x / y FROM metrics",
+        "SELECT IIF(a > 0, CAST(a AS INTEGER), CAST(CAST(7 AS REAL) / 2 AS INTEGER)), CAST(x AS REAL) / y FROM metrics",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]
 fn test_mysql_unsigned_cast_to_sqlite_ubigint() {
     validate_with_dialect(
         "SELECT CAST(a AS UNSIGNED) FROM t",
+        "SELECT CAST(a AS UBIGINT) FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT CAST(a AS UNSIGNED INTEGER) FROM t",
         "SELECT CAST(a AS UBIGINT) FROM t",
         Dialect::Mysql,
         Dialect::Sqlite,
