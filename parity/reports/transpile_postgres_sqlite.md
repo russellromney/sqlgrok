@@ -2,32 +2,31 @@
 
 Source: `parity/reports/transpile_postgres_sqlite.jsonl`
 
-Total candidates: `682`
+Total candidates: `686`
 
 ## Status Counts
 
 | Status | Count |
 | --- | ---: |
-| `match` | 301 |
-| `mismatch` | 324 |
+| `match` | 360 |
+| `mismatch` | 269 |
 | `rust-error` | 57 |
 
 ## Top Feature Buckets
 
 | Status | Feature | Count |
 | --- | --- | ---: |
-| `mismatch` | `SELECT` | 105 |
-| `match` | `SELECT` | 88 |
-| `mismatch` | `CREATE` | 63 |
+| `match` | `SELECT` | 121 |
+| `mismatch` | `SELECT` | 76 |
+| `mismatch` | `CREATE` | 62 |
 | `rust-error` | `SELECT` | 42 |
 | `mismatch` | `CREATE TABLE` | 36 |
 | `match` | `CREATE TABLE` | 20 |
 | `match` | `REVOKE` | 19 |
 | `match` | `CAST()` | 18 |
+| `match` | `X` | 17 |
 | `match` | `GRANT` | 16 |
-| `match` | `X` | 11 |
 | `mismatch` | `BEGIN` | 11 |
-| `mismatch` | `X` | 11 |
 | `match` | `INTERVAL` | 9 |
 | `match` | `WITH` | 9 |
 | `mismatch` | `CREATE INDEX` | 9 |
@@ -38,20 +37,21 @@ Total candidates: `682`
 | `match` | `MERGE` | 5 |
 | `match` | `UPDATE` | 5 |
 | `mismatch` | `WITH` | 5 |
+| `mismatch` | `X` | 5 |
+| `match` | `A` | 4 |
 | `match` | `ANALYZE` | 4 |
-| `match` | `DROP INDEX` | 4 |
-| `match` | `REGEXP_INSTR()` | 4 |
+| `match` | `CREATE` | 4 |
 
 ## Top Source Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 114 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 114 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 88 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 148 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 87 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 84 |
 | `rust-error` | `tests/dialects/test_postgres.py` | `test_postgres` | 35 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres_create_trigger` | 34 |
-| `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 31 |
+| `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 32 |
 | `match` | `tests/dialects/test_postgres.py` | `test_revoke` | 19 |
 | `match` | `tests/dialects/test_postgres.py` | `test_grant` | 16 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_begin_transaction` | 11 |
@@ -62,15 +62,15 @@ Total candidates: `682`
 | `rust-error` | `tests/dialects/test_postgres.py` | `test_xmlelement` | 6 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 5 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 5 |
+| `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 5 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 5 |
-| `mismatch` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 5 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 4 |
 | `match` | `tests/dialects/test_dialect.py` | `test_heredoc_strings` | 4 |
 | `match` | `tests/dialects/test_dialect.py` | `test_localtime_and_localtimestamp` | 4 |
+| `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 4 |
+| `match` | `tests/dialects/test_dialect.py` | `test_operators` | 4 |
 | `match` | `tests/dialects/test_dialect.py` | `test_regexp_instr` | 4 |
 | `match` | `tests/dialects/test_doris.py` | `test_table_alias_conversion` | 4 |
-| `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 4 |
-| `match` | `tests/dialects/test_postgres.py` | `test_analyze` | 4 |
 
 ## Non-Matching Examples
 
@@ -90,23 +90,23 @@ Total candidates: `682`
   - actual: `x = ANY(ARRAY[1])`
 - `sqlglot-postgres-to-sqlite-tests-dialects-test-clickhouse-0354-test-clickhouse`: `any(array[1]) <> x`
   - expected: `ANY(ARRAY(1)) <> x`
-  - actual: `any(ARRAY[1]) <> x`
+  - actual: `any(ARRAY(1)) <> x`
 
 ### `rust-error`
 
-- `sqlglot-postgres-to-sqlite-tests-dialects-test-oracle-0289-test-oracle`: `CAST(x AS sch.udt)`
+- `sqlglot-postgres-to-sqlite-tests-dialects-test-oracle-0296-test-oracle`: `CAST(x AS sch.udt)`
   - expected: `CAST(x AS sch.udt)`
   - error: `Parser error: Expected RParen, got Dot ('.') at line 1 col 14`
-- `sqlglot-postgres-to-sqlite-tests-dialects-test-postgres-1076-test-postgres`: `SELECT NUMRANGE(1.1, 2.2) -|- NUMRANGE(2.2, 3.3)`
+- `sqlglot-postgres-to-sqlite-tests-dialects-test-postgres-1096-test-postgres`: `SELECT NUMRANGE(1.1, 2.2) -|- NUMRANGE(2.2, 3.3)`
   - expected: `SELECT NUMRANGE(1.1, 2.2) -|- NUMRANGE(2.2, 3.3)`
   - error: `Unexpected token: Token { token_type: BitwiseOr, value: "|", line: 1, col: 28, position: 27, quote_char: '\0' }`
-- `sqlglot-postgres-to-sqlite-tests-dialects-test-postgres-1099-test-postgres`: `SELECT MLEAST(VARIADIC ARRAY[10, -1, 5, 4.4])`
+- `sqlglot-postgres-to-sqlite-tests-dialects-test-postgres-1119-test-postgres`: `SELECT MLEAST(VARIADIC ARRAY[10, -1, 5, 4.4])`
   - expected: `SELECT MLEAST(VARIADIC ARRAY(10, -1, 5, 4.4))`
   - error: `Parser error: Expected RParen, got Array ('ARRAY') at line 1 col 24`
-- `sqlglot-postgres-to-sqlite-tests-dialects-test-postgres-1100-test-postgres`: `SELECT MLEAST(VARIADIC ARRAY[]::numeric[])`
+- `sqlglot-postgres-to-sqlite-tests-dialects-test-postgres-0111-test-postgres`: `SELECT id, name FROM xml_data AS t, XMLTABLE('/root/user' PASSING t.xml COLUMNS id INT PATH '@id', name TEXT PATH 'name/text()') AS x`
+  - expected: `SELECT id, name FROM xml_data AS t, XMLTABLE('/root/user' PASSING t.xml COLUMNS id INTEGER PATH '@id', name TEXT PATH 'name/text()') AS x`
+  - error: `Parser error: Expected RParen, got Identifier ('PASSING') at line 1 col 59`
+- `sqlglot-postgres-to-sqlite-tests-dialects-test-postgres-1120-test-postgres`: `SELECT MLEAST(VARIADIC ARRAY[]::numeric[])`
   - expected: `SELECT MLEAST(VARIADIC CAST(ARRAY() AS ARRAY<REAL>))`
   - error: `Parser error: Expected RParen, got Array ('ARRAY') at line 1 col 24`
-- `sqlglot-postgres-to-sqlite-tests-dialects-test-postgres-1104-test-postgres`: `SELECT * FROM schema_name.table_name st WHERE JSON_EXTRACT_PATH_TEXT((st.data)::json, variadic array['test'::text]) = 'test'::text`
-  - expected: `SELECT * FROM schema_name.table_name AS st WHERE CAST((st.data) AS JSON) ->> VARIADIC ARRAY(CAST('test' AS TEXT)) = CAST('test' AS TEXT)`
-  - error: `Parser error: Expected RParen, got Array ('array') at line 1 col 96`
 
