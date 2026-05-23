@@ -41,6 +41,7 @@ this file records what landed.
 - Extended MySQL `SIGNED`/`UNSIGNED` cast parity to the `SIGNED INTEGER` and `UNSIGNED INTEGER` spellings used by SQLGlot.
 - Fixed MySQL `IF(...)` child expression transforms so nested casts and division rewrites still run before SQLite generation.
 - Matched SQLGlot's order-sensitive MySQL `AUTO_INCREMENT` SQLite rendering for inline and table-level primary keys.
+- Added a SQLite-targeted function/operator parity batch covering `POSITION`, `LOCATE`, `CONCAT`, schema functions, MySQL log helpers, Postgres JSON aggregates, `IS UNKNOWN`, and MySQL `XOR`.
 
 ## 2026-05-20
 

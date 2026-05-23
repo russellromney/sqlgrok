@@ -2035,6 +2035,62 @@ fn test_mysql_signed_cast_to_sqlite_integer() {
 }
 
 #[test]
+fn test_sqlite_function_operator_mapping_batch() {
+    validate_with_dialect(
+        "POSITION(needle in haystack)",
+        "INSTR(haystack, needle)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "LOCATE(needle, haystack)",
+        "INSTR(haystack, needle)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "LOCATE(needle, haystack, position)",
+        "IIF(INSTR(SUBSTRING(haystack, position), needle) = 0, 0, INSTR(SUBSTRING(haystack, position), needle) + position - 1)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect("CONCAT(a)", "a", Dialect::Postgres, Dialect::Sqlite);
+    validate_with_dialect(
+        "CONCAT(a, b, c)",
+        "a || b || c",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "CURRENT_SCHEMA()",
+        "'main'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect("SCHEMA()", "'main'", Dialect::Mysql, Dialect::Sqlite);
+    validate_with_dialect(
+        "SELECT LOG2(a), LOG10(b), LOG(c) FROM t",
+        "SELECT LOG(2, a), LOG(10, b), LN(c) FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT JSON_AGG(name), JSON_OBJECT_AGG(name, value) FROM t",
+        "SELECT JSON_GROUP_ARRAY(name), JSON_GROUP_OBJECT(name, value) FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect("x IS UNKNOWN", "x IS NULL", Dialect::Mysql, Dialect::Sqlite);
+    validate_with_dialect(
+        "x IS NOT UNKNOWN",
+        "NOT x IS NULL",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect("a XOR b", "a XOR b", Dialect::Mysql, Dialect::Sqlite);
+}
+
+#[test]
 fn test_mysql_unsigned_cast_to_sqlite_ubigint() {
     validate_with_dialect(
         "SELECT CAST(a AS UNSIGNED) FROM t",

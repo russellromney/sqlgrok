@@ -516,7 +516,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
-                && is_postgres_family(source)
+                && (is_postgres_family(source) || is_mysql_family(source))
                 && name.eq_ignore_ascii_case("POSITION")
                 && !distinct
                 && filter.is_none()
@@ -529,6 +529,122 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     distinct,
                     filter,
                     over,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && is_mysql_family(source)
+                && name.eq_ignore_ascii_case("LOCATE")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && (new_args.len() == 2 || new_args.len() == 3)
+            {
+                if new_args.len() == 2 {
+                    return Expr::Function {
+                        name: "INSTR".to_string(),
+                        args: vec![new_args[1].clone(), new_args[0].clone()],
+                        distinct,
+                        filter,
+                        over,
+                    };
+                }
+                let needle = new_args[0].clone();
+                let haystack = new_args[1].clone();
+                let position = new_args[2].clone();
+                let substring = Expr::Function {
+                    name: "SUBSTRING".to_string(),
+                    args: vec![haystack, position.clone()],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+                let instr = Expr::Function {
+                    name: "INSTR".to_string(),
+                    args: vec![substring, needle],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+                return Expr::If {
+                    condition: Box::new(Expr::BinaryOp {
+                        left: Box::new(instr.clone()),
+                        op: BinaryOperator::Eq,
+                        right: Box::new(Expr::Number("0".to_string())),
+                    }),
+                    true_val: Box::new(Expr::Number("0".to_string())),
+                    false_val: Some(Box::new(Expr::BinaryOp {
+                        left: Box::new(Expr::BinaryOp {
+                            left: Box::new(instr),
+                            op: BinaryOperator::Plus,
+                            right: Box::new(position),
+                        }),
+                        op: BinaryOperator::Minus,
+                        right: Box::new(Expr::Number("1".to_string())),
+                    })),
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("CONCAT")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+            {
+                return concat_expr(new_args);
+            }
+            if matches!(target, Dialect::Sqlite)
+                && matches!(
+                    name.to_ascii_uppercase().as_str(),
+                    "SCHEMA" | "CURRENT_SCHEMA"
+                )
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.is_empty()
+            {
+                return Expr::StringLiteral("main".to_string());
+            }
+            if matches!(target, Dialect::Sqlite)
+                && matches!(name.to_ascii_uppercase().as_str(), "LOG2" | "LOG10")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return Expr::Function {
+                    name: "LOG".to_string(),
+                    args: vec![
+                        Expr::Number(if name.eq_ignore_ascii_case("LOG2") {
+                            "2".to_string()
+                        } else {
+                            "10".to_string()
+                        }),
+                        new_args[0].clone(),
+                    ],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && is_postgres_family(source)
+                && matches!(
+                    name.to_ascii_uppercase().as_str(),
+                    "JSON_AGG" | "JSON_OBJECT_AGG"
+                )
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+            {
+                return Expr::Function {
+                    name: if name.eq_ignore_ascii_case("JSON_AGG") {
+                        "JSON_GROUP_ARRAY".to_string()
+                    } else {
+                        "JSON_GROUP_OBJECT".to_string()
+                    },
+                    args: new_args,
+                    distinct: false,
+                    filter: None,
+                    over: None,
                 };
             }
             if matches!(target, Dialect::Sqlite)
@@ -610,6 +726,10 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             if matches!(target, Dialect::Sqlite) {
                 match func {
                     TypedFunction::Greatest { exprs } => {
+                        if exprs.len() == 1 {
+                            let mut exprs = exprs;
+                            return transform_expr(exprs.remove(0), source, target);
+                        }
                         return Expr::Function {
                             name: "MAX".to_string(),
                             args: exprs
@@ -622,6 +742,10 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                         };
                     }
                     TypedFunction::Least { exprs } => {
+                        if exprs.len() == 1 {
+                            let mut exprs = exprs;
+                            return transform_expr(exprs.remove(0), source, target);
+                        }
                         return Expr::Function {
                             name: "MIN".to_string(),
                             args: exprs
@@ -629,6 +753,15 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                                 .map(|e| transform_expr(e, source, target))
                                 .collect(),
                             distinct: false,
+                            filter,
+                            over,
+                        };
+                    }
+                    TypedFunction::Log { expr, base: None } if is_mysql_family(source) => {
+                        return Expr::TypedFunction {
+                            func: TypedFunction::Ln {
+                                expr: Box::new(transform_expr(*expr, source, target)),
+                            },
                             filter,
                             over,
                         };
@@ -832,6 +965,18 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         // Everything else stays the same
         other => other,
     }
+}
+
+fn concat_expr(args: Vec<Expr>) -> Expr {
+    let mut args = args.into_iter();
+    let Some(first) = args.next() else {
+        return Expr::StringLiteral(String::new());
+    };
+    args.fold(first, |left, right| Expr::BinaryOp {
+        left: Box::new(left),
+        op: BinaryOperator::Concat,
+        right: Box::new(right),
+    })
 }
 
 fn sqlite_real_cast(expr: Expr) -> Expr {

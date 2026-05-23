@@ -2657,11 +2657,17 @@ impl Parser {
 
     fn parse_or_expr(&mut self) -> Result<Expr> {
         let mut left = self.parse_and_expr()?;
-        while self.match_token(TokenType::Or) {
+        while matches!(self.peek_type(), TokenType::Or | TokenType::Xor) {
+            let op = if self.match_token(TokenType::Xor) {
+                BinaryOperator::Xor
+            } else {
+                self.expect(TokenType::Or)?;
+                BinaryOperator::Or
+            };
             let right = self.parse_and_expr()?;
             left = Expr::BinaryOp {
                 left: Box::new(left),
-                op: BinaryOperator::Or,
+                op,
                 right: Box::new(right),
             };
         }
@@ -2854,6 +2860,20 @@ impl Parser {
                     left = Expr::IsNull {
                         expr: Box::new(left),
                         negated,
+                    };
+                } else if self.peek().value.eq_ignore_ascii_case("UNKNOWN") {
+                    self.advance();
+                    let is_null = Expr::IsNull {
+                        expr: Box::new(left),
+                        negated: false,
+                    };
+                    left = if negated {
+                        Expr::UnaryOp {
+                            op: UnaryOperator::Not,
+                            expr: Box::new(is_null),
+                        }
+                    } else {
+                        is_null
                     };
                 } else {
                     let right = self.parse_addition()?;
