@@ -40,6 +40,7 @@ this file records what landed.
 - Added an `xtask bench-sqlglot` benchmark harness and performance notes for comparing sqlgrok against Python SQLGlot on parity-clean MySQL/Postgres-to-SQLite workloads.
 - Extended MySQL `SIGNED`/`UNSIGNED` cast parity to the `SIGNED INTEGER` and `UNSIGNED INTEGER` spellings used by SQLGlot.
 - Fixed MySQL `IF(...)` child expression transforms so nested casts and division rewrites still run before SQLite generation.
+- Matched SQLGlot's order-sensitive MySQL `AUTO_INCREMENT` SQLite rendering for inline and table-level primary keys.
 
 ## 2026-05-20
 

@@ -1270,20 +1270,22 @@ impl Generator {
             None => {}
         }
 
+        let autoincrement_before_primary_key =
+            col.auto_increment && col.primary_key_from_table_constraint;
+
+        if autoincrement_before_primary_key {
+            self.write(" ");
+            self.gen_auto_increment_keyword();
+        }
+
         if col.primary_key {
             self.write(" ");
             self.write_keyword("PRIMARY KEY");
         }
-        if col.auto_increment {
+
+        if col.auto_increment && !autoincrement_before_primary_key {
             self.write(" ");
-            if matches!(
-                self.dialect,
-                Some(Dialect::Mysql | Dialect::Doris | Dialect::SingleStore | Dialect::StarRocks)
-            ) {
-                self.write_keyword("AUTO_INCREMENT");
-            } else {
-                self.write_keyword("AUTOINCREMENT");
-            }
+            self.gen_auto_increment_keyword();
         }
 
         if let Some(default) = &col.default {
@@ -1303,6 +1305,17 @@ impl Generator {
             self.write_keyword("COMMENT '");
             self.write(&comment.replace('\'', "''"));
             self.write("'");
+        }
+    }
+
+    fn gen_auto_increment_keyword(&mut self) {
+        if matches!(
+            self.dialect,
+            Some(Dialect::Mysql | Dialect::Doris | Dialect::SingleStore | Dialect::StarRocks)
+        ) {
+            self.write_keyword("AUTO_INCREMENT");
+        } else {
+            self.write_keyword("AUTOINCREMENT");
         }
     }
 

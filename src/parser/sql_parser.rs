@@ -2018,6 +2018,7 @@ impl Parser {
         let mut primary_key = false;
         let mut unique = false;
         let mut auto_increment = false;
+        let mut auto_increment_before_primary_key = false;
         let mut collation = None;
         let mut comment = None;
 
@@ -2032,6 +2033,9 @@ impl Parser {
                 default = Some(self.parse_expr()?);
             } else if self.match_token(TokenType::Primary) {
                 self.expect(TokenType::Key)?;
+                if auto_increment {
+                    auto_increment_before_primary_key = true;
+                }
                 primary_key = true;
             } else if self.match_token(TokenType::Unique) {
                 unique = true;
@@ -2063,6 +2067,8 @@ impl Parser {
             primary_key,
             unique,
             auto_increment,
+            auto_increment_before_primary_key,
+            primary_key_from_table_constraint: false,
             collation,
             comment,
         })

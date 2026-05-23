@@ -380,7 +380,10 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             }
             for col in &mut ct.columns {
                 if matches!(target, Dialect::Sqlite)
-                    && !(matches!(col.data_type, DataType::Int) && col.primary_key)
+                    && is_mysql_family(source)
+                    && (!matches!(col.data_type, DataType::Int)
+                        || !col.primary_key
+                        || col.auto_increment_before_primary_key)
                 {
                     col.auto_increment = false;
                 }
@@ -479,6 +482,7 @@ fn move_single_column_primary_key_to_column(ct: &mut CreateTableStatement) {
         .find(|column| column.name.eq_ignore_ascii_case(&column_name))
     {
         column.primary_key = true;
+        column.primary_key_from_table_constraint = true;
         ct.constraints.remove(primary_key_index);
     }
 }

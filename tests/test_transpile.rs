@@ -1429,7 +1429,7 @@ fn test_mysql_create_table_options_ast() {
 fn test_mysql_create_table_column_options_to_sqlite() {
     validate_with_dialect(
         "CREATE TABLE z (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) COLLATE utf8_bin COMMENT 'n') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-        "CREATE TABLE z (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT(255) COLLATE utf8_bin COMMENT 'n')",
+        "CREATE TABLE z (id INTEGER PRIMARY KEY, name TEXT(255) COLLATE utf8_bin COMMENT 'n')",
         Dialect::Mysql,
         Dialect::Sqlite,
     );
@@ -1449,7 +1449,7 @@ fn test_mysql_create_table_primary_key_auto_increment_order_to_sqlite() {
 fn test_mysql_create_table_table_primary_key_auto_increment_to_sqlite() {
     validate_with_dialect(
         "CREATE TABLE x (id INT NOT NULL AUTO_INCREMENT, PRIMARY KEY (id))",
-        "CREATE TABLE x (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT)",
+        "CREATE TABLE x (id INTEGER NOT NULL AUTOINCREMENT PRIMARY KEY)",
         Dialect::Mysql,
         Dialect::Sqlite,
     );

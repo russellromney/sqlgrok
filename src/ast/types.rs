@@ -1751,6 +1751,10 @@ pub struct ColumnDef {
     pub primary_key: bool,
     pub unique: bool,
     pub auto_increment: bool,
+    #[serde(default)]
+    pub auto_increment_before_primary_key: bool,
+    #[serde(default)]
+    pub primary_key_from_table_constraint: bool,
     pub collation: Option<String>,
     pub comment: Option<String>,
 }
