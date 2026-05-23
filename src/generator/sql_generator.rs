@@ -1841,7 +1841,9 @@ impl Generator {
             }
             Expr::EscapedStringLiteral(s) => {
                 if matches!(self.dialect, Some(Dialect::Sqlite)) {
-                    self.write(s);
+                    self.write("'");
+                    self.write(&s.replace('\'', "''"));
+                    self.write("'");
                 } else {
                     self.write("e'");
                     self.write(&escape_postgres_escaped_string(s));
