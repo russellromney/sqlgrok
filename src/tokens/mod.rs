@@ -12,6 +12,7 @@ pub enum TokenType {
     // ── Literals ────────────────────────────────────────────────────
     Number,
     String,
+    EscapedString,
     Identifier,
     BitString,
     HexString,

@@ -176,6 +176,34 @@ fn test_postgres_create_type_enum_to_sqlite() {
 }
 
 #[test]
+fn test_postgres_escaped_string_to_sqlite() {
+    validate_with_dialect(
+        "SELECT E'a\\nb'",
+        "SELECT a\nb",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT LENGTH(E'a\\nb')",
+        "SELECT LENGTH(a\nb)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT E'a\\'b'",
+        "SELECT a'b",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT E'a\\nb'",
+        "SELECT e'a\\nb'",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+}
+
+#[test]
 fn test_identity_string_concat() {
     validate_identity("SELECT 'a' || 'b'");
     validate_identity("SELECT a || b || c");

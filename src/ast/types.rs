@@ -380,6 +380,8 @@ pub enum Expr {
     HexString(String),
     /// A string literal.
     StringLiteral(String),
+    /// A Postgres escape string literal, `E'...'`.
+    EscapedStringLiteral(String),
     /// A boolean literal.
     Boolean(bool),
     /// NULL literal.
@@ -2068,6 +2070,7 @@ impl Expr {
             | Expr::Number(_)
             | Expr::HexString(_)
             | Expr::StringLiteral(_)
+            | Expr::EscapedStringLiteral(_)
             | Expr::Boolean(_)
             | Expr::Null
             | Expr::Wildcard
@@ -2349,6 +2352,7 @@ impl Expr {
             Expr::Number(_)
                 | Expr::HexString(_)
                 | Expr::StringLiteral(_)
+                | Expr::EscapedStringLiteral(_)
                 | Expr::Boolean(_)
                 | Expr::Null
         )

@@ -3377,6 +3377,10 @@ impl Parser {
                 self.advance();
                 Ok(Expr::StringLiteral(token.value))
             }
+            TokenType::EscapedString => {
+                self.advance();
+                Ok(Expr::EscapedStringLiteral(token.value))
+            }
             TokenType::True => {
                 self.advance();
                 Ok(Expr::Boolean(true))

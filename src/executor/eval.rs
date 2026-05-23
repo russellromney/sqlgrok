@@ -98,7 +98,7 @@ fn eval_expr_impl(
         }
         Expr::HexString(s) => Ok(Value::String(s.clone())),
 
-        Expr::StringLiteral(s) => Ok(Value::String(s.clone())),
+        Expr::StringLiteral(s) | Expr::EscapedStringLiteral(s) => Ok(Value::String(s.clone())),
         Expr::Boolean(b) => Ok(Value::Boolean(*b)),
         Expr::Null => Ok(Value::Null),
         Expr::Star | Expr::Wildcard => Ok(Value::Null),

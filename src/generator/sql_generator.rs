@@ -1839,6 +1839,15 @@ impl Generator {
                 self.write(&s.replace('\'', "''"));
                 self.write("'");
             }
+            Expr::EscapedStringLiteral(s) => {
+                if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                    self.write(s);
+                } else {
+                    self.write("e'");
+                    self.write(&escape_postgres_escaped_string(s));
+                    self.write("'");
+                }
+            }
             Expr::Boolean(b) => self.write(if *b { "TRUE" } else { "FALSE" }),
             Expr::Null => self.write("NULL"),
             Expr::Default => self.write_keyword("DEFAULT"),
@@ -3391,6 +3400,21 @@ fn rewrite_json_table_sqlite_types(sql: &str) -> String {
         i += 1;
     }
 
+    out
+}
+
+fn escape_postgres_escaped_string(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    for ch in value.chars() {
+        match ch {
+            '\'' => out.push_str("\\'"),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\t' => out.push_str("\\t"),
+            '\r' => out.push_str("\\r"),
+            _ => out.push(ch),
+        }
+    }
     out
 }
 

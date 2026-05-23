@@ -467,7 +467,7 @@ impl Tokenizer {
             }
 
             // ── String literals ─────────────────────────────────────
-            '\'' => self.read_string(start, start_line, start_col),
+            '\'' => self.read_string(start, start_line, start_col, TokenType::String),
 
             // ── Numbers ─────────────────────────────────────────────
             c if c.is_ascii_digit() => self.read_number(start, start_line, start_col, c),
@@ -476,7 +476,7 @@ impl Tokenizer {
             c if c.is_ascii_alphabetic() || c == '_' => {
                 if (c == 'e' || c == 'E') && self.peek() == Some('\'') {
                     self.advance();
-                    self.read_string(start, start_line, start_col)
+                    self.read_string(start, start_line, start_col, TokenType::EscapedString)
                 } else {
                     self.read_identifier(start, start_line, start_col, c)
                 }
@@ -560,7 +560,13 @@ impl Tokenizer {
             .all(|(i, c)| self.peek_at(i) == Some(c))
     }
 
-    fn read_string(&mut self, start: usize, start_line: usize, start_col: usize) -> Result<Token> {
+    fn read_string(
+        &mut self,
+        start: usize,
+        start_line: usize,
+        start_col: usize,
+        token_type: TokenType,
+    ) -> Result<Token> {
         let mut value = String::new();
         loop {
             match self.advance() {
@@ -569,13 +575,7 @@ impl Tokenizer {
                         self.advance();
                         value.push('\'');
                     } else {
-                        return Ok(self.make_token(
-                            TokenType::String,
-                            value,
-                            start,
-                            start_line,
-                            start_col,
-                        ));
+                        return Ok(self.make_token(token_type, value, start, start_line, start_col));
                     }
                 }
                 Some('\\') => match self.peek() {

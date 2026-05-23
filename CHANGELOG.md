@@ -36,6 +36,7 @@ this file records what landed.
 - Matched SQLGlot spacing for `ROLLUP (...)`, `CUBE (...)`, and `GROUPING SETS (...)` generation.
 - Matched Postgres-to-SQLite array literal output by rendering `ARRAY[...]` as SQLGlot-style `ARRAY(...)`, including nested array literals.
 - Matched SQLGlot normalization for raw Postgres `CREATE TYPE ... AS ENUM (...)` statements targeting SQLite.
+- Added a Postgres `E'...'` escaped-string AST carrier and matched SQLGlot's current SQLite-targeted `ByteString` rendering.
 
 ## 2026-05-20
 

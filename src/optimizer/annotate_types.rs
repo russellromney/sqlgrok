@@ -465,6 +465,7 @@ fn annotate_children<S: Schema>(
         | Expr::Number(_)
         | Expr::HexString(_)
         | Expr::StringLiteral(_)
+        | Expr::EscapedStringLiteral(_)
         | Expr::Boolean(_)
         | Expr::Null
         | Expr::Wildcard
@@ -503,7 +504,7 @@ fn infer_type<S: Schema>(
         // ── Literals ───────────────────────────────────────────────────
         Expr::Number(s) => Some(infer_number_type(s)),
         Expr::HexString(_) => Some(DataType::Binary(None)),
-        Expr::StringLiteral(_) => Some(DataType::Varchar(None)),
+        Expr::StringLiteral(_) | Expr::EscapedStringLiteral(_) => Some(DataType::Varchar(None)),
         Expr::Boolean(_) => Some(DataType::Boolean),
         Expr::Null => Some(DataType::Null),
 
