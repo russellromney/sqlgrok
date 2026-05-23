@@ -759,6 +759,7 @@ dependencies = [
  "log",
  "predicates",
  "pretty_assertions",
+ "regex",
  "serde",
  "serde_json",
  "tempfile",

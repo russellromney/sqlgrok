@@ -246,6 +246,57 @@ fn test_where_like() {
 }
 
 #[test]
+fn test_similar_to_scalar_execution() {
+    let tables = sample_tables();
+    let result = execute(
+        "SELECT 'abc' SIMILAR TO 'a_c', 'axyzc' SIMILAR TO 'a%c', 'abc' SIMILAR TO '(abc|def)'",
+        &tables,
+    )
+    .unwrap();
+
+    assert_eq!(
+        result.rows[0],
+        vec![
+            Value::Boolean(true),
+            Value::Boolean(true),
+            Value::Boolean(true)
+        ]
+    );
+}
+
+#[test]
+fn test_similar_to_escape_execution() {
+    let tables = sample_tables();
+    let result = execute(
+        "SELECT 'a_c' SIMILAR TO 'a#_c' ESCAPE '#', 'abc' SIMILAR TO 'a#_c' ESCAPE '#', 'ac' SIMILAR TO 'a_c' ESCAPE '_'",
+        &tables,
+    )
+    .unwrap();
+
+    assert_eq!(
+        result.rows[0],
+        vec![
+            Value::Boolean(true),
+            Value::Boolean(false),
+            Value::Boolean(true)
+        ]
+    );
+}
+
+#[test]
+fn test_where_similar_to() {
+    let tables = sample_tables();
+    let result = execute(
+        "SELECT name FROM employees WHERE name SIMILAR TO 'A%'",
+        &tables,
+    )
+    .unwrap();
+
+    assert_eq!(result.row_count(), 1);
+    assert_eq!(result.rows[0][0], Value::String("Alice".to_string()));
+}
+
+#[test]
 fn test_where_not_equals() {
     let tables = sample_tables();
     let result = execute(

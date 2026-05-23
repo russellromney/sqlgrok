@@ -25,6 +25,8 @@ this file records what landed.
 - Matched Postgres-to-SQLite `DATE_TRUNC`/`DATE_PART` time-function output while preserving SQLite identity behavior.
 - Fixed `EXTRACT(... FROM CAST(... AS DATE))` child expression transforms for Postgres-to-SQLite parity.
 - Added Postgres JSON path parity for `#>`, `#>>`, and `JSON_EXTRACT_PATH(_TEXT)` SQLite-targeted output.
+- Hardened JSON path parity around cast-chained `#>`/`#>>`, quoted path segments, numeric path segments, and deterministic mixed-segment `JSON_EXTRACT_PATH(_TEXT)` path combinations.
+- Added local executor support for a practical `SIMILAR TO` subset with `%`, `_`, explicit escapes, and common regex operators.
 
 ## 2026-05-20
 

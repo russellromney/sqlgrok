@@ -402,6 +402,18 @@ fn test_postgres_json_access_to_sqlite_paths() {
         Dialect::Sqlite,
     );
     validate_with_dialect(
+        "'{\"a\":[1,2,3],\"b\":[4,5,6]}'::json#>'{a,2}'",
+        "JSONB_EXTRACT(CAST('{\"a\":[1,2,3],\"b\":[4,5,6]}' AS JSON), '{a,2}')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "'{\"a\":[1,2,3],\"b\":[4,5,6]}'::json#>>'{a,2}'",
+        "JSONB_EXTRACT_SCALAR(CAST('{\"a\":[1,2,3],\"b\":[4,5,6]}' AS JSON), '{a,2}')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
         "JSON_EXTRACT_PATH('{\"f2\":{\"f3\":1},\"f4\":{\"f5\":99,\"f6\":\"foo\"}}','f4')",
         "'{\"f2\":{\"f3\":1},\"f4\":{\"f5\":99,\"f6\":\"foo\"}}' -> '$.f4'",
         Dialect::Postgres,
@@ -419,6 +431,47 @@ fn test_postgres_json_access_to_sqlite_paths() {
         Dialect::Postgres,
         Dialect::Sqlite,
     );
+
+    let path_cases = [
+        ("JSON_EXTRACT_PATH(x, 'x', 'y', 'z')", "x -> '$.x.y.z'"),
+        (
+            "JSON_EXTRACT_PATH_TEXT(x, 'space key')",
+            "x ->> '$.\"space key\"'",
+        ),
+        (
+            "JSON_EXTRACT_PATH_TEXT(x, 'quote\"key')",
+            "x ->> '$.\"quote\\\"key\"'",
+        ),
+        ("JSON_EXTRACT_PATH(x, '0')", "x -> '$[0]'"),
+        ("JSON_EXTRACT_PATH(doc, 'a', '2', 'b')", "doc -> '$.a[2].b'"),
+        (
+            "JSON_EXTRACT_PATH_TEXT(doc, 'a', '2', 'space key')",
+            "doc ->> '$.a[2].\"space key\"'",
+        ),
+        (
+            "JSON_EXTRACT_PATH(doc, 'dash-key', '0')",
+            "doc -> '$.\"dash-key\"[0]'",
+        ),
+        (
+            "JSON_EXTRACT_PATH_TEXT(doc, 'quote\"key', '3')",
+            "doc ->> '$.\"quote\\\"key\"[3]'",
+        ),
+        (
+            "JSON_EXTRACT_PATH(doc, 'snake_key', 'camelCase', '5')",
+            "doc -> '$.snake_key.camelCase[5]'",
+        ),
+        (
+            "JSON_EXTRACT_PATH_TEXT(doc, 'a.b', 'c')",
+            "doc ->> '$.\"a.b\".c'",
+        ),
+        (
+            "JSON_EXTRACT_PATH(doc, 'bracket[0]', '1')",
+            "doc -> '$.\"bracket[0]\"[1]'",
+        ),
+    ];
+    for (sql, expected) in path_cases {
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
+    }
 }
 
 #[test]
@@ -2948,6 +3001,24 @@ fn test_postgres_parser_carriers_to_sqlite() {
     validate_with_dialect(
         "SELECT '%' SIMILAR TO '^%' ESCAPE '^'",
         "SELECT '%' SIMILAR TO '^%' ESCAPE '^'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT a SIMILAR TO b ESCAPE '#' FROM t",
+        "SELECT a SIMILAR TO b ESCAPE '#' FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT 'abc' SIMILAR TO 'a_c' ESCAPE '_'",
+        "SELECT 'abc' SIMILAR TO 'a_c' ESCAPE '_'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT 'a_c' SIMILAR TO 'a#_c' ESCAPE '#'",
+        "SELECT 'a_c' SIMILAR TO 'a#_c' ESCAPE '#'",
         Dialect::Postgres,
         Dialect::Sqlite,
     );

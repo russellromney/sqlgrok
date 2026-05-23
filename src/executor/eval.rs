@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::ast::*;
 use crate::errors::{Result, SqlglotError};
+use regex::Regex;
 
 use super::engine::ExecutionContext;
 use super::{ResultSet, RowContext, Tables, Value};
@@ -241,9 +242,25 @@ fn eval_expr_impl(
             let matches = like_match(&v.to_string_val(), &p.to_string_val(), false);
             Ok(Value::Boolean(if *negated { !matches } else { matches }))
         }
-        Expr::SimilarTo { .. } => Err(SqlglotError::Internal(
-            "SIMILAR TO execution is not supported".to_string(),
-        )),
+        Expr::SimilarTo {
+            expr,
+            pattern,
+            escape,
+        } => {
+            let v = eval_expr_impl(expr, row, group, tables, ctes)?;
+            let p = eval_expr_impl(pattern, row, group, tables, ctes)?;
+            let escape = if let Some(escape) = escape {
+                let value = eval_expr_impl(escape, row, group, tables, ctes)?;
+                value.to_string_val().chars().next()
+            } else {
+                Some('\\')
+            };
+            Ok(Value::Boolean(similar_to_match(
+                &v.to_string_val(),
+                &p.to_string_val(),
+                escape,
+            )?))
+        }
 
         // ── Control flow ─────────────────────────────────────────────
         Expr::Case {
@@ -1224,6 +1241,40 @@ fn like_match_impl(value: &[u8], pattern: &[u8]) -> bool {
     } else {
         false
     }
+}
+
+fn similar_to_match(value: &str, pattern: &str, escape: Option<char>) -> Result<bool> {
+    let regex = similar_pattern_to_regex(pattern, escape);
+    Ok(Regex::new(&regex)
+        .map_err(|err| SqlglotError::Internal(format!("Invalid SIMILAR TO pattern: {err}")))?
+        .is_match(value))
+}
+
+fn similar_pattern_to_regex(pattern: &str, escape: Option<char>) -> String {
+    let mut regex = String::from("(?s:^");
+    let mut chars = pattern.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if Some(ch) == escape {
+            if let Some(next) = chars.next() {
+                regex.push_str(&regex::escape(&next.to_string()));
+            } else {
+                regex.push_str(&regex::escape(&ch.to_string()));
+            }
+            continue;
+        }
+
+        match ch {
+            '%' => regex.push_str(".*"),
+            '_' => regex.push('.'),
+            '|' | '*' | '+' | '?' | '(' | ')' | '[' | ']' | '{' | '}' => regex.push(ch),
+            '.' | '^' | '$' | '\\' => regex.push_str(&regex::escape(&ch.to_string())),
+            _ => regex.push(ch),
+        }
+    }
+
+    regex.push_str("$)");
+    regex
 }
 
 // ═══════════════════════════════════════════════════════════════════════
