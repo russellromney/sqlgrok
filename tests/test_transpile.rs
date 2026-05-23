@@ -141,6 +141,8 @@ fn test_postgres_power_and_bitwise_xor_to_sqlite() {
         Dialect::Postgres,
         Dialect::Sqlite,
     );
+    validate_with_dialect("a # b", "a ^ b", Dialect::Postgres, Dialect::Sqlite);
+    validate_with_dialect("a # b", "a", Dialect::Mysql, Dialect::Sqlite);
 }
 
 #[test]

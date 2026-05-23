@@ -16,6 +16,8 @@ pub struct Tokenizer {
     col: usize,
     /// Whether to preserve comments as tokens.
     pub preserve_comments: bool,
+    /// Whether `#` starts MySQL-style line comments when it is not a JSON path operator.
+    hash_comments: bool,
 }
 
 impl Tokenizer {
@@ -28,6 +30,7 @@ impl Tokenizer {
             line: 1,
             col: 1,
             preserve_comments: false,
+            hash_comments: true,
         }
     }
 
@@ -40,6 +43,20 @@ impl Tokenizer {
             line: 1,
             col: 1,
             preserve_comments: true,
+            hash_comments: true,
+        }
+    }
+
+    /// Create a tokenizer with explicit comment handling options.
+    #[must_use]
+    pub fn with_options(input: &str, preserve_comments: bool, hash_comments: bool) -> Self {
+        Self {
+            input: input.chars().collect(),
+            pos: 0,
+            line: 1,
+            col: 1,
+            preserve_comments,
+            hash_comments,
         }
     }
 
@@ -447,7 +464,7 @@ impl Tokenizer {
                             start_col,
                         ))
                     }
-                } else if self.hash_looks_like_numeric_operator(start) {
+                } else if !self.hash_comments || self.hash_looks_like_numeric_operator(start) {
                     Ok(self.make_token(TokenType::BitwiseXor, "#", start, start_line, start_col))
                 } else {
                     let mut value = String::from("#");
@@ -1022,5 +1039,19 @@ mod tests {
         assert_eq!(tokens[0].token_type, TokenType::Union);
         assert_eq!(tokens[1].token_type, TokenType::Intersect);
         assert_eq!(tokens[2].token_type, TokenType::Except);
+    }
+
+    #[test]
+    fn test_tokenize_hash_with_hash_comments_disabled() {
+        let mut tok = Tokenizer::with_options("a # b", false, false);
+        let tokens = tok.tokenize().unwrap();
+        assert_eq!(tokens[1].token_type, TokenType::BitwiseXor);
+    }
+
+    #[test]
+    fn test_tokenize_hash_comment_with_hash_comments_enabled() {
+        let mut tok = Tokenizer::with_options("a # b", true, true);
+        let tokens = tok.tokenize().unwrap();
+        assert_eq!(tokens[1].token_type, TokenType::LineComment);
     }
 }

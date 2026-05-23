@@ -42,6 +42,7 @@ this file records what landed.
 - Fixed MySQL `IF(...)` child expression transforms so nested casts and division rewrites still run before SQLite generation.
 - Matched SQLGlot's order-sensitive MySQL `AUTO_INCREMENT` SQLite rendering for inline and table-level primary keys.
 - Added a SQLite-targeted function/operator parity batch covering `POSITION`, `LOCATE`, `CONCAT`, schema functions, MySQL log helpers, Postgres JSON aggregates, `IS UNKNOWN`, and MySQL `XOR`.
+- Made parsing honor dialect-specific `#` tokenization so Postgres bitwise XOR works while MySQL hash comments stay intact.
 
 ## 2026-05-20
 

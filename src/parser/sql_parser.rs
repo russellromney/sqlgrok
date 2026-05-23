@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::dialects::Dialect;
 use crate::errors::{Result, SqlglotError};
 use crate::tokens::{Token, TokenType, Tokenizer};
 
@@ -10,6 +11,13 @@ fn quote_style_from_char(c: char) -> QuoteStyle {
         '[' => QuoteStyle::Bracket,
         _ => QuoteStyle::None,
     }
+}
+
+fn dialect_supports_hash_comments(dialect: Dialect) -> bool {
+    matches!(
+        dialect,
+        Dialect::Ansi | Dialect::Mysql | Dialect::Doris | Dialect::SingleStore | Dialect::StarRocks
+    )
 }
 
 /// A recursive-descent SQL parser.
@@ -50,6 +58,36 @@ impl Parser {
             pos: 0,
             sql: sql.to_string(),
             preserve_comments: true,
+            pending_comments: Vec::new(),
+        })
+    }
+
+    /// Create a parser using source-dialect tokenization rules.
+    pub fn new_with_dialect(sql: &str, dialect: Dialect) -> Result<Self> {
+        Self::new_with_dialect_options(sql, dialect, false)
+    }
+
+    /// Create a parser that preserves comments using source-dialect tokenization rules.
+    pub fn new_with_comments_and_dialect(sql: &str, dialect: Dialect) -> Result<Self> {
+        Self::new_with_dialect_options(sql, dialect, true)
+    }
+
+    fn new_with_dialect_options(
+        sql: &str,
+        dialect: Dialect,
+        preserve_comments: bool,
+    ) -> Result<Self> {
+        let mut tokenizer = Tokenizer::with_options(
+            sql,
+            preserve_comments,
+            dialect_supports_hash_comments(dialect),
+        );
+        let tokens = tokenizer.tokenize()?;
+        Ok(Self {
+            tokens,
+            pos: 0,
+            sql: sql.to_string(),
+            preserve_comments,
             pending_comments: Vec::new(),
         })
     }
