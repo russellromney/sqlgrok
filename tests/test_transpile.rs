@@ -704,6 +704,44 @@ fn test_mysql_datediff_to_sqlite_julianday() {
 }
 
 #[test]
+fn test_postgres_function_maps_to_sqlite() {
+    let cases = [
+        ("SELECT strpos('hello','l')", "SELECT INSTR('hello', 'l')"),
+        ("SELECT chr(65)", "SELECT CHAR(65)"),
+        ("SELECT ascii('A')", "SELECT ASCII('A')"),
+        ("SELECT greatest(2,5,1)", "SELECT MAX(2, 5, 1)"),
+        ("SELECT least(2,5,1)", "SELECT MIN(2, 5, 1)"),
+        ("SELECT bool_and(x) FROM t", "SELECT MIN(x) FROM t"),
+        ("SELECT bool_or(x) FROM t", "SELECT MAX(x) FROM t"),
+        (
+            "SELECT split_part('a,b,c',',',2)",
+            "SELECT SPLIT_PART('a,b,c', ',', 2)",
+        ),
+        (
+            "SELECT position('l' IN 'hello')",
+            "SELECT INSTR('hello', 'l')",
+        ),
+        (
+            "SELECT substring('hello' FROM 2 FOR 3)",
+            "SELECT SUBSTRING('hello', 2, 3)",
+        ),
+    ];
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
+    }
+}
+
+#[test]
+fn test_mysql_date_function_maps_to_sqlite() {
+    validate_with_dialect(
+        "SELECT CURDATE()",
+        "SELECT CURRENT_DATE",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_sqlite_datediff_unit_identity() {
     validate_with_dialect(
         "DATEDIFF(a, b, 'day')",
@@ -1640,7 +1678,7 @@ fn test_transpile_substr_to_substring() {
 
 #[test]
 fn test_transpile_substring_to_substr() {
-    // SUBSTRING → SUBSTR when targeting MySQL/SQLite
+    // SUBSTRING → SUBSTR when targeting MySQL
     validate_with_dialect(
         "SELECT SUBSTRING(name, 1, 3) FROM users",
         "SELECT SUBSTR(name, 1, 3) FROM users",
@@ -1649,7 +1687,7 @@ fn test_transpile_substring_to_substr() {
     );
     validate_with_dialect(
         "SELECT SUBSTRING(name, 1, 3) FROM users",
-        "SELECT SUBSTR(name, 1, 3) FROM users",
+        "SELECT SUBSTRING(name, 1, 3) FROM users",
         Dialect::Postgres,
         Dialect::Sqlite,
     );

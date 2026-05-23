@@ -485,6 +485,37 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             }
             if matches!(target, Dialect::Sqlite)
                 && is_postgres_family(source)
+                && name.eq_ignore_ascii_case("POSITION")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::Function {
+                    name: "INSTR".to_string(),
+                    args: vec![new_args[1].clone(), new_args[0].clone()],
+                    distinct,
+                    filter,
+                    over,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && is_mysql_family(source)
+                && name.eq_ignore_ascii_case("CURDATE")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.is_empty()
+            {
+                return Expr::Column {
+                    table: None,
+                    name: "CURRENT_DATE".to_string(),
+                    quote_style: QuoteStyle::None,
+                    table_quote_style: QuoteStyle::None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && is_postgres_family(source)
                 && name.eq_ignore_ascii_case("DIV")
                 && !distinct
                 && filter.is_none()
@@ -543,6 +574,55 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     quote_style: QuoteStyle::None,
                     table_quote_style: QuoteStyle::None,
                 };
+            }
+            if matches!(target, Dialect::Sqlite) {
+                match func {
+                    TypedFunction::Greatest { exprs } => {
+                        return Expr::Function {
+                            name: "MAX".to_string(),
+                            args: exprs
+                                .into_iter()
+                                .map(|e| transform_expr(e, source, target))
+                                .collect(),
+                            distinct: false,
+                            filter,
+                            over,
+                        };
+                    }
+                    TypedFunction::Least { exprs } => {
+                        return Expr::Function {
+                            name: "MIN".to_string(),
+                            args: exprs
+                                .into_iter()
+                                .map(|e| transform_expr(e, source, target))
+                                .collect(),
+                            distinct: false,
+                            filter,
+                            over,
+                        };
+                    }
+                    TypedFunction::Substring {
+                        expr,
+                        start,
+                        length,
+                    } if is_postgres_family(source) => {
+                        let mut args = vec![
+                            transform_expr(*expr, source, target),
+                            transform_expr(*start, source, target),
+                        ];
+                        if let Some(length) = length {
+                            args.push(transform_expr(*length, source, target));
+                        }
+                        return Expr::Function {
+                            name: "SUBSTRING".to_string(),
+                            args,
+                            distinct: false,
+                            filter,
+                            over,
+                        };
+                    }
+                    _ => {}
+                }
             }
 
             let transformed_func = transform_typed_function(func, source, target);
@@ -1225,6 +1305,24 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
 
         // ── STRING_AGG / GROUP_CONCAT ───────────────────────────────────
         "STRING_AGG" if matches!(target, Dialect::Sqlite) => "GROUP_CONCAT".to_string(),
+        "STRPOS" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
+            "INSTR".to_string()
+        }
+        "CHR" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
+            "CHAR".to_string()
+        }
+        "ASCII" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
+            "ASCII".to_string()
+        }
+        "SPLIT_PART" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
+            "SPLIT_PART".to_string()
+        }
+        "BOOL_AND" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
+            "MIN".to_string()
+        }
+        "BOOL_OR" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
+            "MAX".to_string()
+        }
 
         // ── BIT aggregate functions ─────────────────────────────────────
         "BIT_AND"

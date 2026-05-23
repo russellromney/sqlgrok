@@ -1345,9 +1345,9 @@ fn test_validate_all_substring_writes() {
             (Dialect::ClickHouse, "SELECT SUBSTRING(x, 1, 3)"),
             (Dialect::Ansi, "SELECT SUBSTRING(x, 1, 3)"),
             (Dialect::Materialize, "SELECT SUBSTRING(x, 1, 3)"),
+            (Dialect::Sqlite, "SELECT SUBSTRING(x, 1, 3)"),
             // SUBSTR dialects
             (Dialect::Mysql, "SELECT SUBSTR(x, 1, 3)"),
-            (Dialect::Sqlite, "SELECT SUBSTR(x, 1, 3)"),
             (Dialect::Oracle, "SELECT SUBSTR(x, 1, 3)"),
             (Dialect::Hive, "SELECT SUBSTR(x, 1, 3)"),
             (Dialect::Spark, "SELECT SUBSTR(x, 1, 3)"),

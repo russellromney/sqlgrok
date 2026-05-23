@@ -30,6 +30,7 @@ this file records what landed.
 - Extended `SIMILAR TO` coverage for `NOT`, alternation, quantifiers, character classes, escaped regex operators, literal dots, and unbalanced delimiter literals.
 - Added the remaining upstream SQLGlot `SIMILAR TO` identity cases from Redshift as explicit parity fixtures and Rust regressions.
 - Added a dedicated `SIMILAR TO` parity corpus and a larger executor truth table covering wildcards, regex operators, ranges, POSIX character classes, escapes, and negative cases.
+- Matched SQLGlot SQLite-targeted function rewrites for Postgres `strpos`, `chr`, `ascii`, `greatest`/`least`, `bool_and`/`bool_or`, `split_part`, `position`, `substring ... FROM ... FOR`, and MySQL `CURDATE()`.
 
 ## 2026-05-20
 
