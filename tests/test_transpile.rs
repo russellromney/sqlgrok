@@ -144,6 +144,22 @@ fn test_postgres_power_and_bitwise_xor_to_sqlite() {
 }
 
 #[test]
+fn test_postgres_grouping_modifiers_spacing_to_sqlite() {
+    validate_with_dialect(
+        "SELECT a, SUM(b) FROM t GROUP BY ROLLUP(a)",
+        "SELECT a, SUM(b) FROM t GROUP BY ROLLUP (a)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT a, SUM(b) FROM t GROUP BY GROUPING SETS((a),())",
+        "SELECT a, SUM(b) FROM t GROUP BY GROUPING SETS ((a), ())",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_identity_string_concat() {
     validate_identity("SELECT 'a' || 'b'");
     validate_identity("SELECT a || b || c");

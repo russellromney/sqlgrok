@@ -33,6 +33,7 @@ this file records what landed.
 - Added a dedicated `SIMILAR TO` parity corpus and a larger executor truth table covering wildcards, regex operators, ranges, POSIX character classes, escapes, and negative cases.
 - Matched SQLGlot SQLite-targeted function rewrites for Postgres `strpos`, `chr`, `ascii`, `greatest`/`least`, `bool_and`/`bool_or`, `split_part`, `position`, `substring ... FROM ... FOR`, and MySQL `CURDATE()`.
 - Matched Postgres-to-SQLite operator parity for `^` power and `#` bitwise XOR.
+- Matched SQLGlot spacing for `ROLLUP (...)`, `CUBE (...)`, and `GROUPING SETS (...)` generation.
 
 ## 2026-05-20
 
