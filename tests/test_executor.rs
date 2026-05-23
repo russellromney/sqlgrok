@@ -288,7 +288,7 @@ fn test_similar_to_escape_execution() {
 fn test_similar_to_regex_execution_edges() {
     let tables = sample_tables();
     let result = execute(
-        "SELECT 'abbbc' SIMILAR TO 'ab{2,3}c', 'abc' SIMILAR TO '[ab]%', 'zbc' SIMILAR TO '[^z]%', 'a.c' SIMILAR TO 'a.c', 'abc' SIMILAR TO 'a.c', 'a*c' SIMILAR TO 'a#*c' ESCAPE '#'",
+        "SELECT 'abbbc' SIMILAR TO 'ab{2,3}c', 'abc' SIMILAR TO '[ab]%', 'zbc' SIMILAR TO '[^z]%', 'a.c' SIMILAR TO 'a.c', 'abc' SIMILAR TO 'a.c', 'a*c' SIMILAR TO 'a#*c' ESCAPE '#', '1bc' SIMILAR TO '[[:digit:]]%', 'abc' SIMILAR TO '(a|b|c)+'",
         &tables,
     )
     .unwrap();
@@ -302,8 +302,58 @@ fn test_similar_to_regex_execution_edges() {
             Value::Boolean(true),
             Value::Boolean(false),
             Value::Boolean(true),
+            Value::Boolean(true),
+            Value::Boolean(true),
         ]
     );
+}
+
+#[test]
+fn test_similar_to_large_truth_table() {
+    let tables = sample_tables();
+    let cases = [
+        ("'abc' SIMILAR TO 'abc'", true),
+        ("'abc' SIMILAR TO 'abd'", false),
+        ("'abc' SIMILAR TO 'a_c'", true),
+        ("'ac' SIMILAR TO 'a_c'", false),
+        ("'axyzc' SIMILAR TO 'a%c'", true),
+        ("'axyzd' SIMILAR TO 'a%c'", false),
+        ("'abc' NOT SIMILAR TO 'z%'", true),
+        ("'abc' NOT SIMILAR TO 'a%'", false),
+        ("'abc' SIMILAR TO '(abc|def)'", true),
+        ("'ghi' SIMILAR TO '(abc|def)'", false),
+        ("'abbbc' SIMILAR TO 'ab{2,3}c'", true),
+        ("'abbbbc' SIMILAR TO 'ab{2,3}c'", false),
+        ("'abbc' SIMILAR TO 'ab+c'", true),
+        ("'ac' SIMILAR TO 'ab+c'", false),
+        ("'ac' SIMILAR TO 'ab?c'", true),
+        ("'abbc' SIMILAR TO 'ab?c'", false),
+        ("'abbbbbc' SIMILAR TO 'ab*c'", true),
+        ("'adc' SIMILAR TO 'ab*c'", false),
+        ("'abc' SIMILAR TO '[ab]%'", true),
+        ("'cbc' SIMILAR TO '[ab]%'", false),
+        ("'abc' SIMILAR TO '[^z]%'", true),
+        ("'zbc' SIMILAR TO '[^z]%'", false),
+        ("'abc' SIMILAR TO '[a-c]%'", true),
+        ("'xbc' SIMILAR TO '[a-c]%'", false),
+        ("'1bc' SIMILAR TO '[[:digit:]]%'", true),
+        ("'abc' SIMILAR TO '[[:digit:]]%'", false),
+        ("'a.c' SIMILAR TO 'a.c'", true),
+        ("'abc' SIMILAR TO 'a.c'", false),
+        ("'a_c' SIMILAR TO 'a#_c' ESCAPE '#'", true),
+        ("'abc' SIMILAR TO 'a#_c' ESCAPE '#'", false),
+        ("'a%c' SIMILAR TO 'a#%c' ESCAPE '#'", true),
+        ("'abc' SIMILAR TO 'a#%c' ESCAPE '#'", false),
+        ("'a*c' SIMILAR TO 'a#*c' ESCAPE '#'", true),
+        ("'abbc' SIMILAR TO 'a#*c' ESCAPE '#'", false),
+        ("'a_c' SIMILAR TO 'a\\_c'", true),
+        ("'abc' SIMILAR TO 'a\\_c'", false),
+    ];
+
+    for (expr, expected) in cases {
+        let result = execute(&format!("SELECT {expr}"), &tables).unwrap();
+        assert_eq!(result.rows[0][0], Value::Boolean(expected), "{expr}");
+    }
 }
 
 #[test]

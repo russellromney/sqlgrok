@@ -3054,3 +3054,107 @@ fn test_postgres_parser_carriers_to_sqlite() {
     );
     assert!(transpile("SELECT ~~x", Dialect::Postgres, Dialect::Sqlite).is_err());
 }
+
+#[test]
+fn test_upstream_sqlglot_similar_to_identity_cases() {
+    validate_with_dialect(
+        "SELECT '%' SIMILAR TO '^%' ESCAPE '^'",
+        "SELECT '%' SIMILAR TO '^%' ESCAPE '^'",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "'abc' SIMILAR TO '(b|c)%'",
+        "'abc' SIMILAR TO '(b|c)%'",
+        Dialect::Redshift,
+        Dialect::Redshift,
+    );
+    validate_with_dialect(
+        "'%' SIMILAR TO '^%' ESCAPE '^'",
+        "'%' SIMILAR TO '^%' ESCAPE '^'",
+        Dialect::Redshift,
+        Dialect::Redshift,
+    );
+}
+
+#[test]
+fn test_large_similar_to_sqlglot_shaped_corpus() {
+    let cases = [
+        (
+            "SELECT 'abc' SIMILAR TO 'abc'",
+            "SELECT 'abc' SIMILAR TO 'abc'",
+        ),
+        (
+            "SELECT 'abc' SIMILAR TO 'a_c'",
+            "SELECT 'abc' SIMILAR TO 'a_c'",
+        ),
+        (
+            "SELECT 'axyzc' SIMILAR TO 'a%c'",
+            "SELECT 'axyzc' SIMILAR TO 'a%c'",
+        ),
+        (
+            "SELECT 'abc' NOT SIMILAR TO 'z%'",
+            "SELECT NOT 'abc' SIMILAR TO 'z%'",
+        ),
+        (
+            "SELECT 'def' SIMILAR TO '(abc|def)'",
+            "SELECT 'def' SIMILAR TO '(abc|def)'",
+        ),
+        (
+            "SELECT 'abbc' SIMILAR TO 'ab+c'",
+            "SELECT 'abbc' SIMILAR TO 'ab+c'",
+        ),
+        (
+            "SELECT 'ac' SIMILAR TO 'ab?c'",
+            "SELECT 'ac' SIMILAR TO 'ab?c'",
+        ),
+        (
+            "SELECT 'abbbbbc' SIMILAR TO 'ab*c'",
+            "SELECT 'abbbbbc' SIMILAR TO 'ab*c'",
+        ),
+        (
+            "SELECT 'zbc' SIMILAR TO '[^z]%'",
+            "SELECT 'zbc' SIMILAR TO '[^z]%'",
+        ),
+        (
+            "SELECT 'a.c' SIMILAR TO 'a.c'",
+            "SELECT 'a.c' SIMILAR TO 'a.c'",
+        ),
+        (
+            "SELECT 'abc' SIMILAR TO 'a.c'",
+            "SELECT 'abc' SIMILAR TO 'a.c'",
+        ),
+        (
+            "SELECT 'a%c' SIMILAR TO 'a#%c' ESCAPE '#'",
+            "SELECT 'a%c' SIMILAR TO 'a#%c' ESCAPE '#'",
+        ),
+        (
+            "SELECT 'abc' SIMILAR TO 'a\\_c'",
+            "SELECT 'abc' SIMILAR TO 'a\\_c'",
+        ),
+        (
+            "SELECT 'a_c' SIMILAR TO 'a\\_c'",
+            "SELECT 'a_c' SIMILAR TO 'a\\_c'",
+        ),
+        (
+            "SELECT col NOT SIMILAR TO '(foo|bar)%' FROM t",
+            "SELECT NOT col SIMILAR TO '(foo|bar)%' FROM t",
+        ),
+        (
+            "SELECT 'abc' SIMILAR TO '[a-c]%'",
+            "SELECT 'abc' SIMILAR TO '[a-c]%'",
+        ),
+        (
+            "SELECT '1bc' SIMILAR TO '[[:digit:]]%'",
+            "SELECT '1bc' SIMILAR TO '[[:digit:]]%'",
+        ),
+        (
+            "SELECT 'abc' SIMILAR TO '(a|b|c)+'",
+            "SELECT 'abc' SIMILAR TO '(a|b|c)+'",
+        ),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
+    }
+}

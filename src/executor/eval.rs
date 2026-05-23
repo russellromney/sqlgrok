@@ -1312,6 +1312,14 @@ fn find_unescaped_similar_delimiter(
             continue;
         }
         if chars[i] == delimiter {
+            if delimiter == ']'
+                && i + 1 < chars.len()
+                && matches!(chars.get(i.wrapping_sub(1)), Some(':' | '.' | '='))
+                && chars[i + 1] == ']'
+            {
+                i += 1;
+                continue;
+            }
             return Some(i);
         }
         i += 1;

@@ -28,6 +28,8 @@ this file records what landed.
 - Hardened JSON path parity around cast-chained `#>`/`#>>`, quoted path segments, numeric path segments, and deterministic mixed-segment `JSON_EXTRACT_PATH(_TEXT)` path combinations.
 - Added local executor support for a practical `SIMILAR TO` subset with `%`, `_`, explicit escapes, and common regex operators.
 - Extended `SIMILAR TO` coverage for `NOT`, alternation, quantifiers, character classes, escaped regex operators, literal dots, and unbalanced delimiter literals.
+- Added the remaining upstream SQLGlot `SIMILAR TO` identity cases from Redshift as explicit parity fixtures and Rust regressions.
+- Added a dedicated `SIMILAR TO` parity corpus and a larger executor truth table covering wildcards, regex operators, ranges, POSIX character classes, escapes, and negative cases.
 
 ## 2026-05-20
 
