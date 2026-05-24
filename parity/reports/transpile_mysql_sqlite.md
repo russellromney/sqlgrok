@@ -8,16 +8,16 @@ Total candidates: `494`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 269 |
-| `mismatch` | 218 |
+| `match` | 271 |
+| `mismatch` | 216 |
 | `oracle-error` | 7 |
 
 ## Top Feature Buckets
 
 | Status | Feature | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 97 |
-| `mismatch` | `SELECT` | 71 |
+| `match` | `SELECT` | 98 |
+| `mismatch` | `SELECT` | 70 |
 | `mismatch` | `CREATE TABLE` | 45 |
 | `match` | `SET` | 33 |
 | `mismatch` | `ALTER TABLE` | 26 |
@@ -55,16 +55,16 @@ Total candidates: `494`
 | `match` | `tests/dialects/test_mysql.py` | `test_canonical_functions` | 11 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_valid_interval_units` | 11 |
 | `match` | `tests/dialects/test_mysql.py` | `test_date_format` | 10 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql_time` | 10 |
-| `match` | `tests/dialects/test_mysql.py` | `test_mysql_time` | 9 |
+| `match` | `tests/dialects/test_mysql.py` | `test_mysql_time` | 10 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_mysql_time` | 9 |
 | `match` | `tests/dialects/test_mysql.py` | `test_analyze` | 8 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_convert` | 8 |
 | `match` | `tests/dialects/test_mysql.py` | `test_grant` | 7 |
 | `match` | `tests/dialects/test_mysql.py` | `test_revoke` | 7 |
 | `oracle-error` | `tests/dialects/test_mysql.py` | `test_ddl` | 7 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 6 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_match_against` | 6 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_types` | 6 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 5 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 5 |
 | `match` | `tests/dialects/test_mysql.py` | `test_escape` | 5 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_json_value` | 5 |
@@ -76,9 +76,6 @@ Total candidates: `494`
 
 ### `mismatch`
 
-- `sqlglot-mysql-to-sqlite-tests-dialects-test-bigquery-0759-test-bigquery`: `TIMESTAMPDIFF(month, b, a)`
-  - expected: `TIMESTAMPDIFF(a, b, MONTH)`
-  - actual: `CAST((JULIANDAY(month) - JULIANDAY(b)) AS INTEGER)`
 - `sqlglot-mysql-to-sqlite-tests-dialects-test-dialect-2881-test-alias`: `SELECT 1 'foo'`
   - expected: `SELECT 1 AS "foo"`
   - actual: `SELECT 1`
@@ -91,6 +88,9 @@ Total candidates: `494`
 - `sqlglot-mysql-to-sqlite-tests-dialects-test-dialect-2984-test-hash-comments`: `SELECT # comment1 x, # comment2 y # comment3`
   - expected: `/* comment1 */ SELECT x /* comment2 */, y /* comment3 */`
   - actual: `SELECT x, y`
+- `sqlglot-mysql-to-sqlite-tests-dialects-test-duckdb-1827-test-time`: `SELECT DATE '2020-01-01' + INTERVAL -1 DAY`
+  - expected: `SELECT DATE('2020-01-01') + INTERVAL '-1' DAY`
+  - actual: `SELECT DATE('2020-01-01') + INTERVAL -1 DAY`
 
 ### `oracle-error`
 

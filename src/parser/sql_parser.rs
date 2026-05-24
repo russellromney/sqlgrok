@@ -4145,7 +4145,7 @@ impl Parser {
                     }
                 }
             }
-            "DATE_DIFF" | "DATEDIFF" | "TIMESTAMPDIFF" => {
+            "DATE_DIFF" | "DATEDIFF" => {
                 let mut it = args.into_iter();
                 let first = it.next()?;
                 let second = it.next()?;

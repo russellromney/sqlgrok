@@ -46,6 +46,7 @@ this file records what landed.
 - Refreshed generated MySQL/Postgres-to-SQLite SQLGlot parity reports; MySQL now has `0` imported rust-errors, while Postgres is down to `57`.
 - Matched a SQLite-targeted time-function batch for `MAKETIME`/`MAKE_TIME`, MySQL UTC current-time functions, `TIME_STR_TO_TIME`, Unix timestamp conversion, and ambiguous MySQL `%M`/`%W` time-format tokens.
 - Hardened the SQLGlot parity harness so generated cases containing NUL bytes are sent to the Python oracle over stdin instead of argv.
+- Matched another SQLGlot-imported SQLite time batch covering MySQL `TIMESTAMPDIFF`, formatted `FROM_UNIXTIME`, Postgres `TO_DATE`, formatted `TO_TIMESTAMP`, `TO_CHAR`, and time-stepped `GENERATE_SERIES`.
 
 ## 2026-05-20
 

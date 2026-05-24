@@ -725,6 +725,64 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
+                && is_mysql_family(source)
+                && name.eq_ignore_ascii_case("FROM_UNIXTIME")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::Function {
+                    name: "UNIX_TO_TIME".to_string(),
+                    args: vec![
+                        new_args[0].clone(),
+                        transform_format_expr(new_args[1].clone(), source, target),
+                    ],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && is_mysql_family(source)
+                && name.eq_ignore_ascii_case("TIMESTAMPDIFF")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 3
+            {
+                return Expr::Function {
+                    name: "TIMESTAMPDIFF".to_string(),
+                    args: vec![
+                        new_args[2].clone(),
+                        new_args[1].clone(),
+                        timestampdiff_unit_arg(&new_args[0]),
+                    ],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && is_postgres_family(source)
+                && name.eq_ignore_ascii_case("TO_DATE")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::Function {
+                    name: "STR_TO_DATE".to_string(),
+                    args: vec![
+                        new_args[0].clone(),
+                        transform_format_expr(new_args[1].clone(), source, target),
+                    ],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
                 && is_postgres_family(source)
                 && name.eq_ignore_ascii_case("DIV")
                 && !distinct
@@ -796,6 +854,30 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     distinct: false,
                     filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
                     over: over.map(|spec| transform_window_spec(spec, source, target)),
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && is_postgres_family(source)
+                && filter.is_none()
+                && over.is_none()
+                && let TypedFunction::GenerateSeries { start, stop, step } = func
+            {
+                return Expr::Function {
+                    name: "UNNEST".to_string(),
+                    args: vec![Expr::TypedFunction {
+                        func: TypedFunction::GenerateSeries {
+                            start: Box::new(transform_expr(*start, source, target)),
+                            stop: Box::new(transform_expr(*stop, source, target)),
+                            step: step.map(|step| {
+                                Box::new(transform_generate_series_step(*step, source, target))
+                            }),
+                        },
+                        filter: None,
+                        over: None,
+                    }],
+                    distinct: false,
+                    filter: None,
+                    over: None,
                 };
             }
             if matches!(target, Dialect::Sqlite)
@@ -1452,6 +1534,54 @@ fn mysql_format_contains_time(format: &str) -> bool {
     ]
     .iter()
     .any(|needle| format.contains(needle))
+}
+
+fn timestampdiff_unit_arg(expr: &Expr) -> Expr {
+    match expr {
+        Expr::Column { name, .. } => Expr::Column {
+            table: None,
+            name: name.to_ascii_uppercase(),
+            quote_style: QuoteStyle::None,
+            table_quote_style: QuoteStyle::None,
+        },
+        Expr::StringLiteral(unit) => Expr::Column {
+            table: None,
+            name: unit.to_ascii_uppercase(),
+            quote_style: QuoteStyle::None,
+            table_quote_style: QuoteStyle::None,
+        },
+        other => other.clone(),
+    }
+}
+
+fn transform_generate_series_step(step: Expr, source: Dialect, target: Dialect) -> Expr {
+    match step {
+        Expr::StringLiteral(literal)
+            if matches!(source, Dialect::Postgres) && matches!(target, Dialect::Sqlite) =>
+        {
+            if let Some((amount, unit)) = split_compact_interval_literal(&literal).or_else(|| {
+                split_postgres_interval_literal(&literal).map(|(a, u)| (a.to_string(), u))
+            }) {
+                return Expr::Interval {
+                    value: Box::new(Expr::StringLiteral(amount)),
+                    unit: Some(unit),
+                };
+            }
+            Expr::StringLiteral(literal)
+        }
+        other => transform_expr(other, source, target),
+    }
+}
+
+fn split_compact_interval_literal(literal: &str) -> Option<(String, DateTimeField)> {
+    let split_at = literal
+        .char_indices()
+        .find_map(|(index, ch)| ch.is_ascii_alphabetic().then_some(index))?;
+    let (amount, unit) = literal.split_at(split_at);
+    if amount.is_empty() || unit.is_empty() {
+        return None;
+    }
+    parse_interval_unit(unit).map(|field| (amount.to_string(), field))
 }
 
 /// Detect the format style from a format string based on its content.

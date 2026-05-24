@@ -2930,6 +2930,52 @@ fn test_mysql_time_format_ambiguous_tokens_to_sqlite() {
 }
 
 #[test]
+fn test_sqlite_time_report_parity_batch() {
+    validate_with_dialect(
+        "TIMESTAMPDIFF(month, b, a)",
+        "TIMESTAMPDIFF(a, b, MONTH)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT FROM_UNIXTIME(1711366265, '%Y %D %M')",
+        "SELECT UNIX_TO_TIME(1711366265, '%Y %D %B')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TO_DATE('01/01/2000', 'MM/DD/YYYY')",
+        "SELECT STR_TO_DATE('01/01/2000', '%m/%d/%Y')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TO_TIMESTAMP('05 Dec 2000', 'DD Mon YYYY')",
+        "SELECT STR_TO_TIME('05 Dec 2000', '%d Mon %Y')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TO_TIMESTAMP('05 Dec 2000 10:00 AM', 'DD Mon YYYY HH:MI AM')",
+        "SELECT STR_TO_TIME('05 Dec 2000 10:00 AM', '%d Mon %Y HH:%M AM')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TO_CHAR(CAST('2020-02-03 04:05:06.789' AS TIMESTAMP), 'YY-DDD HH24:MI:SS.US TZ')",
+        "SELECT STRFTIME('%y-%j %H:%M:%S.%f %Z', CAST('2020-02-03 04:05:06.789' AS TIMESTAMP))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "GENERATE_SERIES('2019-01-01'::TIMESTAMP, NOW(), '1day')",
+        "UNNEST(GENERATE_SERIES(CAST('2019-01-01' AS TIMESTAMP), CURRENT_TIMESTAMP, INTERVAL '1' DAY))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_time_format_mysql_to_spark() {
     // MySQL format to Spark Java DateTimeFormatter style
     validate_with_dialect(

@@ -493,6 +493,14 @@ fn convert_postgres_style(format_str: &str, target: TimeFormatStyle) -> String {
             if remaining.starts_with(spec)
                 || remaining.to_uppercase().starts_with(&spec.to_uppercase())
             {
+                if matches!(target, TimeFormatStyle::Strftime)
+                    && matches!(*spec, "Mon" | "AM" | "PM")
+                {
+                    result.push_str(spec);
+                    i += spec.len();
+                    matched = true;
+                    break;
+                }
                 // Find the mapping
                 let mapping = mappings
                     .iter()
