@@ -404,6 +404,13 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 {
                     col.auto_increment = false;
                 }
+                if matches!(target, Dialect::Sqlite)
+                    && is_postgres_family(source)
+                    && col.primary_key
+                    && col.auto_increment
+                {
+                    col.nullable = None;
+                }
                 col.data_type = map_data_type_for_source(col.data_type.clone(), source, target);
                 if let Some(default) = &mut col.default {
                     *default = transform_expr(default.clone(), source, target);

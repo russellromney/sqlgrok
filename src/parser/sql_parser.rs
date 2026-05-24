@@ -20,6 +20,10 @@ fn dialect_supports_hash_comments(dialect: Dialect) -> bool {
     )
 }
 
+fn dialect_normalizes_bit_literals(dialect: Dialect) -> bool {
+    matches!(dialect, Dialect::Mysql | Dialect::Postgres)
+}
+
 /// A recursive-descent SQL parser.
 ///
 /// Supports CTEs (WITH), subqueries, UNION/INTERSECT/EXCEPT, CAST,
@@ -81,7 +85,8 @@ impl Parser {
             sql,
             preserve_comments,
             dialect_supports_hash_comments(dialect),
-        );
+        )
+        .with_bit_literals_as_numbers(dialect_normalizes_bit_literals(dialect));
         let tokens = tokenizer.tokenize()?;
         Ok(Self {
             tokens,
@@ -5012,7 +5017,7 @@ impl Parser {
             }
 
             // ── JSON ───────────────────────────────────────────────
-            "JSON_EXTRACT" | "JSON_VALUE" => {
+            "JSON_EXTRACT" | "JSON_VALUE" if args.len() == 2 => {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
                 let path = it.next()?;
@@ -5021,7 +5026,7 @@ impl Parser {
                     path: Box::new(path),
                 }
             }
-            "JSON_EXTRACT_SCALAR" => {
+            "JSON_EXTRACT_SCALAR" if args.len() == 2 => {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
                 let path = it.next()?;

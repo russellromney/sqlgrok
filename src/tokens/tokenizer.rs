@@ -18,6 +18,9 @@ pub struct Tokenizer {
     pub preserve_comments: bool,
     /// Whether `#` starts MySQL-style line comments when it is not a JSON path operator.
     hash_comments: bool,
+    /// Whether MySQL/Postgres bit literals such as `0b1011` and `b'1011'`
+    /// should be tokenized as numeric values.
+    bit_literals_as_numbers: bool,
 }
 
 impl Tokenizer {
@@ -31,6 +34,7 @@ impl Tokenizer {
             col: 1,
             preserve_comments: false,
             hash_comments: true,
+            bit_literals_as_numbers: false,
         }
     }
 
@@ -44,6 +48,7 @@ impl Tokenizer {
             col: 1,
             preserve_comments: true,
             hash_comments: true,
+            bit_literals_as_numbers: false,
         }
     }
 
@@ -57,7 +62,15 @@ impl Tokenizer {
             col: 1,
             preserve_comments,
             hash_comments,
+            bit_literals_as_numbers: false,
         }
+    }
+
+    /// Enable or disable dialects that normalize bit literals to integer numbers.
+    #[must_use]
+    pub fn with_bit_literals_as_numbers(mut self, enabled: bool) -> Self {
+        self.bit_literals_as_numbers = enabled;
+        self
     }
 
     /// Tokenize the entire input and return a vector of tokens.
@@ -132,6 +145,23 @@ impl Tokenizer {
         start_col: usize,
     ) -> Token {
         Token::with_location(token_type, value, start, start_line, start_col)
+    }
+
+    fn make_quoted_identifier(
+        &self,
+        value: impl Into<String>,
+        start: usize,
+        start_line: usize,
+        start_col: usize,
+    ) -> Token {
+        Token::with_quote(
+            TokenType::Identifier,
+            value,
+            start,
+            start_line,
+            start_col,
+            '"',
+        )
     }
 
     fn next_token(&mut self) -> Result<Token> {
@@ -494,6 +524,31 @@ impl Tokenizer {
                 if (c == 'e' || c == 'E') && self.peek() == Some('\'') {
                     self.advance();
                     self.read_string(start, start_line, start_col, TokenType::EscapedString)
+                } else if (c == 'x' || c == 'X') && self.peek() == Some('\'') {
+                    self.advance();
+                    self.read_string(start, start_line, start_col, TokenType::HexString)
+                } else if self.bit_literals_as_numbers
+                    && (c == 'b' || c == 'B')
+                    && self.peek() == Some('\'')
+                {
+                    self.advance();
+                    let token =
+                        self.read_string(start, start_line, start_col, TokenType::BitString)?;
+                    if token.value.is_empty()
+                        || !token.value.bytes().all(|b| matches!(b, b'0' | b'1'))
+                    {
+                        return Err(SqlglotError::TokenizerError {
+                            message: format!("Invalid bit literal: {}", token.value),
+                            position: start,
+                        });
+                    }
+                    Ok(self.make_token(
+                        TokenType::Number,
+                        binary_literal_to_decimal(&token.value),
+                        start,
+                        start_line,
+                        start_col,
+                    ))
                 } else {
                     self.read_identifier(start, start_line, start_col, c)
                 }
@@ -647,6 +702,46 @@ impl Tokenizer {
                 value.push(self.advance().unwrap());
             }
             return Ok(self.make_token(TokenType::HexString, value, start, start_line, start_col));
+        }
+
+        if self.bit_literals_as_numbers
+            && first == '0'
+            && self.peek().is_some_and(|c| c == 'b' || c == 'B')
+        {
+            let mut scan = self.pos + 1;
+            while self.input.get(scan).is_some_and(|c| *c == '0' || *c == '1') {
+                scan += 1;
+            }
+
+            let has_bits = scan > self.pos + 1;
+            let has_invalid_suffix = self
+                .input
+                .get(scan)
+                .is_some_and(|c| c.is_ascii_alphanumeric() || *c == '_');
+
+            if !has_bits || has_invalid_suffix {
+                let mut ident = String::from("0");
+                while self
+                    .peek()
+                    .is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
+                {
+                    ident.push(self.advance().unwrap());
+                }
+                return Ok(self.make_quoted_identifier(ident, start, start_line, start_col));
+            }
+
+            self.advance();
+            let mut bits = String::new();
+            while self.peek().is_some_and(|c| c == '0' || c == '1') {
+                bits.push(self.advance().unwrap());
+            }
+            return Ok(self.make_token(
+                TokenType::Number,
+                binary_literal_to_decimal(&bits),
+                start,
+                start_line,
+                start_col,
+            ));
         }
 
         while self.peek().is_some_and(|c| c.is_ascii_digit()) {
@@ -901,6 +996,41 @@ impl Tokenizer {
             }
         }
     }
+}
+
+fn binary_literal_to_decimal(bits: &str) -> String {
+    let mut digits = vec![0u8];
+    for bit in bits.bytes().filter(|b| matches!(b, b'0' | b'1')) {
+        let mut carry = 0u8;
+        for digit in digits.iter_mut().rev() {
+            let doubled = *digit * 2 + carry;
+            *digit = doubled % 10;
+            carry = doubled / 10;
+        }
+        if carry > 0 {
+            digits.insert(0, carry);
+        }
+
+        if bit == b'1' {
+            let mut carry = 1u8;
+            for digit in digits.iter_mut().rev() {
+                let sum = *digit + carry;
+                *digit = sum % 10;
+                carry = sum / 10;
+                if carry == 0 {
+                    break;
+                }
+            }
+            if carry > 0 {
+                digits.insert(0, carry);
+            }
+        }
+    }
+
+    digits
+        .into_iter()
+        .map(|digit| char::from(b'0' + digit))
+        .collect()
 }
 
 #[cfg(test)]

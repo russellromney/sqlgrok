@@ -55,6 +55,7 @@ this file records what landed.
 - Superseded the partial SQLGlot fixture-importer plan with a pytest-driven SQLGlot suite bridge plan and added the first `maturin`/`pyo3` Python shim exposing `sqlgrok.transpile(...)`.
 - Added the first SQLGlot pytest bridge: helper patching for `validate`, `validate_all`, and `validate_identity`, classified JSONL reports, an `xtask run-sqlglot-suite` wrapper, and a Postgres-to-SQLite budgeted module run.
 - Widened the SQLGlot pytest bridge to full transpile-family runs for Postgres-to-SQLite, MySQL-to-SQLite, and SQLite identity, with Markdown summaries, checked-in budgets, and `uv` as the default Python runner.
+- Burned down the first full-suite bridge mismatch slice: MySQL-to-SQLite and Postgres-to-SQLite now have `0` current SQLGlot-suite bridge mismatches, and SQLite identity improved to `57` matches / `34` mismatches.
 
 ## 2026-05-20
 

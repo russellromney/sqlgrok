@@ -1,6 +1,6 @@
 {
-  "match": 56,
-  "mismatch": 35,
+  "match": 57,
+  "mismatch": 34,
   "rust-error": 11,
   "oracle-error": 0,
   "unsupported-harness-shape": 5

@@ -8,8 +8,8 @@ Total cases: `107`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 56 |
-| `mismatch` | 35 |
+| `match` | 57 |
+| `mismatch` | 34 |
 | `rust-error` | 11 |
 | `unsupported-harness-shape` | 5 |
 
@@ -17,8 +17,8 @@ Total cases: `107`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_identity` | 44 |
-| `mismatch` | `validate_identity` | 26 |
+| `match` | `validate_identity` | 45 |
+| `mismatch` | `validate_identity` | 25 |
 | `match` | `validate_all` | 12 |
 | `rust-error` | `validate_identity` | 11 |
 | `mismatch` | `validate_all` | 9 |
@@ -29,9 +29,9 @@ Total cases: `107`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 26 |
+| `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 27 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_ddl` | 18 |
-| `mismatch` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 18 |
+| `mismatch` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 17 |
 | `mismatch` | `tests/dialects/test_sqlite.py` | `test_ddl` | 13 |
 | `rust-error` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 9 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_strftime` | 4 |
