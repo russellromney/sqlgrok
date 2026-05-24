@@ -10,11 +10,12 @@ The plan is viable, but implementation sessions need more than milestone names. 
 
 The current critical path is:
 
-1. Finish the project foundation and CI rename cleanup.
-2. Make the parity harness scalable: tags, filters, summaries, and sharper failure output.
-3. Import a small, reviewable batch of upstream Python SQLGlot transpiler cases.
-4. Ratchet the MySQL/Postgres-over-SQLite bugs first: comma joins and `GROUP_CONCAT`.
-5. Expand fixture import by feature family only after the harness can classify results.
+1. Keep the fast JSONL parity smoke suite green as a regression layer.
+2. Build the Python `maturin` shim so SQLGlot's pytest helpers can call sqlgrok directly.
+3. Add a SQLGlot pytest bridge that adapts `validate`, `validate_all`, and `validate_identity`.
+4. Produce full-suite reports with `match`, `mismatch`, `rust-error`, `oracle-error`, and `unsupported-harness-shape` classifications.
+5. Gate CI on a checked-in mismatch/error budget, then burn down MySQL/Postgres/SQLite transpiler mismatches from that report.
+6. Expand the bridge beyond transpilation into parse, generate, and optimizer suites.
 
 What this roadmap must prevent:
 
@@ -128,42 +129,56 @@ SQLGROK_PARITY_ID=mysql-group-concat-separator-to-sqlite \
   cargo test sqlglot_python_smoke_parity --features cli -- --nocapture
 ```
 
-## Milestone 2: SQLGlot Fixture Importer
+## Milestone 2: SQLGlot Suite Bridge
 
-Status: in progress.
+Status: supersedes the fixture-importer critical path.
 
-Goal: consume Python SQLGlot test data directly enough that updates from upstream are routine.
+Goal: run or adapt Python SQLGlot's actual pytest helper semantics against sqlgrok, rather than treating a partial static extractor as the suite.
 
 Deliverables:
 
-- Add a fixture importer that reads selected Python SQLGlot test files and writes sqlgrok JSONL cases.
-- Preserve source metadata: upstream file, test name, dialects, and expected SQL.
-- Start with transpiler/generator fixtures before parser and optimizer fixtures.
-- Provide an allowlist for supported fixture families and a skiplist for cases requiring missing APIs.
-- Make generated fixtures deterministic so updates produce reviewable diffs.
-- Write imported cases to feature-specific files such as `parity/cases/transpile_mysql_sqlite.jsonl`, not one giant file.
-- Include a dry-run mode that prints counts without writing.
+- Add a Python package/shim backed by Rust through `pyo3`/`maturin`, exposing at least `sqlgrok.transpile(sql, read=None, write=None) -> list[str]`.
+- Add a pytest-driven runner that executes selected SQLGlot test modules from `/Users/russellromney/Documents/Github/sqlglot` or `SQLGLOT_PYTHON_PATH`.
+- Adapt SQLGlot helper methods such as `validate`, `validate_all`, and `validate_identity` so each case compares SQLGlot's own expected SQL against sqlgrok's actual output.
+- Preserve source metadata: upstream file, source line, test name, helper name, read/write dialects, input SQL, expected SQL, and actual SQL.
+- Write JSONL reports to `parity/reports/sqlglot_suite_<family>_<read>_<write>.jsonl`.
+- Classify every attempted upstream case as `match`, `mismatch`, `rust-error`, `oracle-error`, or `unsupported-harness-shape`.
+- Add a checked-in budget file so CI fails on new Rust errors, oracle errors, unsupported harness shapes, or mismatch-count regressions while allowing intentional mismatch burn-down.
+- Keep the old fixture importer as a legacy ratchet/smoke-corpus generator, not as the definition of full-suite coverage.
 
 Acceptance checks:
 
 ```bash
-cargo run --bin xtask -- import-sqlglot-fixtures \
-  --sqlglot /path/to/sqlglot \
+cd python
+maturin develop
+python -c "import sqlgrok; print(sqlgrok.transpile('SELECT 1', read='postgres', write='sqlite'))"
+
+cargo run --bin xtask -- run-sqlglot-suite \
+  --sqlglot /Users/russellromney/Documents/Github/sqlglot \
+  --family transpile \
+  --read postgres \
+  --write sqlite \
+  --report-output parity/reports/sqlglot_suite_transpile_postgres_sqlite.jsonl
+
+cargo run --bin xtask -- run-sqlglot-suite \
+  --sqlglot /Users/russellromney/Documents/Github/sqlglot \
   --family transpile \
   --read mysql \
   --write sqlite \
-  --limit 25 \
-  --dry-run
-cargo run --bin xtask -- import-sqlglot-fixtures \
-  --sqlglot /path/to/sqlglot \
-  --family transpile \
-  --read mysql \
-  --write sqlite \
-  --limit 25
-cargo test sqlglot_python_smoke_parity --features cli
+  --check-budget
 ```
 
-The exact command may change once the tooling exists, but the workflow should stay that simple.
+The exact command may change as the bridge matures, but the workflow must run SQLGlot's
+helper semantics rather than relying only on static SQL extraction.
+
+### Legacy Fixture Importer
+
+Status: useful but no longer the endgame.
+
+The existing `xtask import-sqlglot-fixtures` command extracts a deterministic subset of
+SQLGlot transpiler cases and feeds the fast JSONL parity smoke suite. Keep it for
+reviewable regression fixtures, quick reports, and focused ratchets. Do not describe it
+as "the full SQLGlot suite."
 
 ## Milestone 3: Transpiler Parity Ratchet
 
@@ -558,33 +573,44 @@ Status: in progress.
 
 Files:
 
+- `python/pyproject.toml`
+- `python/Cargo.toml`
+- `python/src/lib.rs`
+- `python/python/sqlgrok/__init__.py`
+- `python/sqlgrok_sqlglot_bridge/`
 - `src/bin/xtask.rs`
 - `tests/sqlglot_parity.rs`
 - `docs/PARITY.md`
-- `parity/cases/*.jsonl`
+- `parity/reports/`
+- `parity/budgets/`
 
 Tasks:
 
-- Extend `xtask import-sqlglot-fixtures` so larger chunks of SQLGlot's transpiler cases can run against sqlgrok without hand-copying expectations.
-- Preserve source test file, test function, dialect pair, and reason-for-skip metadata in imported fixtures.
-- Add importer validation that rejects duplicate ids, malformed dialect names, and fixtures without enough oracle context.
-- Keep generated cases split by feature or dialect pair, not a single unreviewable corpus.
+- Build a `maturin`/`pyo3` Python shim that exposes `sqlgrok.transpile(sql, read=None, write=None) -> list[str]`.
+- Add a pytest bridge that runs selected SQLGlot tests from a local checkout and adapts SQLGlot's helper semantics.
+- Start with transpilation and SQLGlot helpers `validate`, `validate_all`, and `validate_identity`.
+- Emit JSONL and Markdown reports with `match`, `mismatch`, `rust-error`, `oracle-error`, and `unsupported-harness-shape`.
+- Add a budget file and CI check mode that fails on regressions without requiring all mismatches to be fixed immediately.
+- Keep the legacy importer available, but treat it as smoke/regression tooling rather than full-suite coverage.
 
 Landed:
 
 - Imported fixtures now include `source_file`, `source_line`, and `test_name`.
 - The importer auto-tags obvious DDL, index, and constraint cases.
+- A first `python/` pyo3 shim exposes `sqlgrok.transpile(...)` for bridge work.
 
 Remaining:
 
-- Add `--tag` or `--feature` filtering so large SQLGlot batches can be narrowed before writing.
-- Preserve expected target SQL where SQLGlot's test metadata provides it, instead of always recomputing via the oracle at test time.
+- Add the bridge adapter for SQLGlot helper calls.
+- Add `xtask run-sqlglot-suite`.
+- Add report summarization and checked-in mismatch/error budgets.
+- Wire the bridge into CI after the local command is stable.
 
 Done when:
 
 ```bash
-cargo run --bin xtask -- import-sqlglot-fixtures --sqlglot /path/to/sqlglot --family transpile --read mysql --write sqlite --limit 100 --dry-run
-cargo test sqlglot_python_smoke_parity --features cli
+cd python && maturin develop
+cargo run --bin xtask -- run-sqlglot-suite --sqlglot /path/to/sqlglot --family transpile --read postgres --write sqlite --check-budget
 cargo test --features cli
 ```
 

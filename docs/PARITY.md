@@ -11,6 +11,57 @@ Those findings are upstream/cinch candidates and should not change sqlgrok's def
 output unless Python SQLGlot changes or sqlgrok grows an explicit opt-in compatibility
 mode.
 
+## Coverage Model
+
+There are two parity layers:
+
+1. **Fast JSONL smoke parity**: `tests/sqlglot_parity.rs` loads `parity/cases/*.jsonl`,
+   calls Python SQLGlot for each source SQL, then requires sqlgrok to match exactly.
+   This is a regression corpus, not the full SQLGlot suite.
+2. **SQLGlot suite bridge**: the planned authoritative layer runs/adapts Python
+   SQLGlot's own pytest helpers against a `maturin` Python shim backed by sqlgrok.
+   This bridge must preserve SQLGlot's helper semantics instead of relying on static
+   extraction alone.
+
+The old fixture importer remains useful for ratcheting and smoke generation, but it is
+not sufficient as the project completion criterion.
+
+## Python Shim
+
+The first bridge dependency is a small Python package under `python/`:
+
+```bash
+cd python
+maturin develop
+python -c "import sqlgrok; print(sqlgrok.transpile('SELECT 1', read='postgres', write='sqlite'))"
+```
+
+The shim exposes a SQLGlot-shaped `sqlgrok.transpile(sql, read=None, write=None) -> list[str]`
+surface. It is test infrastructure first; the stable Rust API and CLI remain the product
+surface while the bridge matures.
+
+## SQLGlot Suite Bridge
+
+The bridge runner should execute selected SQLGlot pytest modules from a local checkout,
+starting with transpilation. It should adapt or monkeypatch SQLGlot's `validate`,
+`validate_all`, and `validate_identity` helpers so each upstream case records:
+
+- source test file, test function, and source line;
+- source SQL, read dialect, write dialect, and expected SQL according to SQLGlot's own
+  helper logic;
+- actual sqlgrok output through the Python shim;
+- status: `match`, `mismatch`, `rust-error`, `oracle-error`, or
+  `unsupported-harness-shape`.
+
+The bridge output belongs in `parity/reports/sqlglot_suite_<family>_<read>_<write>.jsonl`
+with a Markdown summary beside it.
+
+CI should gate the bridge by budget:
+
+- fail if `rust-error`, `oracle-error`, or `unsupported-harness-shape` increases;
+- fail if `mismatch` increases above the checked-in budget;
+- allow mismatch reductions only when the budget is updated intentionally.
+
 ## Case Format
 
 Parity cases are JSON Lines files under `parity/cases/`:
@@ -67,7 +118,8 @@ The harness rejects duplicate case ids and invalid tags. Tags must be lowercase 
 
 ## Importing SQLGlot Fixtures
 
-Use `xtask` to extract a small, deterministic batch from a local Python SQLGlot checkout:
+The importer is a legacy ratchet tool. Use `xtask` to extract a small, deterministic
+batch from a local Python SQLGlot checkout:
 
 ```bash
 cargo run --bin xtask -- import-sqlglot-fixtures \

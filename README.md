@@ -2,13 +2,13 @@
 
 sqlgrok is a pure-Rust SQL parser, optimizer, and transpiler project with one north star: pass Python SQLGlot's behavior suite directly.
 
-It is currently bootstrapped from Protegrity's Rust SQLGlot port, with an added parity harness that compares Rust output against a local Python SQLGlot checkout. The implementation stays Rust; Python is used only as the test oracle while the port catches up.
+It is currently bootstrapped from Protegrity's Rust SQLGlot port. The implementation stays Rust; Python is used only for test orchestration, SQLGlot oracle comparison, and the temporary `maturin` shim needed to run SQLGlot's own test semantics against the Rust backend.
 
 ## Goals
 
 - Keep a pure-Rust SQL transpiler library and CLI.
-- Reuse Python SQLGlot's cases and expectations wherever possible.
-- Track exact matches, known divergences, and missing features explicitly.
+- Run Python SQLGlot's behavior suite directly through a pytest bridge, starting with transpilation.
+- Track exact matches, mismatches, Rust errors, oracle errors, unsupported harness shapes, and missing features explicitly.
 - Convert every fixed parity gap into a focused Rust regression test.
 
 ## Quick Start
@@ -30,7 +30,7 @@ The project docs are split by purpose:
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): parser architecture notes and outside influences.
 - [docs/AST_INVENTORY.md](docs/AST_INVENTORY.md): SQLGlot expression coverage map.
 
-The parity smoke test looks for Python SQLGlot in one of two places:
+The fast parity smoke test looks for Python SQLGlot in one of two places:
 
 - `SQLGLOT_PYTHON_PATH=/path/to/sqlglot`
 - a sibling checkout at `../sqlglot`
@@ -43,6 +43,16 @@ SQLGLOT_PYTHON_PATH=/Users/russellromney/Documents/Github/sqlglot \
 ```
 
 The initial corpus lives in `parity/cases/smoke.jsonl`. Cases without an `accepted_rust` field must match Python SQLGlot exactly. Cases with `accepted_rust` document a known divergence while still checking that Rust behavior is stable.
+
+The smoke corpus is not the full SQLGlot suite. It is a fast regression layer. The full-suite path is the SQLGlot pytest bridge described in [ROADMAP.md](ROADMAP.md) and [docs/PARITY.md](docs/PARITY.md): a `maturin` Python shim exposes `sqlgrok.transpile(...)`, then the bridge adapts SQLGlot's `validate`, `validate_all`, and `validate_identity` helpers into JSONL/Markdown reports with budgeted CI gates.
+
+Build the Python shim locally with:
+
+```bash
+cd python
+maturin develop
+python -c "import sqlgrok; print(sqlgrok.transpile('SELECT 1', read='postgres', write='sqlite'))"
+```
 
 ## Lineage
 

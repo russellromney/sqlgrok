@@ -2,3 +2,10 @@
 /tmp
 .github/copilot-instructions.md
 packaging/test/ca-bundle.pem
+__pycache__/
+*.py[cod]
+python/target/
+python/.pytest_cache/
+python/python/sqlgrok/_native*.so
+python/python/sqlgrok/_native*.pyd
+python/python/sqlgrok/_native*.dylib
