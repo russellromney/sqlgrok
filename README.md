@@ -54,6 +54,20 @@ maturin develop
 python -c "import sqlgrok; print(sqlgrok.transpile('SELECT 1', read='postgres', write='sqlite'))"
 ```
 
+Run the first SQLGlot pytest bridge slice with:
+
+```bash
+cargo run --features cli --bin xtask -- run-sqlglot-suite \
+  --sqlglot /Users/russellromney/Documents/Github/sqlglot \
+  --family transpile \
+  --read postgres \
+  --write sqlite \
+  --module tests/dialects/test_postgres.py \
+  --check-budget \
+  --python /Users/russellromney/.venv/bin/python \
+  --pytest-arg -q
+```
+
 ## Lineage
 
 This project is derived from Protegrity's Rust SQLGlot port, which is inspired by and derived from Python [SQLGlot](https://github.com/tobymao/sqlglot). See [the upstream Rust project](https://github.com/protegrity/sql-glot-rust) for the original implementation lineage. Both upstream projects are MIT licensed.

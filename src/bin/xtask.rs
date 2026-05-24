@@ -30,6 +30,7 @@ fn run() -> Result<(), String> {
         "inventory-ast" => run_inventory(InventoryArgs::parse(raw_args)?),
         "summarize-report" => run_summarize_report(SummarizeReportArgs::parse(raw_args)?),
         "bench-sqlglot" => run_bench_sqlglot(BenchSqlglotArgs::parse(raw_args)?),
+        "run-sqlglot-suite" => run_sqlglot_suite(SqlglotSuiteArgs::parse(raw_args)?),
         "-h" | "--help" => Err(usage()),
         _ => Err(format!("unknown command {command:?}\n\n{}", usage())),
     }
@@ -42,6 +43,7 @@ fn usage() -> String {
         InventoryArgs::usage(),
         SummarizeReportArgs::usage(),
         BenchSqlglotArgs::usage(),
+        SqlglotSuiteArgs::usage(),
     ]
     .join("\n")
 }
@@ -249,6 +251,52 @@ fn run_bench_sqlglot(args: BenchSqlglotArgs) -> Result<(), String> {
         .map_err(|err| format!("failed to write {}: {err}", args.output.display()))?;
     eprintln!("wrote {}", args.output.display());
 
+    Ok(())
+}
+
+fn run_sqlglot_suite(args: SqlglotSuiteArgs) -> Result<(), String> {
+    args.validate()?;
+
+    if let Some(parent) = args.report_output.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|err| format!("failed to create {}: {err}", parent.display()))?;
+    }
+
+    let mut command = Command::new(&args.python);
+    command
+        .arg("-m")
+        .arg("sqlgrok.sqlglot_bridge")
+        .arg("--sqlglot")
+        .arg(&args.sqlglot)
+        .arg("--family")
+        .arg(&args.family)
+        .arg("--read")
+        .arg(&args.read)
+        .arg("--write")
+        .arg(&args.write)
+        .arg("--module")
+        .arg(&args.module)
+        .arg("--report-output")
+        .arg(&args.report_output);
+
+    if args.check_budget {
+        command.arg("--check-budget");
+        command.arg("--budget").arg(&args.budget);
+    }
+    command.args(&args.pytest_args);
+
+    let status = command.status().map_err(|err| {
+        format!(
+            "failed to run SQLGlot bridge with {}: {err}",
+            args.python.display()
+        )
+    })?;
+
+    if !status.success() {
+        return Err(format!("SQLGlot bridge exited with {status}"));
+    }
+
+    eprintln!("wrote {}", args.report_output.display());
     Ok(())
 }
 
@@ -560,6 +608,117 @@ struct BenchSqlglotArgs {
     dry_run: bool,
 }
 
+#[derive(Debug)]
+struct SqlglotSuiteArgs {
+    sqlglot: PathBuf,
+    family: String,
+    read: String,
+    write: String,
+    module: String,
+    report_output: PathBuf,
+    budget: PathBuf,
+    check_budget: bool,
+    python: PathBuf,
+    pytest_args: Vec<String>,
+}
+
+impl SqlglotSuiteArgs {
+    fn parse(args: impl Iterator<Item = String>) -> Result<Self, String> {
+        let mut args = args.peekable();
+        let mut sqlglot = None;
+        let mut family = None;
+        let mut read = None;
+        let mut write = None;
+        let mut module = None;
+        let mut report_output = None;
+        let mut budget = None;
+        let mut check_budget = false;
+        let mut python = None;
+        let mut pytest_args = Vec::new();
+
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "--sqlglot" => sqlglot = Some(next_value(&mut args, "--sqlglot")?.into()),
+                "--family" => family = Some(next_value(&mut args, "--family")?),
+                "--read" => read = Some(next_value(&mut args, "--read")?),
+                "--write" => write = Some(next_value(&mut args, "--write")?),
+                "--module" => module = Some(next_value(&mut args, "--module")?),
+                "--report-output" => {
+                    report_output = Some(next_value(&mut args, "--report-output")?.into())
+                }
+                "--budget" => budget = Some(next_value(&mut args, "--budget")?.into()),
+                "--check-budget" => check_budget = true,
+                "--python" => python = Some(next_value(&mut args, "--python")?.into()),
+                "--pytest-arg" => pytest_args.push(next_value(&mut args, "--pytest-arg")?),
+                "-h" | "--help" => return Err(Self::usage()),
+                _ => return Err(format!("unknown argument {arg:?}\n\n{}", Self::usage())),
+            }
+        }
+
+        let sqlglot = sqlglot.unwrap_or_else(default_sqlglot_path);
+        let family = family.unwrap_or_else(|| "transpile".to_string());
+        let read = read.ok_or_else(|| "--read is required".to_string())?;
+        let write = write.ok_or_else(|| "--write is required".to_string())?;
+        let module = module.unwrap_or_else(|| default_sqlglot_test_module(&sqlglot, &read));
+        let report_output = report_output.unwrap_or_else(|| {
+            PathBuf::from("parity/reports")
+                .join(format!("sqlglot_suite_{}_{}_{}.jsonl", family, read, write))
+        });
+        let budget = budget.unwrap_or_else(|| {
+            PathBuf::from("parity/budgets")
+                .join(format!("sqlglot_suite_{}_{}_{}.json", family, read, write))
+        });
+        let python = python
+            .or_else(|| env::var_os("PYTHON").map(PathBuf::from))
+            .unwrap_or_else(|| PathBuf::from("python3"));
+
+        Ok(Self {
+            sqlglot,
+            family,
+            read,
+            write,
+            module,
+            report_output,
+            budget,
+            check_budget,
+            python,
+            pytest_args,
+        })
+    }
+
+    fn validate(&self) -> Result<(), String> {
+        if self.family != "transpile" {
+            return Err(format!(
+                "unsupported SQLGlot suite family {:?}; currently only \"transpile\" is implemented",
+                self.family
+            ));
+        }
+        if !self.sqlglot.join("sqlglot/__init__.py").is_file() {
+            return Err(format!(
+                "{} does not look like a Python SQLGlot checkout",
+                self.sqlglot.display()
+            ));
+        }
+        if !self.sqlglot.join(&self.module).is_file() {
+            return Err(format!(
+                "{} is not a SQLGlot test module",
+                self.sqlglot.join(&self.module).display()
+            ));
+        }
+        if self.check_budget && !self.budget.is_file() {
+            return Err(format!(
+                "--check-budget requested but {} does not exist",
+                self.budget.display()
+            ));
+        }
+        Ok(())
+    }
+
+    fn usage() -> String {
+        "usage: cargo run --bin xtask -- run-sqlglot-suite --sqlglot /path/to/sqlglot --family transpile --read postgres --write sqlite [--module tests/dialects/test_postgres.py] [--report-output parity/reports/sqlglot_suite_transpile_postgres_sqlite.jsonl] [--check-budget] [--budget parity/budgets/sqlglot_suite_transpile_postgres_sqlite.json] [--python python3] [--pytest-arg -q]".to_string()
+    }
+}
+
 impl BenchSqlglotArgs {
     fn parse(args: impl Iterator<Item = String>) -> Result<Self, String> {
         let mut args = args.peekable();
@@ -635,6 +794,15 @@ fn default_sqlglot_path() -> PathBuf {
             || PathBuf::from("../sqlglot"),
             |parent| parent.join("sqlglot"),
         )
+}
+
+fn default_sqlglot_test_module(sqlglot: &Path, read: &str) -> String {
+    let dialect_module = format!("tests/dialects/test_{}.py", read.replace('-', "_"));
+    if sqlglot.join(&dialect_module).is_file() {
+        dialect_module
+    } else {
+        "tests/test_transpile.py".to_string()
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

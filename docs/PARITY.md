@@ -62,6 +62,24 @@ CI should gate the bridge by budget:
 - fail if `mismatch` increases above the checked-in budget;
 - allow mismatch reductions only when the budget is updated intentionally.
 
+The first landed bridge slice covers one upstream module, `tests/dialects/test_postgres.py`,
+filtered to Postgres-to-SQLite helper cases:
+
+```bash
+cargo run --features cli --bin xtask -- run-sqlglot-suite \
+  --sqlglot /Users/russellromney/Documents/Github/sqlglot \
+  --family transpile \
+  --read postgres \
+  --write sqlite \
+  --module tests/dialects/test_postgres.py \
+  --check-budget \
+  --python /Users/russellromney/.venv/bin/python \
+  --pytest-arg -q
+```
+
+This is not the full suite yet. It proves the loop: patch SQLGlot helpers, run pytest,
+write JSONL, and enforce a budget.
+
 ## Case Format
 
 Parity cases are JSON Lines files under `parity/cases/`:

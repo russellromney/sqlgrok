@@ -598,12 +598,13 @@ Landed:
 - Imported fixtures now include `source_file`, `source_line`, and `test_name`.
 - The importer auto-tags obvious DDL, index, and constraint cases.
 - A first `python/` pyo3 shim exposes `sqlgrok.transpile(...)` for bridge work.
+- The first pytest bridge patches `validate`, `validate_all`, and `validate_identity`, writes classified JSONL, and runs through `xtask run-sqlglot-suite` with a budget check.
 
 Remaining:
 
-- Add the bridge adapter for SQLGlot helper calls.
-- Add `xtask run-sqlglot-suite`.
-- Add report summarization and checked-in mismatch/error budgets.
+- Widen the bridge from the initial Postgres module slice to the full transpile suite.
+- Add report summarization for SQLGlot-suite JSONL rows.
+- Add checked-in mismatch/error budgets for MySQL-to-SQLite and SQLite identity.
 - Wire the bridge into CI after the local command is stable.
 
 Done when:
