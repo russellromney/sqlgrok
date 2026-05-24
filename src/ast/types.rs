@@ -404,6 +404,13 @@ pub enum Expr {
         /// OVER window specification for window functions
         over: Option<WindowSpec>,
     },
+    /// `func(...) WITHIN GROUP (ORDER BY ...)` with optional FILTER / OVER.
+    WithinGroup {
+        expr: Box<Expr>,
+        order_by: Vec<OrderByItem>,
+        filter: Option<Box<Expr>>,
+        over: Option<WindowSpec>,
+    },
     /// `expr BETWEEN low AND high`
     Between {
         expr: Box<Expr>,
@@ -584,6 +591,8 @@ pub struct WindowFrame {
     pub kind: WindowFrameKind,
     pub start: WindowFrameBound,
     pub end: Option<WindowFrameBound>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exclude: Option<WindowFrameExclude>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -598,6 +607,14 @@ pub enum WindowFrameBound {
     CurrentRow,
     Preceding(Option<Box<Expr>>), // None = UNBOUNDED PRECEDING
     Following(Option<Box<Expr>>), // None = UNBOUNDED FOLLOWING
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WindowFrameExclude {
+    NoOthers,
+    CurrentRow,
+    Group,
+    Ties,
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1493,6 +1510,11 @@ pub enum BinaryOperator {
     BitwiseXor,
     ShiftLeft,
     ShiftRight,
+    ArrayContains,
+    ArrayContainedBy,
+    RangeAdjacent,
+    Distance,
+    Distance3D,
     Glob,
     /// `->` JSON access operator
     Arrow,
@@ -1648,6 +1670,8 @@ pub enum MergeAction {
     InsertRow,
     /// DELETE
     Delete,
+    /// DO NOTHING
+    DoNothing,
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1826,6 +1850,7 @@ pub struct TruncateStatement {
 pub enum TransactionStatement {
     Begin,
     Commit,
+    CommitAndChain { chain: bool },
     Rollback,
     Savepoint(String),
     ReleaseSavepoint(String),
@@ -1932,6 +1957,10 @@ pub enum DataType {
 
     // Special
     Null,
+    Collate {
+        data_type: Box<DataType>,
+        collation: String,
+    },
     Unknown(String),
     Variant,
     Object,
@@ -1975,6 +2004,20 @@ impl Expr {
             Expr::Function { args, filter, .. } => {
                 for arg in args {
                     arg.walk(visitor);
+                }
+                if let Some(f) = filter {
+                    f.walk(visitor);
+                }
+            }
+            Expr::WithinGroup {
+                expr,
+                order_by,
+                filter,
+                ..
+            } => {
+                expr.walk(visitor);
+                for item in order_by {
+                    item.expr.walk(visitor);
                 }
                 if let Some(f) = filter {
                     f.walk(visitor);
@@ -2160,6 +2203,23 @@ impl Expr {
                 name,
                 args: args.into_iter().map(|a| a.transform(func)).collect(),
                 distinct,
+                filter: filter.map(|f| Box::new(f.transform(func))),
+                over,
+            },
+            Expr::WithinGroup {
+                expr,
+                order_by,
+                filter,
+                over,
+            } => Expr::WithinGroup {
+                expr: Box::new(expr.transform(func)),
+                order_by: order_by
+                    .into_iter()
+                    .map(|mut item| {
+                        item.expr = item.expr.transform(func);
+                        item
+                    })
+                    .collect(),
                 filter: filter.map(|f| Box::new(f.transform(func))),
                 over,
             },

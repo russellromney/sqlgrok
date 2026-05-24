@@ -338,6 +338,20 @@ fn annotate_children<S: Schema>(
                 annotate_expr(f, ctx, ann);
             }
         }
+        Expr::WithinGroup {
+            expr: inner,
+            order_by,
+            filter,
+            ..
+        } => {
+            annotate_expr(inner, ctx, ann);
+            for item in order_by {
+                annotate_expr(&item.expr, ctx, ann);
+            }
+            if let Some(f) = filter {
+                annotate_expr(f, ctx, ann);
+            }
+        }
         Expr::Between {
             expr: e, low, high, ..
         } => {
@@ -576,6 +590,7 @@ fn infer_type<S: Schema>(
 
         // ── Generic function ─────────────────────────────────────────
         Expr::Function { name, args, .. } => infer_generic_function_type(name, args, ctx, ann),
+        Expr::WithinGroup { expr: inner, .. } => ann.get_type(inner.as_ref()).cloned(),
 
         // ── Typed functions ──────────────────────────────────────────
         Expr::TypedFunction { func, .. } => infer_typed_function_type(func, ann),
@@ -690,7 +705,8 @@ fn infer_binary_op_type(
     use BinaryOperator::*;
     match op {
         // Comparison operators → Boolean
-        Eq | Neq | Lt | Gt | LtEq | GtEq | NullSafeEq | Glob => Some(DataType::Boolean),
+        Eq | Neq | Lt | Gt | LtEq | GtEq | NullSafeEq | Glob | ArrayContains | ArrayContainedBy
+        | RangeAdjacent => Some(DataType::Boolean),
 
         // Logical operators → Boolean
         And | Or | Xor => Some(DataType::Boolean),
@@ -707,12 +723,14 @@ fn infer_binary_op_type(
         },
 
         // Bitwise → integer type
-        BitwiseAnd | BitwiseOr | BitwiseXor | ShiftLeft | ShiftRight => match (left, right) {
-            (Some(l), Some(r)) => Some(coerce_numeric(l, r)),
-            (Some(l), None) => Some(l.clone()),
-            (None, Some(r)) => Some(r.clone()),
-            (None, None) => Some(DataType::Int),
-        },
+        BitwiseAnd | BitwiseOr | BitwiseXor | ShiftLeft | ShiftRight | Distance | Distance3D => {
+            match (left, right) {
+                (Some(l), Some(r)) => Some(coerce_numeric(l, r)),
+                (Some(l), None) => Some(l.clone()),
+                (None, Some(r)) => Some(r.clone()),
+                (None, None) => Some(DataType::Int),
+            }
+        }
 
         // JSON operators
         Arrow => Some(DataType::Json),

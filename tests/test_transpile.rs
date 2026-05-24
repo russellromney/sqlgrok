@@ -3085,6 +3085,144 @@ fn test_postgres_join_rust_error_report_batch_to_sqlite() {
     );
     validate_with_dialect("|/ x", "SQRT(x)", Dialect::Postgres, Dialect::Sqlite);
     validate_with_dialect("||/ x", "CBRT(x)", Dialect::Postgres, Dialect::Sqlite);
+    validate_with_dialect(
+        "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY x)",
+        "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY x NULLS LAST)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY x) OVER ()",
+        "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY x NULLS LAST) OVER ()",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY a) FILTER(WHERE CAST(b AS BOOLEAN)) AS mean_value FROM (VALUES (0, 't')) AS fake_data(a, b)",
+        "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY a NULLS LAST) FILTER(WHERE CAST(b AS INTEGER)) AS mean_value FROM (VALUES (0, 't')) AS fake_data",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT 'testa 1' NOT LIKE ALL (ARRAY['testa%', 'testb%'])",
+        "SELECT 'testa 1' NOT LIKE ALL (ARRAY('testa%', 'testb%'))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT 'testa 1' NOT ILIKE ALL (ARRAY['testa%', 'testb%'])",
+        "SELECT LOWER('testa 1') NOT LIKE LOWER(ALL (ARRAY('testa%', 'testb%')))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "CAST('a' AS TEXT COLLATE \"de_DE\")",
+        "CAST('a' AS TEXT COLLATE \"de_DE\")",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT CAST('a' AS VARCHAR COLLATE foo)",
+        "SELECT CAST('a' AS TEXT COLLATE foo)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT NUMRANGE(1.1, 2.2) -|- NUMRANGE(2.2, 3.3)",
+        "SELECT NUMRANGE(1.1, 2.2) -|- NUMRANGE(2.2, 3.3)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT p1.id, p2.id, v1, v2 FROM polygons AS p1, polygons AS p2, LATERAL VERTICES(p1.poly) v1, LATERAL VERTICES(p2.poly) v2 WHERE (v1 <-> v2) < 10 AND p1.id <> p2.id",
+        "SELECT p1.id, p2.id, v1, v2 FROM polygons AS p1, polygons AS p2, LATERAL VERTICES(p1.poly) AS v1, LATERAL VERTICES(p2.poly) AS v2 WHERE (v1 <-> v2) < 10 AND p1.id <> p2.id",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "END WORK AND NO CHAIN",
+        "COMMIT AND NO CHAIN",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "END AND CHAIN",
+        "COMMIT AND CHAIN",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT OVERLAY(a PLACING b FROM 1)",
+        "SELECT OVERLAY(a PLACING b FROM 1)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT OVERLAY(a PLACING b FROM 1 FOR 1)",
+        "SELECT OVERLAY(a PLACING b FROM 1 FOR 1)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "x::JSON -> 'duration' ->> -1",
+        "CAST(x AS JSON) -> '$.duration' ->> -1",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "WITH RECURSIVE search_tree(id, link, data) AS (SELECT t.id, t.link, t.data FROM tree AS t UNION ALL SELECT t.id, t.link, t.data FROM tree AS t, search_tree AS st WHERE t.id = st.link) SEARCH BREADTH FIRST BY id SET ordercol SELECT * FROM search_tree ORDER BY ordercol",
+        "WITH RECURSIVE search_tree(id, link, data) AS (SELECT t.id, t.link, t.data FROM tree AS t UNION ALL SELECT t.id, t.link, t.data FROM tree AS t, search_tree AS st WHERE t.id = st.link) SEARCH BREADTH FIRST BY id SET ordercol SELECT * FROM search_tree ORDER BY ordercol NULLS LAST",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "WITH RECURSIVE search_graph(id, link, data, depth) AS (SELECT g.id, g.link, g.data, 1 FROM graph AS g UNION ALL SELECT g.id, g.link, g.data, sg.depth + 1 FROM graph AS g, search_graph AS sg WHERE g.id = sg.link) CYCLE id SET is_cycle USING path SELECT * FROM search_graph",
+        "WITH RECURSIVE search_graph(id, link, data, depth) AS (SELECT g.id, g.link, g.data, 1 FROM graph AS g UNION ALL SELECT g.id, g.link, g.data, sg.depth + 1 FROM graph AS g, search_graph AS sg WHERE g.id = sg.link) CYCLE id SET is_cycle USING path SELECT * FROM search_graph",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "CAST(x AS sch.udt)",
+        "CAST(x AS sch.udt)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "COPY (SELECT * FROM t) TO 'file' WITH (FORMAT format, HEADER MATCH, FREEZE TRUE)",
+        "COPY INTO (SELECT * FROM t) TO 'file' WITH (FORMAT format, HEADER MATCH, FREEZE TRUE)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT a <<->> b",
+        "SELECT a <<->> b",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "select count() OVER(partition by a order by a range offset preceding exclude current row)",
+        "SELECT COUNT() OVER (PARTITION BY a ORDER BY a NULLS LAST range BETWEEN offset preceding AND CURRENT ROW EXCLUDE CURRENT ROW)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT ARRAY[1, 2, 3] <@ ARRAY[1, 2]",
+        "SELECT ARRAY(1, 2) @> ARRAY(1, 2, 3)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "MERGE INTO target_table USING source_table AS source ON target.id = source.id WHEN MATCHED THEN DO NOTHING WHEN NOT MATCHED THEN DO NOTHING RETURNING MERGE_ACTION(), *",
+        "MERGE INTO target_table USING source_table AS source ON target.id = source.id WHEN MATCHED THEN DO NOTHING WHEN NOT MATCHED THEN DO NOTHING RETURNING MERGE_ACTION(), *",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT 1 FROM ((VALUES (1)) AS vals(id) LEFT OUTER JOIN tbl ON vals.id = tbl.id)",
+        "SELECT 1 FROM ((VALUES (1)) AS vals LEFT OUTER JOIN tbl ON vals.id = tbl.id)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]

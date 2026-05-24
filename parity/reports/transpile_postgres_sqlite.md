@@ -8,50 +8,48 @@ Total candidates: `686`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 404 |
-| `mismatch` | 254 |
-| `rust-error` | 28 |
+| `match` | 435 |
+| `mismatch` | 251 |
 
 ## Top Feature Buckets
 
 | Status | Feature | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 157 |
-| `mismatch` | `SELECT` | 64 |
+| `match` | `SELECT` | 177 |
 | `mismatch` | `CREATE` | 62 |
-| `mismatch` | `CREATE TABLE` | 36 |
-| `match` | `CREATE TABLE` | 20 |
+| `mismatch` | `SELECT` | 62 |
+| `mismatch` | `CREATE TABLE` | 35 |
+| `match` | `CREATE TABLE` | 21 |
+| `match` | `CAST()` | 20 |
 | `match` | `REVOKE` | 19 |
-| `match` | `CAST()` | 18 |
-| `rust-error` | `SELECT` | 18 |
 | `match` | `X` | 17 |
 | `match` | `GRANT` | 16 |
+| `match` | `WITH` | 12 |
 | `mismatch` | `BEGIN` | 11 |
 | `match` | `INSERT` | 9 |
 | `match` | `INTERVAL` | 9 |
-| `match` | `WITH` | 9 |
 | `mismatch` | `CREATE INDEX` | 9 |
 | `mismatch` | `ALTER TABLE` | 8 |
 | `match` | `ROUND()` | 7 |
 | `mismatch` | `TRUNCATE` | 7 |
-| `match` | `MERGE` | 5 |
+| `match` | `MERGE` | 6 |
 | `match` | `UPDATE` | 5 |
 | `mismatch` | `WITH` | 5 |
 | `mismatch` | `X` | 5 |
 | `match` | `A` | 4 |
 | `match` | `ANALYZE` | 4 |
 | `match` | `CREATE` | 4 |
+| `match` | `DROP INDEX` | 4 |
 
 ## Top Source Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 172 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 87 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 75 |
-| `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 35 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 193 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 86 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 74 |
+| `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 36 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres_create_trigger` | 34 |
-| `rust-error` | `tests/dialects/test_postgres.py` | `test_postgres` | 20 |
 | `match` | `tests/dialects/test_postgres.py` | `test_revoke` | 19 |
 | `match` | `tests/dialects/test_postgres.py` | `test_grant` | 16 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_begin_transaction` | 11 |
@@ -71,6 +69,7 @@ Total candidates: `686`
 | `match` | `tests/dialects/test_dialect.py` | `test_regexp_instr` | 4 |
 | `match` | `tests/dialects/test_doris.py` | `test_table_alias_conversion` | 4 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 4 |
+| `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 4 |
 
 ## Non-Matching Examples
 
@@ -91,22 +90,4 @@ Total candidates: `686`
 - `sqlglot-postgres-to-sqlite-tests-dialects-test-dialect-1490-test-array`: `ARRAY_PREPEND(x, arr)`
   - expected: `ARRAY_PREPEND(arr, x)`
   - actual: `ARRAY_PREPEND(x, arr)`
-
-### `rust-error`
-
-- `sqlglot-postgres-to-sqlite-tests-dialects-test-oracle-0296-test-oracle`: `CAST(x AS sch.udt)`
-  - expected: `CAST(x AS sch.udt)`
-  - error: `Parser error: Expected RParen, got Dot ('.') at line 1 col 14`
-- `sqlglot-postgres-to-sqlite-tests-dialects-test-postgres-1096-test-postgres`: `SELECT NUMRANGE(1.1, 2.2) -|- NUMRANGE(2.2, 3.3)`
-  - expected: `SELECT NUMRANGE(1.1, 2.2) -|- NUMRANGE(2.2, 3.3)`
-  - error: `Unexpected token: Token { token_type: BitwiseOr, value: "|", line: 1, col: 28, position: 27, quote_char: '\0' }`
-- `sqlglot-postgres-to-sqlite-tests-dialects-test-postgres-1709-test-recursive-cte`: `WITH RECURSIVE search_tree(id, link, data) AS (SELECT t.id, t.link, t.data FROM tree AS t UNION ALL SELECT t.id, t.link, t.data FROM tree AS t, search_tree AS st WHERE t.id = st.link) SEARCH BREADTH FIRST BY id SET ordercol SELECT * FROM search_tree ORDER BY ordercol`
-  - expected: `WITH RECURSIVE search_tree(id, link, data) AS (SELECT t.id, t.link, t.data FROM tree AS t UNION ALL SELECT t.id, t.link, t.data FROM tree AS t, search_tree AS st WHERE t.id = st.link) SEARCH BREADTH FIRST BY id SET ordercol SELECT * FROM search_tree ORDER BY ordercol NULLS LAST`
-  - error: `Parser error: Expected SELECT or INSERT after WITH clause`
-- `sqlglot-postgres-to-sqlite-tests-dialects-test-postgres-1709-test-recursive-cte-2`: `WITH RECURSIVE search_tree(id, link, data) AS (SELECT t.id, t.link, t.data FROM tree AS t UNION ALL SELECT t.id, t.link, t.data FROM tree AS t, search_tree AS st WHERE t.id = st.link) SEARCH DEPTH FIRST BY id SET ordercol SELECT * FROM search_tree ORDER BY ordercol`
-  - expected: `WITH RECURSIVE search_tree(id, link, data) AS (SELECT t.id, t.link, t.data FROM tree AS t UNION ALL SELECT t.id, t.link, t.data FROM tree AS t, search_tree AS st WHERE t.id = st.link) SEARCH DEPTH FIRST BY id SET ordercol SELECT * FROM search_tree ORDER BY ordercol NULLS LAST`
-  - error: `Parser error: Expected SELECT or INSERT after WITH clause`
-- `sqlglot-postgres-to-sqlite-tests-dialects-test-postgres-1713-test-recursive-cte`: `WITH RECURSIVE search_graph(id, link, data, depth) AS (SELECT g.id, g.link, g.data, 1 FROM graph AS g UNION ALL SELECT g.id, g.link, g.data, sg.depth + 1 FROM graph AS g, search_graph AS sg WHERE g.id = sg.link) CYCLE id SET is_cycle USING path SELECT * FROM search_graph`
-  - expected: `WITH RECURSIVE search_graph(id, link, data, depth) AS (SELECT g.id, g.link, g.data, 1 FROM graph AS g UNION ALL SELECT g.id, g.link, g.data, sg.depth + 1 FROM graph AS g, search_graph AS sg WHERE g.id = sg.link) CYCLE id SET is_cycle USING path SELECT * FROM search_graph`
-  - error: `Parser error: Expected SELECT or INSERT after WITH clause`
 

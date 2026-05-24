@@ -50,6 +50,7 @@ this file records what landed.
 - Cleared the remaining Postgres imported `time` rust-errors with raw carriers for `MAKE_INTERVAL`/`XMLELEMENT`, Postgres parameter rewriting, and `ON CONFLICT` target predicates/constraints.
 - Started the Postgres join rust-error bucket with SQLite parity carriers for `XMLTABLE`, `ROWS FROM`, and multi-argument/ordinality `UNNEST` table sources.
 - Reduced the imported Postgres-to-SQLite rust-error backlog from `57` to `28` by adding parity for wrapped `ARRAY(SELECT ...)`, `VARIADIC ARRAY` arguments, additional Postgres `TRIM`/`SUBSTRING` grammar forms, quoted collation preservation, and unary square/cube-root operators.
+- Cleared the remaining imported Postgres-to-SQLite rust-error backlog from `28` to `0` with carriers for `WITHIN GROUP`, `LIKE`/`ILIKE ALL`, collated casts, Postgres range/distance operators, transaction `END` aliases, `OVERLAY`, recursive CTE `SEARCH`/`CYCLE`, schema-qualified cast types, `COPY` subqueries, negative JSON indexes, array containment, `MERGE ... DO NOTHING`, window `EXCLUDE`, and parenthesized `VALUES` joins.
 
 ## 2026-05-20
 

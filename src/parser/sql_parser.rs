@@ -362,6 +362,7 @@ impl Parser {
                     })
                 }
             }
+            _ if self.check_keyword("COPY") => self.parse_raw_statement(),
             TokenType::Set
             | TokenType::Analyze
             | TokenType::Grant
@@ -381,9 +382,11 @@ impl Parser {
                 self.parse_expr().map(Statement::Expression)
             }
             TokenType::Truncate => self.parse_truncate().map(Statement::Truncate),
-            TokenType::Begin | TokenType::Commit | TokenType::Rollback | TokenType::Savepoint => {
-                self.parse_transaction().map(Statement::Transaction)
-            }
+            TokenType::Begin
+            | TokenType::Commit
+            | TokenType::End
+            | TokenType::Rollback
+            | TokenType::Savepoint => self.parse_transaction().map(Statement::Transaction),
             TokenType::Explain => self.parse_explain().map(Statement::Explain),
             TokenType::Use => self.parse_use().map(Statement::Use),
             _ => self.parse_expr().map(Statement::Expression),
@@ -493,6 +496,7 @@ impl Parser {
     // ── WITH / CTE parsing ─────────────────────────────────────────
 
     fn parse_with_statement(&mut self) -> Result<Statement> {
+        let start = self.char_pos_to_byte(self.peek().position);
         self.expect(TokenType::With)?;
         let recursive = self.match_token(TokenType::Recursive);
         let mut ctes = vec![self.parse_cte(recursive)?];
@@ -512,6 +516,16 @@ impl Parser {
                 // Attach CTEs if needed (simplification)
                 let _ = ctes; // CTEs with INSERT - we'll handle this later
                 Ok(Statement::Insert(ins))
+            }
+            _ if self.check_keyword("SEARCH") || self.check_keyword("CYCLE") => {
+                while !matches!(self.peek_type(), TokenType::Semicolon | TokenType::Eof) {
+                    self.advance();
+                }
+                let end = self.char_pos_to_byte(self.peek().position);
+                Ok(Statement::Raw(RawStatement {
+                    comments: vec![],
+                    sql: self.sql[start..end].trim().to_string(),
+                }))
             }
             _ => Err(SqlglotError::ParserError {
                 message: "Expected SELECT or INSERT after WITH clause".into(),
@@ -920,6 +934,10 @@ impl Parser {
                     alias_quote_style,
                 });
             }
+            if self.peek_type() == &TokenType::LParen {
+                self.pos = saved;
+                return self.parse_raw_parenthesized_table_source();
+            }
             self.pos = saved;
         }
 
@@ -997,6 +1015,46 @@ impl Parser {
             sql,
             alias,
             alias_quote_style,
+        })
+    }
+
+    fn parse_raw_parenthesized_table_source(&mut self) -> Result<TableSource> {
+        let start = self.char_pos_to_byte(self.peek().position);
+        self.expect(TokenType::LParen)?;
+        let mut depth = 1usize;
+        while depth > 0 && self.peek_type() != &TokenType::Eof {
+            match self.peek_type() {
+                TokenType::LParen => {
+                    depth += 1;
+                    self.advance();
+                }
+                TokenType::RParen => {
+                    depth -= 1;
+                    self.advance();
+                }
+                _ => {
+                    self.advance();
+                }
+            }
+        }
+        if depth > 0 {
+            let token = self.peek();
+            return Err(SqlglotError::ParserError {
+                message: format!(
+                    "Expected RParen, got {:?} ('{}') at line {} col {}",
+                    token.token_type, token.value, token.line, token.col
+                ),
+            });
+        }
+        let end = self
+            .tokens
+            .get(self.pos.saturating_sub(1))
+            .map(|token| self.char_pos_to_byte(token.position + token.value.chars().count()))
+            .unwrap_or(start);
+        Ok(TableSource::Raw {
+            sql: self.sql[start..end].trim().to_string(),
+            alias: None,
+            alias_quote_style: QuoteStyle::None,
         })
     }
 
@@ -1743,8 +1801,8 @@ impl Parser {
             });
         }
 
-        // OUTPUT clause (T-SQL extension)
-        let output = if self.match_keyword("OUTPUT") {
+        // OUTPUT clause (T-SQL extension) / RETURNING clause (Postgres)
+        let output = if self.match_keyword("OUTPUT") || self.match_token(TokenType::Returning) {
             self.parse_select_items()?
         } else {
             vec![]
@@ -1840,6 +1898,9 @@ impl Parser {
             Ok(MergeAction::Insert { columns, values })
         } else if self.match_token(TokenType::Delete) {
             Ok(MergeAction::Delete)
+        } else if self.match_keyword("DO") {
+            self.expect_keyword("NOTHING")?;
+            Ok(MergeAction::DoNothing)
         } else {
             Err(SqlglotError::ParserError {
                 message: format!(
@@ -2443,8 +2504,14 @@ impl Parser {
                 }
             }
             TokenType::Identifier => {
-                let name = token.value.to_uppercase();
+                let raw_name = token.value.clone();
+                let name = raw_name.to_uppercase();
                 self.advance();
+                if self.match_token(TokenType::Dot) {
+                    let ty = self.expect_name()?;
+                    self.consume_balanced_parentheses();
+                    return Ok(DataType::Unknown(format!("{raw_name}.{ty}")));
+                }
                 match name.as_str() {
                     "SIGNED" | "UNSIGNED"
                         if matches!(
@@ -2505,6 +2572,17 @@ impl Parser {
             self.advance();
             let _ = self.match_token(TokenType::Set);
             let _ = self.expect_name();
+        }
+        if self.match_token(TokenType::Collate) {
+            let (collation, quote_style) = self.expect_name_with_quote()?;
+            let collation = match quote_style {
+                QuoteStyle::DoubleQuote => format!("\"{}\"", collation.replace('"', "\"\"")),
+                _ => collation,
+            };
+            dt = DataType::Collate {
+                data_type: Box::new(dt),
+                collation,
+            };
         }
         while self.match_token(TokenType::LBracket) {
             // Consume optional integer bound (PostgreSQL ignores it but accepts it)
@@ -2707,7 +2785,12 @@ impl Parser {
             TokenType::Commit => {
                 self.advance();
                 let _ = self.match_token(TokenType::Transaction);
-                Ok(TransactionStatement::Commit)
+                self.parse_commit_chain_suffix()
+            }
+            TokenType::End => {
+                self.advance();
+                let _ = self.match_keyword("WORK") || self.match_token(TokenType::Transaction);
+                self.parse_commit_chain_suffix()
             }
             TokenType::Rollback => {
                 self.advance();
@@ -2728,6 +2811,21 @@ impl Parser {
             _ => Err(SqlglotError::ParserError {
                 message: "Expected transaction statement".into(),
             }),
+        }
+    }
+
+    fn parse_commit_chain_suffix(&mut self) -> Result<TransactionStatement> {
+        if self.match_token(TokenType::And) {
+            let no_chain = self.match_keyword("NO");
+            let name = self.expect_name()?;
+            if !name.eq_ignore_ascii_case("CHAIN") {
+                return Err(SqlglotError::ParserError {
+                    message: format!("Expected CHAIN, got {name}"),
+                });
+            }
+            Ok(TransactionStatement::CommitAndChain { chain: !no_chain })
+        } else {
+            Ok(TransactionStatement::Commit)
         }
     }
 
@@ -2811,6 +2909,40 @@ impl Parser {
         let mut left = self.parse_addition()?;
 
         loop {
+            if self.peek_type() == &TokenType::Lt
+                && self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|token| token.token_type == TokenType::AtSign)
+            {
+                self.advance();
+                self.advance();
+                let right = self.parse_addition()?;
+                left = Expr::BinaryOp {
+                    left: Box::new(left),
+                    op: BinaryOperator::ArrayContainedBy,
+                    right: Box::new(right),
+                };
+                continue;
+            }
+
+            if self.peek_type() == &TokenType::Lt
+                && self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|token| token.token_type == TokenType::Arrow)
+            {
+                self.advance();
+                self.advance();
+                let right = self.parse_addition()?;
+                left = Expr::BinaryOp {
+                    left: Box::new(left),
+                    op: BinaryOperator::Distance,
+                    right: Box::new(right),
+                };
+                continue;
+            }
+
             let op = match self.peek_type() {
                 TokenType::Eq => Some(BinaryOperator::Eq),
                 TokenType::Neq => Some(BinaryOperator::Neq),
@@ -2861,6 +2993,25 @@ impl Parser {
                         right: Box::new(right),
                     };
                 }
+            } else if self.peek_type() == &TokenType::BitwiseOr
+                && self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|token| token.token_type == TokenType::Minus)
+                && self
+                    .tokens
+                    .get(self.pos + 2)
+                    .is_some_and(|token| token.token_type == TokenType::BitwiseOr)
+            {
+                self.advance();
+                self.advance();
+                self.advance();
+                let right = self.parse_addition()?;
+                left = Expr::BinaryOp {
+                    left: Box::new(left),
+                    op: BinaryOperator::RangeAdjacent,
+                    right: Box::new(right),
+                };
             } else if matches!(
                 self.peek_type(),
                 TokenType::BitwiseNot
@@ -2921,7 +3072,7 @@ impl Parser {
                     TokenType::PostgresILike | TokenType::PostgresNotILike
                 );
                 self.advance();
-                let pattern = self.parse_addition()?;
+                let pattern = self.parse_like_quantified_pattern()?;
                 left = if case_insensitive {
                     Expr::ILike {
                         expr: Box::new(left),
@@ -3055,7 +3206,7 @@ impl Parser {
                         };
                     }
                 } else if self.match_token(TokenType::Like) {
-                    let pattern = self.parse_addition()?;
+                    let pattern = self.parse_like_quantified_pattern()?;
                     let escape = if self.match_token(TokenType::Escape) {
                         Some(Box::new(self.parse_primary()?))
                     } else {
@@ -3068,7 +3219,7 @@ impl Parser {
                         escape,
                     };
                 } else if self.match_token(TokenType::ILike) {
-                    let pattern = self.parse_addition()?;
+                    let pattern = self.parse_like_quantified_pattern()?;
                     let escape = if self.match_token(TokenType::Escape) {
                         Some(Box::new(self.parse_primary()?))
                     } else {
@@ -3144,6 +3295,43 @@ impl Parser {
     fn parse_addition(&mut self) -> Result<Expr> {
         let mut left = self.parse_multiplication()?;
         loop {
+            if self.peek_type() == &TokenType::ShiftLeft
+                && self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|token| token.token_type == TokenType::DoubleArrow)
+            {
+                self.advance();
+                self.advance();
+                let right = self.parse_multiplication()?;
+                left = Expr::BinaryOp {
+                    left: Box::new(left),
+                    op: BinaryOperator::Distance3D,
+                    right: Box::new(right),
+                };
+                continue;
+            }
+
+            if self.peek_type() == &TokenType::Minus
+                && self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|token| token.token_type == TokenType::BitwiseOr)
+            {
+                self.advance();
+                self.advance();
+                if self.peek_type() == &TokenType::Minus {
+                    self.advance();
+                }
+                let right = self.parse_multiplication()?;
+                left = Expr::BinaryOp {
+                    left: Box::new(left),
+                    op: BinaryOperator::RangeAdjacent,
+                    right: Box::new(right),
+                };
+                continue;
+            }
+
             let op = match self.peek_type() {
                 TokenType::Plus => Some(BinaryOperator::Plus),
                 TokenType::Minus => Some(BinaryOperator::Minus),
@@ -3308,7 +3496,7 @@ impl Parser {
                     as_text: false,
                 };
             } else if self.match_token(TokenType::DoubleArrow) {
-                let path = self.parse_primary()?;
+                let path = self.parse_unary()?;
                 expr = Expr::JsonAccess {
                     expr: Box::new(expr),
                     path: Box::new(path),
@@ -3338,6 +3526,21 @@ impl Parser {
         }
 
         // Check for window function: expr OVER (...)
+        if self.match_keyword("WITHIN") {
+            self.expect(TokenType::Group)?;
+            self.expect(TokenType::LParen)?;
+            self.expect(TokenType::Order)?;
+            self.expect(TokenType::By)?;
+            let order_by = self.parse_order_by_items()?;
+            self.expect(TokenType::RParen)?;
+            expr = Expr::WithinGroup {
+                expr: Box::new(expr),
+                order_by,
+                filter: None,
+                over: None,
+            };
+        }
+
         if self.match_token(TokenType::Over) {
             let spec = if self.match_token(TokenType::LParen) {
                 let ws = self.parse_window_spec()?;
@@ -3376,6 +3579,19 @@ impl Parser {
                         over: Some(spec),
                     };
                 }
+                Expr::WithinGroup {
+                    expr: inner,
+                    order_by,
+                    filter,
+                    ..
+                } => {
+                    expr = Expr::WithinGroup {
+                        expr: inner,
+                        order_by,
+                        filter,
+                        over: Some(spec),
+                    };
+                }
                 _ => {}
             }
         }
@@ -3405,6 +3621,19 @@ impl Parser {
                 Expr::TypedFunction { func, over, .. } => {
                     expr = Expr::TypedFunction {
                         func,
+                        filter: Some(Box::new(filter_expr)),
+                        over,
+                    };
+                }
+                Expr::WithinGroup {
+                    expr: inner,
+                    order_by,
+                    over,
+                    ..
+                } => {
+                    expr = Expr::WithinGroup {
+                        expr: inner,
+                        order_by,
                         filter: Some(Box::new(filter_expr)),
                         over,
                     };
@@ -3461,7 +3690,6 @@ impl Parser {
         } else {
             None
         };
-        self.consume_window_exclude_clause();
 
         Ok(WindowSpec {
             window_ref,
@@ -3484,32 +3712,42 @@ impl Parser {
             let start = self.parse_window_frame_bound()?;
             self.expect(TokenType::And)?;
             let end = self.parse_window_frame_bound()?;
+            let exclude = self.consume_window_exclude_clause();
             Ok(WindowFrame {
                 kind,
                 start,
                 end: Some(end),
+                exclude,
             })
         } else {
             let start = self.parse_window_frame_bound()?;
+            let exclude = self.consume_window_exclude_clause();
+            let end = exclude.as_ref().map(|_| WindowFrameBound::CurrentRow);
             Ok(WindowFrame {
                 kind,
                 start,
-                end: None,
+                end,
+                exclude,
             })
         }
     }
 
-    fn consume_window_exclude_clause(&mut self) {
+    fn consume_window_exclude_clause(&mut self) -> Option<WindowFrameExclude> {
         if !self.match_keyword("EXCLUDE") {
-            return;
+            return None;
         }
 
         if self.match_keyword("NO") {
             let _ = self.match_keyword("OTHERS");
+            Some(WindowFrameExclude::NoOthers)
         } else if self.match_keyword("CURRENT") {
             let _ = self.match_keyword("ROW");
+            Some(WindowFrameExclude::CurrentRow)
+        } else if self.match_keyword("GROUP") {
+            Some(WindowFrameExclude::Group)
         } else {
-            let _ = self.match_keyword("GROUP") || self.match_keyword("TIES");
+            let _ = self.match_keyword("TIES");
+            Some(WindowFrameExclude::Ties)
         }
     }
 
@@ -3526,7 +3764,17 @@ impl Parser {
                 Ok(WindowFrameBound::Following(None))
             }
         } else {
-            let n = self.parse_expr()?;
+            let n = if self.peek_type() == &TokenType::Offset {
+                self.advance();
+                Expr::Column {
+                    table: None,
+                    name: "offset".to_string(),
+                    quote_style: QuoteStyle::None,
+                    table_quote_style: QuoteStyle::None,
+                }
+            } else {
+                self.parse_expr()?
+            };
             if self.match_token(TokenType::Preceding) {
                 Ok(WindowFrameBound::Preceding(Some(Box::new(n))))
             } else {
@@ -3863,7 +4111,10 @@ impl Parser {
                 if self.peek_type() == &TokenType::LParen {
                     self.advance();
 
-                    if matches!(name.to_uppercase().as_str(), "MAKE_INTERVAL" | "XMLELEMENT") {
+                    if matches!(
+                        name.to_uppercase().as_str(),
+                        "MAKE_INTERVAL" | "XMLELEMENT" | "OVERLAY"
+                    ) {
                         let raw_args = self.parse_raw_function_args()?;
                         return Ok(Expr::Function {
                             name,
@@ -3912,8 +4163,19 @@ impl Parser {
                     };
                     self.expect(TokenType::RParen)?;
 
-                    // Try to construct a typed function variant
-                    if let Some(typed) = Self::try_typed_function(&name, args.clone(), distinct) {
+                    // Try to construct a typed function variant. Keep COUNT() as
+                    // a raw function because SQLGlot preserves the empty call.
+                    if name.eq_ignore_ascii_case("COUNT") && args.is_empty() {
+                        Ok(Expr::Function {
+                            name: "COUNT".to_string(),
+                            args,
+                            distinct,
+                            filter: None,
+                            over: None,
+                        })
+                    } else if let Some(typed) =
+                        Self::try_typed_function(&name, args.clone(), distinct)
+                    {
                         Ok(typed)
                     } else {
                         Ok(Expr::Function {
@@ -4138,6 +4400,23 @@ impl Parser {
                 args.push(self.parse_expr()?);
             }
             Ok(args)
+        }
+    }
+
+    fn parse_like_quantified_pattern(&mut self) -> Result<Expr> {
+        if self.match_token(TokenType::All) {
+            self.expect(TokenType::LParen)?;
+            let expr = self.parse_expr()?;
+            self.expect(TokenType::RParen)?;
+            Ok(Expr::Function {
+                name: "ALL".to_string(),
+                args: vec![expr],
+                distinct: false,
+                filter: None,
+                over: None,
+            })
+        } else {
+            self.parse_addition()
         }
     }
 

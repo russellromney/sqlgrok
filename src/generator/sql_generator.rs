@@ -1081,7 +1081,11 @@ impl Generator {
 
         if !merge.output.is_empty() {
             self.sep();
-            self.write_keyword("OUTPUT ");
+            if self.dialect == Some(Dialect::Sqlite) {
+                self.write_keyword("RETURNING ");
+            } else {
+                self.write_keyword("OUTPUT ");
+            }
             for (i, item) in merge.output.iter().enumerate() {
                 if i > 0 {
                     self.write(", ");
@@ -1159,6 +1163,10 @@ impl Generator {
             MergeAction::Delete => {
                 self.sep();
                 self.write_keyword("DELETE");
+            }
+            MergeAction::DoNothing => {
+                self.sep();
+                self.write_keyword("DO NOTHING");
             }
         }
     }
@@ -1618,6 +1626,13 @@ impl Generator {
         match t {
             TransactionStatement::Begin => self.write_keyword("BEGIN"),
             TransactionStatement::Commit => self.write_keyword("COMMIT"),
+            TransactionStatement::CommitAndChain { chain } => {
+                self.write_keyword("COMMIT AND ");
+                if !chain {
+                    self.write_keyword("NO ");
+                }
+                self.write_keyword("CHAIN");
+            }
             TransactionStatement::Rollback => self.write_keyword("ROLLBACK"),
             TransactionStatement::Savepoint(name) => {
                 self.write_keyword("SAVEPOINT ");
@@ -1786,6 +1801,15 @@ impl Generator {
                 self.write(")");
             }
             DataType::Null => self.write("NULL"),
+            DataType::Collate {
+                data_type,
+                collation,
+            } => {
+                self.gen_data_type(data_type);
+                self.write(" ");
+                self.write_keyword("COLLATE ");
+                self.write(collation);
+            }
             DataType::Variant => self.write("VARIANT"),
             DataType::Object => self.write("OBJECT"),
             DataType::Xml => self.write("XML"),
@@ -1842,6 +1866,11 @@ impl Generator {
             BinaryOperator::BitwiseXor => " ^ ",
             BinaryOperator::ShiftLeft => " << ",
             BinaryOperator::ShiftRight => " >> ",
+            BinaryOperator::ArrayContains => " @> ",
+            BinaryOperator::ArrayContainedBy => " <@ ",
+            BinaryOperator::RangeAdjacent => " -|- ",
+            BinaryOperator::Distance => " <-> ",
+            BinaryOperator::Distance3D => " <<->> ",
             BinaryOperator::Glob => " GLOB ",
             BinaryOperator::Arrow => " -> ",
             BinaryOperator::DoubleArrow => " ->> ",
@@ -1991,13 +2020,19 @@ impl Generator {
                 }
                 if matches!(
                     name.to_ascii_uppercase().as_str(),
-                    "MAKE_INTERVAL" | "XMLELEMENT"
+                    "MAKE_INTERVAL" | "XMLELEMENT" | "OVERLAY"
                 ) && args.len() == 1
                     && let Expr::StringLiteral(raw_args) = &args[0]
                 {
                     self.write(name);
                     self.write("(");
                     self.write(raw_args);
+                    self.write(")");
+                    return;
+                }
+                if name.eq_ignore_ascii_case("ALL") && args.len() == 1 {
+                    self.write_keyword("ALL (");
+                    self.gen_expr(&args[0]);
                     self.write(")");
                     return;
                 }
@@ -2012,6 +2047,64 @@ impl Generator {
                 if let Some(filter_expr) = filter {
                     self.write(" ");
                     self.write_keyword("FILTER (WHERE ");
+                    self.gen_expr(filter_expr);
+                    self.write(")");
+                }
+                if let Some(spec) = over {
+                    self.write(" ");
+                    self.write_keyword("OVER ");
+                    if let Some(wref) = &spec.window_ref {
+                        if spec.partition_by.is_empty()
+                            && spec.order_by.is_empty()
+                            && spec.frame.is_none()
+                        {
+                            self.write(wref);
+                        } else {
+                            self.write("(");
+                            self.gen_window_spec(spec);
+                            self.write(")");
+                        }
+                    } else {
+                        self.write("(");
+                        self.gen_window_spec(spec);
+                        self.write(")");
+                    }
+                }
+            }
+            Expr::WithinGroup {
+                expr,
+                order_by,
+                filter,
+                over,
+            } => {
+                self.gen_expr(expr);
+                self.write(" ");
+                self.write_keyword("WITHIN GROUP (ORDER BY ");
+                for (i, item) in order_by.iter().enumerate() {
+                    if i > 0 {
+                        self.write(", ");
+                    }
+                    self.gen_expr(&item.expr);
+                    if !item.ascending {
+                        self.write(" ");
+                        self.write_keyword("DESC");
+                    } else if item.explicit_direction {
+                        self.write(" ");
+                        self.write_keyword("ASC");
+                    }
+                    if let Some(nulls_first) = item.nulls_first {
+                        self.write(" ");
+                        if nulls_first {
+                            self.write_keyword("NULLS FIRST");
+                        } else {
+                            self.write_keyword("NULLS LAST");
+                        }
+                    }
+                }
+                self.write(")");
+                if let Some(filter_expr) = filter {
+                    self.write(" ");
+                    self.write_keyword("FILTER(WHERE ");
                     self.gen_expr(filter_expr);
                     self.write(")");
                 }
@@ -2430,8 +2523,20 @@ impl Generator {
     }
 
     fn gen_window_frame(&mut self, frame: &WindowFrame) {
+        let offset_range_preceding = matches!(
+            (&frame.kind, &frame.start, &frame.end),
+            (
+                WindowFrameKind::Range,
+                WindowFrameBound::Preceding(Some(expr)),
+                Some(WindowFrameBound::CurrentRow)
+            ) if matches!(
+                expr.as_ref(),
+                Expr::Column { table: None, name, .. } if name == "offset"
+            )
+        );
         match frame.kind {
             WindowFrameKind::Rows => self.write_keyword("ROWS "),
+            WindowFrameKind::Range if offset_range_preceding => self.write("range "),
             WindowFrameKind::Range => self.write_keyword("RANGE "),
             WindowFrameKind::Groups => self.write_keyword("GROUPS "),
         }
@@ -2444,6 +2549,16 @@ impl Generator {
         } else {
             self.gen_window_frame_bound(&frame.start);
         }
+        if let Some(exclude) = &frame.exclude {
+            self.write(" ");
+            self.write_keyword("EXCLUDE ");
+            match exclude {
+                WindowFrameExclude::NoOthers => self.write_keyword("NO OTHERS"),
+                WindowFrameExclude::CurrentRow => self.write_keyword("CURRENT ROW"),
+                WindowFrameExclude::Group => self.write_keyword("GROUP"),
+                WindowFrameExclude::Ties => self.write_keyword("TIES"),
+            }
+        }
     }
 
     fn gen_window_frame_bound(&mut self, bound: &WindowFrameBound) {
@@ -2451,9 +2566,17 @@ impl Generator {
             WindowFrameBound::CurrentRow => self.write_keyword("CURRENT ROW"),
             WindowFrameBound::Preceding(None) => self.write_keyword("UNBOUNDED PRECEDING"),
             WindowFrameBound::Preceding(Some(n)) => {
+                let is_offset = matches!(
+                    n.as_ref(),
+                    Expr::Column { table: None, name, .. } if name == "offset"
+                );
                 self.gen_expr(n);
                 self.write(" ");
-                self.write_keyword("PRECEDING");
+                if is_offset {
+                    self.write("preceding");
+                } else {
+                    self.write_keyword("PRECEDING");
+                }
             }
             WindowFrameBound::Following(None) => self.write_keyword("UNBOUNDED FOLLOWING"),
             WindowFrameBound::Following(Some(n)) => {

@@ -339,6 +339,14 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             if let Some(having) = &mut sel.having {
                 *having = transform_expr(having.clone(), source, target);
             }
+            if is_postgres_family(source) && matches!(target, Dialect::Sqlite) {
+                if let Some(from) = &mut sel.from {
+                    normalize_postgres_sqlite_raw_table_source(&mut from.source);
+                }
+                for join in &mut sel.joins {
+                    normalize_postgres_sqlite_raw_table_source(&mut join.table);
+                }
+            }
             if let Some(rewritten) = rewrite_postgres_distinct_on(sel, source, target) {
                 *sel = rewritten;
             }
@@ -442,6 +450,10 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             {
                 raw.sql = sql;
             }
+            if is_postgres_family(source) && matches!(target, Dialect::Sqlite) {
+                raw.sql = normalize_postgres_recursive_cte_raw(&raw.sql);
+                raw.sql = normalize_postgres_copy_raw(&raw.sql);
+            }
         }
         _ => {}
     }
@@ -465,6 +477,114 @@ fn normalize_postgres_create_type_enum(sql: &str) -> Option<String> {
         return None;
     }
     Some(format!("CREATE TYPE {name} AS ENUM{values}"))
+}
+
+fn normalize_postgres_recursive_cte_raw(sql: &str) -> String {
+    let upper = sql.to_ascii_uppercase();
+    if !(upper.contains(" SEARCH ") && upper.contains(" ORDER BY ")) {
+        return sql.to_string();
+    }
+    if upper.contains(" NULLS FIRST") || upper.contains(" NULLS LAST") {
+        return sql.to_string();
+    }
+    let Some(order_index) = upper.rfind(" ORDER BY ") else {
+        return sql.to_string();
+    };
+    let mut out = String::with_capacity(sql.len() + " NULLS LAST".len());
+    out.push_str(&sql[..order_index]);
+    out.push_str(" ORDER BY ");
+    let order_expr_start = order_index + " ORDER BY ".len();
+    out.push_str(sql[order_expr_start..].trim_end());
+    out.push_str(" NULLS LAST");
+    out
+}
+
+fn normalize_postgres_copy_raw(sql: &str) -> String {
+    let trimmed = sql.trim_start();
+    if trimmed
+        .get(..6)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("COPY ("))
+    {
+        let leading_len = sql.len() - trimmed.len();
+        let mut out = String::with_capacity(sql.len() + " INTO".len());
+        out.push_str(&sql[..leading_len]);
+        out.push_str("COPY INTO ");
+        out.push_str(&trimmed["COPY ".len()..]);
+        out
+    } else {
+        sql.to_string()
+    }
+}
+
+fn normalize_postgres_sqlite_raw_table_source(source: &mut TableSource) {
+    match source {
+        TableSource::Raw { sql, .. } => {
+            *sql = strip_postgres_values_column_aliases(sql);
+        }
+        TableSource::Lateral { source } => normalize_postgres_sqlite_raw_table_source(source),
+        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
+            normalize_postgres_sqlite_raw_table_source(source);
+        }
+        _ => {}
+    }
+}
+
+fn strip_postgres_values_column_aliases(sql: &str) -> String {
+    if find_case_insensitive(sql, "VALUES").is_none() {
+        return sql.to_string();
+    }
+
+    let mut out = String::with_capacity(sql.len());
+    let mut index = 0usize;
+    while index < sql.len() {
+        let remaining = &sql[index..];
+        let Some(as_pos) = find_case_insensitive(remaining, " AS ") else {
+            out.push_str(remaining);
+            break;
+        };
+        let absolute_as = index + as_pos;
+        out.push_str(&sql[index..absolute_as + 4]);
+        let mut cursor = absolute_as + 4;
+        while let Some(ch) = sql[cursor..].chars().next()
+            && (ch.is_ascii_alphanumeric() || ch == '_' || ch == '"' || ch == '`')
+        {
+            out.push(ch);
+            cursor += ch.len_utf8();
+        }
+        let alias_end = cursor;
+        while let Some(ch) = sql[cursor..].chars().next()
+            && ch.is_ascii_whitespace()
+        {
+            cursor += ch.len_utf8();
+        }
+        if sql[cursor..].starts_with('(') {
+            let mut depth = 0usize;
+            let mut scan = cursor;
+            while let Some(ch) = sql[scan..].chars().next() {
+                scan += ch.len_utf8();
+                if ch == '(' {
+                    depth += 1;
+                } else if ch == ')' {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 {
+                        cursor = scan;
+                        break;
+                    }
+                }
+            }
+            index = cursor;
+        } else {
+            index = alias_end;
+        }
+    }
+    out
+}
+
+fn find_case_insensitive(haystack: &str, needle: &str) -> Option<usize> {
+    haystack
+        .as_bytes()
+        .windows(needle.len())
+        .position(|window| window.eq_ignore_ascii_case(needle.as_bytes()))
 }
 
 fn move_single_column_primary_key_to_column(ct: &mut CreateTableStatement) {
@@ -830,7 +950,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 args: new_args,
                 distinct,
                 filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
-                over,
+                over: over.map(|spec| transform_window_spec(spec, source, target)),
             }
         }
         // Recurse into typed function child expressions, with special handling
@@ -975,6 +1095,17 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 over: over.map(|spec| transform_window_spec(spec, source, target)),
             }
         }
+        Expr::Like {
+            expr,
+            pattern,
+            negated,
+            escape,
+        } => Expr::Like {
+            expr: Box::new(transform_expr(*expr, source, target)),
+            pattern: Box::new(transform_expr(*pattern, source, target)),
+            negated,
+            escape: escape.map(|e| Box::new(transform_expr(*e, source, target))),
+        },
         // ILIKE → LOWER(expr) LIKE LOWER(pattern) for non-supporting dialects
         Expr::ILike {
             expr,
@@ -1055,6 +1186,15 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     filter: None,
                     over: None,
                 }
+            } else if matches!(target, Dialect::Sqlite)
+                && is_postgres_family(source)
+                && op == BinaryOperator::ArrayContainedBy
+            {
+                Expr::BinaryOp {
+                    left: Box::new(right),
+                    op: BinaryOperator::ArrayContains,
+                    right: Box::new(left),
+                }
             } else {
                 Expr::BinaryOp {
                     left: Box::new(left),
@@ -1104,6 +1244,20 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             as_text,
         },
         Expr::Nested(inner) => Expr::Nested(Box::new(transform_expr(*inner, source, target))),
+        Expr::WithinGroup {
+            expr,
+            mut order_by,
+            filter,
+            over,
+        } => {
+            transform_order_by_items(&mut order_by, source, target);
+            Expr::WithinGroup {
+                expr: Box::new(transform_expr(*expr, source, target)),
+                order_by,
+                filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
+                over: over.map(|spec| transform_window_spec(spec, source, target)),
+            }
+        }
         Expr::Parameter(param)
             if is_postgres_family(source)
                 && matches!(target, Dialect::Sqlite)
@@ -1828,6 +1982,16 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
 /// Map data types between dialects.
 pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
     match (dt, target) {
+        (
+            DataType::Collate {
+                data_type,
+                collation,
+            },
+            target,
+        ) => DataType::Collate {
+            data_type: Box::new(map_data_type(*data_type, target)),
+            collation,
+        },
         // ── SQLite type affinity ─────────────────────────────────────────
         (
             DataType::TinyInt | DataType::SmallInt | DataType::Int | DataType::BigInt,
