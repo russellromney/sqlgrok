@@ -112,6 +112,17 @@ cargo run --features cli --bin xtask -- run-sqlglot-suite \
   --pytest-arg -q
 ```
 
+Summarize a forced report into attackable buckets:
+
+```bash
+cargo run --features cli --bin xtask -- bucket-suite-report \
+  --input parity/reports/sqlglot_suite_forced_transpile_mysql_sqlite.jsonl
+```
+
+The bucket report groups rows by status, helper, source test, SQL shape, normalized parser
+error, and mismatch signature. Use it to choose cluster-sized implementation slices
+instead of reading the full JSONL by hand.
+
 As of the latest checked-in reports, the forced-pair bridge sees all `15,164` transpile
 helper attempts for each tracked lane:
 

@@ -61,6 +61,7 @@ this file records what landed.
 - Hardened the bridge/helper review fixes by keeping `identify=True` explicitly unsupported until sqlgrok has native identify-mode generation and limiting raw-SQL pretty normalization to the SQLGlot-covered `CREATE TABLE` fallback.
 - Widened `TestTranspile.validate` bridge support for `pretty`, `identity`, and unsupported-level helper kwargs, and added bridge coverage accounting for observed helper attempts versus read/write-filtered routes.
 - Added SQLGlot suite bridge forced-pair mode, which replays pytest-discovered transpile SQL through Python SQLGlot's oracle for a requested read/write pair; checked in forced reports for MySQL-to-SQLite, Postgres-to-SQLite, and SQLite identity covering all `15,164` observed helper attempts per lane.
+- Added an `xtask bucket-suite-report` summarizer for SQLGlot suite reports and checked in bucket maps for the forced MySQL-to-SQLite, Postgres-to-SQLite, and SQLite identity lanes.
 
 ## 2026-05-20
 

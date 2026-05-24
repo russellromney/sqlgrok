@@ -606,6 +606,7 @@ Remaining:
 
 - Burn down the forced-pair report gaps by bucket, starting with the highest-volume Rust errors and mismatch clusters.
 - Add report diffing so budget updates can highlight newly fixed and newly regressed rows, not only counts.
+- Use `xtask bucket-suite-report` summaries to pick cluster-sized forced-pair burn-down work.
 - Wire the bridge into CI after the local command is stable.
 
 Done when:

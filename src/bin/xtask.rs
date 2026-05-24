@@ -29,6 +29,7 @@ fn run() -> Result<(), String> {
         }
         "inventory-ast" => run_inventory(InventoryArgs::parse(raw_args)?),
         "summarize-report" => run_summarize_report(SummarizeReportArgs::parse(raw_args)?),
+        "bucket-suite-report" => run_bucket_suite_report(BucketSuiteReportArgs::parse(raw_args)?),
         "bench-sqlglot" => run_bench_sqlglot(BenchSqlglotArgs::parse(raw_args)?),
         "run-sqlglot-suite" => run_sqlglot_suite(SqlglotSuiteArgs::parse(raw_args)?),
         "-h" | "--help" => Err(usage()),
@@ -42,6 +43,7 @@ fn usage() -> String {
         CheckSqliteCorrectnessArgs::usage(),
         InventoryArgs::usage(),
         SummarizeReportArgs::usage(),
+        BucketSuiteReportArgs::usage(),
         BenchSqlglotArgs::usage(),
         SqlglotSuiteArgs::usage(),
     ]
@@ -206,6 +208,26 @@ fn run_summarize_report(args: SummarizeReportArgs) -> Result<(), String> {
     args.validate()?;
 
     let summary = summarize_report(&args)?;
+    if args.dry_run {
+        print!("{summary}");
+        return Ok(());
+    }
+
+    if let Some(parent) = args.output.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|err| format!("failed to create {}: {err}", parent.display()))?;
+    }
+    fs::write(&args.output, summary)
+        .map_err(|err| format!("failed to write {}: {err}", args.output.display()))?;
+    eprintln!("wrote {}", args.output.display());
+
+    Ok(())
+}
+
+fn run_bucket_suite_report(args: BucketSuiteReportArgs) -> Result<(), String> {
+    args.validate()?;
+
+    let summary = bucket_suite_report(&args.input)?;
     if args.dry_run {
         print!("{summary}");
         return Ok(());
@@ -578,6 +600,13 @@ struct SummarizeReportArgs {
     dry_run: bool,
 }
 
+#[derive(Debug)]
+struct BucketSuiteReportArgs {
+    input: PathBuf,
+    output: PathBuf,
+    dry_run: bool,
+}
+
 impl SummarizeReportArgs {
     fn parse(args: impl Iterator<Item = String>) -> Result<Self, String> {
         let mut args = args.peekable();
@@ -778,6 +807,51 @@ impl SqlglotSuiteArgs {
     }
 }
 
+impl BucketSuiteReportArgs {
+    fn parse(args: impl Iterator<Item = String>) -> Result<Self, String> {
+        let mut args = args.peekable();
+        let mut input: Option<PathBuf> = None;
+        let mut output: Option<PathBuf> = None;
+        let mut dry_run = false;
+
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "--input" => input = Some(next_value(&mut args, "--input")?.into()),
+                "--output" => output = Some(next_value(&mut args, "--output")?.into()),
+                "--dry-run" => dry_run = true,
+                "-h" | "--help" => return Err(Self::usage()),
+                _ => return Err(format!("unknown argument {arg:?}\n\n{}", Self::usage())),
+            }
+        }
+
+        let input = input.ok_or_else(|| "--input is required".to_string())?;
+        let output = output.unwrap_or_else(|| {
+            let stem = input
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("sqlglot_suite_report");
+            PathBuf::from("parity/reports").join(format!("{stem}_buckets.md"))
+        });
+
+        Ok(Self {
+            input,
+            output,
+            dry_run,
+        })
+    }
+
+    fn validate(&self) -> Result<(), String> {
+        if !self.input.is_file() {
+            return Err(format!("{} does not exist", self.input.display()));
+        }
+        Ok(())
+    }
+
+    fn usage() -> String {
+        "usage: cargo run --bin xtask -- bucket-suite-report --input parity/reports/sqlglot_suite_forced_transpile_mysql_sqlite.jsonl [--output parity/reports/sqlglot_suite_forced_transpile_mysql_sqlite_buckets.md] [--dry-run]".to_string()
+    }
+}
+
 impl BenchSqlglotArgs {
     fn parse(args: impl Iterator<Item = String>) -> Result<Self, String> {
         let mut args = args.peekable();
@@ -931,6 +1005,21 @@ struct CorrectnessOutcome {
     status: CorrectnessStatus,
     sqlite_stdout: Option<String>,
     sqlite_stderr: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SuiteReportCase {
+    status: String,
+    source_file: String,
+    source_line: usize,
+    test_name: String,
+    helper: String,
+    sql: String,
+    read: Option<String>,
+    write: Option<String>,
+    expected: Option<String>,
+    actual: Option<String>,
+    error: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -1731,6 +1820,377 @@ fn summarize_report(args: &SummarizeReportArgs) -> Result<String, String> {
     }
 
     Ok(output)
+}
+
+fn bucket_suite_report(input: &Path) -> Result<String, String> {
+    let text = fs::read_to_string(input)
+        .map_err(|err| format!("failed to read {}: {err}", input.display()))?;
+    let mut rows = Vec::new();
+    for (index, line) in text.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let row: SuiteReportCase = serde_json::from_str(line).map_err(|err| {
+            format!(
+                "{}:{}: invalid suite report JSON: {err}",
+                input.display(),
+                index + 1
+            )
+        })?;
+        rows.push(row);
+    }
+
+    let mut status_counts = BTreeMap::<String, usize>::new();
+    let mut route_counts = BTreeMap::<(String, String, String), usize>::new();
+    let mut helper_counts = BTreeMap::<(String, String), usize>::new();
+    let mut source_counts = BTreeMap::<(String, String, String), usize>::new();
+    let mut shape_counts = BTreeMap::<(String, String), usize>::new();
+    let mut error_counts = BTreeMap::<(String, String), usize>::new();
+    let mut mismatch_counts = BTreeMap::<(String, String), usize>::new();
+    let mut examples = BTreeMap::<(String, String), Vec<&SuiteReportCase>>::new();
+
+    for row in &rows {
+        *status_counts.entry(row.status.clone()).or_default() += 1;
+        *route_counts
+            .entry((
+                row.status.clone(),
+                row.read.clone().unwrap_or_else(|| "none".to_string()),
+                row.write.clone().unwrap_or_else(|| "none".to_string()),
+            ))
+            .or_default() += 1;
+        *helper_counts
+            .entry((row.status.clone(), row.helper.clone()))
+            .or_default() += 1;
+        *source_counts
+            .entry((
+                row.status.clone(),
+                row.source_file.clone(),
+                row.test_name.clone(),
+            ))
+            .or_default() += 1;
+        *shape_counts
+            .entry((row.status.clone(), suite_shape_key(&row.sql)))
+            .or_default() += 1;
+
+        if row.status == "rust-error" {
+            let bucket = normalize_suite_error(row.error.as_deref());
+            *error_counts
+                .entry((row.status.clone(), bucket.clone()))
+                .or_default() += 1;
+            push_suite_example(&mut examples, row, bucket);
+        } else if row.status == "mismatch" {
+            let bucket = mismatch_signature(row);
+            *mismatch_counts
+                .entry((row.status.clone(), bucket.clone()))
+                .or_default() += 1;
+            push_suite_example(&mut examples, row, bucket);
+        } else if row.status != "match" {
+            let bucket = normalize_suite_error(row.error.as_deref());
+            *error_counts
+                .entry((row.status.clone(), bucket.clone()))
+                .or_default() += 1;
+            push_suite_example(&mut examples, row, bucket);
+        }
+    }
+
+    let mut output = String::new();
+    output.push_str("# SQLGlot Suite Bucket Report\n\n");
+    output.push_str(&format!("Source: `{}`\n\n", input.display()));
+    output.push_str(&format!("Total rows: `{}`\n\n", rows.len()));
+
+    let top_routes = top_counts(&route_counts, 25);
+    let top_helpers = top_counts(&helper_counts, 25);
+    let top_shapes = top_counts(&shape_counts, 40);
+    let top_errors = top_counts(&error_counts, 40);
+    let top_mismatches = top_counts(&mismatch_counts, 40);
+    let top_sources = top_counts(&source_counts, 40);
+
+    output.push_str("## Status Counts\n\n");
+    output.push_str("| Status | Count |\n| --- | ---: |\n");
+    for (status, count) in &status_counts {
+        output.push_str(&format!("| `{status}` | {count} |\n"));
+    }
+
+    write_count_table(
+        &mut output,
+        "Route Buckets",
+        "| Status | Read | Write | Count |\n| --- | --- | --- | ---: |\n",
+        top_routes.iter().map(|((status, read, write), count)| {
+            format!("| `{status}` | `{read}` | `{write}` | {count} |")
+        }),
+    );
+    write_count_table(
+        &mut output,
+        "Helper Buckets",
+        "| Status | Helper | Count |\n| --- | --- | ---: |\n",
+        top_helpers
+            .iter()
+            .map(|((status, helper), count)| format!("| `{status}` | `{helper}` | {count} |")),
+    );
+    write_count_table(
+        &mut output,
+        "SQL Shape Buckets",
+        "| Status | Shape | Count |\n| --- | --- | ---: |\n",
+        top_shapes
+            .iter()
+            .map(|((status, shape), count)| format!("| `{status}` | `{shape}` | {count} |")),
+    );
+    write_count_table(
+        &mut output,
+        "Rust/Oracle/Unsupported Error Buckets",
+        "| Status | Error Bucket | Count |\n| --- | --- | ---: |\n",
+        top_errors.iter().map(|((status, error), count)| {
+            format!(
+                "| `{status}` | `{}` | {count} |",
+                markdown_escape_cell(error)
+            )
+        }),
+    );
+    write_count_table(
+        &mut output,
+        "Mismatch Signature Buckets",
+        "| Status | Signature | Count |\n| --- | --- | ---: |\n",
+        top_mismatches.iter().map(|((status, signature), count)| {
+            format!(
+                "| `{status}` | `{}` | {count} |",
+                markdown_escape_cell(signature)
+            )
+        }),
+    );
+    write_count_table(
+        &mut output,
+        "Source Test Buckets",
+        "| Status | Source | Test | Count |\n| --- | --- | --- | ---: |\n",
+        top_sources.iter().map(|((status, source, test), count)| {
+            format!("| `{status}` | `{source}` | `{test}` | {count} |")
+        }),
+    );
+
+    output.push_str("\n## Bucket Examples\n\n");
+    if examples.is_empty() {
+        output.push_str("No non-matching examples.\n");
+    } else {
+        let mut example_keys = Vec::new();
+        for ((status, bucket), _) in top_errors.iter().take(20) {
+            example_keys.push((status.clone(), bucket.clone()));
+        }
+        for ((status, bucket), _) in top_mismatches.iter().take(20) {
+            example_keys.push((status.clone(), bucket.clone()));
+        }
+        example_keys.sort();
+        example_keys.dedup();
+
+        for (status, bucket) in example_keys {
+            let Some(rows) = examples.get(&(status.clone(), bucket.clone())) else {
+                continue;
+            };
+            output.push_str(&format!(
+                "### `{status}` `{}`\n\n",
+                markdown_escape_cell(&bucket)
+            ));
+            for row in rows {
+                output.push_str(&format!(
+                    "- `{}`:{} `{}` via `{}`: {}\n",
+                    row.source_file,
+                    row.source_line,
+                    row.test_name,
+                    row.helper,
+                    code_span(&row.sql)
+                ));
+                if let Some(expected) = &row.expected {
+                    output.push_str(&format!("  - expected: {}\n", code_span(expected)));
+                }
+                if let Some(actual) = &row.actual {
+                    output.push_str(&format!("  - actual: {}\n", code_span(actual)));
+                }
+                if let Some(error) = &row.error {
+                    output.push_str(&format!("  - error: {}\n", code_span(error)));
+                }
+            }
+            output.push('\n');
+        }
+    }
+
+    Ok(output)
+}
+
+fn write_count_table(
+    output: &mut String,
+    title: &str,
+    header: &str,
+    rows: impl Iterator<Item = String>,
+) {
+    output.push_str(&format!("\n## {title}\n\n"));
+    output.push_str(header);
+    let mut wrote = false;
+    for row in rows {
+        output.push_str(&row);
+        output.push('\n');
+        wrote = true;
+    }
+    if !wrote {
+        output.push_str("| _none_ | 0 |\n");
+    }
+}
+
+fn push_suite_example<'a>(
+    examples: &mut BTreeMap<(String, String), Vec<&'a SuiteReportCase>>,
+    row: &'a SuiteReportCase,
+    bucket: String,
+) {
+    let rows = examples.entry((row.status.clone(), bucket)).or_default();
+    if rows.len() < 3 {
+        rows.push(row);
+    }
+}
+
+fn normalize_suite_error(error: Option<&str>) -> String {
+    let Some(error) = error else {
+        return "no error text".to_string();
+    };
+    let first_line = error.lines().next().unwrap_or(error).trim();
+    if let Some(message) = first_line.strip_prefix("ValueError: Parser error: ") {
+        return format!("parser: {}", normalize_parser_error(message));
+    }
+    if let Some(message) = first_line.strip_prefix("ParseError: ") {
+        return format!("oracle parse: {}", normalize_parser_error(message));
+    }
+    if let Some(message) = first_line.strip_prefix("TokenError: ") {
+        return format!("oracle token: {}", normalize_parser_error(message));
+    }
+    first_line.to_string()
+}
+
+fn normalize_parser_error(message: &str) -> String {
+    let message = message.split(" at line ").next().unwrap_or(message);
+    let message = message.split(". Line ").next().unwrap_or(message);
+    if message.starts_with("Expected identifier") {
+        return "Expected identifier".to_string();
+    }
+    if message.starts_with("Expected expression") {
+        return "Expected expression".to_string();
+    }
+    if message.starts_with("Expected token") {
+        return "Expected token".to_string();
+    }
+    if message.starts_with("Unexpected token") {
+        return "Unexpected token".to_string();
+    }
+    if message.starts_with("Required keyword") {
+        return "Required keyword missing".to_string();
+    }
+    message.to_string()
+}
+
+fn mismatch_signature(row: &SuiteReportCase) -> String {
+    let expected = row.expected.as_deref().unwrap_or("");
+    let actual = row.actual.as_deref().unwrap_or("");
+    if actual.is_empty() {
+        return "empty actual output".to_string();
+    }
+    if expected.eq_ignore_ascii_case(actual) && expected != actual {
+        return "case-only rendering difference".to_string();
+    }
+    if unquote_sql(expected) == unquote_sql(actual) && expected != actual {
+        return "quote-style difference".to_string();
+    }
+    if normalize_whitespace(expected) == normalize_whitespace(actual) && expected != actual {
+        return "whitespace-only difference".to_string();
+    }
+    if expected.contains(" AS ") && !actual.contains(" AS ") {
+        return "missing AS or alias rendering".to_string();
+    }
+    if expected.contains('"') && !actual.contains('"') {
+        return "missing quoted identifier".to_string();
+    }
+    if expected.contains("CAST(") || actual.contains("CAST(") {
+        return format!("cast/type rendering: {}", suite_shape_key(&row.sql));
+    }
+    if expected.contains("CREATE TABLE") || actual.contains("CREATE TABLE") {
+        return "DDL/create-table rendering".to_string();
+    }
+    if expected.contains("CREATE INDEX") || actual.contains("CREATE INDEX") {
+        return "DDL/create-index rendering".to_string();
+    }
+    if expected.contains("DATE")
+        || expected.contains("TIME")
+        || actual.contains("DATE")
+        || actual.contains("TIME")
+    {
+        return format!("date/time rendering: {}", suite_shape_key(&row.sql));
+    }
+    if expected.contains("JSON")
+        || actual.contains("JSON")
+        || row.sql.to_ascii_uppercase().contains("JSON")
+    {
+        return format!("json rendering: {}", suite_shape_key(&row.sql));
+    }
+    suite_shape_key(&row.sql)
+}
+
+fn suite_shape_key(sql: &str) -> String {
+    let trimmed = sql.trim();
+    let upper = trimmed.to_ascii_uppercase();
+    if upper.starts_with("SELECT ") {
+        if let Some(function) = first_function_name(trimmed) {
+            return format!("SELECT {function}()");
+        }
+        if let Some(operator) = first_operator_key(trimmed) {
+            return format!("SELECT operator {operator}");
+        }
+    }
+    feature_key(trimmed)
+}
+
+fn first_function_name(sql: &str) -> Option<String> {
+    let open = sql.find('(')?;
+    let before = &sql[..open];
+    let name = before
+        .chars()
+        .rev()
+        .take_while(|ch| ch.is_ascii_alphanumeric() || *ch == '_' || *ch == '.')
+        .collect::<String>()
+        .chars()
+        .rev()
+        .collect::<String>();
+    if name.is_empty() || name.eq_ignore_ascii_case("SELECT") {
+        None
+    } else {
+        Some(name.to_ascii_uppercase())
+    }
+}
+
+fn first_operator_key(sql: &str) -> Option<&'static str> {
+    for (needle, label) in [
+        ("->>", "json-text"),
+        ("->", "json"),
+        ("||", "concat"),
+        ("::", "cast"),
+        (" AT TIME ZONE ", "at-time-zone"),
+        ("[", "index"),
+        (" + ", "plus"),
+        (" - ", "minus"),
+        (" * ", "multiply"),
+        (" / ", "divide"),
+        (" = ", "equals"),
+    ] {
+        if sql.contains(needle) {
+            return Some(label);
+        }
+    }
+    None
+}
+
+fn normalize_whitespace(sql: &str) -> String {
+    sql.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn unquote_sql(sql: &str) -> String {
+    sql.replace(['"', '`'], "")
+}
+
+fn markdown_escape_cell(value: &str) -> String {
+    value.replace('|', "\\|").replace('\n', "\\n")
 }
 
 fn summarize_correctness(input: &Path, outcomes: &[CorrectnessOutcome]) -> String {
