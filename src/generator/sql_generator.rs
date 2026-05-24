@@ -1287,7 +1287,7 @@ impl Generator {
     }
 
     fn gen_column_def(&mut self, col: &ColumnDef) {
-        self.write(&col.name);
+        self.write_quoted(&col.name, col.name_quote_style);
         self.write(" ");
         self.gen_data_type(&col.data_type);
 

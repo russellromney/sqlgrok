@@ -393,6 +393,9 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 move_single_column_primary_key_to_column(ct);
             }
             for col in &mut ct.columns {
+                if col.name_quote_style.is_quoted() {
+                    col.name_quote_style = QuoteStyle::for_dialect(target);
+                }
                 if matches!(target, Dialect::Sqlite)
                     && is_mysql_family(source)
                     && (!matches!(col.data_type, DataType::Int)
@@ -436,9 +439,7 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             }
         }
         Statement::CreateIndex(idx) => {
-            for column in &mut idx.columns {
-                column.expr = transform_expr(column.expr.clone(), source, target);
-            }
+            transform_order_by_items(&mut idx.columns, source, target);
             if let Some(predicate) = &mut idx.where_clause {
                 *predicate = transform_expr(predicate.clone(), source, target);
             }

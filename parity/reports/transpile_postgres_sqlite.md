@@ -8,8 +8,8 @@ Total candidates: `686`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 435 |
-| `mismatch` | 251 |
+| `match` | 440 |
+| `mismatch` | 246 |
 
 ## Top Feature Buckets
 
@@ -28,11 +28,11 @@ Total candidates: `686`
 | `mismatch` | `BEGIN` | 11 |
 | `match` | `INSERT` | 9 |
 | `match` | `INTERVAL` | 9 |
-| `mismatch` | `CREATE INDEX` | 9 |
 | `mismatch` | `ALTER TABLE` | 8 |
 | `match` | `ROUND()` | 7 |
 | `mismatch` | `TRUNCATE` | 7 |
 | `match` | `MERGE` | 6 |
+| `match` | `CREATE INDEX` | 5 |
 | `match` | `UPDATE` | 5 |
 | `mismatch` | `WITH` | 5 |
 | `mismatch` | `X` | 5 |
@@ -46,9 +46,9 @@ Total candidates: `686`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 193 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 86 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 81 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 74 |
-| `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 36 |
+| `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 41 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres_create_trigger` | 34 |
 | `match` | `tests/dialects/test_postgres.py` | `test_revoke` | 19 |
 | `match` | `tests/dialects/test_postgres.py` | `test_grant` | 16 |

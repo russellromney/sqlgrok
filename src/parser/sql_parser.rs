@@ -855,6 +855,7 @@ impl Parser {
                     | "RIGHT"
                     | "FULL"
                     | "CROSS"
+                    | "NATURAL"
                     | "ON"
                     | "WINDOW"
                     | "QUALIFY"
@@ -1317,6 +1318,11 @@ impl Parser {
                     self.advance();
                     self.expect(TokenType::Join)?;
                     JoinType::Cross
+                }
+                TokenType::Identifier if self.peek().value.eq_ignore_ascii_case("NATURAL") => {
+                    self.advance();
+                    self.expect(TokenType::Join)?;
+                    JoinType::Natural
                 }
                 _ => break,
             };
@@ -2179,7 +2185,7 @@ impl Parser {
     }
 
     fn parse_column_def(&mut self) -> Result<ColumnDef> {
-        let name = self.expect_name()?;
+        let (name, name_quote_style) = self.expect_name_with_quote()?;
         let data_type = self.parse_data_type()?;
 
         let mut nullable = None;
@@ -2210,6 +2216,29 @@ impl Parser {
                 unique = true;
             } else if self.match_token(TokenType::AutoIncrement) {
                 auto_increment = true;
+            } else if self.match_keyword("GENERATED") {
+                if self.match_keyword("ALWAYS") {
+                    // SQLGlot treats both ALWAYS and BY DEFAULT identity columns
+                    // as SQLite AUTOINCREMENT when paired with a primary key.
+                } else {
+                    self.expect(TokenType::By)?;
+                    self.expect(TokenType::Default)?;
+                }
+                self.expect(TokenType::As)?;
+                self.expect_keyword("IDENTITY")?;
+                if self.match_token(TokenType::LParen) {
+                    let mut depth = 1usize;
+                    while depth > 0 && self.peek_type() != &TokenType::Eof {
+                        if self.match_token(TokenType::LParen) {
+                            depth += 1;
+                        } else if self.match_token(TokenType::RParen) {
+                            depth -= 1;
+                        } else {
+                            self.advance();
+                        }
+                    }
+                }
+                auto_increment = true;
             } else if self.match_token(TokenType::Collate) {
                 collation = Some(self.expect_name()?);
             } else if self.match_token(TokenType::Comment) {
@@ -2230,6 +2259,7 @@ impl Parser {
 
         Ok(ColumnDef {
             name,
+            name_quote_style,
             data_type,
             nullable,
             default,

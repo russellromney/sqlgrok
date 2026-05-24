@@ -51,6 +51,7 @@ this file records what landed.
 - Started the Postgres join rust-error bucket with SQLite parity carriers for `XMLTABLE`, `ROWS FROM`, and multi-argument/ordinality `UNNEST` table sources.
 - Reduced the imported Postgres-to-SQLite rust-error backlog from `57` to `28` by adding parity for wrapped `ARRAY(SELECT ...)`, `VARIADIC ARRAY` arguments, additional Postgres `TRIM`/`SUBSTRING` grammar forms, quoted collation preservation, and unary square/cube-root operators.
 - Cleared the remaining imported Postgres-to-SQLite rust-error backlog from `28` to `0` with carriers for `WITHIN GROUP`, `LIKE`/`ILIKE ALL`, collated casts, Postgres range/distance operators, transaction `END` aliases, `OVERLAY`, recursive CTE `SEARCH`/`CYCLE`, schema-qualified cast types, `COPY` subqueries, negative JSON indexes, array containment, `MERGE ... DO NOTHING`, window `EXCLUDE`, and parenthesized `VALUES` joins.
+- Matched cinch hole-finder Postgres-to-SQLite parity for `NATURAL JOIN`, quoted DDL column identifiers, generated identity primary keys, column-default `now()`, multi-CTE queries, and SQLGlot-shaped index DDL while documenting `CONCURRENTLY`/`USING` as SQLGlot-preserved engine/upstream candidates.
 
 ## 2026-05-20
 

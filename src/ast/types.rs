@@ -1776,6 +1776,8 @@ pub struct DropIndexStatement {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ColumnDef {
     pub name: String,
+    #[serde(default)]
+    pub name_quote_style: QuoteStyle,
     pub data_type: DataType,
     pub nullable: Option<bool>,
     pub default: Option<Expr>,
