@@ -58,6 +58,7 @@ this file records what landed.
 - Burned down the first full-suite bridge mismatch slice: MySQL-to-SQLite and Postgres-to-SQLite now have `0` current SQLGlot-suite bridge mismatches, and SQLite identity improved to `57` matches / `34` mismatches.
 - Cleared the SQLite-to-SQLite SQLGlot-suite bridge output backlog: `102` discovered cases now match, with `0` mismatches and `0` Rust errors; the remaining `5` rows are harness-shape limitations.
 - Taught the SQLGlot suite bridge to evaluate pretty-output and command-warning helper cases, clearing SQLite-to-SQLite unsupported harness shapes so all `107` discovered cases now match.
+- Hardened the bridge/helper review fixes by keeping `identify=True` explicitly unsupported until sqlgrok has native identify-mode generation and limiting raw-SQL pretty normalization to the SQLGlot-covered `CREATE TABLE` fallback.
 
 ## 2026-05-20
 

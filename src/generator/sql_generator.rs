@@ -255,7 +255,7 @@ impl Generator {
             }
             Statement::Raw(s) => {
                 self.gen_comments(&s.comments);
-                if self.pretty {
+                if self.pretty && raw_starts_with_keyword(&s.sql, "CREATE TABLE") {
                     self.write(&pretty_raw_sql(&s.sql));
                 } else {
                     self.write(&s.sql);
@@ -3609,6 +3609,17 @@ fn pretty_raw_sql(sql: &str) -> String {
     }
 
     normalized.join("\n")
+}
+
+fn raw_starts_with_keyword(value: &str, keyword: &str) -> bool {
+    let value = value.trim_start();
+    value
+        .get(..keyword.len())
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case(keyword))
+        && value[keyword.len()..]
+            .chars()
+            .next()
+            .is_none_or(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
 }
 
 fn leading_whitespace_width(value: &str) -> usize {

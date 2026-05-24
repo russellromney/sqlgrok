@@ -395,6 +395,27 @@ def patch_sqlglot_helpers(recorder: BridgeRecorder) -> None:
             identify: bool = False,
         ) -> Any:
             base_dialect = _dialect_name(getattr(self, "dialect", None))
+            if identify:
+                for read_dialect, read_sql in (read or {}).items():
+                    recorder.unsupported(
+                        helper="validate_all",
+                        sql=read_sql,
+                        read=_dialect_name(read_dialect),
+                        write=base_dialect,
+                        expected=sql,
+                        reason="identify helper option is not supported yet",
+                    )
+                for write_dialect, write_sql in (write or {}).items():
+                    recorder.unsupported(
+                        helper="validate_all",
+                        sql=sql,
+                        read=base_dialect,
+                        write=_dialect_name(write_dialect),
+                        expected=None if write_sql is UnsupportedError else write_sql,
+                        reason="identify helper option is not supported yet",
+                    )
+                return original_validate_all(self, sql, read, write, pretty, identify)
+
             for read_dialect, read_sql in (read or {}).items():
                 recorder.compare_transpile(
                     helper="validate_all",
@@ -441,6 +462,24 @@ def patch_sqlglot_helpers(recorder: BridgeRecorder) -> None:
         ) -> Any:
             dialect = _dialect_name(getattr(self, "dialect", None))
             expected = write_sql or sql
+            if identify:
+                recorder.unsupported(
+                    helper="validate_identity",
+                    sql=sql,
+                    read=dialect,
+                    write=dialect,
+                    expected=expected,
+                    reason="identify helper option is not supported yet",
+                )
+                return original_validate_identity(
+                    self,
+                    sql,
+                    write_sql,
+                    pretty,
+                    check_command_warning,
+                    identify,
+                )
+
             recorder.compare_transpile(
                 helper="validate_identity",
                 sql=sql,
