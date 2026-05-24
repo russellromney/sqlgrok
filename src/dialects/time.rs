@@ -299,6 +299,15 @@ fn build_format_mappings() -> Vec<FormatMapping> {
             tsql: "ss",
             clickhouse: "%S",
         },
+        FormatMapping {
+            strftime: "%H:%M:%S", // 24-hour time
+            mysql: "%T",
+            postgres: "HH24:MI:SS",
+            snowflake: "HH24:MI:SS",
+            java: "HH:mm:ss",
+            tsql: "HH:mm:ss",
+            clickhouse: "%T",
+        },
         // ── Fractional seconds ─────────────────────────────────────────
         FormatMapping {
             strftime: "%f", // Microseconds (6 digits)

@@ -663,6 +663,68 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
+                && is_mysql_family(source)
+                && matches!(
+                    name.to_ascii_uppercase().as_str(),
+                    "UTC_TIME" | "UTC_TIMESTAMP"
+                )
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+            {
+                return Expr::Column {
+                    table: None,
+                    name: if name.eq_ignore_ascii_case("UTC_TIME") {
+                        "CURRENT_TIME".to_string()
+                    } else {
+                        "CURRENT_TIMESTAMP".to_string()
+                    },
+                    quote_style: QuoteStyle::None,
+                    table_quote_style: QuoteStyle::None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && (is_mysql_family(source) || is_postgres_family(source))
+                && matches!(name.to_ascii_uppercase().as_str(), "MAKETIME" | "MAKE_TIME")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+            {
+                return Expr::Function {
+                    name: "TIME_FROM_PARTS".to_string(),
+                    args: new_args,
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && is_mysql_family(source)
+                && name.eq_ignore_ascii_case("TIME_STR_TO_TIME")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return new_args[0].clone();
+            }
+            if matches!(target, Dialect::Sqlite)
+                && ((is_mysql_family(source) && name.eq_ignore_ascii_case("FROM_UNIXTIME"))
+                    || (is_postgres_family(source) && name.eq_ignore_ascii_case("TO_TIMESTAMP")))
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return Expr::Function {
+                    name: "UNIX_TO_TIME".to_string(),
+                    args: new_args,
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
                 && is_postgres_family(source)
                 && name.eq_ignore_ascii_case("DIV")
                 && !distinct
@@ -721,6 +783,34 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     name: "CURRENT_TIMESTAMP".to_string(),
                     quote_style: QuoteStyle::None,
                     table_quote_style: QuoteStyle::None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && is_mysql_family(source)
+                && let TypedFunction::StrToTime { expr, format } = func
+            {
+                let transformed_format = transform_format_expr(*format, source, target);
+                return Expr::Function {
+                    name: mysql_sqlite_str_to_time_name(&transformed_format).to_string(),
+                    args: vec![transform_expr(*expr, source, target), transformed_format],
+                    distinct: false,
+                    filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
+                    over: over.map(|spec| transform_window_spec(spec, source, target)),
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && is_postgres_family(source)
+                && let TypedFunction::StrToTime { expr, format } = func
+            {
+                return Expr::Function {
+                    name: "STR_TO_TIME".to_string(),
+                    args: vec![
+                        transform_expr(*expr, source, target),
+                        transform_format_expr(*format, source, target),
+                    ],
+                    distinct: false,
+                    filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
+                    over: over.map(|spec| transform_window_spec(spec, source, target)),
                 };
             }
             if matches!(target, Dialect::Sqlite) {
@@ -1325,12 +1415,9 @@ fn transform_typed_function(
 /// If the expression is a string literal, convert the format specifiers.
 /// Otherwise, just recursively transform child expressions.
 fn transform_format_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
-    // Detect the source style from the literal. This keeps mixed-format tests
-    // useful even while the broader transform pipeline carries source dialect
-    // context for other rewrites.
     match &expr {
         Expr::StringLiteral(s) => {
-            let detected_source = detect_format_style(s);
+            let detected_source = source_time_format_style(s, source);
             let target_style = time::TimeFormatStyle::for_dialect(target);
 
             // Only convert if styles differ
@@ -1343,6 +1430,28 @@ fn transform_format_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         }
         _ => transform_expr(expr, source, target),
     }
+}
+
+fn source_time_format_style(format_str: &str, source: Dialect) -> time::TimeFormatStyle {
+    match source {
+        Dialect::Ansi | Dialect::Prql => detect_format_style(format_str),
+        _ => time::TimeFormatStyle::for_dialect(source),
+    }
+}
+
+fn mysql_sqlite_str_to_time_name(format: &Expr) -> &'static str {
+    match format {
+        Expr::StringLiteral(format) if mysql_format_contains_time(format) => "STR_TO_TIME",
+        _ => "STR_TO_DATE",
+    }
+}
+
+fn mysql_format_contains_time(format: &str) -> bool {
+    [
+        "%f", "%H", "%h", "%I", "%i", "%k", "%l", "%p", "%r", "%S", "%s", "%T",
+    ]
+    .iter()
+    .any(|needle| format.contains(needle))
 }
 
 /// Detect the format style from a format string based on its content.

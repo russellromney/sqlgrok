@@ -8,16 +8,16 @@ Total candidates: `686`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 360 |
-| `mismatch` | 269 |
+| `match` | 365 |
+| `mismatch` | 264 |
 | `rust-error` | 57 |
 
 ## Top Feature Buckets
 
 | Status | Feature | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 121 |
-| `mismatch` | `SELECT` | 76 |
+| `match` | `SELECT` | 125 |
+| `mismatch` | `SELECT` | 72 |
 | `mismatch` | `CREATE` | 62 |
 | `rust-error` | `SELECT` | 42 |
 | `mismatch` | `CREATE TABLE` | 36 |
@@ -46,9 +46,9 @@ Total candidates: `686`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 148 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 149 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 87 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 84 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 83 |
 | `rust-error` | `tests/dialects/test_postgres.py` | `test_postgres` | 35 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres_create_trigger` | 34 |
 | `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 32 |
@@ -58,9 +58,9 @@ Total candidates: `686`
 | `match` | `tests/dialects/test_postgres.py` | `test_interval_span` | 10 |
 | `match` | `tests/dialects/test_postgres.py` | `test_round` | 7 |
 | `mismatch` | `tests/dialects/test_dune.py` | `test_dune` | 7 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 6 |
 | `match` | `tests/dialects/test_doris.py` | `test_doris` | 6 |
 | `rust-error` | `tests/dialects/test_postgres.py` | `test_xmlelement` | 6 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 5 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 5 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 5 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 5 |
@@ -76,9 +76,6 @@ Total candidates: `686`
 
 ### `mismatch`
 
-- `sqlglot-postgres-to-sqlite-tests-dialects-test-bigquery-0709-test-bigquery`: `SELECT MAKE_TIME(15, 30, 00)`
-  - expected: `SELECT TIME_FROM_PARTS(15, 30, 00)`
-  - actual: `SELECT MAKE_TIME(15, 30, 00)`
 - `sqlglot-postgres-to-sqlite-tests-dialects-test-clickhouse-0131-test-clickhouse`: `TRUNC(3.14159, 2)`
   - expected: `TRUNC(3.14159)`
   - actual: `TRUNC(3.14159, 2)`
@@ -91,6 +88,9 @@ Total candidates: `686`
 - `sqlglot-postgres-to-sqlite-tests-dialects-test-clickhouse-0354-test-clickhouse`: `any(array[1]) <> x`
   - expected: `ANY(ARRAY(1)) <> x`
   - actual: `any(ARRAY(1)) <> x`
+- `sqlglot-postgres-to-sqlite-tests-dialects-test-clickhouse-0372-test-clickhouse`: `SELECT TIMESTAMP '2020-01-01' + INTERVAL '500 us'`
+  - expected: `SELECT CAST('2020-01-01' AS TIMESTAMP) + INTERVAL '500' MICROSECOND`
+  - actual: `SELECT CAST('2020-01-01' AS TIMESTAMP) + INTERVAL '500 us'`
 
 ### `rust-error`
 

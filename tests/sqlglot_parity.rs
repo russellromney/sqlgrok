@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 use std::env;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use serde::Deserialize;
 use sqlgrok::{Dialect, transpile};
@@ -282,7 +283,10 @@ import sys
 
 import sqlglot
 
-sql, read, write = sys.argv[1:4]
+payload = json.load(sys.stdin)
+sql = payload["sql"]
+read = payload["read"]
+write = payload["write"]
 try:
     out = sqlglot.transpile(sql, read=read, write=write)[0]
     print(json.dumps({"ok": True, "sql": out}))
@@ -290,15 +294,31 @@ except Exception as exc:
     print(json.dumps({"ok": False, "error": str(exc)}))
 "#;
 
-    let output = Command::new("python3")
+    let payload = serde_json::json!({
+        "sql": case.sql,
+        "read": case.read,
+        "write": case.write,
+    });
+    let mut child = Command::new("python3")
         .arg("-c")
         .arg(script)
-        .arg(&case.sql)
-        .arg(&case.read)
-        .arg(&case.write)
         .env("PYTHONPATH", path)
-        .output()
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
         .map_err(|err| err.to_string())?;
+
+    {
+        let Some(mut stdin) = child.stdin.take() else {
+            return Err("failed to open Python SQLGlot oracle stdin".to_string());
+        };
+        stdin
+            .write_all(payload.to_string().as_bytes())
+            .map_err(|err| err.to_string())?;
+    }
+
+    let output = child.wait_with_output().map_err(|err| err.to_string())?;
 
     if !output.status.success() {
         return Err(format!(

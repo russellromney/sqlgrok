@@ -2874,6 +2874,62 @@ fn test_time_format_mysql_to_sqlite_strftime() {
 }
 
 #[test]
+fn test_sqlite_time_function_parity_batch() {
+    validate_with_dialect(
+        "SELECT MAKETIME(15, 30, 00)",
+        "SELECT TIME_FROM_PARTS(15, 30, 00)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT MAKE_TIME(15, 30, 00)",
+        "SELECT TIME_FROM_PARTS(15, 30, 00)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT UTC_TIME(6), UTC_TIMESTAMP()",
+        "SELECT CURRENT_TIME, CURRENT_TIMESTAMP",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TIME_STR_TO_TIME(x), FROM_UNIXTIME(col)",
+        "SELECT x, UNIX_TO_TIME(col)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TO_TIMESTAMP(col)",
+        "SELECT UNIX_TO_TIME(col)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_mysql_time_format_ambiguous_tokens_to_sqlite() {
+    validate_with_dialect(
+        "SELECT DATE_FORMAT('2009-10-04 22:23:00', '%W %M %Y')",
+        "SELECT STRFTIME('%A %B %Y', '2009-10-04 22:23:00')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT STR_TO_DATE(x, '%M')",
+        "SELECT STR_TO_DATE(x, '%B')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT STR_TO_DATE(x, '%Y-%m-%dT%T')",
+        "SELECT STR_TO_TIME(x, '%Y-%m-%dT%H:%M:%S')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_time_format_mysql_to_spark() {
     // MySQL format to Spark Java DateTimeFormatter style
     validate_with_dialect(
