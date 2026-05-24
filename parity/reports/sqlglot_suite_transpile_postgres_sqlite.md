@@ -2,6 +2,9 @@
 
 Source: `parity/reports/sqlglot_suite_transpile_postgres_sqlite.jsonl`
 
+Mode: `helper-route`
+Requested pair: `postgres` -> `sqlite`
+
 Total cases: `13`
 Observed helper attempts: `15164`
 Filtered by read/write: `15151`

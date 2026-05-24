@@ -2,6 +2,9 @@
 
 Source: `parity/reports/sqlglot_suite_transpile_mysql_sqlite.jsonl`
 
+Mode: `helper-route`
+Requested pair: `mysql` -> `sqlite`
+
 Total cases: `23`
 Observed helper attempts: `15164`
 Filtered by read/write: `15141`

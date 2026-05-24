@@ -8,8 +8,10 @@ SQL with the Rust implementation exposed by ``sqlgrok.transpile``.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import inspect
 import json
+import logging
 import os
 import sys
 from collections import Counter
@@ -53,23 +55,34 @@ class BridgeRecorder:
         family: str,
         read_filter: str | None,
         write_filter: str | None,
+        force_pair: bool = False,
         sqlglot_root: Path | None = None,
     ) -> None:
         self.report = report
         self.family = family
         self.read_filter = read_filter
         self.write_filter = write_filter
+        self.force_pair = force_pair
+        if self.force_pair and (not self.read_filter or not self.write_filter):
+            raise ValueError("forced-pair mode requires both read_filter and write_filter")
         self.sqlglot_root = sqlglot_root.resolve() if sqlglot_root else None
         self.cases: list[BridgeCase] = []
         self.attempt_counts: Counter[tuple[str, str | None, str | None]] = Counter()
         self.filtered_counts: Counter[tuple[str, str | None, str | None]] = Counter()
 
     def wants(self, read: str | None, write: str | None) -> bool:
+        if self.force_pair:
+            return True
         if self.read_filter and read != self.read_filter:
             return False
         if self.write_filter and write != self.write_filter:
             return False
         return True
+
+    def effective_pair(self, read: str | None, write: str | None) -> tuple[str | None, str | None]:
+        if not self.force_pair:
+            return read, write
+        return self.read_filter, self.write_filter
 
     def begin_attempt(self, *, helper: str, read: str | None, write: str | None) -> bool:
         route = (helper, read, write)
@@ -91,7 +104,8 @@ class BridgeRecorder:
         error: str | None = None,
         status: str | None = None,
     ) -> None:
-        if not self.wants(read, write):
+        effective_read, effective_write = self.effective_pair(read, write)
+        if not self.wants(effective_read, effective_write):
             return
 
         if status is None:
@@ -109,8 +123,8 @@ class BridgeRecorder:
                 test_name=frame.function,
                 helper=helper,
                 sql=sql,
-                read=read,
-                write=write,
+                read=effective_read,
+                write=effective_write,
                 expected=expected,
                 actual=actual,
                 error=error,
@@ -130,8 +144,34 @@ class BridgeRecorder:
         if not self.begin_attempt(helper=helper, read=read, write=write):
             return
 
+        effective_read, effective_write = self.effective_pair(read, write)
+        if self.force_pair:
+            try:
+                expected = oracle_transpile(
+                    sql,
+                    read=effective_read,
+                    write=effective_write,
+                    pretty=pretty,
+                )
+            except Exception as exc:  # noqa: BLE001 - report oracle failure exactly
+                self.record(
+                    helper=helper,
+                    sql=sql,
+                    read=effective_read,
+                    write=effective_write,
+                    expected=None,
+                    error=f"{type(exc).__name__}: {exc}",
+                    status="oracle-error",
+                )
+                return
+
         try:
-            outputs = sqlgrok.transpile(sql, read=read, write=write, pretty=pretty)
+            outputs = sqlgrok.transpile(
+                sql,
+                read=effective_read,
+                write=effective_write,
+                pretty=pretty,
+            )
             actual = outputs[0] if outputs else None
             error = None
         except Exception as exc:  # noqa: BLE001 - bridge reports the exact Rust/Python failure
@@ -141,8 +181,8 @@ class BridgeRecorder:
         self.record(
             helper=helper,
             sql=sql,
-            read=read,
-            write=write,
+            read=effective_read,
+            write=effective_write,
             expected=expected,
             actual=actual,
             error=error,
@@ -161,11 +201,12 @@ class BridgeRecorder:
         if not self.begin_attempt(helper=helper, read=read, write=write):
             return
 
+        effective_read, effective_write = self.effective_pair(read, write)
         self.record(
             helper=helper,
             sql=sql,
-            read=read,
-            write=write,
+            read=effective_read,
+            write=effective_write,
             expected=expected,
             error=reason,
             status="unsupported-harness-shape",
@@ -193,6 +234,9 @@ class BridgeRecorder:
             "# SQLGlot Suite Bridge Report",
             "",
             f"Source: `{self.report}`",
+            "",
+            f"Mode: `{'forced-pair' if self.force_pair else 'helper-route'}`",
+            f"Requested pair: `{self.read_filter}` -> `{self.write_filter}`",
             "",
             f"Total cases: `{len(self.cases)}`",
             f"Observed helper attempts: `{sum(self.attempt_counts.values())}`",
@@ -276,6 +320,41 @@ def classify(*, expected: str | None, actual: str | None, error: str | None) -> 
     return "mismatch"
 
 
+def oracle_transpile(
+    sql: str,
+    *,
+    read: str | None,
+    write: str | None,
+    pretty: bool = False,
+) -> str:
+    import sqlglot
+
+    with _quiet_sqlglot_oracle():
+        outputs = sqlglot.transpile(sql, read=read, write=write, pretty=pretty)
+    if not outputs:
+        raise ValueError("SQLGlot returned no transpiled output")
+    return outputs[0]
+
+
+@contextlib.contextmanager
+def _quiet_sqlglot_oracle() -> Any:
+    disabled_level = logging.root.manager.disable
+    logging.disable(logging.CRITICAL)
+    patched_loggers: list[tuple[Any, str, Any]] = []
+    for module_name in ("sqlglot.generator",):
+        module = sys.modules.get(module_name)
+        logger = getattr(module, "logger", None)
+        if logger is not None and hasattr(logger, "warning"):
+            patched_loggers.append((logger, "warning", logger.warning))
+            logger.warning = lambda *args, **kwargs: None
+    try:
+        yield
+    finally:
+        for logger, name, original in reversed(patched_loggers):
+            setattr(logger, name, original)
+        logging.disable(disabled_level)
+
+
 def compare_one(
     sql: str,
     *,
@@ -283,12 +362,16 @@ def compare_one(
     write: str | None,
     expected: str,
     pretty: bool = False,
+    force_pair: bool = False,
+    read_filter: str | None = None,
+    write_filter: str | None = None,
 ) -> BridgeCase:
     recorder = BridgeRecorder(
         report=Path(os.devnull),
         family="transpile",
-        read_filter=None,
-        write_filter=None,
+        read_filter=read_filter,
+        write_filter=write_filter,
+        force_pair=force_pair,
         sqlglot_root=None,
     )
     recorder.compare_transpile(
@@ -339,6 +422,7 @@ def pytest_addoption(parser: Any) -> None:
     group.addoption("--sqlgrok-bridge-family", action="store", default="transpile")
     group.addoption("--sqlgrok-bridge-read", action="store", default=None)
     group.addoption("--sqlgrok-bridge-write", action="store", default=None)
+    group.addoption("--sqlgrok-bridge-force-pair", action="store_true", default=False)
     group.addoption("--sqlgrok-bridge-sqlglot-root", action="store", default=None)
 
 
@@ -352,6 +436,7 @@ def pytest_configure(config: Any) -> None:
         family=config.getoption("--sqlgrok-bridge-family"),
         read_filter=config.getoption("--sqlgrok-bridge-read"),
         write_filter=config.getoption("--sqlgrok-bridge-write"),
+        force_pair=config.getoption("--sqlgrok-bridge-force-pair"),
         sqlglot_root=Path(config.getoption("--sqlgrok-bridge-sqlglot-root"))
         if config.getoption("--sqlgrok-bridge-sqlglot-root")
         else None,
@@ -613,6 +698,8 @@ def run_pytest(args: argparse.Namespace) -> int:
         pytest_args.extend(["--sqlgrok-bridge-read", args.read])
     if args.write:
         pytest_args.extend(["--sqlgrok-bridge-write", args.write])
+    if args.force_pair:
+        pytest_args.append("--sqlgrok-bridge-force-pair")
     if args.pytest_arg:
         pytest_args.extend(args.pytest_arg)
 
@@ -639,6 +726,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--family", default="transpile")
     parser.add_argument("--read")
     parser.add_argument("--write")
+    parser.add_argument("--force-pair", action="store_true")
     parser.add_argument("--module", action="append")
     parser.add_argument("--report-output", required=True)
     parser.add_argument("--budget")
@@ -648,6 +736,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.family != "transpile":
         raise SystemExit(f"unsupported family {args.family!r}; only 'transpile' is implemented")
+    if args.force_pair and (not args.read or not args.write):
+        raise SystemExit("--force-pair requires --read and --write")
 
     exit_code = run_pytest(args)
     if args.check_budget:

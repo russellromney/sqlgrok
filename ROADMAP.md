@@ -143,6 +143,7 @@ Deliverables:
 - Preserve source metadata: upstream file, source line, test name, helper name, read/write dialects, input SQL, expected SQL, and actual SQL.
 - Write JSONL reports to `parity/reports/sqlglot_suite_<family>_<read>_<write>.jsonl`.
 - Classify every attempted upstream case as `match`, `mismatch`, `rust-error`, `oracle-error`, or `unsupported-harness-shape`.
+- Add a forced-pair bridge mode that keeps pytest helper discovery but asks Python SQLGlot for a fresh oracle output for every discovered SQL under a requested read/write pair.
 - Add a checked-in budget file so CI fails on new Rust errors, oracle errors, unsupported harness shapes, or mismatch-count regressions while allowing intentional mismatch burn-down.
 - Keep the old fixture importer as a legacy ratchet/smoke-corpus generator, not as the definition of full-suite coverage.
 
@@ -588,6 +589,7 @@ Tasks:
 - Add a pytest bridge that runs selected SQLGlot tests from a local checkout and adapts SQLGlot's helper semantics.
 - Start with transpilation and SQLGlot helpers `validate`, `validate_all`, and `validate_identity`.
 - Emit JSONL and Markdown reports with `match`, `mismatch`, `rust-error`, `oracle-error`, and `unsupported-harness-shape`.
+- Add a forced-pair mode that evaluates pytest-discovered SQL against a requested read/write pair using Python SQLGlot as the oracle.
 - Add a budget file and CI check mode that fails on regressions without requiring all mismatches to be fixed immediately.
 - Keep the legacy importer available, but treat it as smoke/regression tooling rather than full-suite coverage.
 
@@ -598,10 +600,11 @@ Landed:
 - A first `python/` pyo3 shim exposes `sqlgrok.transpile(...)` for bridge work.
 - The first pytest bridge patches `validate`, `validate_all`, and `validate_identity`, writes classified JSONL, and runs through `xtask run-sqlglot-suite` with a budget check.
 - The bridge now defaults to full transpile-family module discovery and has checked-in budgets/reports for Postgres-to-SQLite, MySQL-to-SQLite, and SQLite identity.
+- Forced-pair bridge reports now cover all `15,164` transpile helper attempts for MySQL-to-SQLite, Postgres-to-SQLite, and SQLite identity.
 
 Remaining:
 
-- Burn down the first full-family report gaps, starting with MySQL bit/hex literals and SQLite identity rust-errors.
+- Burn down the forced-pair report gaps by bucket, starting with the highest-volume Rust errors and mismatch clusters.
 - Add report diffing so budget updates can highlight newly fixed and newly regressed rows, not only counts.
 - Wire the bridge into CI after the local command is stable.
 

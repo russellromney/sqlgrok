@@ -281,6 +281,9 @@ fn run_sqlglot_suite(args: SqlglotSuiteArgs) -> Result<(), String> {
         .arg(&args.write)
         .arg("--report-output")
         .arg(&args.report_output);
+    if args.force_pair {
+        command.arg("--force-pair");
+    }
     for module in &args.modules {
         command.arg("--module").arg(module);
     }
@@ -639,6 +642,7 @@ struct SqlglotSuiteArgs {
     report_output: PathBuf,
     budget: PathBuf,
     check_budget: bool,
+    force_pair: bool,
     python: PathBuf,
     python_args: Vec<String>,
     pytest_args: Vec<String>,
@@ -655,6 +659,7 @@ impl SqlglotSuiteArgs {
         let mut report_output = None;
         let mut budget = None;
         let mut check_budget = false;
+        let mut force_pair = false;
         let mut python = None;
         let mut pytest_args = Vec::new();
 
@@ -670,6 +675,7 @@ impl SqlglotSuiteArgs {
                 }
                 "--budget" => budget = Some(next_value(&mut args, "--budget")?.into()),
                 "--check-budget" => check_budget = true,
+                "--force-pair" => force_pair = true,
                 "--python" => python = Some(next_value(&mut args, "--python")?.into()),
                 "--pytest-arg" => pytest_args.push(next_value(&mut args, "--pytest-arg")?),
                 "-h" | "--help" => return Err(Self::usage()),
@@ -684,13 +690,22 @@ impl SqlglotSuiteArgs {
         if modules.is_empty() {
             modules = default_sqlglot_test_modules(&sqlglot);
         }
+        let report_prefix = if force_pair {
+            "sqlglot_suite_forced"
+        } else {
+            "sqlglot_suite"
+        };
         let report_output = report_output.unwrap_or_else(|| {
-            PathBuf::from("parity/reports")
-                .join(format!("sqlglot_suite_{}_{}_{}.jsonl", family, read, write))
+            PathBuf::from("parity/reports").join(format!(
+                "{}_{}_{}_{}.jsonl",
+                report_prefix, family, read, write
+            ))
         });
         let budget = budget.unwrap_or_else(|| {
-            PathBuf::from("parity/budgets")
-                .join(format!("sqlglot_suite_{}_{}_{}.json", family, read, write))
+            PathBuf::from("parity/budgets").join(format!(
+                "{}_{}_{}_{}.json",
+                report_prefix, family, read, write
+            ))
         });
         let (python, python_args) = if let Some(python) = python {
             (python, Vec::new())
@@ -721,6 +736,7 @@ impl SqlglotSuiteArgs {
             report_output,
             budget,
             check_budget,
+            force_pair,
             python,
             python_args,
             pytest_args,
@@ -758,7 +774,7 @@ impl SqlglotSuiteArgs {
     }
 
     fn usage() -> String {
-        "usage: cargo run --bin xtask -- run-sqlglot-suite --sqlglot /path/to/sqlglot --family transpile --read postgres --write sqlite [--module tests/dialects/test_postgres.py ...] [--report-output parity/reports/sqlglot_suite_transpile_postgres_sqlite.jsonl] [--check-budget] [--budget parity/budgets/sqlglot_suite_transpile_postgres_sqlite.json] [--python python3] [--pytest-arg -q]".to_string()
+        "usage: cargo run --bin xtask -- run-sqlglot-suite --sqlglot /path/to/sqlglot --family transpile --read postgres --write sqlite [--force-pair] [--module tests/dialects/test_postgres.py ...] [--report-output parity/reports/sqlglot_suite_transpile_postgres_sqlite.jsonl] [--check-budget] [--budget parity/budgets/sqlglot_suite_transpile_postgres_sqlite.json] [--python python3] [--pytest-arg -q]".to_string()
     }
 }
 

@@ -69,6 +69,14 @@ ratchet backlog. The bridge is the long-term source of truth, while importer rep
 remain useful for finding work until more SQLGlot helper shapes and bridge lanes are
 adapted.
 
+The bridge also has an explicit forced-pair mode for backlog discovery. In this mode,
+pytest still discovers SQL through SQLGlot's helpers, but every captured source SQL is
+re-evaluated as the requested `--read`/`--write` pair. The expected output comes from a
+fresh Python SQLGlot oracle call for that forced pair, not from the helper's original
+target string. These reports are written as
+`parity/reports/sqlglot_suite_forced_<family>_<read>_<write>.jsonl` so they do not
+replace the stricter helper-route budget reports.
+
 CI should gate the bridge by budget:
 
 - fail if `rust-error`, `oracle-error`, or `unsupported-harness-shape` increases;
@@ -91,6 +99,28 @@ cargo run --features cli --bin xtask -- run-sqlglot-suite \
 
 This is the first full-family transpile bridge for the tracked lanes. It still starts with
 transpile helper semantics; parse/generate and optimizer helpers are future bridge lanes.
+
+Run the forced-pair backlog view with `--force-pair`:
+
+```bash
+cargo run --features cli --bin xtask -- run-sqlglot-suite \
+  --sqlglot /Users/russellromney/Documents/Github/sqlglot \
+  --family transpile \
+  --read mysql \
+  --write sqlite \
+  --force-pair \
+  --pytest-arg -q
+```
+
+As of the latest checked-in reports, the forced-pair bridge sees all `15,164` transpile
+helper attempts for each tracked lane:
+
+- MySQL->SQLite: `7,286` match, `4,321` mismatch, `1,677` rust-error, `1,743` oracle-error,
+  `137` unsupported harness shape.
+- Postgres->SQLite: `8,114` match, `3,708` mismatch, `1,748` rust-error, `1,457`
+  oracle-error, `137` unsupported harness shape.
+- SQLite->SQLite: `7,786` match, `3,990` mismatch, `1,702` rust-error, `1,549`
+  oracle-error, `137` unsupported harness shape.
 
 ## Case Format
 
