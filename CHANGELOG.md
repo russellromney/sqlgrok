@@ -59,6 +59,7 @@ this file records what landed.
 - Cleared the SQLite-to-SQLite SQLGlot-suite bridge output backlog: `102` discovered cases now match, with `0` mismatches and `0` Rust errors; the remaining `5` rows are harness-shape limitations.
 - Taught the SQLGlot suite bridge to evaluate pretty-output and command-warning helper cases, clearing SQLite-to-SQLite unsupported harness shapes so all `107` discovered cases now match.
 - Hardened the bridge/helper review fixes by keeping `identify=True` explicitly unsupported until sqlgrok has native identify-mode generation and limiting raw-SQL pretty normalization to the SQLGlot-covered `CREATE TABLE` fallback.
+- Widened `TestTranspile.validate` bridge support for `pretty`, `identity`, and unsupported-level helper kwargs, and added bridge coverage accounting for observed helper attempts versus read/write-filtered routes.
 
 ## 2026-05-20
 

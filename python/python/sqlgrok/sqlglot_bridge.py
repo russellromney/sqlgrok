@@ -61,11 +61,21 @@ class BridgeRecorder:
         self.write_filter = write_filter
         self.sqlglot_root = sqlglot_root.resolve() if sqlglot_root else None
         self.cases: list[BridgeCase] = []
+        self.attempt_counts: Counter[tuple[str, str | None, str | None]] = Counter()
+        self.filtered_counts: Counter[tuple[str, str | None, str | None]] = Counter()
 
     def wants(self, read: str | None, write: str | None) -> bool:
         if self.read_filter and read != self.read_filter:
             return False
         if self.write_filter and write != self.write_filter:
+            return False
+        return True
+
+    def begin_attempt(self, *, helper: str, read: str | None, write: str | None) -> bool:
+        route = (helper, read, write)
+        self.attempt_counts[route] += 1
+        if not self.wants(read, write):
+            self.filtered_counts[route] += 1
             return False
         return True
 
@@ -117,7 +127,7 @@ class BridgeRecorder:
         expected: str,
         pretty: bool = False,
     ) -> None:
-        if not self.wants(read, write):
+        if not self.begin_attempt(helper=helper, read=read, write=write):
             return
 
         try:
@@ -148,6 +158,9 @@ class BridgeRecorder:
         expected: str | None,
         reason: str,
     ) -> None:
+        if not self.begin_attempt(helper=helper, read=read, write=write):
+            return
+
         self.record(
             helper=helper,
             sql=sql,
@@ -182,6 +195,8 @@ class BridgeRecorder:
             f"Source: `{self.report}`",
             "",
             f"Total cases: `{len(self.cases)}`",
+            f"Observed helper attempts: `{sum(self.attempt_counts.values())}`",
+            f"Filtered by read/write: `{sum(self.filtered_counts.values())}`",
             "",
             "## Status Counts",
             "",
@@ -197,6 +212,19 @@ class BridgeRecorder:
         )
         for (status, helper), count in helper_counts.most_common(25):
             lines.append(f"| `{status}` | `{helper}` | {count} |")
+
+        if self.filtered_counts:
+            lines.extend(
+                [
+                    "",
+                    "## Filtered Routes",
+                    "",
+                    "| Helper | Read | Write | Count |",
+                    "| --- | --- | --- | ---: |",
+                ]
+            )
+            for (helper, read, write), count in self.filtered_counts.most_common(25):
+                lines.append(f"| `{helper}` | `{read}` | `{write}` | {count} |")
 
         lines.extend(
             [
@@ -248,7 +276,14 @@ def classify(*, expected: str | None, actual: str | None, error: str | None) -> 
     return "mismatch"
 
 
-def compare_one(sql: str, *, read: str | None, write: str | None, expected: str) -> BridgeCase:
+def compare_one(
+    sql: str,
+    *,
+    read: str | None,
+    write: str | None,
+    expected: str,
+    pretty: bool = False,
+) -> BridgeCase:
     recorder = BridgeRecorder(
         report=Path(os.devnull),
         family="transpile",
@@ -262,6 +297,7 @@ def compare_one(sql: str, *, read: str | None, write: str | None, expected: str)
         read=read,
         write=write,
         expected=expected,
+        pretty=pretty,
     )
     return recorder.cases[0]
 
@@ -358,17 +394,18 @@ def patch_sqlglot_helpers(recorder: BridgeRecorder) -> None:
         original_validate = test_transpile.TestTranspile.validate
 
         def validate(self: Any, sql: str, target: str, **kwargs: Any) -> Any:
-            read = kwargs.get("read")
-            write = kwargs.get("write")
-            extra_kwargs = sorted(set(kwargs) - {"read", "write"})
-            if extra_kwargs:
+            read = _dialect_name(kwargs.get("read"))
+            write = _dialect_name(kwargs.get("write"))
+            pretty = bool(kwargs.get("pretty", False))
+            unsupported_reason = _unsupported_validate_kwargs(kwargs)
+            if unsupported_reason:
                 recorder.unsupported(
                     helper="validate",
                     sql=sql,
                     read=read,
                     write=write,
                     expected=target,
-                    reason=f"unsupported validate kwargs: {', '.join(extra_kwargs)}",
+                    reason=unsupported_reason,
                 )
             else:
                 recorder.compare_transpile(
@@ -377,6 +414,7 @@ def patch_sqlglot_helpers(recorder: BridgeRecorder) -> None:
                     read=read,
                     write=write,
                     expected=target,
+                    pretty=pretty,
                 )
             return original_validate(self, sql, target, **kwargs)
 
@@ -508,6 +546,22 @@ def _dialect_name(value: Any) -> str | None:
     if isinstance(value, str):
         return value.lower()
     return str(value).lower()
+
+
+def _unsupported_validate_kwargs(kwargs: dict[str, Any]) -> str | None:
+    supported = {"read", "write", "pretty", "identity", "unsupported_level", "error_level"}
+    unsupported = sorted(set(kwargs) - supported - {"identify", "leading_comma", "pad", "indent"})
+    if unsupported:
+        return f"unsupported validate kwargs: {', '.join(unsupported)}"
+    if kwargs.get("identify"):
+        return "identify helper option is not supported yet"
+    if kwargs.get("leading_comma"):
+        return "leading_comma helper option is not supported yet"
+    if kwargs.get("pad") not in (None, 2):
+        return "pad helper option is not supported yet"
+    if kwargs.get("indent") not in (None, 2):
+        return "indent helper option is not supported yet"
+    return None
 
 
 def _first_test_frame(sqlglot_root: Path | None) -> FrameInfo:

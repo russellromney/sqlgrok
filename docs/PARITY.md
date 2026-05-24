@@ -54,6 +54,21 @@ starting with transpilation. It should adapt or monkeypatch SQLGlot's `validate`
 The bridge output belongs in `parity/reports/sqlglot_suite_<family>_<read>_<write>.jsonl`
 with a Markdown summary beside it.
 
+The Markdown summary also records coverage accounting:
+
+- `Observed helper attempts`: every SQLGlot helper call the bridge saw while running the
+  selected upstream pytest modules.
+- `Filtered by read/write`: helper calls whose read/write route did not match the
+  requested bridge lane.
+- `Filtered Routes`: the largest helper/read/write buckets that were seen but filtered.
+
+These counts are the reconciliation layer between the pytest bridge and the legacy static
+importer. The pytest bridge records SQLGlot's explicit helper routes; the importer can
+force a requested read/write pair over many extracted SQL snippets to create a broader
+ratchet backlog. The bridge is the long-term source of truth, while importer reports
+remain useful for finding work until more SQLGlot helper shapes and bridge lanes are
+adapted.
+
 CI should gate the bridge by budget:
 
 - fail if `rust-error`, `oracle-error`, or `unsupported-harness-shape` increases;
