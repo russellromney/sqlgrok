@@ -5,6 +5,7 @@ packaging/test/ca-bundle.pem
 __pycache__/
 *.py[cod]
 python/target/
+python/.venv/
 python/.pytest_cache/
 python/python/sqlgrok/_native*.so
 python/python/sqlgrok/_native*.pyd

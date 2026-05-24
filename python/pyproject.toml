@@ -6,7 +6,7 @@ build-backend = "maturin"
 name = "sqlgrok"
 version = "0.9.27"
 description = "Python test shim for sqlgrok, a pure-Rust SQLGlot port"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 
 [tool.maturin]

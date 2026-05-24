@@ -1,0 +1,7 @@
+{
+  "match": 56,
+  "mismatch": 35,
+  "rust-error": 11,
+  "oracle-error": 0,
+  "unsupported-harness-shape": 5
+}

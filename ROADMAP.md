@@ -149,9 +149,7 @@ Deliverables:
 Acceptance checks:
 
 ```bash
-cd python
-maturin develop
-python -c "import sqlgrok; print(sqlgrok.transpile('SELECT 1', read='postgres', write='sqlite'))"
+uv run --project python python -c "import sqlgrok; print(sqlgrok.transpile('SELECT 1', read='postgres', write='sqlite'))"
 
 cargo run --bin xtask -- run-sqlglot-suite \
   --sqlglot /Users/russellromney/Documents/Github/sqlglot \
@@ -599,18 +597,17 @@ Landed:
 - The importer auto-tags obvious DDL, index, and constraint cases.
 - A first `python/` pyo3 shim exposes `sqlgrok.transpile(...)` for bridge work.
 - The first pytest bridge patches `validate`, `validate_all`, and `validate_identity`, writes classified JSONL, and runs through `xtask run-sqlglot-suite` with a budget check.
+- The bridge now defaults to full transpile-family module discovery and has checked-in budgets/reports for Postgres-to-SQLite, MySQL-to-SQLite, and SQLite identity.
 
 Remaining:
 
-- Widen the bridge from the initial Postgres module slice to the full transpile suite.
-- Add report summarization for SQLGlot-suite JSONL rows.
-- Add checked-in mismatch/error budgets for MySQL-to-SQLite and SQLite identity.
+- Burn down the first full-family report gaps, starting with MySQL bit/hex literals and SQLite identity rust-errors.
+- Add report diffing so budget updates can highlight newly fixed and newly regressed rows, not only counts.
 - Wire the bridge into CI after the local command is stable.
 
 Done when:
 
 ```bash
-cd python && maturin develop
 cargo run --bin xtask -- run-sqlglot-suite --sqlglot /path/to/sqlglot --family transpile --read postgres --write sqlite --check-budget
 cargo test --features cli
 ```

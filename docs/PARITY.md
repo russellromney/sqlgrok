@@ -31,9 +31,7 @@ not sufficient as the project completion criterion.
 The first bridge dependency is a small Python package under `python/`:
 
 ```bash
-cd python
-maturin develop
-python -c "import sqlgrok; print(sqlgrok.transpile('SELECT 1', read='postgres', write='sqlite'))"
+uv run --project python python -c "import sqlgrok; print(sqlgrok.transpile('SELECT 1', read='postgres', write='sqlite'))"
 ```
 
 The shim exposes a SQLGlot-shaped `sqlgrok.transpile(sql, read=None, write=None) -> list[str]`
@@ -62,8 +60,9 @@ CI should gate the bridge by budget:
 - fail if `mismatch` increases above the checked-in budget;
 - allow mismatch reductions only when the budget is updated intentionally.
 
-The first landed bridge slice covers one upstream module, `tests/dialects/test_postgres.py`,
-filtered to Postgres-to-SQLite helper cases:
+The landed bridge runs the upstream transpile family, `tests/test_transpile.py` plus all
+`tests/dialects/test_*.py` modules, with read/write filters selecting the rows that enter
+the report:
 
 ```bash
 cargo run --features cli --bin xtask -- run-sqlglot-suite \
@@ -71,14 +70,12 @@ cargo run --features cli --bin xtask -- run-sqlglot-suite \
   --family transpile \
   --read postgres \
   --write sqlite \
-  --module tests/dialects/test_postgres.py \
   --check-budget \
-  --python /Users/russellromney/.venv/bin/python \
   --pytest-arg -q
 ```
 
-This is not the full suite yet. It proves the loop: patch SQLGlot helpers, run pytest,
-write JSONL, and enforce a budget.
+This is the first full-family transpile bridge for the tracked lanes. It still starts with
+transpile helper semantics; parse/generate and optimizer helpers are future bridge lanes.
 
 ## Case Format
 

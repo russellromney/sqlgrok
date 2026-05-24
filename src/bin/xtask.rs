@@ -263,6 +263,11 @@ fn run_sqlglot_suite(args: SqlglotSuiteArgs) -> Result<(), String> {
     }
 
     let mut command = Command::new(&args.python);
+    command.args(&args.python_args);
+    let display_command = std::iter::once(args.python.display().to_string())
+        .chain(args.python_args.iter().cloned())
+        .collect::<Vec<_>>()
+        .join(" ");
     command
         .arg("-m")
         .arg("sqlgrok.sqlglot_bridge")
@@ -274,23 +279,39 @@ fn run_sqlglot_suite(args: SqlglotSuiteArgs) -> Result<(), String> {
         .arg(&args.read)
         .arg("--write")
         .arg(&args.write)
-        .arg("--module")
-        .arg(&args.module)
         .arg("--report-output")
         .arg(&args.report_output);
+    for module in &args.modules {
+        command.arg("--module").arg(module);
+    }
 
     if args.check_budget {
         command.arg("--check-budget");
         command.arg("--budget").arg(&args.budget);
     }
     command.args(&args.pytest_args);
+    if let Some(python_dir) = args.python.parent() {
+        let path = env::var_os("PATH").unwrap_or_default();
+        let mut paths = vec![python_dir.to_path_buf()];
+        paths.extend(env::split_paths(&path));
+        let joined = env::join_paths(paths).map_err(|err| {
+            format!(
+                "failed to prepend {} to PATH for SQLGlot bridge: {err}",
+                python_dir.display()
+            )
+        })?;
+        command.env("PATH", joined);
+    }
+    let pythonpath = env::var_os("PYTHONPATH").unwrap_or_default();
+    let mut pythonpaths = vec![args.sqlglot.clone()];
+    pythonpaths.extend(env::split_paths(&pythonpath));
+    let joined_pythonpath = env::join_paths(pythonpaths)
+        .map_err(|err| format!("failed to set PYTHONPATH for SQLGlot bridge: {err}"))?;
+    command.env("PYTHONPATH", joined_pythonpath);
 
-    let status = command.status().map_err(|err| {
-        format!(
-            "failed to run SQLGlot bridge with {}: {err}",
-            args.python.display()
-        )
-    })?;
+    let status = command
+        .status()
+        .map_err(|err| format!("failed to run SQLGlot bridge with {display_command}: {err}",))?;
 
     if !status.success() {
         return Err(format!("SQLGlot bridge exited with {status}"));
@@ -614,11 +635,12 @@ struct SqlglotSuiteArgs {
     family: String,
     read: String,
     write: String,
-    module: String,
+    modules: Vec<String>,
     report_output: PathBuf,
     budget: PathBuf,
     check_budget: bool,
     python: PathBuf,
+    python_args: Vec<String>,
     pytest_args: Vec<String>,
 }
 
@@ -629,7 +651,7 @@ impl SqlglotSuiteArgs {
         let mut family = None;
         let mut read = None;
         let mut write = None;
-        let mut module = None;
+        let mut modules = Vec::new();
         let mut report_output = None;
         let mut budget = None;
         let mut check_budget = false;
@@ -642,7 +664,7 @@ impl SqlglotSuiteArgs {
                 "--family" => family = Some(next_value(&mut args, "--family")?),
                 "--read" => read = Some(next_value(&mut args, "--read")?),
                 "--write" => write = Some(next_value(&mut args, "--write")?),
-                "--module" => module = Some(next_value(&mut args, "--module")?),
+                "--module" => modules.push(next_value(&mut args, "--module")?),
                 "--report-output" => {
                     report_output = Some(next_value(&mut args, "--report-output")?.into())
                 }
@@ -659,7 +681,9 @@ impl SqlglotSuiteArgs {
         let family = family.unwrap_or_else(|| "transpile".to_string());
         let read = read.ok_or_else(|| "--read is required".to_string())?;
         let write = write.ok_or_else(|| "--write is required".to_string())?;
-        let module = module.unwrap_or_else(|| default_sqlglot_test_module(&sqlglot, &read));
+        if modules.is_empty() {
+            modules = default_sqlglot_test_modules(&sqlglot);
+        }
         let report_output = report_output.unwrap_or_else(|| {
             PathBuf::from("parity/reports")
                 .join(format!("sqlglot_suite_{}_{}_{}.jsonl", family, read, write))
@@ -668,20 +692,37 @@ impl SqlglotSuiteArgs {
             PathBuf::from("parity/budgets")
                 .join(format!("sqlglot_suite_{}_{}_{}.json", family, read, write))
         });
-        let python = python
-            .or_else(|| env::var_os("PYTHON").map(PathBuf::from))
-            .unwrap_or_else(|| PathBuf::from("python3"));
+        let (python, python_args) = if let Some(python) = python {
+            (python, Vec::new())
+        } else if let Some(python) = env::var_os("PYTHON").map(PathBuf::from) {
+            (python, Vec::new())
+        } else {
+            (
+                PathBuf::from("uv"),
+                vec![
+                    "run".to_string(),
+                    "--project".to_string(),
+                    "python".to_string(),
+                    "--with".to_string(),
+                    "pytest".to_string(),
+                    "--with".to_string(),
+                    "pytz".to_string(),
+                    "python".to_string(),
+                ],
+            )
+        };
 
         Ok(Self {
             sqlglot,
             family,
             read,
             write,
-            module,
+            modules,
             report_output,
             budget,
             check_budget,
             python,
+            python_args,
             pytest_args,
         })
     }
@@ -699,11 +740,13 @@ impl SqlglotSuiteArgs {
                 self.sqlglot.display()
             ));
         }
-        if !self.sqlglot.join(&self.module).is_file() {
-            return Err(format!(
-                "{} is not a SQLGlot test module",
-                self.sqlglot.join(&self.module).display()
-            ));
+        for module in &self.modules {
+            if !self.sqlglot.join(module).is_file() {
+                return Err(format!(
+                    "{} is not a SQLGlot test module",
+                    self.sqlglot.join(module).display()
+                ));
+            }
         }
         if self.check_budget && !self.budget.is_file() {
             return Err(format!(
@@ -715,7 +758,7 @@ impl SqlglotSuiteArgs {
     }
 
     fn usage() -> String {
-        "usage: cargo run --bin xtask -- run-sqlglot-suite --sqlglot /path/to/sqlglot --family transpile --read postgres --write sqlite [--module tests/dialects/test_postgres.py] [--report-output parity/reports/sqlglot_suite_transpile_postgres_sqlite.jsonl] [--check-budget] [--budget parity/budgets/sqlglot_suite_transpile_postgres_sqlite.json] [--python python3] [--pytest-arg -q]".to_string()
+        "usage: cargo run --bin xtask -- run-sqlglot-suite --sqlglot /path/to/sqlglot --family transpile --read postgres --write sqlite [--module tests/dialects/test_postgres.py ...] [--report-output parity/reports/sqlglot_suite_transpile_postgres_sqlite.jsonl] [--check-budget] [--budget parity/budgets/sqlglot_suite_transpile_postgres_sqlite.json] [--python python3] [--pytest-arg -q]".to_string()
     }
 }
 
@@ -796,13 +839,24 @@ fn default_sqlglot_path() -> PathBuf {
         )
 }
 
-fn default_sqlglot_test_module(sqlglot: &Path, read: &str) -> String {
-    let dialect_module = format!("tests/dialects/test_{}.py", read.replace('-', "_"));
-    if sqlglot.join(&dialect_module).is_file() {
-        dialect_module
-    } else {
-        "tests/test_transpile.py".to_string()
+fn default_sqlglot_test_modules(sqlglot: &Path) -> Vec<String> {
+    let mut modules = vec!["tests/test_transpile.py".to_string()];
+    let dialects_dir = sqlglot.join("tests/dialects");
+    let mut dialect_modules = Vec::new();
+    if let Ok(entries) = fs::read_dir(dialects_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let Some(file_name) = path.file_name().and_then(|value| value.to_str()) else {
+                continue;
+            };
+            if file_name.starts_with("test_") && file_name.ends_with(".py") {
+                dialect_modules.push(format!("tests/dialects/{file_name}"));
+            }
+        }
     }
+    dialect_modules.sort();
+    modules.extend(dialect_modules);
+    modules
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

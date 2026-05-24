@@ -15,7 +15,7 @@ import sys
 from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import sqlgrok
 
@@ -38,11 +38,11 @@ class BridgeCase:
     test_name: str
     helper: str
     sql: str
-    read: Optional[str]
-    write: Optional[str]
-    expected: Optional[str]
-    actual: Optional[str]
-    error: Optional[str]
+    read: str | None
+    write: str | None
+    expected: str | None
+    actual: str | None
+    error: str | None
 
 
 class BridgeRecorder:
@@ -51,9 +51,9 @@ class BridgeRecorder:
         *,
         report: Path,
         family: str,
-        read_filter: Optional[str],
-        write_filter: Optional[str],
-        sqlglot_root: Optional[Path] = None,
+        read_filter: str | None,
+        write_filter: str | None,
+        sqlglot_root: Path | None = None,
     ) -> None:
         self.report = report
         self.family = family
@@ -62,7 +62,7 @@ class BridgeRecorder:
         self.sqlglot_root = sqlglot_root.resolve() if sqlglot_root else None
         self.cases: list[BridgeCase] = []
 
-    def wants(self, read: Optional[str], write: Optional[str]) -> bool:
+    def wants(self, read: str | None, write: str | None) -> bool:
         if self.read_filter and read != self.read_filter:
             return False
         if self.write_filter and write != self.write_filter:
@@ -74,12 +74,12 @@ class BridgeRecorder:
         *,
         helper: str,
         sql: str,
-        read: Optional[str],
-        write: Optional[str],
-        expected: Optional[str],
-        actual: Optional[str] = None,
-        error: Optional[str] = None,
-        status: Optional[str] = None,
+        read: str | None,
+        write: str | None,
+        expected: str | None,
+        actual: str | None = None,
+        error: str | None = None,
+        status: str | None = None,
     ) -> None:
         if not self.wants(read, write):
             return
@@ -112,8 +112,8 @@ class BridgeRecorder:
         *,
         helper: str,
         sql: str,
-        read: Optional[str],
-        write: Optional[str],
+        read: str | None,
+        write: str | None,
         expected: str,
     ) -> None:
         if not self.wants(read, write):
@@ -142,9 +142,9 @@ class BridgeRecorder:
         *,
         helper: str,
         sql: str,
-        read: Optional[str],
-        write: Optional[str],
-        expected: Optional[str],
+        read: str | None,
+        write: str | None,
+        expected: str | None,
         reason: str,
     ) -> None:
         self.record(
@@ -163,7 +163,71 @@ class BridgeRecorder:
             for case in self.cases:
                 handle.write(json.dumps(asdict(case), sort_keys=True))
                 handle.write("\n")
-        return Counter(case.status for case in self.cases)
+        counts = Counter(case.status for case in self.cases)
+        self.write_summary(counts)
+        return counts
+
+    def write_summary(self, counts: Counter[str]) -> None:
+        summary = self.report.with_suffix(".md")
+        helper_counts = Counter((case.status, case.helper) for case in self.cases)
+        source_counts = Counter(
+            (case.status, case.source_file, case.test_name) for case in self.cases
+        )
+        examples = [case for case in self.cases if case.status != "match"][:10]
+
+        lines = [
+            "# SQLGlot Suite Bridge Report",
+            "",
+            f"Source: `{self.report}`",
+            "",
+            f"Total cases: `{len(self.cases)}`",
+            "",
+            "## Status Counts",
+            "",
+            "| Status | Count |",
+            "| --- | ---: |",
+        ]
+        for status in sorted(STATUSES):
+            if counts.get(status, 0):
+                lines.append(f"| `{status}` | {counts[status]} |")
+
+        lines.extend(
+            ["", "## Helper Buckets", "", "| Status | Helper | Count |", "| --- | --- | ---: |"]
+        )
+        for (status, helper), count in helper_counts.most_common(25):
+            lines.append(f"| `{status}` | `{helper}` | {count} |")
+
+        lines.extend(
+            [
+                "",
+                "## Source Buckets",
+                "",
+                "| Status | Source | Test | Count |",
+                "| --- | --- | --- | ---: |",
+            ]
+        )
+        for (status, source, test_name), count in source_counts.most_common(25):
+            lines.append(f"| `{status}` | `{source}` | `{test_name}` | {count} |")
+
+        if examples:
+            lines.extend(["", "## Examples", ""])
+            for case in examples:
+                lines.extend(
+                    [
+                        f"### `{case.status}` `{case.source_file}:{case.source_line}`",
+                        "",
+                        f"- test: `{case.test_name}`",
+                        f"- helper: `{case.helper}`",
+                        f"- read/write: `{case.read}` -> `{case.write}`",
+                        f"- sql: `{_one_line(case.sql)}`",
+                        f"- expected: `{_one_line(case.expected)}`",
+                        f"- actual: `{_one_line(case.actual)}`",
+                        f"- error: `{_one_line(case.error)}`",
+                        "",
+                    ]
+                )
+
+        summary.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 @dataclass(frozen=True)
@@ -173,7 +237,7 @@ class FrameInfo:
     function: str
 
 
-def classify(*, expected: Optional[str], actual: Optional[str], error: Optional[str]) -> str:
+def classify(*, expected: str | None, actual: str | None, error: str | None) -> str:
     if error:
         return "rust-error"
     if expected is None:
@@ -183,7 +247,7 @@ def classify(*, expected: Optional[str], actual: Optional[str], error: Optional[
     return "mismatch"
 
 
-def compare_one(sql: str, *, read: Optional[str], write: Optional[str], expected: str) -> BridgeCase:
+def compare_one(sql: str, *, read: str | None, write: str | None, expected: str) -> BridgeCase:
     recorder = BridgeRecorder(
         report=Path(os.devnull),
         family="transpile",
@@ -324,8 +388,8 @@ def patch_sqlglot_helpers(recorder: BridgeRecorder) -> None:
         def validate_all(
             self: Any,
             sql: str,
-            read: Optional[dict[str, str]] = None,
-            write: Optional[dict[str, str]] = None,
+            read: dict[str, str] | None = None,
+            write: dict[str, str] | None = None,
             pretty: bool = False,
             identify: bool = False,
         ) -> Any:
@@ -387,7 +451,7 @@ def patch_sqlglot_helpers(recorder: BridgeRecorder) -> None:
         def validate_identity(
             self: Any,
             sql: str,
-            write_sql: Optional[str] = None,
+            write_sql: str | None = None,
             pretty: bool = False,
             check_command_warning: bool = False,
             identify: bool = False,
@@ -424,7 +488,7 @@ def patch_sqlglot_helpers(recorder: BridgeRecorder) -> None:
         test_dialect.Validator.validate_identity = validate_identity
 
 
-def _dialect_name(value: Any) -> Optional[str]:
+def _dialect_name(value: Any) -> str | None:
     if value is None:
         return None
     value = getattr(value, "value", value)
@@ -433,7 +497,7 @@ def _dialect_name(value: Any) -> Optional[str]:
     return str(value).lower()
 
 
-def _first_test_frame(sqlglot_root: Optional[Path]) -> FrameInfo:
+def _first_test_frame(sqlglot_root: Path | None) -> FrameInfo:
     for frame in inspect.stack()[2:]:
         path = frame.filename
         if "/tests/" in path and not path.endswith("sqlglot_bridge.py"):
@@ -450,7 +514,7 @@ def _first_test_frame(sqlglot_root: Optional[Path]) -> FrameInfo:
     )
 
 
-def _display_path(path: str, sqlglot_root: Optional[Path]) -> str:
+def _display_path(path: str, sqlglot_root: Path | None) -> str:
     if sqlglot_root is None:
         return path
     try:
@@ -464,11 +528,11 @@ def run_pytest(args: argparse.Namespace) -> int:
 
     sqlglot = Path(args.sqlglot).resolve()
     sys.path.insert(0, str(sqlglot))
-    module = args.module or "tests/test_transpile.py"
+    modules = args.module or discover_transpile_modules(sqlglot)
     report = Path(args.report_output)
 
     pytest_args = [
-        str(sqlglot / module),
+        *[str(sqlglot / module) for module in modules],
         "-p",
         "sqlgrok.sqlglot_bridge",
         "--sqlgrok-bridge-report",
@@ -488,13 +552,27 @@ def run_pytest(args: argparse.Namespace) -> int:
     return pytest.main(pytest_args)
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def discover_transpile_modules(sqlglot: Path) -> list[str]:
+    dialect_modules = sorted(
+        str(path.relative_to(sqlglot))
+        for path in (sqlglot / "tests" / "dialects").glob("test_*.py")
+    )
+    return ["tests/test_transpile.py", *dialect_modules]
+
+
+def _one_line(value: Any) -> str:
+    if value is None:
+        return ""
+    return str(value).replace("\n", "\\n").replace("\t", "\\t")
+
+
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run SQLGlot pytest helper parity via sqlgrok")
     parser.add_argument("--sqlglot", required=True)
     parser.add_argument("--family", default="transpile")
     parser.add_argument("--read")
     parser.add_argument("--write")
-    parser.add_argument("--module")
+    parser.add_argument("--module", action="append")
     parser.add_argument("--report-output", required=True)
     parser.add_argument("--budget")
     parser.add_argument("--check-budget", action="store_true")

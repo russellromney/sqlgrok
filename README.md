@@ -49,12 +49,10 @@ The smoke corpus is not the full SQLGlot suite. It is a fast regression layer. T
 Build the Python shim locally with:
 
 ```bash
-cd python
-maturin develop
-python -c "import sqlgrok; print(sqlgrok.transpile('SELECT 1', read='postgres', write='sqlite'))"
+uv run --project python python -c "import sqlgrok; print(sqlgrok.transpile('SELECT 1', read='postgres', write='sqlite'))"
 ```
 
-Run the first SQLGlot pytest bridge slice with:
+Run the SQLGlot pytest bridge with:
 
 ```bash
 cargo run --features cli --bin xtask -- run-sqlglot-suite \
@@ -62,9 +60,7 @@ cargo run --features cli --bin xtask -- run-sqlglot-suite \
   --family transpile \
   --read postgres \
   --write sqlite \
-  --module tests/dialects/test_postgres.py \
   --check-budget \
-  --python /Users/russellromney/.venv/bin/python \
   --pytest-arg -q
 ```
 
