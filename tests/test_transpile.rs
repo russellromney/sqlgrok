@@ -2976,6 +2976,118 @@ fn test_sqlite_time_report_parity_batch() {
 }
 
 #[test]
+fn test_postgres_time_rust_error_report_batch_to_sqlite() {
+    validate_with_dialect(
+        "SELECT CAST('2025-02-01 00:00:00' AS TIMESTAMP) - MAKE_INTERVAL(years => 1)",
+        "SELECT CAST('2025-02-01 00:00:00' AS TIMESTAMP) - MAKE_INTERVAL(years => 1)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT NOW() + MAKE_INTERVAL(years => 1, months => 2, days => 3)",
+        "SELECT CURRENT_TIMESTAMP + MAKE_INTERVAL(years => 1, months => 2, days => 3)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT XMLELEMENT(NAME foo, XMLATTRIBUTES(CURRENT_DATE AS bar), 'cont', 'ent')",
+        "SELECT XMLELEMENT(NAME foo, XMLATTRIBUTES(CURRENT_DATE AS bar), 'cont', 'ent')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "INSERT INTO book (isbn, title) VALUES ($1, $2) ON CONFLICT(isbn) WHERE deleted_at IS NULL DO UPDATE SET title = EXCLUDED.title RETURNING id, isbn",
+        "INSERT INTO book (isbn, title) VALUES (@1, @2) ON CONFLICT(isbn) WHERE deleted_at IS NULL DO UPDATE SET title = EXCLUDED.title RETURNING id, isbn",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "INSERT INTO x VALUES (1, 'a', 2.0) ON CONFLICT ON CONSTRAINT pkey DO UPDATE SET x.id = 1 RETURNING *",
+        "INSERT INTO x VALUES (1, 'a', 2.0) ON CONFLICT ON CONSTRAINT pkey DO UPDATE SET x.id = 1 RETURNING *",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_postgres_join_rust_error_report_batch_to_sqlite() {
+    validate_with_dialect(
+        "SELECT id, name FROM xml_data AS t, XMLTABLE('/root/user' PASSING t.xml COLUMNS id INT PATH '@id', name TEXT PATH 'name/text()') AS x",
+        "SELECT id, name FROM xml_data AS t, XMLTABLE('/root/user' PASSING t.xml COLUMNS id INTEGER PATH '@id', name TEXT PATH 'name/text()') AS x",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM ROWS FROM (FUNC1(col1, col2))",
+        "SELECT * FROM ROWS FROM (FUNC1(col1, col2))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM ROWS FROM (FUNC1(col1) AS alias1(\"col1\" TEXT), FUNC2(col2) AS alias2(\"col2\" INT)) WITH ORDINALITY",
+        "SELECT * FROM ROWS FROM (FUNC1(col1) AS alias1, FUNC2(col2) AS alias2) WITH ORDINALITY",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM UNNEST(ARRAY[1, 2], ARRAY['foo', 'bar', 'baz']) AS x(a, b)",
+        "SELECT * FROM UNNEST(ARRAY(1, 2), ARRAY('foo', 'bar', 'baz')) AS x",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TRIM(ARRAY_TO_STRING(ARRAY(SELECT val FROM UNNEST(ARRAY['a', 'b']) WITH ORDINALITY AS u(val, rn)), ' '))",
+        "SELECT TRIM(ARRAY_TO_STRING(ARRAY(SELECT val FROM UNNEST(ARRAY('a', 'b')) WITH ORDINALITY AS u), ' '))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT MLEAST(VARIADIC ARRAY[10, -1, 5, 4.4])",
+        "SELECT MLEAST(VARIADIC ARRAY(10, -1, 5, 4.4))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM schema_name.table_name st WHERE JSON_EXTRACT_PATH_TEXT((st.data)::json, variadic array['test'::text]) = 'test'::text",
+        "SELECT * FROM schema_name.table_name AS st WHERE CAST((st.data) AS JSON) ->> VARIADIC ARRAY(CAST('test' AS TEXT)) = CAST('test' AS TEXT)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TRIM(BOTH ' XXX ')",
+        "SELECT TRIM(' XXX ')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TRIM(LEADING ' XXX ' COLLATE \"de_DE\")",
+        "SELECT LTRIM(' XXX ' COLLATE \"de_DE\")",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TRIM(TRAILING ' XXX ' COLLATE \"de_DE\")",
+        "SELECT RTRIM(' XXX ' COLLATE \"de_DE\")",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT SUBSTRING('Thomas' FOR 3 FROM 2)",
+        "SELECT SUBSTRING('Thomas', 2, 3)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT SUBSTRING('afafa' for 1)",
+        "SELECT SUBSTRING('afafa', 1, 1)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect("|/ x", "SQRT(x)", Dialect::Postgres, Dialect::Sqlite);
+    validate_with_dialect("||/ x", "CBRT(x)", Dialect::Postgres, Dialect::Sqlite);
+}
+
+#[test]
 fn test_time_format_mysql_to_spark() {
     // MySQL format to Spark Java DateTimeFormatter style
     validate_with_dialect(

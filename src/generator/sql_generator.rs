@@ -660,6 +660,21 @@ impl Generator {
                 .is_some_and(|prefix| prefix.eq_ignore_ascii_case("JSON_TABLE"))
         {
             self.write(&rewrite_json_table_sqlite_types(sql));
+        } else if matches!(self.dialect, Some(Dialect::Sqlite))
+            && sql
+                .get(..8)
+                .is_some_and(|prefix| prefix.eq_ignore_ascii_case("XMLTABLE"))
+        {
+            self.write(&rewrite_raw_table_sqlite_types(sql));
+        } else if matches!(self.dialect, Some(Dialect::Sqlite))
+            && (sql
+                .get(..9)
+                .is_some_and(|prefix| prefix.eq_ignore_ascii_case("ROWS FROM"))
+                || sql
+                    .get(..6)
+                    .is_some_and(|prefix| prefix.eq_ignore_ascii_case("UNNEST")))
+        {
+            self.write(&rewrite_postgres_table_function_sqlite(sql));
         } else {
             self.write(sql);
         }
@@ -881,6 +896,16 @@ impl Generator {
                     self.write(&on_conflict.columns.join(", "));
                     self.write(")");
                 }
+                if let Some(constraint) = &on_conflict.constraint {
+                    self.write(" ");
+                    self.write_keyword("ON CONSTRAINT ");
+                    self.write(constraint);
+                }
+                if let Some(target_where) = &on_conflict.target_where {
+                    self.write(" ");
+                    self.write_keyword("WHERE ");
+                    self.gen_expr(target_where);
+                }
             }
             match &on_conflict.action {
                 ConflictAction::DoNothing => {
@@ -901,6 +926,11 @@ impl Generator {
                         self.write(col);
                         self.write(" = ");
                         self.gen_expr(val);
+                    }
+                    if let Some(action_where) = &on_conflict.action_where {
+                        self.write(" ");
+                        self.write_keyword("WHERE ");
+                        self.gen_expr(action_where);
                     }
                 }
             }
@@ -1937,6 +1967,7 @@ impl Generator {
                     UnaryOperator::Minus => "-",
                     UnaryOperator::Plus => "+",
                     UnaryOperator::BitwiseNot => "~",
+                    UnaryOperator::Variadic => "VARIADIC ",
                 };
                 self.write(op_str);
                 self.gen_expr(expr);
@@ -1948,6 +1979,28 @@ impl Generator {
                 filter,
                 over,
             } => {
+                if name.eq_ignore_ascii_case("ARRAY")
+                    && args.len() == 1
+                    && let Expr::Subquery(query) = &args[0]
+                {
+                    self.write(name);
+                    self.write("(");
+                    self.gen_statement(query);
+                    self.write(")");
+                    return;
+                }
+                if matches!(
+                    name.to_ascii_uppercase().as_str(),
+                    "MAKE_INTERVAL" | "XMLELEMENT"
+                ) && args.len() == 1
+                    && let Expr::StringLiteral(raw_args) = &args[0]
+                {
+                    self.write(name);
+                    self.write("(");
+                    self.write(raw_args);
+                    self.write(")");
+                    return;
+                }
                 self.write(name);
                 self.write("(");
                 if *distinct {
@@ -3384,6 +3437,58 @@ impl Default for Generator {
 }
 
 fn rewrite_json_table_sqlite_types(sql: &str) -> String {
+    rewrite_raw_table_sqlite_types(sql).replace("VARCHAR", "TEXT")
+}
+
+fn rewrite_raw_table_sqlite_types(sql: &str) -> String {
+    let bytes = sql.as_bytes();
+    let mut out = String::with_capacity(sql.len());
+    let mut i = 0;
+    let mut in_single_quote = false;
+
+    while i < bytes.len() {
+        if bytes[i] == b'\'' {
+            out.push('\'');
+            i += 1;
+            if in_single_quote && i < bytes.len() && bytes[i] == b'\'' {
+                out.push('\'');
+                i += 1;
+            } else {
+                in_single_quote = !in_single_quote;
+            }
+            continue;
+        }
+
+        if !in_single_quote {
+            if bytes[i..].len() >= 7 && bytes[i..i + 7].eq_ignore_ascii_case(b"VARCHAR") {
+                out.push_str("TEXT");
+                i += 7;
+                continue;
+            }
+            if bytes[i..].len() >= 3
+                && bytes[i..i + 3].eq_ignore_ascii_case(b"INT")
+                && bytes
+                    .get(i.wrapping_sub(1))
+                    .is_none_or(|b| !b.is_ascii_alphanumeric() && *b != b'_')
+                && bytes
+                    .get(i + 3)
+                    .is_none_or(|b| !b.is_ascii_alphanumeric() && *b != b'_')
+            {
+                out.push_str("INTEGER");
+                i += 3;
+                continue;
+            }
+        }
+
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+
+    out
+}
+
+fn rewrite_postgres_table_function_sqlite(sql: &str) -> String {
+    let sql = rewrite_array_constructors_sqlite(&rewrite_raw_table_sqlite_types(sql));
     let bytes = sql.as_bytes();
     let mut out = String::with_capacity(sql.len());
     let mut i = 0;
@@ -3403,11 +3508,34 @@ fn rewrite_json_table_sqlite_types(sql: &str) -> String {
         }
 
         if !in_single_quote
-            && bytes[i..].len() >= 7
-            && bytes[i..i + 7].eq_ignore_ascii_case(b"VARCHAR")
+            && bytes[i..].len() >= 2
+            && bytes[i..i + 2].eq_ignore_ascii_case(b"AS")
+            && bytes
+                .get(i.wrapping_sub(1))
+                .is_none_or(|b| !b.is_ascii_alphanumeric() && *b != b'_')
+            && bytes
+                .get(i + 2)
+                .is_none_or(|b| !b.is_ascii_alphanumeric() && *b != b'_')
         {
-            out.push_str("TEXT");
-            i += 7;
+            out.push_str(&sql[i..i + 2]);
+            i += 2;
+            while i < bytes.len() && bytes[i].is_ascii_whitespace() {
+                out.push(bytes[i] as char);
+                i += 1;
+            }
+            while i < bytes.len()
+                && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_' || bytes[i] == b'"')
+            {
+                out.push(bytes[i] as char);
+                i += 1;
+            }
+            let mut j = i;
+            while j < bytes.len() && bytes[j].is_ascii_whitespace() {
+                j += 1;
+            }
+            if j < bytes.len() && bytes[j] == b'(' {
+                i = skip_balanced_bytes(bytes, j);
+            }
             continue;
         }
 
@@ -3416,6 +3544,106 @@ fn rewrite_json_table_sqlite_types(sql: &str) -> String {
     }
 
     out
+}
+
+fn rewrite_array_constructors_sqlite(sql: &str) -> String {
+    let bytes = sql.as_bytes();
+    let mut out = String::with_capacity(sql.len());
+    let mut i = 0;
+    let mut in_single_quote = false;
+
+    while i < bytes.len() {
+        if bytes[i] == b'\'' {
+            out.push('\'');
+            i += 1;
+            if in_single_quote && i < bytes.len() && bytes[i] == b'\'' {
+                out.push('\'');
+                i += 1;
+            } else {
+                in_single_quote = !in_single_quote;
+            }
+            continue;
+        }
+
+        if !in_single_quote
+            && bytes[i..].len() >= 6
+            && bytes[i..i + 5].eq_ignore_ascii_case(b"ARRAY")
+            && bytes[i + 5] == b'['
+        {
+            out.push_str("ARRAY(");
+            i += 6;
+            let inner_start = i;
+            i = copy_until_matching_bracket(bytes, inner_start, &mut out);
+            out.push(')');
+            continue;
+        }
+
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+
+    out
+}
+
+fn copy_until_matching_bracket(bytes: &[u8], start: usize, out: &mut String) -> usize {
+    let mut i = start;
+    let mut depth = 1usize;
+    let mut in_single_quote = false;
+    while i < bytes.len() {
+        if bytes[i] == b'\'' {
+            out.push('\'');
+            i += 1;
+            if in_single_quote && i < bytes.len() && bytes[i] == b'\'' {
+                out.push('\'');
+                i += 1;
+            } else {
+                in_single_quote = !in_single_quote;
+            }
+            continue;
+        }
+        if !in_single_quote {
+            if bytes[i] == b'[' {
+                depth += 1;
+            } else if bytes[i] == b']' {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return i + 1;
+                }
+            }
+        }
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+    i
+}
+
+fn skip_balanced_bytes(bytes: &[u8], start: usize) -> usize {
+    let mut i = start;
+    let mut depth = 0usize;
+    let mut in_single_quote = false;
+    while i < bytes.len() {
+        if bytes[i] == b'\'' {
+            i += 1;
+            if in_single_quote && i < bytes.len() && bytes[i] == b'\'' {
+                i += 1;
+            } else {
+                in_single_quote = !in_single_quote;
+            }
+            continue;
+        }
+        if !in_single_quote {
+            if bytes[i] == b'(' {
+                depth += 1;
+            } else if bytes[i] == b')' {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return i + 1;
+                }
+            }
+        }
+        i += 1;
+    }
+    i
 }
 
 fn escape_postgres_escaped_string(value: &str) -> String {

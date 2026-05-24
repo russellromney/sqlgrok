@@ -1507,6 +1507,7 @@ pub enum UnaryOperator {
     Minus,
     Plus,
     BitwiseNot,
+    Variadic,
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1547,6 +1548,12 @@ pub enum InsertSource {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OnConflict {
     pub columns: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub constraint: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_where: Option<Expr>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub action_where: Option<Expr>,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub duplicate_key: bool,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]

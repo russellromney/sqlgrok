@@ -529,6 +529,7 @@ fn eval_unary_op(op: &UnaryOperator, val: &Value) -> Result<Value> {
                 "Cannot bitwise-not {val:?}"
             ))),
         },
+        UnaryOperator::Variadic => Ok(val.clone()),
     }
 }
 

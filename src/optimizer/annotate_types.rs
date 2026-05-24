@@ -521,6 +521,7 @@ fn infer_type<S: Schema>(
             UnaryOperator::Not => Some(DataType::Boolean),
             UnaryOperator::Minus | UnaryOperator::Plus => ann.get_type(inner).cloned(),
             UnaryOperator::BitwiseNot => ann.get_type(inner).cloned(),
+            UnaryOperator::Variadic => ann.get_type(inner).cloned(),
         },
 
         // ── CAST / TRY_CAST ──────────────────────────────────────────

@@ -877,24 +877,18 @@ impl Parser {
 
         // UNNEST(expr)
         if self.match_token(TokenType::Unnest) {
-            self.expect(TokenType::LParen)?;
-            let expr = self.parse_expr()?;
-            self.expect(TokenType::RParen)?;
-            let (alias, alias_quote_style) = match self.parse_optional_alias()? {
-                Some((name, qs)) => (Some(name), qs),
-                None => (None, QuoteStyle::None),
-            };
-            let with_offset = self.match_keyword("WITH") && self.match_keyword("OFFSET");
-            return Ok(TableSource::Unnest {
-                expr: Box::new(expr),
-                alias,
-                alias_quote_style,
-                with_offset,
-            });
+            self.pos = self.pos.saturating_sub(1);
+            return self.parse_raw_table_source_until_boundary();
         }
 
-        if self.peek().value.eq_ignore_ascii_case("JSON_TABLE")
-            && self.peek_n_type(1) == &TokenType::LParen
+        if self.peek_type() == &TokenType::Rows {
+            return self.parse_raw_table_source_until_boundary();
+        }
+
+        if matches!(
+            self.peek().value.to_ascii_uppercase().as_str(),
+            "JSON_TABLE" | "XMLTABLE"
+        ) && self.peek_n_type(1) == &TokenType::LParen
         {
             return self.parse_raw_table_function_source();
         }
@@ -1004,6 +998,61 @@ impl Parser {
             alias,
             alias_quote_style,
         })
+    }
+
+    fn parse_raw_table_source_until_boundary(&mut self) -> Result<TableSource> {
+        let start = self.char_pos_to_byte(self.peek().position);
+        let mut depth = 0usize;
+        while self.peek_type() != &TokenType::Eof {
+            if depth == 0 && self.is_table_source_boundary() {
+                break;
+            }
+            match self.peek_type() {
+                TokenType::LParen => {
+                    depth += 1;
+                    self.advance();
+                }
+                TokenType::RParen => {
+                    depth = depth.saturating_sub(1);
+                    self.advance();
+                }
+                _ => {
+                    self.advance();
+                }
+            }
+        }
+        let end = self
+            .tokens
+            .get(self.pos)
+            .map(|token| self.char_pos_to_byte(token.position))
+            .unwrap_or_else(|| self.sql.len());
+        Ok(TableSource::Raw {
+            sql: self.sql[start..end].trim().to_string(),
+            alias: None,
+            alias_quote_style: QuoteStyle::None,
+        })
+    }
+
+    fn is_table_source_boundary(&self) -> bool {
+        matches!(
+            self.peek_type(),
+            TokenType::Comma
+                | TokenType::Join
+                | TokenType::Inner
+                | TokenType::Left
+                | TokenType::Right
+                | TokenType::Full
+                | TokenType::Cross
+                | TokenType::Where
+                | TokenType::Group
+                | TokenType::Order
+                | TokenType::Limit
+                | TokenType::Having
+                | TokenType::Window
+                | TokenType::Qualify
+                | TokenType::On
+                | TokenType::RParen
+        )
     }
 
     fn parse_values_rows(&mut self) -> Result<Vec<Vec<Expr>>> {
@@ -1474,6 +1523,7 @@ impl Parser {
         // ON CONFLICT
         let on_conflict = if self.match_token(TokenType::On) {
             if self.match_token(TokenType::Conflict) {
+                let mut constraint = None;
                 let columns = if self.match_token(TokenType::LParen) {
                     let mut cols = vec![self.expect_name()?];
                     while self.match_token(TokenType::Comma) {
@@ -1481,8 +1531,17 @@ impl Parser {
                     }
                     self.expect(TokenType::RParen)?;
                     cols
+                } else if self.match_token(TokenType::On) {
+                    self.expect(TokenType::Constraint)?;
+                    constraint = Some(self.expect_name()?);
+                    vec![]
                 } else {
                     vec![]
+                };
+                let target_where = if self.match_token(TokenType::Where) {
+                    Some(self.parse_expr()?)
+                } else {
+                    None
                 };
                 self.expect(TokenType::Do)?;
                 let action = if self.match_token(TokenType::Nothing) {
@@ -1502,8 +1561,16 @@ impl Parser {
                     }
                     ConflictAction::DoUpdate(assignments)
                 };
+                let action_where = if self.match_token(TokenType::Where) {
+                    Some(self.parse_expr()?)
+                } else {
+                    None
+                };
                 Some(OnConflict {
                     columns,
+                    constraint,
+                    target_where,
+                    action_where,
                     duplicate_key: false,
                     compact_target: false,
                     action,
@@ -1523,6 +1590,9 @@ impl Parser {
                 }
                 Some(OnConflict {
                     columns: vec![],
+                    constraint: None,
+                    target_where: None,
+                    action_where: None,
                     duplicate_key: true,
                     compact_target: false,
                     action: ConflictAction::DoUpdate(assignments),
@@ -3130,6 +3200,40 @@ impl Parser {
 
     fn parse_unary(&mut self) -> Result<Expr> {
         match self.peek_type() {
+            TokenType::BitwiseOr
+                if self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|token| token.token_type == TokenType::Slash) =>
+            {
+                self.advance();
+                self.advance();
+                let expr = self.parse_unary()?;
+                Ok(Expr::Function {
+                    name: "SQRT".to_string(),
+                    args: vec![expr],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                })
+            }
+            TokenType::Concat
+                if self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|token| token.token_type == TokenType::Slash) =>
+            {
+                self.advance();
+                self.advance();
+                let expr = self.parse_unary()?;
+                Ok(Expr::Function {
+                    name: "CBRT".to_string(),
+                    args: vec![expr],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                })
+            }
             TokenType::Minus => {
                 self.advance();
                 let expr = self.parse_unary()?;
@@ -3151,6 +3255,14 @@ impl Parser {
                 let expr = self.parse_unary()?;
                 Ok(Expr::UnaryOp {
                     op: UnaryOperator::BitwiseNot,
+                    expr: Box::new(expr),
+                })
+            }
+            _ if self.check_keyword("VARIADIC") => {
+                self.advance();
+                let expr = self.parse_unary()?;
+                Ok(Expr::UnaryOp {
+                    op: UnaryOperator::Variadic,
                     expr: Box::new(expr),
                 })
             }
@@ -3179,9 +3291,14 @@ impl Parser {
                     index: Box::new(index),
                 };
             } else if self.match_token(TokenType::Collate) {
+                let (collation, quote_style) = self.expect_name_with_quote()?;
+                let collation = match quote_style {
+                    QuoteStyle::DoubleQuote => format!("\"{}\"", collation.replace('"', "\"\"")),
+                    _ => collation,
+                };
                 expr = Expr::Collate {
                     expr: Box::new(expr),
-                    collation: self.expect_name()?,
+                    collation,
                 };
             } else if self.match_token(TokenType::Arrow) {
                 let path = self.parse_primary()?;
@@ -3691,7 +3808,13 @@ impl Parser {
                     // ARRAY(SELECT ...)
                     let subquery = self.parse_statement_inner()?;
                     self.expect(TokenType::RParen)?;
-                    Ok(Expr::Subquery(Box::new(subquery)))
+                    Ok(Expr::Function {
+                        name: "ARRAY".to_string(),
+                        args: vec![Expr::Subquery(Box::new(subquery))],
+                        distinct: false,
+                        filter: None,
+                        over: None,
+                    })
                 } else {
                     Ok(Expr::Column {
                         table: None,
@@ -3739,6 +3862,17 @@ impl Parser {
                 // Function call: name(...)
                 if self.peek_type() == &TokenType::LParen {
                     self.advance();
+
+                    if matches!(name.to_uppercase().as_str(), "MAKE_INTERVAL" | "XMLELEMENT") {
+                        let raw_args = self.parse_raw_function_args()?;
+                        return Ok(Expr::Function {
+                            name,
+                            args: vec![Expr::StringLiteral(raw_args)],
+                            distinct: false,
+                            filter: None,
+                            over: None,
+                        });
+                    }
 
                     // Special: COUNT(*), COUNT(DISTINCT x)
                     let distinct = self.match_token(TokenType::Distinct);
@@ -4025,6 +4159,14 @@ impl Parser {
                 args.push(length);
             }
             Ok(args)
+        } else if self.match_keyword("FOR") {
+            let length = self.parse_expr()?;
+            if self.match_token(TokenType::From) {
+                let start = self.parse_expr()?;
+                Ok(vec![expr, start, length])
+            } else {
+                Ok(vec![expr, Expr::Number("1".to_string()), length])
+            }
         } else {
             let mut args = vec![expr];
             while self.match_token(TokenType::Comma) {
@@ -4052,6 +4194,37 @@ impl Parser {
         Ok(args)
     }
 
+    fn parse_raw_function_args(&mut self) -> Result<String> {
+        let start = self.peek().position;
+        let mut depth = 1usize;
+        while depth > 0 {
+            match self.peek_type() {
+                TokenType::LParen => {
+                    depth += 1;
+                    self.advance();
+                }
+                TokenType::RParen => {
+                    depth -= 1;
+                    if depth == 0 {
+                        let end = self.peek().position;
+                        self.advance();
+                        return Ok(self.sql[start..end].trim().to_string());
+                    }
+                    self.advance();
+                }
+                TokenType::Eof => {
+                    return Err(SqlglotError::ParserError {
+                        message: "Unclosed function call".into(),
+                    });
+                }
+                _ => {
+                    self.advance();
+                }
+            }
+        }
+        unreachable!("raw function parser returns when depth reaches zero")
+    }
+
     fn parse_trim_function(&mut self) -> Result<Expr> {
         if self.peek_type() == &TokenType::RParen {
             let token = self.peek();
@@ -4074,13 +4247,16 @@ impl Parser {
         };
 
         let (expr, trim_type, trim_chars) = if let Some(trim_type) = trim_type {
-            let trim_chars = if self.peek_type() == &TokenType::From {
-                None
+            if self.match_token(TokenType::From) {
+                (self.parse_expr()?, trim_type, None)
             } else {
-                Some(Box::new(self.parse_expr()?))
-            };
-            self.expect(TokenType::From)?;
-            (self.parse_expr()?, trim_type, trim_chars)
+                let first = self.parse_expr()?;
+                if self.match_token(TokenType::From) {
+                    (self.parse_expr()?, trim_type, Some(Box::new(first)))
+                } else {
+                    (first, trim_type, None)
+                }
+            }
         } else {
             let first = self.parse_expr()?;
             if self.match_token(TokenType::From) {

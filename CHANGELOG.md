@@ -47,6 +47,9 @@ this file records what landed.
 - Matched a SQLite-targeted time-function batch for `MAKETIME`/`MAKE_TIME`, MySQL UTC current-time functions, `TIME_STR_TO_TIME`, Unix timestamp conversion, and ambiguous MySQL `%M`/`%W` time-format tokens.
 - Hardened the SQLGlot parity harness so generated cases containing NUL bytes are sent to the Python oracle over stdin instead of argv.
 - Matched another SQLGlot-imported SQLite time batch covering MySQL `TIMESTAMPDIFF`, formatted `FROM_UNIXTIME`, Postgres `TO_DATE`, formatted `TO_TIMESTAMP`, `TO_CHAR`, and time-stepped `GENERATE_SERIES`.
+- Cleared the remaining Postgres imported `time` rust-errors with raw carriers for `MAKE_INTERVAL`/`XMLELEMENT`, Postgres parameter rewriting, and `ON CONFLICT` target predicates/constraints.
+- Started the Postgres join rust-error bucket with SQLite parity carriers for `XMLTABLE`, `ROWS FROM`, and multi-argument/ordinality `UNNEST` table sources.
+- Reduced the imported Postgres-to-SQLite rust-error backlog from `57` to `28` by adding parity for wrapped `ARRAY(SELECT ...)`, `VARIADIC ARRAY` arguments, additional Postgres `TRIM`/`SUBSTRING` grammar forms, quoted collation preservation, and unary square/cube-root operators.
 
 ## 2026-05-20
 

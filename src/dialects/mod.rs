@@ -355,10 +355,16 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 if is_postgres_family(source) && matches!(target, Dialect::Sqlite) {
                     on_conflict.compact_target = true;
                 }
+                if let Some(where_expr) = &mut on_conflict.target_where {
+                    *where_expr = transform_expr(where_expr.clone(), source, target);
+                }
                 if let ConflictAction::DoUpdate(assignments) = &mut on_conflict.action {
                     for (_, val) in assignments {
                         *val = transform_expr(val.clone(), source, target);
                     }
+                }
+                if let Some(where_expr) = &mut on_conflict.action_where {
+                    *where_expr = transform_expr(where_expr.clone(), source, target);
                 }
             }
         }
@@ -1098,6 +1104,13 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             as_text,
         },
         Expr::Nested(inner) => Expr::Nested(Box::new(transform_expr(*inner, source, target))),
+        Expr::Parameter(param)
+            if is_postgres_family(source)
+                && matches!(target, Dialect::Sqlite)
+                && param.starts_with('$') =>
+        {
+            Expr::Parameter(format!("@{}", &param[1..]))
+        }
         // Transform quoting on column references
         Expr::Column {
             table,
