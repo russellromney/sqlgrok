@@ -1674,6 +1674,7 @@ impl Generator {
         match dt {
             DataType::TinyInt => self.write("TINYINT"),
             DataType::SmallInt => self.write("SMALLINT"),
+            DataType::Int if self.dialect == Some(Dialect::Sqlite) => self.write("INTEGER"),
             DataType::Int => self.write("INT"),
             DataType::BigInt => self.write("BIGINT"),
             DataType::Float => self.write("FLOAT"),
@@ -1866,6 +1867,8 @@ impl Generator {
             BinaryOperator::BitwiseXor => " ^ ",
             BinaryOperator::ShiftLeft => " << ",
             BinaryOperator::ShiftRight => " >> ",
+            BinaryOperator::Is => " IS ",
+            BinaryOperator::Match => " MATCH ",
             BinaryOperator::ArrayContains => " @> ",
             BinaryOperator::ArrayContainedBy => " <@ ",
             BinaryOperator::RangeAdjacent => " -|- ",
@@ -2517,7 +2520,12 @@ impl Generator {
             }
         }
         if let Some(frame) = &spec.frame {
-            self.write(" ");
+            if spec.window_ref.is_some()
+                || !spec.partition_by.is_empty()
+                || !spec.order_by.is_empty()
+            {
+                self.write(" ");
+            }
             self.gen_window_frame(frame);
         }
     }

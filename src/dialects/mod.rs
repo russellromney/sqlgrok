@@ -302,7 +302,7 @@ pub(crate) fn supports_ilike_builtin(d: Dialect) -> bool {
 /// - ILIKE → LIKE with LOWER() wrapping for dialects that don't support ILIKE
 #[must_use]
 pub fn transform(statement: &Statement, from: Dialect, to: Dialect) -> Statement {
-    if from == to {
+    if from == to && !matches!(from, Dialect::Sqlite) {
         return statement.clone();
     }
     let mut stmt = statement.clone();
@@ -338,6 +338,13 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             transform_order_by_items(&mut sel.order_by, source, target);
             if let Some(having) = &mut sel.having {
                 *having = transform_expr(having.clone(), source, target);
+            }
+            if matches!(source, Dialect::Sqlite) && matches!(target, Dialect::Sqlite) {
+                for join in &mut sel.joins {
+                    if join.join_type == JoinType::Comma {
+                        join.join_type = JoinType::Cross;
+                    }
+                }
             }
             if is_postgres_family(source) && matches!(target, Dialect::Sqlite) {
                 if let Some(from) = &mut sel.from {
@@ -637,6 +644,20 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 .map(|a| transform_expr(a, source, target))
                 .collect();
             if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("LIKE")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && matches!(new_args.len(), 2 | 3)
+            {
+                return Expr::Like {
+                    expr: Box::new(new_args[1].clone()),
+                    pattern: Box::new(new_args[0].clone()),
+                    negated: false,
+                    escape: new_args.get(2).cloned().map(Box::new),
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("GLOB")
                 && !distinct
                 && filter.is_none()
@@ -647,6 +668,44 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     left: Box::new(new_args[1].clone()),
                     op: BinaryOperator::Glob,
                     right: Box::new(new_args[0].clone()),
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("STRFTIME")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return Expr::Function {
+                    name,
+                    args: vec![
+                        new_args[0].clone(),
+                        Expr::Column {
+                            table: None,
+                            name: "CURRENT_TIMESTAMP".to_string(),
+                            quote_style: QuoteStyle::None,
+                            table_quote_style: QuoteStyle::None,
+                        },
+                    ],
+                    distinct,
+                    filter,
+                    over,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("TRUNC")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() > 1
+            {
+                return Expr::Function {
+                    name,
+                    args: vec![new_args[0].clone()],
+                    distinct,
+                    filter,
+                    over,
                 };
             }
             if matches!(target, Dialect::Sqlite)

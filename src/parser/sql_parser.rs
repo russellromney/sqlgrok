@@ -32,6 +32,7 @@ pub struct Parser {
     tokens: Vec<Token>,
     pos: usize,
     sql: String,
+    parsing_column_default: bool,
     /// Whether to preserve comments during parsing.
     #[allow(dead_code)]
     preserve_comments: bool,
@@ -48,6 +49,7 @@ impl Parser {
             tokens,
             pos: 0,
             sql: sql.to_string(),
+            parsing_column_default: false,
             preserve_comments: false,
             pending_comments: Vec::new(),
         })
@@ -61,6 +63,7 @@ impl Parser {
             tokens,
             pos: 0,
             sql: sql.to_string(),
+            parsing_column_default: false,
             preserve_comments: true,
             pending_comments: Vec::new(),
         })
@@ -92,6 +95,7 @@ impl Parser {
             tokens,
             pos: 0,
             sql: sql.to_string(),
+            parsing_column_default: false,
             preserve_comments,
             pending_comments: Vec::new(),
         })
@@ -368,6 +372,12 @@ impl Parser {
                 }
             }
             _ if self.check_keyword("COPY") => self.parse_raw_statement(),
+            _ if self.check_keyword("PRAGMA")
+                || self.check_keyword("ATTACH")
+                || self.check_keyword("DETACH") =>
+            {
+                self.parse_sqlite_command_statement()
+            }
             TokenType::Set
             | TokenType::Analyze
             | TokenType::Grant
@@ -466,6 +476,17 @@ impl Parser {
         false
     }
 
+    fn parse_sqlite_command_statement(&mut self) -> Result<Statement> {
+        let statement = self.parse_raw_statement()?;
+        Ok(match statement {
+            Statement::Raw(mut raw) => {
+                raw.sql = Self::normalize_sqlite_command(&raw.sql);
+                Statement::Raw(raw)
+            }
+            other => other,
+        })
+    }
+
     fn parse_raw_statement(&mut self) -> Result<Statement> {
         let start = self.char_pos_to_byte(self.peek().position);
         while !matches!(self.peek_type(), TokenType::Semicolon | TokenType::Eof) {
@@ -483,6 +504,54 @@ impl Parser {
             .char_indices()
             .nth(char_pos)
             .map_or(self.sql.len(), |(byte_pos, _)| byte_pos)
+    }
+
+    fn normalize_sqlite_command(sql: &str) -> String {
+        let trimmed = sql.trim();
+        if Self::starts_with_keyword(trimmed, "PRAGMA") {
+            Self::normalize_sqlite_pragma(trimmed)
+        } else if Self::starts_with_keyword(trimmed, "ATTACH") {
+            Self::normalize_sqlite_database_keyword(trimmed, "ATTACH")
+        } else if Self::starts_with_keyword(trimmed, "DETACH") {
+            Self::normalize_sqlite_database_keyword(trimmed, "DETACH")
+        } else {
+            trimmed.to_string()
+        }
+    }
+
+    fn normalize_sqlite_pragma(sql: &str) -> String {
+        let Some(open) = sql.find('(') else {
+            return sql.to_string();
+        };
+        let Some(close) = sql.rfind(')') else {
+            return sql.to_string();
+        };
+        if close < open || !sql[close + 1..].trim().is_empty() {
+            return sql.to_string();
+        }
+
+        let name = sql[..open].trim_end();
+        let value = sql[open + 1..close].trim();
+        format!("{name} = {value}")
+    }
+
+    fn normalize_sqlite_database_keyword(sql: &str, command: &str) -> String {
+        let rest = sql[command.len()..].trim_start();
+        if Self::starts_with_keyword(rest, "DATABASE") {
+            format!("{command} {}", rest["DATABASE".len()..].trim_start())
+        } else {
+            sql.to_string()
+        }
+    }
+
+    fn starts_with_keyword(value: &str, keyword: &str) -> bool {
+        value
+            .get(..keyword.len())
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case(keyword))
+            && value[keyword.len()..]
+                .chars()
+                .next()
+                .is_none_or(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
     }
 
     /// Parse multiple statements separated by semicolons.
@@ -871,6 +940,7 @@ impl Parser {
                     | "PIVOT"
                     | "UNPIVOT"
                     | "FOR"
+                    | "INDEXED"
             ) {
                 let token = self.advance().clone();
                 let qs = quote_style_from_char(token.quote_char);
@@ -958,7 +1028,19 @@ impl Parser {
         }
 
         // Regular table reference (possibly with function syntax)
+        let table_start = self.char_pos_to_byte(self.peek().position);
         let table_ref = self.parse_table_ref()?;
+
+        if table_ref.alias.is_some() && self.match_token(TokenType::LParen) {
+            if self.peek_type() != &TokenType::RParen {
+                let _ = self.expect_name()?;
+                while self.match_token(TokenType::Comma) {
+                    let _ = self.expect_name()?;
+                }
+            }
+            self.expect(TokenType::RParen)?;
+            return Ok(TableSource::Table(table_ref));
+        }
 
         // Check if it's actually a table function: name(args...)
         if self.peek_type() == &TokenType::LParen && table_ref.schema.is_none() {
@@ -978,6 +1060,25 @@ impl Parser {
                 args,
                 alias,
                 alias_quote_style,
+            });
+        }
+
+        if self.check_keyword("INDEXED") || self.peek_type() == &TokenType::Not {
+            if self.match_keyword("INDEXED") {
+                self.expect(TokenType::By)?;
+                let _ = self.parse_table_ref_no_alias()?;
+            } else if self.match_token(TokenType::Not) {
+                self.expect_keyword("INDEXED")?;
+            }
+            let end = self
+                .tokens
+                .get(self.pos)
+                .map(|token| self.char_pos_to_byte(token.position))
+                .unwrap_or_else(|| self.sql.len());
+            return Ok(TableSource::Raw {
+                sql: self.sql[table_start..end].trim().to_string(),
+                alias: None,
+                alias_quote_style: QuoteStyle::None,
             });
         }
 
@@ -2210,7 +2311,11 @@ impl Parser {
                 self.advance();
                 nullable = Some(true);
             } else if self.match_token(TokenType::Default) {
-                default = Some(self.parse_expr()?);
+                let was_parsing_column_default = self.parsing_column_default;
+                self.parsing_column_default = true;
+                let parsed_default = self.parse_expr();
+                self.parsing_column_default = was_parsing_column_default;
+                default = Some(parsed_default?);
             } else if self.match_token(TokenType::Primary) {
                 self.expect(TokenType::Key)?;
                 if auto_increment {
@@ -2566,6 +2671,10 @@ impl Parser {
                         let len = self.parse_single_type_param()?;
                         Ok(DataType::Varbinary(len))
                     }
+                    "NVARCHAR" | "NCHAR" => {
+                        let len = self.parse_single_type_param()?;
+                        Ok(DataType::Varchar(len))
+                    }
                     "DATETIME" => Ok(DataType::DateTime),
                     "BYTES" => Ok(DataType::Bytes),
                     "VARIANT" => Ok(DataType::Variant),
@@ -2785,9 +2894,10 @@ impl Parser {
                 let new_name = self.expect_name()?;
                 Ok(AlterTableAction::RenameTable { new_name })
             } else {
-                Err(SqlglotError::ParserError {
-                    message: "Expected COLUMN or TO after RENAME".into(),
-                })
+                let old_name = self.expect_name()?;
+                self.expect_keyword("TO")?;
+                let new_name = self.expect_name()?;
+                Ok(AlterTableAction::RenameColumn { old_name, new_name })
             }
         } else {
             Err(SqlglotError::ParserError {
@@ -3176,18 +3286,39 @@ impl Parser {
                             op: UnaryOperator::Not,
                             expr: Box::new(Expr::BinaryOp {
                                 left: Box::new(left),
-                                op: BinaryOperator::Eq,
+                                op: BinaryOperator::Is,
                                 right: Box::new(right),
                             }),
                         }
                     } else {
                         Expr::BinaryOp {
                             left: Box::new(left),
-                            op: BinaryOperator::Eq,
+                            op: BinaryOperator::Is,
                             right: Box::new(right),
                         }
                     };
                 }
+            } else if !self.parsing_column_default
+                && self.peek_type() == &TokenType::Not
+                && self.peek_n_type(1) == &TokenType::Null
+            {
+                self.advance();
+                self.advance();
+                left = Expr::UnaryOp {
+                    op: UnaryOperator::Not,
+                    expr: Box::new(Expr::IsNull {
+                        expr: Box::new(left),
+                        negated: false,
+                    }),
+                };
+            } else if self.peek().value.eq_ignore_ascii_case("MATCH") {
+                self.advance();
+                let pattern = self.parse_addition()?;
+                left = Expr::BinaryOp {
+                    left: Box::new(left),
+                    op: BinaryOperator::Match,
+                    right: Box::new(pattern),
+                };
             } else if matches!(
                 self.peek_type(),
                 TokenType::Not
@@ -4937,13 +5068,13 @@ impl Parser {
                     distinct,
                 }
             }
-            "MIN" => {
+            "MIN" if args.len() == 1 => {
                 let mut it = args.into_iter();
                 TypedFunction::Min {
                     expr: Box::new(it.next()?),
                 }
             }
-            "MAX" => {
+            "MAX" if args.len() == 1 => {
                 let mut it = args.into_iter();
                 TypedFunction::Max {
                     expr: Box::new(it.next()?),
@@ -5170,7 +5301,7 @@ impl Parser {
                     expr: Box::new(it.next()?),
                 }
             }
-            "UNHEX" | "FROM_HEX" => {
+            "UNHEX" | "FROM_HEX" if args.len() == 1 => {
                 let mut it = args.into_iter();
                 TypedFunction::Unhex {
                     expr: Box::new(it.next()?),

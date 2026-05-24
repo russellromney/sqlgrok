@@ -703,6 +703,124 @@ fn test_sqlite_order_by_explicit_asc_parity() {
 }
 
 #[test]
+fn test_sqlite_pragma_and_database_commands() {
+    let cases = [
+        ("PRAGMA table_info", "PRAGMA table_info"),
+        ("PRAGMA schema", "PRAGMA schema"),
+        (
+            "PRAGMA full_column_names = on",
+            "PRAGMA full_column_names = on",
+        ),
+        (
+            "PRAGMA full_column_names = off",
+            "PRAGMA full_column_names = off",
+        ),
+        ("PRAGMA cache_size = 2000", "PRAGMA cache_size = 2000"),
+        ("PRAGMA foo = -2000", "PRAGMA foo = -2000"),
+        ("PRAGMA foo(-2000)", "PRAGMA foo = -2000"),
+        ("PRAGMA encoding = 'UTF-16'", "PRAGMA encoding = 'UTF-16'"),
+        ("PRAGMA main.cache_size", "PRAGMA main.cache_size"),
+        (
+            "PRAGMA main.cache_size = 2000",
+            "PRAGMA main.cache_size = 2000",
+        ),
+        ("PRAGMA cache_size(2000)", "PRAGMA cache_size = 2000"),
+        (
+            "PRAGMA main.cache_size(2000)",
+            "PRAGMA main.cache_size = 2000",
+        ),
+        (
+            "ATTACH DATABASE 'foo' AS schema_name",
+            "ATTACH 'foo' AS schema_name",
+        ),
+        ("DETACH DATABASE schema_name", "DETACH schema_name"),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
+}
+
+#[test]
+fn test_sqlite_suite_identity_expression_ratchet() {
+    let cases = [
+        (
+            "SELECT * FROM t AS t INDEXED BY s.i",
+            "SELECT * FROM t AS t INDEXED BY s.i",
+        ),
+        (
+            "SELECT * FROM t INDEXED BY s.i",
+            "SELECT * FROM t INDEXED BY s.i",
+        ),
+        (
+            "SELECT * FROM t INDEXED BY i",
+            "SELECT * FROM t INDEXED BY i",
+        ),
+        ("SELECT * FROM t NOT INDEXED", "SELECT * FROM t NOT INDEXED"),
+        (
+            "SELECT a FROM t1 WHERE a NOT NULL AND a NOT NULL ORDER BY a",
+            "SELECT a FROM t1 WHERE NOT a IS NULL AND NOT a IS NULL ORDER BY a",
+        ),
+        (
+            "SELECT a, b FROM t1 WHERE b + a NOT NULL ORDER BY 1",
+            "SELECT a, b FROM t1 WHERE NOT b + a IS NULL ORDER BY 1",
+        ),
+        (
+            "SELECT rowid FROM t1 WHERE t1 MATCH 'lorem'",
+            "SELECT rowid FROM t1 WHERE t1 MATCH 'lorem'",
+        ),
+        ("SELECT * FROM t1, t2", "SELECT * FROM t1 CROSS JOIN t2"),
+        ("SELECT LIKE(y, x)", "SELECT x LIKE y"),
+        ("SELECT GLOB('*y*', 'xyz')", "SELECT 'xyz' GLOB '*y*'"),
+        (
+            "SELECT LIKE('%y%', 'xyz', '')",
+            "SELECT 'xyz' LIKE '%y%' ESCAPE ''",
+        ),
+        ("SELECT MIN(a, b) FROM t", "SELECT MIN(a, b) FROM t"),
+        ("SELECT MAX(a, b) FROM t", "SELECT MAX(a, b) FROM t"),
+        ("UNHEX(a, b)", "UNHEX(a, b)"),
+        (
+            "SELECT * FROM station WHERE city IS NOT ''",
+            "SELECT * FROM station WHERE NOT city IS ''",
+        ),
+        (
+            "SELECT * FROM t WHERE NULL IS y",
+            "SELECT * FROM t WHERE NULL IS y",
+        ),
+        (
+            "SELECT * FROM t WHERE NULL IS NOT y",
+            "SELECT * FROM t WHERE NOT NULL IS y",
+        ),
+        (
+            "SELECT STRFTIME('%s')",
+            "SELECT STRFTIME('%s', CURRENT_TIMESTAMP)",
+        ),
+        ("TRUNC(3.14, 2)", "TRUNC(3.14)"),
+        (
+            "SELECT RANK() OVER (RANGE CURRENT ROW) FROM tbl",
+            "SELECT RANK() OVER (RANGE CURRENT ROW) FROM tbl",
+        ),
+        (
+            "ALTER TABLE t RENAME a TO b",
+            "ALTER TABLE t RENAME COLUMN a TO b",
+        ),
+        ("SELECT * FROM t AS t(c1, c2)", "SELECT * FROM t AS t"),
+        (
+            "CREATE TABLE \"x\" (\"Name\" NVARCHAR(200) NOT NULL)",
+            "CREATE TABLE \"x\" (\"Name\" TEXT(200) NOT NULL)",
+        ),
+        (
+            "CREATE TABLE foo (bar LONGVARCHAR)",
+            "CREATE TABLE foo (bar TEXT)",
+        ),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
+}
+
+#[test]
 fn test_identity_limit_offset() {
     let cases = [
         "SELECT * FROM test LIMIT 100",

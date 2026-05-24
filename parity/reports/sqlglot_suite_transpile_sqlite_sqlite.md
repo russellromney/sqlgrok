@@ -8,20 +8,15 @@ Total cases: `107`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 57 |
-| `mismatch` | 34 |
-| `rust-error` | 11 |
+| `match` | 102 |
 | `unsupported-harness-shape` | 5 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_identity` | 45 |
-| `mismatch` | `validate_identity` | 25 |
-| `match` | `validate_all` | 12 |
-| `rust-error` | `validate_identity` | 11 |
-| `mismatch` | `validate_all` | 9 |
+| `match` | `validate_identity` | 81 |
+| `match` | `validate_all` | 21 |
 | `unsupported-harness-shape` | `validate_identity` | 4 |
 | `unsupported-harness-shape` | `validate_all` | 1 |
 
@@ -29,24 +24,18 @@ Total cases: `107`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 27 |
-| `match` | `tests/dialects/test_sqlite.py` | `test_ddl` | 18 |
-| `mismatch` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 17 |
-| `mismatch` | `tests/dialects/test_sqlite.py` | `test_ddl` | 13 |
-| `rust-error` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 9 |
-| `match` | `tests/dialects/test_sqlite.py` | `test_strftime` | 4 |
+| `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 53 |
+| `match` | `tests/dialects/test_sqlite.py` | `test_ddl` | 33 |
+| `match` | `tests/dialects/test_sqlite.py` | `test_strftime` | 5 |
 | `unsupported-harness-shape` | `tests/dialects/test_sqlite.py` | `test_create_trigger` | 3 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_datediff` | 3 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_analyze` | 2 |
-| `rust-error` | `tests/dialects/test_sqlite.py` | `test_ddl` | 2 |
+| `match` | `tests/dialects/test_sqlite.py` | `test_trunc` | 2 |
 | `unsupported-harness-shape` | `tests/dialects/test_sqlite.py` | `test_ddl` | 1 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_hexadecimal_literal` | 1 |
-| `mismatch` | `tests/dialects/test_sqlite.py` | `test_longvarchar_dtype` | 1 |
+| `match` | `tests/dialects/test_sqlite.py` | `test_longvarchar_dtype` | 1 |
 | `unsupported-harness-shape` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 1 |
-| `mismatch` | `tests/dialects/test_sqlite.py` | `test_strftime` | 1 |
-| `match` | `tests/dialects/test_sqlite.py` | `test_trunc` | 1 |
-| `mismatch` | `tests/dialects/test_sqlite.py` | `test_trunc` | 1 |
-| `mismatch` | `tests/dialects/test_sqlite.py` | `test_warnings` | 1 |
+| `match` | `tests/dialects/test_sqlite.py` | `test_warnings` | 1 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_window_null_treatment` | 1 |
 
 ## Examples
@@ -81,73 +70,23 @@ Total cases: `107`
 - actual: ``
 - error: `pretty/identify/check_command_warning helper options are not supported yet`
 
-### `mismatch` `tests/dialects/test_sqlite.py:292`
+### `unsupported-harness-shape` `tests/dialects/test_sqlite.py:313`
 
 - test: `test_ddl`
-- helper: `validate_identity`
+- helper: `validate_all`
 - read/write: `sqlite` -> `sqlite`
-- sql: `CREATE TEMPORARY TABLE foo (id INTEGER)`
-- expected: `CREATE TEMPORARY TABLE foo (id INTEGER)`
-- actual: `CREATE TEMPORARY TABLE foo (id INT)`
-- error: ``
-
-### `mismatch` `tests/dialects/test_sqlite.py:300`
-
-- test: `test_ddl`
-- helper: `validate_identity`
-- read/write: `sqlite` -> `sqlite`
-- sql: `PRAGMA table_info`
-- expected: `PRAGMA table_info`
-- actual: `PRAGMA`
-- error: ``
-
-### `mismatch` `tests/dialects/test_sqlite.py:301`
-
-- test: `test_ddl`
-- helper: `validate_identity`
-- read/write: `sqlite` -> `sqlite`
-- sql: `PRAGMA schema`
-- expected: `PRAGMA schema`
-- actual: `PRAGMA`
-- error: ``
-
-### `rust-error` `tests/dialects/test_sqlite.py:302`
-
-- test: `test_ddl`
-- helper: `validate_identity`
-- read/write: `sqlite` -> `sqlite`
-- sql: `PRAGMA full_column_names = on`
-- expected: `PRAGMA full_column_names = on`
+- sql: `\n            CREATE TABLE "Track"\n            (\n                CONSTRAINT "PK_Track" FOREIGN KEY ("TrackId"),\n                FOREIGN KEY ("AlbumId") REFERENCES "Album" (\n                    "AlbumId"\n                ) ON DELETE NO ACTION ON UPDATE NO ACTION,\n                FOREIGN KEY ("AlbumId") ON DELETE CASCADE ON UPDATE RESTRICT,\n                FOREIGN KEY ("AlbumId") ON DELETE SET NULL ON UPDATE SET DEFAULT\n            )\n            `
+- expected: `CREATE TABLE "Track" (\n  CONSTRAINT "PK_Track" FOREIGN KEY ("TrackId"),\n  FOREIGN KEY ("AlbumId") REFERENCES "Album" (\n    "AlbumId"\n  ) ON DELETE NO ACTION ON UPDATE NO ACTION,\n  FOREIGN KEY ("AlbumId") ON DELETE CASCADE ON UPDATE RESTRICT,\n  FOREIGN KEY ("AlbumId") ON DELETE SET NULL ON UPDATE SET DEFAULT\n)`
 - actual: ``
-- error: `ValueError: Unexpected token: Token { token_type: On, value: "on", line: 1, col: 28, position: 27, quote_char: '\0' }`
+- error: `pretty/identify helper options are not supported yet`
 
-### `mismatch` `tests/dialects/test_sqlite.py:303`
+### `unsupported-harness-shape` `tests/dialects/test_sqlite.py:179`
 
-- test: `test_ddl`
+- test: `test_sqlite`
 - helper: `validate_identity`
 - read/write: `sqlite` -> `sqlite`
-- sql: `PRAGMA full_column_names = off`
-- expected: `PRAGMA full_column_names = off`
-- actual: `PRAGMA`
-- error: ``
-
-### `mismatch` `tests/dialects/test_sqlite.py:304`
-
-- test: `test_ddl`
-- helper: `validate_identity`
-- read/write: `sqlite` -> `sqlite`
-- sql: `PRAGMA cache_size = 2000`
-- expected: `PRAGMA cache_size = 2000`
-- actual: `PRAGMA`
-- error: ``
-
-### `mismatch` `tests/dialects/test_sqlite.py:305`
-
-- test: `test_ddl`
-- helper: `validate_identity`
-- read/write: `sqlite` -> `sqlite`
-- sql: `PRAGMA foo = -2000`
-- expected: `PRAGMA foo = -2000`
-- actual: `PRAGMA`
-- error: ``
+- sql: `REPLACE INTO foo (x, y) VALUES (1, 2)`
+- expected: `REPLACE INTO foo (x, y) VALUES (1, 2)`
+- actual: ``
+- error: `pretty/identify/check_command_warning helper options are not supported yet`
 

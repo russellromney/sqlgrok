@@ -557,7 +557,16 @@ fn test_multiple_functions_in_query() {
 fn test_create_table_identity_each_dialect() {
     let sql = "CREATE TABLE t (id INT, name VARCHAR(100))";
     for dialect in Dialect::all() {
-        assert_identity(sql, *dialect);
+        if *dialect == Dialect::Sqlite {
+            assert_transpile(
+                sql,
+                "CREATE TABLE t (id INTEGER, name TEXT(100))",
+                *dialect,
+                *dialect,
+            );
+        } else {
+            assert_identity(sql, *dialect);
+        }
     }
 }
 
@@ -1897,7 +1906,16 @@ fn test_truncate_identity_all_dialects() {
 #[test]
 fn test_alter_table_identity_all_dialects() {
     for dialect in Dialect::all() {
-        assert_identity("ALTER TABLE t ADD COLUMN c INT", *dialect);
+        if *dialect == Dialect::Sqlite {
+            assert_transpile(
+                "ALTER TABLE t ADD COLUMN c INT",
+                "ALTER TABLE t ADD COLUMN c INTEGER",
+                *dialect,
+                *dialect,
+            );
+        } else {
+            assert_identity("ALTER TABLE t ADD COLUMN c INT", *dialect);
+        }
     }
 }
 
@@ -1931,6 +1949,13 @@ fn test_complex_select_identity_all_dialects() {
         );
         if is_pg_family {
             assert_identity("SELECT a::INT FROM t", *dialect);
+        } else if *dialect == Dialect::Sqlite {
+            assert_transpile(
+                "SELECT CAST(a AS INT) FROM t",
+                "SELECT CAST(a AS INTEGER) FROM t",
+                *dialect,
+                *dialect,
+            );
         } else {
             assert_identity("SELECT CAST(a AS INT) FROM t", *dialect);
         }

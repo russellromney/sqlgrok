@@ -1510,6 +1510,8 @@ pub enum BinaryOperator {
     BitwiseXor,
     ShiftLeft,
     ShiftRight,
+    Is,
+    Match,
     ArrayContains,
     ArrayContainedBy,
     RangeAdjacent,
