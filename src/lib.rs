@@ -175,6 +175,25 @@ pub fn transpile_statements(
     Ok(results)
 }
 
+/// Transpile a SQL string with pretty-printed output.
+///
+/// # Errors
+///
+/// Returns a [`SqlglotError`] if parsing fails.
+pub fn transpile_statements_pretty(
+    sql: &str,
+    read_dialect: Dialect,
+    write_dialect: Dialect,
+) -> errors::Result<Vec<String>> {
+    let stmts = parser::parse_statements(sql, read_dialect)?;
+    let mut results = Vec::with_capacity(stmts.len());
+    for stmt in &stmts {
+        let transformed = dialects::transform(stmt, read_dialect, write_dialect);
+        results.push(generate_pretty(&transformed, write_dialect));
+    }
+    Ok(results)
+}
+
 /// Transpile a SQL string preserving comments through the pipeline.
 ///
 /// # Errors

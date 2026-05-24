@@ -37,6 +37,17 @@ impl Generator {
         }
     }
 
+    /// Create a pretty-printing generator targeting a specific dialect.
+    #[must_use]
+    pub fn pretty_with_dialect(dialect: Dialect) -> Self {
+        Self {
+            output: String::new(),
+            pretty: true,
+            indent: 0,
+            dialect: Some(dialect),
+        }
+    }
+
     /// Create a generator targeting a specific dialect.
     #[must_use]
     pub fn with_dialect(dialect: Dialect) -> Self {
@@ -244,7 +255,11 @@ impl Generator {
             }
             Statement::Raw(s) => {
                 self.gen_comments(&s.comments);
-                self.write(&s.sql);
+                if self.pretty {
+                    self.write(&pretty_raw_sql(&s.sql));
+                } else {
+                    self.write(&s.sql);
+                }
             }
             Statement::Expression(e) => self.gen_expr(e),
         }
@@ -3559,6 +3574,60 @@ impl Generator {
             }
         }
     }
+}
+
+fn pretty_raw_sql(sql: &str) -> String {
+    let trimmed = sql.trim();
+    if !trimmed.contains('\n') {
+        return trimmed.to_string();
+    }
+
+    let lines: Vec<&str> = trimmed
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .collect();
+    let common_indent = lines
+        .iter()
+        .skip(1)
+        .map(|line| leading_whitespace_width(line))
+        .min()
+        .unwrap_or(0);
+
+    let mut normalized: Vec<String> = lines
+        .iter()
+        .map(|line| {
+            let dedented = strip_indent_width(line.trim_end(), common_indent);
+            let indent = leading_whitespace_width(dedented);
+            let content = dedented.trim_start();
+            format!("{}{}", " ".repeat(indent / 2), content)
+        })
+        .collect();
+
+    if normalized.len() > 1 && normalized[1].trim() == "(" {
+        normalized[0].push_str(" (");
+        normalized.remove(1);
+    }
+
+    normalized.join("\n")
+}
+
+fn leading_whitespace_width(value: &str) -> usize {
+    value
+        .chars()
+        .take_while(|ch| ch.is_whitespace() && *ch != '\n')
+        .map(|ch| if ch == '\t' { 4 } else { 1 })
+        .sum()
+}
+
+fn strip_indent_width(value: &str, width: usize) -> &str {
+    let mut consumed = 0;
+    for (idx, ch) in value.char_indices() {
+        if !ch.is_whitespace() || ch == '\n' || consumed >= width {
+            return &value[idx..];
+        }
+        consumed += if ch == '\t' { 4 } else { 1 };
+    }
+    ""
 }
 
 impl Default for Generator {

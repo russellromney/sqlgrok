@@ -6,6 +6,15 @@ def test_transpile_returns_sqlglot_shaped_list():
     assert sqlgrok.transpile("SELECT 1", read="postgres", write="sqlite") == ["SELECT 1"]
 
 
+def test_transpile_supports_pretty_output():
+    assert sqlgrok.transpile(
+        "SELECT a, b FROM t WHERE a > 1",
+        read="sqlite",
+        write="sqlite",
+        pretty=True,
+    ) == ["SELECT\n  a,\n  b\nFROM\n  t\nWHERE\n  a > 1"]
+
+
 def test_bridge_manual_compare_match():
     case = sqlglot_bridge.compare_one(
         "SELECT 1",

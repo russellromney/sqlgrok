@@ -10,12 +10,22 @@ fn parse_dialect(value: Option<&str>, default: sqlgrok::Dialect) -> PyResult<sql
 }
 
 #[pyfunction]
-#[pyo3(signature = (sql, read = None, write = None))]
-fn transpile(sql: &str, read: Option<&str>, write: Option<&str>) -> PyResult<Vec<String>> {
+#[pyo3(signature = (sql, read = None, write = None, pretty = false))]
+fn transpile(
+    sql: &str,
+    read: Option<&str>,
+    write: Option<&str>,
+    pretty: bool,
+) -> PyResult<Vec<String>> {
     let read = parse_dialect(read, sqlgrok::Dialect::Ansi)?;
     let write = parse_dialect(write, read)?;
-    sqlgrok::transpile_statements(sql, read, write)
-        .map_err(|err| PyValueError::new_err(err.to_string()))
+    if pretty {
+        sqlgrok::transpile_statements_pretty(sql, read, write)
+            .map_err(|err| PyValueError::new_err(err.to_string()))
+    } else {
+        sqlgrok::transpile_statements(sql, read, write)
+            .map_err(|err| PyValueError::new_err(err.to_string()))
+    }
 }
 
 #[pymodule]

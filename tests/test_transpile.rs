@@ -4,7 +4,7 @@
 /// and basic cross-dialect transpilation. Modeled after the `validate` and
 /// `validate_identity` helpers in the Python test suite.
 use sqlgrok::ast::CreateTableOption;
-use sqlgrok::{Dialect, Statement, generate, parse, transpile};
+use sqlgrok::{Dialect, Statement, generate, generate_pretty, parse, transpile};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Helpers (mirrors Python sqlglot's TestTranspile.validate / validate_identity)
@@ -739,6 +739,32 @@ fn test_sqlite_pragma_and_database_commands() {
     for (sql, expected) in cases {
         validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
     }
+}
+
+#[test]
+fn test_sqlite_raw_create_table_pretty_parity() {
+    let sql = r#"
+            CREATE TABLE "Track"
+            (
+                CONSTRAINT "PK_Track" FOREIGN KEY ("TrackId"),
+                FOREIGN KEY ("AlbumId") REFERENCES "Album" (
+                    "AlbumId"
+                ) ON DELETE NO ACTION ON UPDATE NO ACTION,
+                FOREIGN KEY ("AlbumId") ON DELETE CASCADE ON UPDATE RESTRICT,
+                FOREIGN KEY ("AlbumId") ON DELETE SET NULL ON UPDATE SET DEFAULT
+            )
+            "#;
+    let expected = r#"CREATE TABLE "Track" (
+  CONSTRAINT "PK_Track" FOREIGN KEY ("TrackId"),
+  FOREIGN KEY ("AlbumId") REFERENCES "Album" (
+    "AlbumId"
+  ) ON DELETE NO ACTION ON UPDATE NO ACTION,
+  FOREIGN KEY ("AlbumId") ON DELETE CASCADE ON UPDATE RESTRICT,
+  FOREIGN KEY ("AlbumId") ON DELETE SET NULL ON UPDATE SET DEFAULT
+)"#;
+
+    let ast = parse(sql, Dialect::Sqlite).unwrap_or_else(|e| panic!("Parse failed: {}", e));
+    assert_eq!(generate_pretty(&ast, Dialect::Sqlite), expected);
 }
 
 #[test]

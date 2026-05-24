@@ -115,12 +115,13 @@ class BridgeRecorder:
         read: str | None,
         write: str | None,
         expected: str,
+        pretty: bool = False,
     ) -> None:
         if not self.wants(read, write):
             return
 
         try:
-            outputs = sqlgrok.transpile(sql, read=read, write=write)
+            outputs = sqlgrok.transpile(sql, read=read, write=write, pretty=pretty)
             actual = outputs[0] if outputs else None
             error = None
         except Exception as exc:  # noqa: BLE001 - bridge reports the exact Rust/Python failure
@@ -394,52 +395,34 @@ def patch_sqlglot_helpers(recorder: BridgeRecorder) -> None:
             identify: bool = False,
         ) -> Any:
             base_dialect = _dialect_name(getattr(self, "dialect", None))
-            if pretty or identify:
-                for read_dialect, read_sql in (read or {}).items():
-                    recorder.unsupported(
-                        helper="validate_all",
-                        sql=read_sql,
-                        read=_dialect_name(read_dialect),
-                        write=base_dialect,
-                        expected=sql,
-                        reason="pretty/identify helper options are not supported yet",
-                    )
-                for write_dialect, write_sql in (write or {}).items():
+            for read_dialect, read_sql in (read or {}).items():
+                recorder.compare_transpile(
+                    helper="validate_all",
+                    sql=read_sql,
+                    read=_dialect_name(read_dialect),
+                    write=base_dialect,
+                    expected=sql,
+                    pretty=pretty,
+                )
+            for write_dialect, write_sql in (write or {}).items():
+                if write_sql is UnsupportedError:
                     recorder.unsupported(
                         helper="validate_all",
                         sql=sql,
                         read=base_dialect,
                         write=_dialect_name(write_dialect),
-                        expected=None if write_sql is UnsupportedError else write_sql,
-                        reason="pretty/identify helper options are not supported yet",
+                        expected=None,
+                        reason="SQLGlot expects UnsupportedError",
                     )
-            else:
-                for read_dialect, read_sql in (read or {}).items():
+                else:
                     recorder.compare_transpile(
                         helper="validate_all",
-                        sql=read_sql,
-                        read=_dialect_name(read_dialect),
-                        write=base_dialect,
-                        expected=sql,
+                        sql=sql,
+                        read=base_dialect,
+                        write=_dialect_name(write_dialect),
+                        expected=write_sql,
+                        pretty=pretty,
                     )
-                for write_dialect, write_sql in (write or {}).items():
-                    if write_sql is UnsupportedError:
-                        recorder.unsupported(
-                            helper="validate_all",
-                            sql=sql,
-                            read=base_dialect,
-                            write=_dialect_name(write_dialect),
-                            expected=None,
-                            reason="SQLGlot expects UnsupportedError",
-                        )
-                    else:
-                        recorder.compare_transpile(
-                            helper="validate_all",
-                            sql=sql,
-                            read=base_dialect,
-                            write=_dialect_name(write_dialect),
-                            expected=write_sql,
-                        )
             return original_validate_all(self, sql, read, write, pretty, identify)
 
         validate_all._sqlgrok_patched = True
@@ -458,23 +441,14 @@ def patch_sqlglot_helpers(recorder: BridgeRecorder) -> None:
         ) -> Any:
             dialect = _dialect_name(getattr(self, "dialect", None))
             expected = write_sql or sql
-            if pretty or identify or check_command_warning:
-                recorder.unsupported(
-                    helper="validate_identity",
-                    sql=sql,
-                    read=dialect,
-                    write=dialect,
-                    expected=expected,
-                    reason="pretty/identify/check_command_warning helper options are not supported yet",
-                )
-            else:
-                recorder.compare_transpile(
-                    helper="validate_identity",
-                    sql=sql,
-                    read=dialect,
-                    write=dialect,
-                    expected=expected,
-                )
+            recorder.compare_transpile(
+                helper="validate_identity",
+                sql=sql,
+                read=dialect,
+                write=dialect,
+                expected=expected,
+                pretty=pretty,
+            )
             return original_validate_identity(
                 self,
                 sql,
