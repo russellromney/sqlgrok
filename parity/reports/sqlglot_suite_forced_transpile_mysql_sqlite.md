@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7417 |
-| `mismatch` | 4190 |
+| `match` | 7420 |
+| `mismatch` | 4187 |
 | `oracle-error` | 1743 |
 | `rust-error` | 1677 |
 | `unsupported-harness-shape` | 137 |
@@ -32,8 +32,8 @@ Filtered by read/write: `0`
 | `rust-error` | `validate_identity` | 780 |
 | `oracle-error` | `validate_all` | 599 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `mismatch` | `validate` | 97 |
-| `match` | `validate` | 58 |
+| `mismatch` | `validate` | 94 |
+| `match` | `validate` | 61 |
 | `rust-error` | `validate` | 19 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
@@ -81,16 +81,6 @@ Filtered by read/write: `0`
 - actual: ``
 - error: `ValueError: Parser error: Expected identifier, got Union ('union') at line 1 col 13`
 
-### `mismatch` `tests/test_transpile.py:52`
-
-- test: `test_alias`
-- helper: `validate`
-- read/write: `mysql` -> `sqlite`
-- sql: `SELECT x "union"`
-- expected: `SELECT x AS "union"`
-- actual: `SELECT x`
-- error: ``
-
 ### `oracle-error` `tests/test_transpile.py:55`
 
 - test: `test_alias`
@@ -110,16 +100,6 @@ Filtered by read/write: `0`
 - expected: `SELECT x AS from`
 - actual: ``
 - error: `ValueError: Parser error: Expected identifier, got From ('from') at line 1 col 13`
-
-### `mismatch` `tests/test_transpile.py:52`
-
-- test: `test_alias`
-- helper: `validate`
-- read/write: `mysql` -> `sqlite`
-- sql: `SELECT x "from"`
-- expected: `SELECT x AS "from"`
-- actual: `SELECT x`
-- error: ``
 
 ### `oracle-error` `tests/test_transpile.py:55`
 
@@ -141,16 +121,6 @@ Filtered by read/write: `0`
 - actual: ``
 - error: `ValueError: Parser error: Expected identifier, got Join ('join') at line 1 col 13`
 
-### `mismatch` `tests/test_transpile.py:52`
-
-- test: `test_alias`
-- helper: `validate`
-- read/write: `mysql` -> `sqlite`
-- sql: `SELECT x "join"`
-- expected: `SELECT x AS "join"`
-- actual: `SELECT x`
-- error: ``
-
 ### `oracle-error` `tests/test_transpile.py:55`
 
 - test: `test_alias`
@@ -169,5 +139,35 @@ Filtered by read/write: `0`
 - sql: `ALTER TABLE integers ALTER i TYPE VARCHAR`
 - expected: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT`
 - actual: `ALTER TABLE integers ALTER i TYPE VARCHAR`
+- error: ``
+
+### `mismatch` `tests/test_transpile.py:754`
+
+- test: `test_alter`
+- helper: `validate`
+- read/write: `mysql` -> `sqlite`
+- sql: `ALTER TABLE integers ALTER i TYPE VARCHAR COLLATE foo USING bar`
+- expected: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT COLLATE foo USING bar`
+- actual: `ALTER TABLE integers ALTER i TYPE VARCHAR COLLATE foo USING bar`
+- error: ``
+
+### `mismatch` `tests/test_transpile.py:645`
+
+- test: `test_comment_single_line_with_block_close`
+- helper: `validate`
+- read/write: `mysql` -> `sqlite`
+- sql: `-- aa */ SELECT * FROM secret_table --\nSELECT 1`
+- expected: `/* aa * / SELECT * FROM secret_table -- */ SELECT 1`
+- actual: `SELECT 1`
+- error: ``
+
+### `mismatch` `tests/test_transpile.py:649`
+
+- test: `test_comment_single_line_with_block_close`
+- helper: `validate`
+- read/write: `mysql` -> `sqlite`
+- sql: `-- comment */ DROP TABLE users --\nSELECT 1`
+- expected: `/* comment * / DROP TABLE users -- */ SELECT 1`
+- actual: `SELECT 1`
 - error: ``
 

@@ -8,8 +8,8 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8275 |
-| `mismatch` | 3547 |
+| `match` | 8278 |
+| `mismatch` | 3544 |
 | `oracle-error` | 1457 |
 | `rust-error` | 1748 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15164`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 8275 |
-| `mismatch` | `postgres` | `sqlite` | 3547 |
+| `match` | `postgres` | `sqlite` | 8278 |
+| `mismatch` | `postgres` | `sqlite` | 3544 |
 | `rust-error` | `postgres` | `sqlite` | 1748 |
 | `oracle-error` | `postgres` | `sqlite` | 1457 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -37,8 +37,8 @@ Total rows: `15164`
 | `rust-error` | `validate_identity` | 842 |
 | `oracle-error` | `validate_all` | 502 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `mismatch` | `validate` | 91 |
-| `match` | `validate` | 67 |
+| `mismatch` | `validate` | 88 |
+| `match` | `validate` | 70 |
 | `rust-error` | `validate` | 19 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 6 |
@@ -48,7 +48,7 @@ Total rows: `15164`
 
 | Status | Shape | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 626 |
+| `match` | `SELECT` | 629 |
 | `match` | `CAST()` | 443 |
 | `mismatch` | `CREATE TABLE` | 270 |
 | `match` | `SELECT operator multiply` | 228 |
@@ -61,7 +61,7 @@ Total rows: `15164`
 | `oracle-error` | `SELECT operator multiply` | 150 |
 | `match` | `CREATE` | 147 |
 | `rust-error` | `SELECT operator multiply` | 136 |
-| `mismatch` | `SELECT` | 135 |
+| `mismatch` | `SELECT` | 132 |
 | `mismatch` | `SELECT operator multiply` | 119 |
 | `mismatch` | `SELECT UNNEST()` | 116 |
 | `match` | `ALTER TABLE` | 115 |
@@ -138,8 +138,8 @@ Total rows: `15164`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 274 |
 | `mismatch` | `DDL/create-table rendering` | 273 |
+| `mismatch` | `missing AS or alias rendering` | 271 |
 | `mismatch` | `case-only rendering difference` | 215 |
 | `mismatch` | `CREATE` | 136 |
 | `mismatch` | `SELECT` | 123 |
@@ -456,15 +456,15 @@ Total rows: `15164`
 
 ### `mismatch` `missing AS or alias rendering`
 
-- `tests/test_transpile.py`:52 `test_alias` via `validate`: `SELECT x "union"`
-  - expected: `SELECT x AS "union"`
-  - actual: `SELECT x`
-- `tests/test_transpile.py`:52 `test_alias` via `validate`: `SELECT x "from"`
-  - expected: `SELECT x AS "from"`
-  - actual: `SELECT x`
-- `tests/test_transpile.py`:52 `test_alias` via `validate`: `SELECT x "join"`
-  - expected: `SELECT x AS "join"`
-  - actual: `SELECT x`
+- `tests/test_transpile.py`:685 `test_not_range` via `validate`: `a LIKE TEXT 'y'`
+  - expected: `a LIKE CAST('y' AS TEXT)`
+  - actual: `a LIKE TEXT`
+- `tests/test_transpile.py`:771 `test_time` via `validate`: `TIMESTAMP WITHOUT TIME ZONE '2020-01-01'`
+  - expected: `CAST('2020-01-01' AS TIMESTAMP)`
+  - actual: `TIMESTAMP`
+- `tests/test_transpile.py`:836 `test_time` via `validate`: `TIME_TO_TIME_STR(x)`
+  - expected: `CAST(x AS TEXT)`
+  - actual: `TIME_TO_TIME_STR(x)`
 
 ### `oracle-error` `oracle parse: Expecting )`
 

@@ -8,8 +8,8 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7417 |
-| `mismatch` | 4190 |
+| `match` | 7420 |
+| `mismatch` | 4187 |
 | `oracle-error` | 1743 |
 | `rust-error` | 1677 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15164`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 7417 |
-| `mismatch` | `mysql` | `sqlite` | 4190 |
+| `match` | `mysql` | `sqlite` | 7420 |
+| `mismatch` | `mysql` | `sqlite` | 4187 |
 | `oracle-error` | `mysql` | `sqlite` | 1743 |
 | `rust-error` | `mysql` | `sqlite` | 1677 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -37,8 +37,8 @@ Total rows: `15164`
 | `rust-error` | `validate_identity` | 780 |
 | `oracle-error` | `validate_all` | 599 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `mismatch` | `validate` | 97 |
-| `match` | `validate` | 58 |
+| `mismatch` | `validate` | 94 |
+| `match` | `validate` | 61 |
 | `rust-error` | `validate` | 19 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
@@ -48,11 +48,11 @@ Total rows: `15164`
 
 | Status | Shape | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 551 |
+| `match` | `SELECT` | 554 |
 | `match` | `CAST()` | 358 |
 | `mismatch` | `CREATE TABLE` | 280 |
 | `match` | `SELECT operator multiply` | 232 |
-| `mismatch` | `SELECT` | 229 |
+| `mismatch` | `SELECT` | 226 |
 | `mismatch` | `CREATE` | 196 |
 | `oracle-error` | `SELECT` | 181 |
 | `rust-error` | `SELECT` | 171 |
@@ -138,7 +138,7 @@ Total rows: `15164`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 323 |
+| `mismatch` | `missing AS or alias rendering` | 320 |
 | `mismatch` | `DDL/create-table rendering` | 276 |
 | `mismatch` | `case-only rendering difference` | 159 |
 | `mismatch` | `SELECT` | 155 |
@@ -444,15 +444,15 @@ Total rows: `15164`
 
 ### `mismatch` `missing AS or alias rendering`
 
-- `tests/test_transpile.py`:52 `test_alias` via `validate`: `SELECT x "union"`
-  - expected: `SELECT x AS "union"`
-  - actual: `SELECT x`
-- `tests/test_transpile.py`:52 `test_alias` via `validate`: `SELECT x "from"`
-  - expected: `SELECT x AS "from"`
-  - actual: `SELECT x`
-- `tests/test_transpile.py`:52 `test_alias` via `validate`: `SELECT x "join"`
-  - expected: `SELECT x AS "join"`
-  - actual: `SELECT x`
+- `tests/test_transpile.py`:685 `test_not_range` via `validate`: `a LIKE TEXT 'y'`
+  - expected: `a LIKE CAST('y' AS TEXT)`
+  - actual: `a LIKE TEXT`
+- `tests/test_transpile.py`:771 `test_time` via `validate`: `TIMESTAMP WITHOUT TIME ZONE '2020-01-01'`
+  - expected: `CAST('2020-01-01' AS TIMESTAMPTZ)`
+  - actual: `TIMESTAMP`
+- `tests/test_transpile.py`:836 `test_time` via `validate`: `TIME_TO_TIME_STR(x)`
+  - expected: `CAST(x AS TEXT)`
+  - actual: `TIME_TO_TIME_STR(x)`
 
 ### `mismatch` `missing quoted identifier`
 

@@ -164,3 +164,12 @@ fn test_implicit_quoted_alias() {
         Dialect::Postgres,
     );
 }
+
+#[test]
+fn test_implicit_quoted_reserved_alias() {
+    for alias in ["union", "from", "join"] {
+        let sql = format!(r#"SELECT x "{alias}""#);
+        let expected = format!(r#"SELECT x AS "{alias}""#);
+        validate(&sql, &expected, Dialect::Postgres);
+    }
+}

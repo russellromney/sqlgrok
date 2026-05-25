@@ -8,8 +8,8 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7947 |
-| `mismatch` | 3829 |
+| `match` | 7950 |
+| `mismatch` | 3826 |
 | `oracle-error` | 1549 |
 | `rust-error` | 1702 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15164`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 7947 |
-| `mismatch` | `sqlite` | `sqlite` | 3829 |
+| `match` | `sqlite` | `sqlite` | 7950 |
+| `mismatch` | `sqlite` | `sqlite` | 3826 |
 | `rust-error` | `sqlite` | `sqlite` | 1702 |
 | `oracle-error` | `sqlite` | `sqlite` | 1549 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -37,8 +37,8 @@ Total rows: `15164`
 | `rust-error` | `validate_identity` | 832 |
 | `oracle-error` | `validate_all` | 547 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `mismatch` | `validate` | 96 |
-| `match` | `validate` | 59 |
+| `mismatch` | `validate` | 93 |
+| `match` | `validate` | 62 |
 | `rust-error` | `validate` | 19 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
@@ -48,12 +48,12 @@ Total rows: `15164`
 
 | Status | Shape | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 564 |
+| `match` | `SELECT` | 567 |
 | `match` | `CAST()` | 439 |
 | `mismatch` | `CREATE TABLE` | 268 |
 | `match` | `SELECT operator multiply` | 215 |
 | `match` | `SHOW` | 215 |
-| `mismatch` | `SELECT` | 206 |
+| `mismatch` | `SELECT` | 203 |
 | `oracle-error` | `SELECT` | 198 |
 | `mismatch` | `CREATE` | 193 |
 | `match` | `CREATE TABLE` | 166 |
@@ -138,7 +138,7 @@ Total rows: `15164`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 430 |
+| `mismatch` | `missing AS or alias rendering` | 427 |
 | `mismatch` | `DDL/create-table rendering` | 255 |
 | `mismatch` | `missing quoted identifier` | 245 |
 | `mismatch` | `case-only rendering difference` | 212 |
@@ -432,15 +432,15 @@ Total rows: `15164`
 
 ### `mismatch` `missing AS or alias rendering`
 
-- `tests/test_transpile.py`:52 `test_alias` via `validate`: `SELECT x "union"`
-  - expected: `SELECT x AS "union"`
-  - actual: `SELECT x`
-- `tests/test_transpile.py`:52 `test_alias` via `validate`: `SELECT x "from"`
-  - expected: `SELECT x AS "from"`
-  - actual: `SELECT x`
-- `tests/test_transpile.py`:52 `test_alias` via `validate`: `SELECT x "join"`
-  - expected: `SELECT x AS "join"`
-  - actual: `SELECT x`
+- `tests/test_transpile.py`:901 `test_index_offset` via `validate`: `x[0]`
+  - expected: `x AS "0"`
+  - actual: `x[0]`
+- `tests/test_transpile.py`:902 `test_index_offset` via `validate`: `x[1]`
+  - expected: `x AS "1"`
+  - actual: `x[1]`
+- `tests/test_transpile.py`:904 `test_index_offset` via `validate`: `x[x - 1]`
+  - expected: `x AS "x - 1"`
+  - actual: `x`
 
 ### `mismatch` `missing quoted identifier`
 

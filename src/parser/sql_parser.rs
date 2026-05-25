@@ -911,38 +911,41 @@ impl Parser {
         }
         // Implicit alias
         if self.is_name_token() {
-            let peeked_upper = self.peek().value.to_uppercase();
-            if !matches!(
-                peeked_upper.as_str(),
-                "FROM"
-                    | "WHERE"
-                    | "GROUP"
-                    | "ORDER"
-                    | "LIMIT"
-                    | "HAVING"
-                    | "UNION"
-                    | "INTERSECT"
-                    | "EXCEPT"
-                    | "JOIN"
-                    | "INNER"
-                    | "LEFT"
-                    | "RIGHT"
-                    | "FULL"
-                    | "CROSS"
-                    | "NATURAL"
-                    | "ON"
-                    | "WINDOW"
-                    | "QUALIFY"
-                    | "INTO"
-                    | "VALUES"
-                    | "SET"
-                    | "RETURNING"
-                    | "PIVOT"
-                    | "UNPIVOT"
-                    | "FOR"
-                    | "INDEXED"
-            ) {
-                let token = self.advance().clone();
+            let token = self.peek().clone();
+            let peeked_upper = token.value.to_uppercase();
+            if token.quote_char != '\0'
+                || !matches!(
+                    peeked_upper.as_str(),
+                    "FROM"
+                        | "WHERE"
+                        | "GROUP"
+                        | "ORDER"
+                        | "LIMIT"
+                        | "HAVING"
+                        | "UNION"
+                        | "INTERSECT"
+                        | "EXCEPT"
+                        | "JOIN"
+                        | "INNER"
+                        | "LEFT"
+                        | "RIGHT"
+                        | "FULL"
+                        | "CROSS"
+                        | "NATURAL"
+                        | "ON"
+                        | "WINDOW"
+                        | "QUALIFY"
+                        | "INTO"
+                        | "VALUES"
+                        | "SET"
+                        | "RETURNING"
+                        | "PIVOT"
+                        | "UNPIVOT"
+                        | "FOR"
+                        | "INDEXED"
+                )
+            {
+                self.advance();
                 let qs = quote_style_from_char(token.quote_char);
                 return Ok(Some((token.value.clone(), qs)));
             }
