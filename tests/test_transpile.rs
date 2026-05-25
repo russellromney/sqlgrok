@@ -1595,10 +1595,20 @@ fn test_identity_update_returning() {
 
 #[test]
 fn test_identity_delete() {
-    let cases = ["DELETE FROM x WHERE y > 1", "DELETE FROM y"];
+    let cases = [
+        "DELETE FROM x WHERE y > 1",
+        "DELETE FROM y",
+        "DELETE FROM db.example_table AS tb WHERE tb.x = 1",
+    ];
     for sql in &cases {
         validate_identity(sql);
     }
+    validate_with_dialect(
+        "DELETE FROM sales s WHERE s.id = 1",
+        "DELETE FROM sales AS s WHERE s.id = 1",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]
@@ -3998,6 +4008,64 @@ fn test_mysql_parser_carriers_to_sqlite() {
     validate_with_dialect(
         "DELETE FROM t1, t2 USING t1 INNER JOIN t2 INNER JOIN t3 WHERE t1.id = t2.id AND t2.id = t3.id",
         "DELETE FROM t1, t2 USING t1 INNER JOIN t2 INNER JOIN t3 WHERE t1.id = t2.id AND t2.id = t3.id",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_mysql_index_hints_to_sqlite() {
+    validate_with_dialect(
+        "UPDATE items SET items.price = 0 WHERE items.id >= 5 LIMIT 10",
+        "UPDATE items SET items.price = 0 WHERE items.id >= 5 LIMIT 10",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "UPDATE items SET items.price = 0 WHERE items.id >= 5 ORDER BY items.id LIMIT 10",
+        "UPDATE items SET items.price = 0 WHERE items.id >= 5 ORDER BY items.id LIMIT 10",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "DELETE FROM t WHERE a <= 10 LIMIT 10",
+        "DELETE FROM t WHERE a <= 10 LIMIT 10",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM table1 USE INDEX (col1_index, col2_index) WHERE col1 = 1 AND col2 = 2 AND col3 = 3",
+        "SELECT * FROM table1 WHERE col1 = 1 AND col2 = 2 AND col3 = 3",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM table1 IGNORE INDEX (col3_index) WHERE col1 = 1 AND col2 = 2 AND col3 = 3",
+        "SELECT * FROM table1 WHERE col1 = 1 AND col2 = 2 AND col3 = 3",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM t1 USE INDEX (i1) IGNORE INDEX FOR ORDER BY (i2) ORDER BY a",
+        "SELECT * FROM t1 ORDER BY a",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM t1 USE INDEX FOR JOIN (i1) FORCE INDEX FOR JOIN (i2)",
+        "SELECT * FROM t1",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM t1 USE INDEX () IGNORE INDEX (i2) USE INDEX (i1) USE INDEX (i2)",
+        "SELECT * FROM t1",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "DELETE FROM t FORCE INDEX (idx) WHERE a > 5 ORDER BY id",
+        "DELETE FROM t WHERE a > 5 ORDER BY id",
         Dialect::Mysql,
         Dialect::Sqlite,
     );

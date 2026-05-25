@@ -1015,6 +1015,14 @@ impl Generator {
             }
         }
 
+        self.gen_order_by(&upd.order_by);
+
+        if let Some(limit) = &upd.limit {
+            self.sep();
+            self.write_keyword("LIMIT ");
+            self.gen_expr(limit);
+        }
+
         if !upd.returning.is_empty() {
             self.sep();
             self.write_keyword("RETURNING ");
@@ -1051,6 +1059,14 @@ impl Generator {
                 self.write(" ");
                 self.gen_expr(wh);
             }
+        }
+
+        self.gen_order_by(&del.order_by);
+
+        if let Some(limit) = &del.limit {
+            self.sep();
+            self.write_keyword("LIMIT ");
+            self.gen_expr(limit);
         }
 
         if !del.returning.is_empty() {

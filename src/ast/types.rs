@@ -1603,6 +1603,10 @@ pub struct UpdateStatement {
     pub assignments: Vec<(String, Expr)>,
     pub from: Option<FromClause>,
     pub where_clause: Option<Expr>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub order_by: Vec<OrderByItem>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<Expr>,
     pub returning: Vec<SelectItem>,
 }
 
@@ -1615,6 +1619,10 @@ pub struct DeleteStatement {
     pub table: TableRef,
     pub using: Option<FromClause>,
     pub where_clause: Option<Expr>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub order_by: Vec<OrderByItem>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<Expr>,
     pub returning: Vec<SelectItem>,
 }
 

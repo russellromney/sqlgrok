@@ -1221,6 +1221,9 @@ impl Parser {
                         | "PIVOT"
                         | "UNPIVOT"
                         | "FOR"
+                        | "FORCE"
+                        | "USE"
+                        | "IGNORE"
                         | "INDEXED"
                 )
             {
@@ -1333,7 +1336,14 @@ impl Parser {
 
         // Regular table reference (possibly with function syntax)
         let table_start = self.char_pos_to_byte(self.peek().position);
-        let table_ref = self.parse_table_ref()?;
+        let mut table_ref = self.parse_table_ref()?;
+        self.consume_mysql_index_hints()?;
+        if table_ref.alias.is_none()
+            && let Some((alias, alias_quote_style)) = self.parse_optional_alias()?
+        {
+            table_ref.alias = Some(alias);
+            table_ref.alias_quote_style = alias_quote_style;
+        }
 
         if table_ref.alias.is_some() && self.match_token(TokenType::LParen) {
             if self.peek_type() != &TokenType::RParen {
@@ -1563,6 +1573,37 @@ impl Parser {
             self.expect(TokenType::RParen)?;
         }
         Ok((alias, alias_quote_style))
+    }
+
+    fn consume_mysql_index_hints(&mut self) -> Result<()> {
+        loop {
+            let starts_hint = self.match_token(TokenType::Use)
+                || self.match_token(TokenType::Ignore)
+                || self.match_keyword("FORCE");
+            if !starts_hint {
+                break;
+            }
+
+            self.expect(TokenType::Index)?;
+            if self.match_keyword("FOR") {
+                if self.match_token(TokenType::Join) {
+                } else if self.match_token(TokenType::Order) || self.match_token(TokenType::Group) {
+                    self.expect(TokenType::By)?;
+                } else {
+                    let _ = self.expect_name()?;
+                }
+            }
+
+            self.expect(TokenType::LParen)?;
+            if self.peek_type() != &TokenType::RParen {
+                let _ = self.expect_name()?;
+                while self.match_token(TokenType::Comma) {
+                    let _ = self.expect_name()?;
+                }
+            }
+            self.expect(TokenType::RParen)?;
+        }
+        Ok(())
     }
 
     /// After parsing a base table source, check if PIVOT or UNPIVOT follows.
@@ -2122,6 +2163,7 @@ impl Parser {
     fn parse_update(&mut self) -> Result<UpdateStatement> {
         self.expect(TokenType::Update)?;
         let table = self.parse_table_ref()?;
+        self.consume_mysql_index_hints()?;
         let _ = self.parse_joins()?;
         self.expect(TokenType::Set)?;
 
@@ -2150,6 +2192,20 @@ impl Parser {
             None
         };
 
+        let order_by = if self.match_token(TokenType::Order) {
+            self.expect(TokenType::By)?;
+            self.parse_order_by_items()?
+        } else {
+            vec![]
+        };
+
+        let limit = if self.match_token(TokenType::Limit) {
+            let (limit, _offset) = self.parse_limit_offset_pair()?;
+            limit
+        } else {
+            None
+        };
+
         let returning = if self.match_token(TokenType::Returning) {
             self.parse_select_items()?
         } else {
@@ -2162,6 +2218,8 @@ impl Parser {
             assignments,
             from,
             where_clause,
+            order_by,
+            limit,
             returning,
         })
     }
@@ -2178,6 +2236,7 @@ impl Parser {
             self.expect(TokenType::From)?;
         }
         let table = self.parse_table_ref()?;
+        self.consume_mysql_index_hints()?;
         let _ = self.parse_joins()?;
 
         let using = if self.match_token(TokenType::Using) {
@@ -2194,6 +2253,20 @@ impl Parser {
             None
         };
 
+        let order_by = if self.match_token(TokenType::Order) {
+            self.expect(TokenType::By)?;
+            self.parse_order_by_items()?
+        } else {
+            vec![]
+        };
+
+        let limit = if self.match_token(TokenType::Limit) {
+            let (limit, _offset) = self.parse_limit_offset_pair()?;
+            limit
+        } else {
+            None
+        };
+
         let returning = if self.match_token(TokenType::Returning) {
             self.parse_select_items()?
         } else {
@@ -2205,6 +2278,8 @@ impl Parser {
             table,
             using,
             where_clause,
+            order_by,
+            limit,
             returning,
         })
     }

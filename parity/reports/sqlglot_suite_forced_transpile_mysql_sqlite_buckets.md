@@ -8,20 +8,20 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8063 |
+| `match` | 8073 |
 | `mismatch` | 3906 |
 | `oracle-error` | 1743 |
-| `rust-error` | 1315 |
+| `rust-error` | 1305 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 8063 |
+| `match` | `mysql` | `sqlite` | 8073 |
 | `mismatch` | `mysql` | `sqlite` | 3906 |
 | `oracle-error` | `mysql` | `sqlite` | 1743 |
-| `rust-error` | `mysql` | `sqlite` | 1315 |
+| `rust-error` | `mysql` | `sqlite` | 1305 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
 ## Helper Buckets
@@ -30,10 +30,10 @@ Total rows: `15164`
 | --- | --- | ---: |
 | `match` | `validate_all` | 5856 |
 | `mismatch` | `validate_all` | 2684 |
-| `match` | `validate_identity` | 2118 |
+| `match` | `validate_identity` | 2128 |
 | `mismatch` | `validate_identity` | 1147 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `rust-error` | `validate_identity` | 659 |
+| `rust-error` | `validate_identity` | 649 |
 | `rust-error` | `validate_all` | 646 |
 | `oracle-error` | `validate_all` | 599 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
@@ -51,7 +51,7 @@ Total rows: `15164`
 | `match` | `SELECT` | 583 |
 | `match` | `CAST()` | 427 |
 | `mismatch` | `CREATE TABLE` | 278 |
-| `match` | `SELECT operator multiply` | 236 |
+| `match` | `SELECT operator multiply` | 242 |
 | `mismatch` | `SELECT` | 208 |
 | `mismatch` | `CREATE` | 181 |
 | `oracle-error` | `SELECT` | 181 |
@@ -59,7 +59,7 @@ Total rows: `15164`
 | `match` | `CREATE` | 161 |
 | `rust-error` | `SELECT` | 160 |
 | `oracle-error` | `CREATE TABLE` | 148 |
-| `rust-error` | `SELECT operator multiply` | 145 |
+| `rust-error` | `SELECT operator multiply` | 139 |
 | `oracle-error` | `SELECT operator multiply` | 135 |
 | `match` | `CREATE TABLE` | 132 |
 | `mismatch` | `SELECT operator multiply` | 117 |
@@ -98,7 +98,7 @@ Total rows: `15164`
 | `oracle-error` | `oracle parse: Required keyword missing` | 195 |
 | `unsupported-harness-shape` | `SQLGlot expects UnsupportedError` | 119 |
 | `oracle-error` | `oracle parse: Expected TYPE after CAST` | 108 |
-| `rust-error` | `parser: Expected identifier` | 83 |
+| `rust-error` | `parser: Expected identifier` | 78 |
 | `rust-error` | `parser: Expected statement` | 74 |
 | `oracle-error` | `oracle parse: INTERVAL expression expected but got '1'` | 72 |
 | `oracle-error` | `oracle parse: The number of provided arguments (2) is greater than the maximum number of supported arguments (1)` | 46 |
@@ -219,10 +219,10 @@ Total rows: `15164`
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 74 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 68 |
+| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 67 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 67 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 66 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 66 |
-| `mismatch` | `tests/dialects/test_oracle.py` | `test_oracle` | 65 |
 
 ## Bucket Examples
 
