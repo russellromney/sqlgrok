@@ -2108,6 +2108,30 @@ fn test_fat_arrow_named_args_to_sqlite() {
     }
 }
 
+#[test]
+fn test_range_and_replace_expression_to_sqlite() {
+    for dialect in [Dialect::Postgres, Dialect::Mysql, Dialect::Sqlite] {
+        validate_with_dialect(
+            "SELECT * FROM RANGE(1, 5, 10)",
+            "SELECT * FROM RANGE(1, 5, 10)",
+            dialect,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "REPLACE(subject, pattern)",
+            "REPLACE(subject, pattern)",
+            dialect,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "REPLACE(subject, pattern, replacement)",
+            "REPLACE(subject, pattern, replacement)",
+            dialect,
+            Dialect::Sqlite,
+        );
+    }
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – Postgres-style cast (::)
 // (from Python test_transpile.py::test_types)

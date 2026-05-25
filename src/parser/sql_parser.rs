@@ -290,6 +290,7 @@ impl Parser {
                 | TokenType::Cube
                 | TokenType::Rollup
                 | TokenType::Grouping
+                | TokenType::Range
                 | TokenType::Pivot
                 | TokenType::Unpivot
                 | TokenType::Sets
@@ -413,6 +414,9 @@ impl Parser {
             | TokenType::Show => self.parse_raw_statement(),
             TokenType::Insert if self.peek_n_type(1) == &TokenType::Or => {
                 self.parse_raw_statement()
+            }
+            TokenType::Replace if self.peek_n_type(1) == &TokenType::LParen => {
+                self.parse_expr().map(Statement::Expression)
             }
             TokenType::Insert | TokenType::Replace => self.parse_insert().map(Statement::Insert),
             TokenType::Update => self.parse_update().map(Statement::Update),

@@ -13,23 +13,23 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8451 |
-| `mismatch` | 3503 |
+| `match` | 8505 |
+| `mismatch` | 3507 |
 | `oracle-error` | 1457 |
-| `rust-error` | 1616 |
+| `rust-error` | 1558 |
 | `unsupported-harness-shape` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5989 |
+| `match` | `validate_all` | 6038 |
 | `mismatch` | `validate_all` | 2504 |
-| `match` | `validate_identity` | 2377 |
+| `match` | `validate_identity` | 2382 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 923 |
-| `rust-error` | `validate_identity` | 810 |
-| `rust-error` | `validate_all` | 790 |
+| `mismatch` | `validate_identity` | 927 |
+| `rust-error` | `validate_identity` | 801 |
+| `rust-error` | `validate_all` | 741 |
 | `oracle-error` | `validate_all` | 502 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 85 |
@@ -45,7 +45,7 @@ Filtered by read/write: `0`
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 829 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 418 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 311 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 330 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 301 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 287 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 227 |
@@ -57,10 +57,10 @@ Filtered by read/write: `0`
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 138 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 136 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 125 |
-| `rust-error` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 119 |
 | `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 118 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 107 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 102 |
+| `rust-error` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 100 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 97 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 95 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 95 |

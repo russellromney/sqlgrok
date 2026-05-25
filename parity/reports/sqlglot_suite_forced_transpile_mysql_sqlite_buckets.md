@@ -8,33 +8,33 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7869 |
-| `mismatch` | 3870 |
+| `match` | 7892 |
+| `mismatch` | 3905 |
 | `oracle-error` | 1743 |
-| `rust-error` | 1545 |
+| `rust-error` | 1487 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 7869 |
-| `mismatch` | `mysql` | `sqlite` | 3870 |
+| `match` | `mysql` | `sqlite` | 7892 |
+| `mismatch` | `mysql` | `sqlite` | 3905 |
 | `oracle-error` | `mysql` | `sqlite` | 1743 |
-| `rust-error` | `mysql` | `sqlite` | 1545 |
+| `rust-error` | `mysql` | `sqlite` | 1487 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5740 |
-| `mismatch` | `validate_all` | 2665 |
-| `match` | `validate_identity` | 2045 |
+| `match` | `validate_all` | 5758 |
+| `mismatch` | `validate_all` | 2696 |
+| `match` | `validate_identity` | 2050 |
+| `mismatch` | `validate_identity` | 1135 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 1131 |
-| `rust-error` | `validate_all` | 781 |
-| `rust-error` | `validate_identity` | 748 |
+| `rust-error` | `validate_identity` | 739 |
+| `rust-error` | `validate_all` | 732 |
 | `oracle-error` | `validate_all` | 599 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 84 |
@@ -72,10 +72,10 @@ Total rows: `15164`
 | `rust-error` | `CAST()` | 94 |
 | `rust-error` | `CREATE TABLE` | 88 |
 | `mismatch` | `ALTER TABLE` | 84 |
+| `match` | `WITH` | 82 |
 | `match` | `ALTER TABLE` | 81 |
 | `match` | `SELECT DATEDIFF()` | 79 |
 | `match` | `SET` | 78 |
-| `match` | `WITH` | 78 |
 | `match` | `DATE_TRUNC()` | 71 |
 | `match` | `LOG()` | 67 |
 | `match` | `SELECT UNNEST()` | 67 |
@@ -96,22 +96,21 @@ Total rows: `15164`
 | `oracle-error` | `oracle parse: Invalid expression / Unexpected token` | 660 |
 | `oracle-error` | `oracle parse: Expecting )` | 413 |
 | `oracle-error` | `oracle parse: Required keyword missing` | 195 |
-| `rust-error` | `parser: Expected identifier` | 126 |
 | `unsupported-harness-shape` | `SQLGlot expects UnsupportedError` | 119 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: From, value: "FROM", line: 1, col: 1, position: 0, quote_char: '\0' }` | 113 |
 | `oracle-error` | `oracle parse: Expected TYPE after CAST` | 108 |
-| `rust-error` | `parser: Expected statement` | 74 |
+| `rust-error` | `parser: Expected identifier` | 87 |
+| `rust-error` | `parser: Expected statement` | 75 |
 | `oracle-error` | `oracle parse: INTERVAL expression expected but got '1'` | 72 |
 | `oracle-error` | `oracle parse: The number of provided arguments (2) is greater than the maximum number of supported arguments (1)` | 46 |
-| `rust-error` | `parser: Expected RParen, got LParen ('(')` | 40 |
+| `rust-error` | `parser: Expected RParen, got LParen ('(')` | 42 |
 | `oracle-error` | `oracle parse: Expected type` | 39 |
+| `rust-error` | `parser: Expected RParen, got As ('AS')` | 34 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('TO')` | 34 |
 | `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.SENTINEL, text: SENTINEL, line: 1, col: 1, start: 0, end: 0, comments: []>` | 33 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('VARYING')` | 32 |
-| `rust-error` | `parser: Expected RParen, got As ('AS')` | 30 |
 | `rust-error` | `parser: Expected RParen, got Comma (',')` | 28 |
 | `rust-error` | `parser: Expected data type, got Map` | 24 |
-| `rust-error` | `ValueError: Unexpected token: Token { token_type: Range, value: "RANGE", line: 1, col: 8, position: 7, quote_char: '\0' }` | 22 |
 | `rust-error` | `parser: Expected And, got Number ('10')` | 22 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: LBrace, value: "{", line: 1, col: 8, position: 7, quote_char: '\0' }` | 21 |
 | `rust-error` | `parser: Expected VALUES, SELECT, or DEFAULT VALUES after INSERT` | 20 |
@@ -133,12 +132,13 @@ Total rows: `15164`
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: As, value: "AS", line: 1, col: 33, position: 32, quote_char: '\0' }` | 9 |
 | `rust-error` | `parser: Expected RParen, got Having ('HAVING')` | 9 |
 | `rust-error` | `parser: Expected SELECT or INSERT after WITH clause` | 9 |
+| `oracle-error` | `KeyError: <class 'sqlglot.expressions.properties.PartitionByRangeProperty'>` | 8 |
 
 ## Mismatch Signature Buckets
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 316 |
+| `mismatch` | `missing AS or alias rendering` | 320 |
 | `mismatch` | `DDL/create-table rendering` | 274 |
 | `mismatch` | `case-only rendering difference` | 163 |
 | `mismatch` | `SELECT` | 155 |
@@ -155,6 +155,7 @@ Total rows: `15164`
 | `mismatch` | `date/time rendering: TIME_STR_TO_TIME()` | 36 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 34 |
 | `mismatch` | `date/time rendering: SELECT DATEADD()` | 32 |
+| `mismatch` | `REPLACE()` | 31 |
 | `mismatch` | `date/time rendering: STR_TO_TIME()` | 30 |
 | `mismatch` | `REGEXP_EXTRACT()` | 29 |
 | `mismatch` | `A` | 28 |
@@ -177,7 +178,6 @@ Total rows: `15164`
 | `mismatch` | `SELECT operator index` | 20 |
 | `mismatch` | `X` | 20 |
 | `mismatch` | `date/time rendering: EOMONTH()` | 20 |
-| `mismatch` | `STRPOS()` | 19 |
 
 ## Source Test Buckets
 
@@ -187,7 +187,7 @@ Total rows: `15164`
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 360 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 346 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 283 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 249 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 268 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 212 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 196 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 190 |
@@ -198,9 +198,9 @@ Total rows: `15164`
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 140 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 126 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 124 |
-| `rust-error` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 120 |
 | `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 114 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 105 |
+| `rust-error` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 101 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 100 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 96 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
@@ -225,18 +225,6 @@ Total rows: `15164`
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 65 |
 
 ## Bucket Examples
-
-### `mismatch` `A`
-
-- `tests/test_transpile.py`:682 `test_not_range` via `validate`: `a NOT BETWEEN b AND c`
-  - expected: `NOT a BETWEEN b AND c`
-  - actual: `a NOT BETWEEN b AND c`
-- `tests/test_transpile.py`:683 `test_not_range` via `validate`: `a NOT IN (1, 2)`
-  - expected: `NOT a IN (1, 2)`
-  - actual: `a NOT IN (1, 2)`
-- `tests/test_transpile.py`:684 `test_not_range` via `validate`: `a IS NOT NULL`
-  - expected: `NOT a IS NULL`
-  - actual: `a IS NOT NULL`
 
 ### `mismatch` `ALTER TABLE`
 
@@ -285,6 +273,18 @@ Total rows: `15164`
 - `tests/dialects/test_hive.py`:900 `test_hive` via `validate_all`: `REGEXP_EXTRACT('abc', '(a)(b)(c)')`
   - expected: `REGEXP_EXTRACT('abc', '(a)(b)(c)')`
   - actual: `REGEXP_SUBSTR('abc', '(a)(b)(c)')`
+
+### `mismatch` `REPLACE()`
+
+- `tests/dialects/test_presto.py`:160 `test_replace` via `validate_all`: `REPLACE(subject, pattern)`
+  - expected: `REPLACE (subject, pattern)`
+  - actual: `REPLACE(subject, pattern)`
+- `tests/dialects/test_presto.py`:160 `test_replace` via `validate_all`: `REPLACE(subject, pattern)`
+  - expected: `REPLACE (subject, pattern)`
+  - actual: `REPLACE(subject, pattern)`
+- `tests/dialects/test_presto.py`:160 `test_replace` via `validate_all`: `REPLACE(subject, pattern)`
+  - expected: `REPLACE (subject, pattern)`
+  - actual: `REPLACE(subject, pattern)`
 
 ### `mismatch` `SELECT`
 
@@ -550,17 +550,17 @@ Total rows: `15164`
   - expected: `SELECT * FROM tbl`
   - error: `ValueError: Unexpected token: Token { token_type: From, value: "FROM", line: 1, col: 1, position: 0, quote_char: '\0' }`
 
-### `rust-error` `ValueError: Unexpected token: Token { token_type: Range, value: "RANGE", line: 1, col: 8, position: 7, quote_char: '\0' }`
+### `rust-error` `ValueError: Unexpected token: Token { token_type: LBrace, value: "{", line: 1, col: 8, position: 7, quote_char: '\0' }`
 
-- `tests/dialects/test_bigquery.py`:2709 `test_range_type` via `validate_identity`: `SELECT RANGE<DATE> '[2020-01-01, 2020-12-31)'`
-  - expected: `SELECT CAST('[2020-01-01, 2020-12-31)' AS RANGE<DATE>)`
-  - error: `ValueError: Unexpected token: Token { token_type: Range, value: "RANGE", line: 1, col: 8, position: 7, quote_char: '\0' }`
-- `tests/dialects/test_bigquery.py`:2709 `test_range_type` via `validate_identity`: `SELECT RANGE<DATE> '[UNBOUNDED, 2020-12-31)'`
-  - expected: `SELECT CAST('[UNBOUNDED, 2020-12-31)' AS RANGE<DATE>)`
-  - error: `ValueError: Unexpected token: Token { token_type: Range, value: "RANGE", line: 1, col: 8, position: 7, quote_char: '\0' }`
-- `tests/dialects/test_bigquery.py`:2709 `test_range_type` via `validate_identity`: `SELECT RANGE<DATETIME> '[2020-01-01 12:00:00, 2020-12-31 12:00:00)'`
-  - expected: `SELECT CAST('[2020-01-01 12:00:00, 2020-12-31 12:00:00)' AS RANGE<DATETIME>)`
-  - error: `ValueError: Unexpected token: Token { token_type: Range, value: "RANGE", line: 1, col: 8, position: 7, quote_char: '\0' }`
+- `tests/dialects/test_clickhouse.py`:835 `test_parameterization` via `validate_all`: `SELECT {abc: UInt32}, {b: String}, {c: DateTime},{d: Map(String, Array(UInt8))}, {e: Tuple(UInt8, String)}`
+  - expected: `SELECT STRUCT(UInt32 AS abc), STRUCT(String AS b), STRUCT(DateTime AS c), STRUCT(MAP(String, ARRAY(UInt8)) AS d), STRUCT(TUPLE(UInt8, String) AS e)`
+  - error: `ValueError: Unexpected token: Token { token_type: LBrace, value: "{", line: 1, col: 8, position: 7, quote_char: '\0' }`
+- `tests/dialects/test_clickhouse.py`:835 `test_parameterization` via `validate_all`: `SELECT {abc: UInt32}, {b: String}, {c: DateTime},{d: Map(String, Array(UInt8))}, {e: Tuple(UInt8, String)}`
+  - expected: `SELECT STRUCT(UInt32 AS abc), STRUCT(String AS b), STRUCT(DateTime AS c), STRUCT(MAP(String, ARRAY(UInt8)) AS d), STRUCT(TUPLE(UInt8, String) AS e)`
+  - error: `ValueError: Unexpected token: Token { token_type: LBrace, value: "{", line: 1, col: 8, position: 7, quote_char: '\0' }`
+- `tests/dialects/test_duckdb.py`:345 `test_duckdb` via `validate_all`: `SELECT {'bla': column1, 'foo': column2, 'bar': column3} AS data FROM source_table`
+  - expected: `SELECT STRUCT(column1 AS bla, column2 AS foo, column3 AS bar) AS data FROM source_table`
+  - error: `ValueError: Unexpected token: Token { token_type: LBrace, value: "{", line: 1, col: 8, position: 7, quote_char: '\0' }`
 
 ### `rust-error` `parser: Expected And, got Number ('10')`
 
