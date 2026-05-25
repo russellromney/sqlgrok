@@ -4299,12 +4299,17 @@ impl Parser {
                     self.expect(TokenType::RBracket)?;
                     Ok(Expr::ArrayLiteral(items))
                 } else if self.match_token(TokenType::LParen) {
-                    // ARRAY(SELECT ...)
-                    let subquery = self.parse_statement_inner()?;
+                    let args = if self.peek_type() == &TokenType::RParen {
+                        vec![]
+                    } else if matches!(self.peek_type(), TokenType::Select | TokenType::With) {
+                        vec![Expr::Subquery(Box::new(self.parse_statement_inner()?))]
+                    } else {
+                        self.parse_expr_list()?
+                    };
                     self.expect(TokenType::RParen)?;
                     Ok(Expr::Function {
                         name: "ARRAY".to_string(),
-                        args: vec![Expr::Subquery(Box::new(subquery))],
+                        args,
                         distinct: false,
                         filter: None,
                         over: None,

@@ -68,6 +68,7 @@ this file records what landed.
 - Matched SQLGlot's typed-literal SQLite casts for `INT 1` and predicate-side `TEXT 'x'` forms, improving each forced MySQL/Postgres/SQLite-to-SQLite lane by two matches without increasing rust-errors.
 - Accepted explicit reserved-word aliases after `AS` such as `SELECT x AS union`, reducing forced-suite rust-errors by four in each tracked SQLite-targeted lane.
 - Added SQLGlot-shaped `SAFE_CAST(... AS ...)` parsing for SQLite-targeted output, including BigQuery-style `FORMAT` clauses and MySQL `TIMESTAMP` casts to `TIMESTAMPTZ`; the forced MySQL-to-SQLite lane now drops to `3,892` mismatches and `1,667` rust-errors.
+- Parsed SQLGlot's `ARRAY(...)` expression-list form separately from `ARRAY(SELECT ...)`, reducing rust-errors by `74` in each forced MySQL/Postgres/SQLite-to-SQLite lane and lifting exact matches by `69` per lane.
 
 ## 2026-05-20
 

@@ -2048,6 +2048,36 @@ fn test_postgres_array_literal_to_sqlite() {
     );
 }
 
+#[test]
+fn test_array_function_args_to_sqlite() {
+    for dialect in [Dialect::Postgres, Dialect::Mysql, Dialect::Sqlite] {
+        validate_with_dialect(
+            "SELECT ARRAY(1, 2, 3)",
+            "SELECT ARRAY(1, 2, 3)",
+            dialect,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT ARRAY_SUM(ARRAY(1, 2))",
+            "SELECT ARRAY_SUM(ARRAY(1, 2))",
+            dialect,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT ARRAY_EXCEPT(ARRAY(1, 2, 3), ARRAY(2))",
+            "SELECT ARRAY_EXCEPT(ARRAY(1, 2, 3), ARRAY(2))",
+            dialect,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT ARRAY(SELECT 1)",
+            "SELECT ARRAY(SELECT 1)",
+            dialect,
+            Dialect::Sqlite,
+        );
+    }
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – Postgres-style cast (::)
 // (from Python test_transpile.py::test_types)
