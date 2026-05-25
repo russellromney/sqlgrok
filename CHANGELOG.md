@@ -73,6 +73,7 @@ this file records what landed.
 - Accepted `RANGE(...)` table functions and top-level `REPLACE(...)` expressions, reducing another `58` forced-suite rust-errors per tracked lane and surfacing the remaining differences as explicit mismatches.
 - Accepted SQLGlot forced-suite parser forms for trailing select-list commas, shorthand `VALUES 1, 2` rows, `GROUP BY ALL`, Postgres `@>` array containment, and `IGNORE`/`RESPECT NULLS` carriers; refreshed forced reports now show MySQL/Postgres/SQLite rust-errors down to `1421`/`1443`/`1399`.
 - Added a first DuckDB-style `FROM`-first select parser slice for `FROM tbl`, `FROM tbl SELECT x`, comma/join sources, and nested `(FROM ...)` subqueries, reducing forced-suite rust-errors to `1404`/`1426`/`1382` for MySQL/Postgres/SQLite.
+- Added a first `|>` pipeline parser slice for `FROM`-first `WHERE`, `ORDER BY`, `LIMIT/OFFSET`, `DISTINCT`, `SELECT`, `AS`, and join stages, reducing forced-suite rust-errors to `1352`/`1374`/`1330` for MySQL/Postgres/SQLite.
 
 ## 2026-05-20
 

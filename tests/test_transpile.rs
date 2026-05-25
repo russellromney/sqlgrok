@@ -4086,6 +4086,30 @@ fn test_postgres_parser_carriers_to_sqlite() {
         Dialect::Sqlite,
     );
     validate_with_dialect(
+        "FROM x |> LIMIT 1 OFFSET 2",
+        "SELECT * FROM x LIMIT 1 OFFSET 2",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "FROM x |> DISTINCT |> WHERE x1 > 1",
+        "SELECT DISTINCT * FROM x WHERE x1 > 1",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "FROM x |> SELECT x1, x2 |> WHERE x1 > 0 |> ORDER BY x2",
+        "WITH __tmp1 AS (SELECT x1, x2 FROM x) SELECT * FROM __tmp1 WHERE x1 > 0 ORDER BY x2 NULLS LAST",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "FROM x |> INNER JOIN y ON x.id = y.id",
+        "SELECT * FROM x INNER JOIN y ON x.id = y.id",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
         "SELECT $$Dianne's horse$$",
         "SELECT 'Dianne''s horse'",
         Dialect::Postgres,

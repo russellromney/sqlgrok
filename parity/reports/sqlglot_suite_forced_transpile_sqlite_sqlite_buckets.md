@@ -8,20 +8,20 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8252 |
-| `mismatch` | 3844 |
+| `match` | 8287 |
+| `mismatch` | 3861 |
 | `oracle-error` | 1549 |
-| `rust-error` | 1382 |
+| `rust-error` | 1330 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 8252 |
-| `mismatch` | `sqlite` | `sqlite` | 3844 |
+| `match` | `sqlite` | `sqlite` | 8287 |
+| `mismatch` | `sqlite` | `sqlite` | 3861 |
 | `oracle-error` | `sqlite` | `sqlite` | 1549 |
-| `rust-error` | `sqlite` | `sqlite` | 1382 |
+| `rust-error` | `sqlite` | `sqlite` | 1330 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
 ## Helper Buckets
@@ -30,10 +30,10 @@ Total rows: `15164`
 | --- | --- | ---: |
 | `match` | `validate_all` | 5848 |
 | `mismatch` | `validate_all` | 2775 |
-| `match` | `validate_identity` | 2326 |
+| `match` | `validate_identity` | 2361 |
+| `mismatch` | `validate_identity` | 1003 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 986 |
-| `rust-error` | `validate_identity` | 754 |
+| `rust-error` | `validate_identity` | 702 |
 | `rust-error` | `validate_all` | 615 |
 | `oracle-error` | `validate_all` | 547 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
@@ -51,7 +51,7 @@ Total rows: `15164`
 | `match` | `SELECT` | 576 |
 | `match` | `CAST()` | 439 |
 | `mismatch` | `CREATE TABLE` | 268 |
-| `match` | `SELECT operator multiply` | 217 |
+| `match` | `SELECT operator multiply` | 219 |
 | `match` | `SHOW` | 215 |
 | `mismatch` | `SELECT` | 205 |
 | `oracle-error` | `SELECT` | 198 |
@@ -61,13 +61,12 @@ Total rows: `15164`
 | `match` | `TRUNC()` | 162 |
 | `rust-error` | `SELECT` | 153 |
 | `oracle-error` | `SELECT operator multiply` | 143 |
-| `rust-error` | `SELECT operator multiply` | 137 |
 | `mismatch` | `SELECT operator multiply` | 136 |
+| `rust-error` | `SELECT operator multiply` | 135 |
 | `match` | `ALTER TABLE` | 116 |
 | `oracle-error` | `CREATE TABLE` | 113 |
 | `match` | `X` | 107 |
 | `rust-error` | `CREATE TABLE` | 99 |
-| `rust-error` | `FROM` | 99 |
 | `mismatch` | `SELECT UNNEST()` | 90 |
 | `match` | `SELECT DATEDIFF()` | 82 |
 | `match` | `WITH` | 81 |
@@ -79,15 +78,16 @@ Total rows: `15164`
 | `match` | `LOG()` | 67 |
 | `match` | `GRANT` | 62 |
 | `match` | `ANALYZE` | 60 |
+| `mismatch` | `WITH` | 59 |
 | `match` | `SELECT CAST()` | 57 |
 | `mismatch` | `TIME_STR_TO_TIME()` | 57 |
 | `match` | `A` | 56 |
 | `match` | `REGEXP_INSTR()` | 56 |
 | `match` | `REVOKE` | 56 |
 | `match` | `SELECT SUM()` | 56 |
-| `mismatch` | `WITH` | 56 |
 | `match` | `SELECT TO_TIMESTAMP()` | 55 |
 | `match` | `SELECT UNNEST()` | 55 |
+| `rust-error` | `SELECT CAST()` | 54 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -97,7 +97,6 @@ Total rows: `15164`
 | `oracle-error` | `oracle parse: Expecting )` | 474 |
 | `oracle-error` | `oracle parse: Required keyword missing` | 132 |
 | `unsupported-harness-shape` | `SQLGlot expects UnsupportedError` | 119 |
-| `rust-error` | `ValueError: Unexpected token: Token { token_type: BitwiseOr, value: "\|", line: 1, col: 8, position: 7, quote_char: '\0' }` | 83 |
 | `rust-error` | `parser: Expected identifier` | 74 |
 | `rust-error` | `parser: Expected statement` | 71 |
 | `rust-error` | `parser: Expected RParen, got As ('AS')` | 36 |
@@ -111,18 +110,18 @@ Total rows: `15164`
 | `rust-error` | `parser: Expected VALUES, SELECT, or DEFAULT VALUES after INSERT` | 20 |
 | `oracle-error` | `oracle parse: The number of provided arguments (4) is greater than the maximum number of supported arguments (2)` | 19 |
 | `oracle-error` | `oracle parse: Expected AS after CAST` | 18 |
+| `rust-error` | `parser: Expected Join, got Union ('UNION')` | 18 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('FORMAT')` | 18 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: Lateral, value: "LATERAL", line: 1, col: 17, position: 16, quote_char: '\0' }` | 17 |
 | `rust-error` | `parser: Expected data type, got Map` | 17 |
 | `oracle-error` | `oracle parse: Expecting (` | 16 |
 | `rust-error` | `parser: Expected RParen, got Order ('ORDER')` | 15 |
-| `rust-error` | `parser: Expected Join, got Union ('UNION')` | 14 |
+| `rust-error` | `ValueError: Unexpected token: Token { token_type: As, value: "AS", line: 1, col: 29, position: 28, quote_char: '\0' }` | 14 |
 | `rust-error` | `parser: Expected RParen, got FatArrow ('=>')` | 14 |
 | `unsupported-harness-shape` | `identify helper option is not supported yet` | 14 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 57, position: 56, quote_char: '\0' }` | 13 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 69, position: 68, quote_char: '\0' }` | 13 |
 | `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.HASH, text: #, line: 1, col: 14, start: 13, end: 13, comments: []>` | 12 |
-| `rust-error` | `ValueError: Unexpected token: Token { token_type: BitwiseOr, value: "\|", line: 1, col: 7, position: 6, quote_char: '\0' }` | 12 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: Dot, value: ".", line: 1, col: 31, position: 30, quote_char: '\0' }` | 10 |
 | `rust-error` | `parser: Expected RParen, got Having ('HAVING')` | 10 |
 | `rust-error` | `parser: Expected data type, got Struct` | 10 |
@@ -133,6 +132,7 @@ Total rows: `15164`
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: On, value: "ON", line: 1, col: 14, position: 13, quote_char: '\0' }` | 8 |
 | `rust-error` | `parser: Expected Join, got Identifier ('DIRECTED')` | 8 |
 | `rust-error` | `parser: Expected RParen, got As ('as')` | 8 |
+| `rust-error` | `parser: Expected RParen, got Dot ('.')` | 8 |
 
 ## Mismatch Signature Buckets
 
@@ -165,10 +165,10 @@ Total rows: `15164`
 | `mismatch` | `REGEXP_REPLACE()` | 27 |
 | `mismatch` | `json rendering: JSON_EXTRACT()` | 27 |
 | `mismatch` | `MONTH()` | 26 |
+| `mismatch` | `WITH` | 25 |
 | `mismatch` | `YEAR()` | 24 |
 | `mismatch` | `date/time rendering: CREATE` | 24 |
 | `mismatch` | `SELECT REGEXP_EXTRACT()` | 22 |
-| `mismatch` | `WITH` | 22 |
 | `mismatch` | `cast/type rendering: SELECT EXTRACT()` | 22 |
 | `mismatch` | `SHA256()` | 21 |
 | `mismatch` | `DAY()` | 20 |
@@ -520,18 +520,6 @@ Total rows: `15164`
 - `tests/dialects/test_hive.py`:751 `test_hive` via `validate_all`: `map(a, b, c, d)`
   - error: `ParseError: The number of provided arguments (4) is greater than the maximum number of supported arguments (2). Line 1, Col: 15. map(a, b, c, d)`
 
-### `rust-error` `ValueError: Unexpected token: Token { token_type: BitwiseOr, value: "\|", line: 1, col: 8, position: 7, quote_char: '\0' }`
-
-- `tests/dialects/test_pipe_syntax.py`:140 `test_aggregate` via `validate_identity`: `FROM x |> AGGREGATE SUM(x1), MAX(x2), MIN(x3)`
-  - expected: `WITH __tmp1 AS (SELECT SUM(x1), MAX(x2), MIN(x3) FROM x) SELECT * FROM __tmp1`
-  - error: `ValueError: Unexpected token: Token { token_type: BitwiseOr, value: "|", line: 1, col: 8, position: 7, quote_char: '\0' }`
-- `tests/dialects/test_pipe_syntax.py`:144 `test_aggregate` via `validate_identity`: `FROM x |> AGGREGATE SUM(x1) AS s_x1 |> SELECT s_x1`
-  - expected: `WITH __tmp1 AS (SELECT SUM(x1) AS s_x1 FROM x), __tmp2 AS (SELECT s_x1 FROM __tmp1) SELECT * FROM __tmp2`
-  - error: `ValueError: Unexpected token: Token { token_type: BitwiseOr, value: "|", line: 1, col: 8, position: 7, quote_char: '\0' }`
-- `tests/dialects/test_pipe_syntax.py`:148 `test_aggregate` via `validate_identity`: `FROM x |> AGGREGATE SUM(x1), MAX(x2), MIN(x3) GROUP BY x4, x5`
-  - expected: `WITH __tmp1 AS (SELECT SUM(x1), MAX(x2), MIN(x3), x4, x5 FROM x GROUP BY x4, x5) SELECT * FROM __tmp1`
-  - error: `ValueError: Unexpected token: Token { token_type: BitwiseOr, value: "|", line: 1, col: 8, position: 7, quote_char: '\0' }`
-
 ### `rust-error` `ValueError: Unexpected token: Token { token_type: LBrace, value: "{", line: 1, col: 8, position: 7, quote_char: '\0' }`
 
 - `tests/dialects/test_clickhouse.py`:835 `test_parameterization` via `validate_all`: `SELECT {abc: UInt32}, {b: String}, {c: DateTime},{d: Map(String, Array(UInt8))}, {e: Tuple(UInt8, String)}`
@@ -567,6 +555,18 @@ Total rows: `15164`
 - `tests/dialects/test_dialect.py`:4122 `test_between` via `validate_all`: `SELECT x BETWEEN SYMMETRIC 10 AND 2`
   - expected: `SELECT (x BETWEEN 10 AND 2 OR x BETWEEN 2 AND 10)`
   - error: `ValueError: Parser error: Expected And, got Number ('10') at line 1 col 28`
+
+### `rust-error` `parser: Expected Join, got Union ('UNION')`
+
+- `tests/dialects/test_bigquery.py`:3095 `test_set_operations` via `validate_identity`: `SELECT 1 AS foo INNER UNION ALL SELECT 3 AS foo, 4 AS bar`
+  - expected: `SELECT 1 AS foo INNER UNION ALL SELECT 3 AS foo, 4 AS bar`
+  - error: `ValueError: Parser error: Expected Join, got Union ('UNION') at line 1 col 23`
+- `tests/dialects/test_bigquery.py`:3105 `test_set_operations` via `validate_identity`: `SELECT 1 AS foo LEFT UNION ALL SELECT 3 AS foo, 4 AS bar`
+  - expected: `SELECT 1 AS foo LEFT UNION ALL SELECT 3 AS foo, 4 AS bar`
+  - error: `ValueError: Parser error: Expected Join, got Union ('UNION') at line 1 col 22`
+- `tests/dialects/test_bigquery.py`:3105 `test_set_operations` via `validate_identity`: `SELECT 1 AS foo LEFT UNION ALL BY NAME SELECT 3 AS foo, 4 AS bar`
+  - expected: `SELECT 1 AS foo LEFT UNION ALL BY NAME SELECT 3 AS foo, 4 AS bar`
+  - error: `ValueError: Parser error: Expected Join, got Union ('UNION') at line 1 col 22`
 
 ### `rust-error` `parser: Expected RParen, got As ('AS')`
 

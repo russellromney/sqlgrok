@@ -699,102 +699,218 @@ impl Parser {
 
     fn parse_from_first_select(&mut self, ctes: Vec<Cte>) -> Result<SelectStatement> {
         self.expect(TokenType::From)?;
-        let from = Some(FromClause {
-            source: self.parse_table_source()?,
-        });
-        let joins = self.parse_joins()?;
-
-        let columns = if self.match_token(TokenType::Select) {
-            self.parse_select_items()?
-        } else {
-            vec![SelectItem::Wildcard]
-        };
-
-        let where_clause = if self.match_token(TokenType::Where) {
-            Some(self.parse_expr()?)
-        } else {
-            None
-        };
-
-        let group_by = if self.match_token(TokenType::Group) {
-            self.expect(TokenType::By)?;
-            self.parse_group_by_list()?
-        } else {
-            vec![]
-        };
-
-        let having = if self.match_token(TokenType::Having) {
-            Some(self.parse_expr()?)
-        } else {
-            None
-        };
-
-        let qualify = if self.match_token(TokenType::Qualify) {
-            Some(self.parse_expr()?)
-        } else {
-            None
-        };
-
-        let window_definitions = if self.match_token(TokenType::Window) {
-            self.parse_window_definitions()?
-        } else {
-            vec![]
-        };
-
-        let order_by = if self.match_token(TokenType::Order) {
-            self.expect(TokenType::By)?;
-            self.parse_order_by_items()?
-        } else {
-            vec![]
-        };
-
-        let (limit, offset) = if self.match_token(TokenType::Limit) {
-            let first = if self.match_token(TokenType::All) {
-                Expr::Column {
-                    table: None,
-                    name: "ALL".to_string(),
-                    quote_style: QuoteStyle::None,
-                    table_quote_style: QuoteStyle::None,
-                }
-            } else {
-                self.parse_expr()?
-            };
-            if self.match_token(TokenType::Comma) {
-                let count = self.parse_expr()?;
-                (Some(count), Some(first))
-            } else {
-                (Some(first), None)
-            }
-        } else {
-            (None, None)
-        };
-
-        let offset = if offset.is_none() && self.match_token(TokenType::Offset) {
-            Some(self.parse_expr()?)
-        } else {
-            offset
-        };
-
-        Ok(SelectStatement {
+        let mut select = SelectStatement {
             comments: vec![],
             ctes,
             distinct: false,
             distinct_on: vec![],
             top: None,
-            columns,
-            from,
-            joins,
-            where_clause,
-            group_by,
-            having,
-            order_by,
-            limit,
-            offset,
+            columns: vec![SelectItem::Wildcard],
+            from: Some(FromClause {
+                source: self.parse_table_source()?,
+            }),
+            joins: self.parse_joins()?,
+            where_clause: None,
+            group_by: vec![],
+            having: None,
+            order_by: vec![],
+            limit: None,
+            offset: None,
             fetch_first: None,
-            qualify,
-            window_definitions,
+            qualify: None,
+            window_definitions: vec![],
             lock: None,
-        })
+        };
+
+        if self.match_token(TokenType::Select) {
+            select.columns = self.parse_select_items()?;
+        }
+
+        if self.match_token(TokenType::Where) {
+            select.where_clause = Some(self.parse_expr()?);
+        }
+
+        if self.match_token(TokenType::Group) {
+            self.expect(TokenType::By)?;
+            select.group_by = self.parse_group_by_list()?;
+        }
+
+        if self.match_token(TokenType::Having) {
+            select.having = Some(self.parse_expr()?);
+        }
+
+        if self.match_token(TokenType::Qualify) {
+            select.qualify = Some(self.parse_expr()?);
+        }
+
+        if self.match_token(TokenType::Window) {
+            select.window_definitions = self.parse_window_definitions()?;
+        }
+
+        if self.match_token(TokenType::Order) {
+            self.expect(TokenType::By)?;
+            select.order_by = self.parse_order_by_items()?;
+        }
+
+        if self.match_token(TokenType::Limit) {
+            let (limit, offset) = self.parse_limit_offset_pair()?;
+            select.limit = limit;
+            select.offset = offset;
+        }
+
+        if select.offset.is_none() && self.match_token(TokenType::Offset) {
+            select.offset = Some(self.parse_expr()?);
+        }
+
+        self.parse_pipeline_stages(&mut select)?;
+        Ok(select)
+    }
+
+    fn parse_limit_offset_pair(&mut self) -> Result<(Option<Expr>, Option<Expr>)> {
+        let first = if self.match_token(TokenType::All) {
+            Expr::Column {
+                table: None,
+                name: "ALL".to_string(),
+                quote_style: QuoteStyle::None,
+                table_quote_style: QuoteStyle::None,
+            }
+        } else {
+            self.parse_expr()?
+        };
+        if self.match_token(TokenType::Comma) {
+            let count = self.parse_expr()?;
+            Ok((Some(count), Some(first)))
+        } else {
+            Ok((Some(first), None))
+        }
+    }
+
+    fn parse_pipeline_stages(&mut self, select: &mut SelectStatement) -> Result<()> {
+        while self.match_pipeline_operator() {
+            match self.peek_type() {
+                TokenType::Where => {
+                    self.advance();
+                    let condition = self.parse_expr()?;
+                    select.where_clause = Some(match select.where_clause.take() {
+                        Some(existing) => Expr::BinaryOp {
+                            left: Box::new(existing),
+                            op: BinaryOperator::And,
+                            right: Box::new(condition),
+                        },
+                        None => condition,
+                    });
+                }
+                TokenType::Order => {
+                    self.advance();
+                    self.expect(TokenType::By)?;
+                    select.order_by = self.parse_order_by_items()?;
+                }
+                TokenType::Limit => {
+                    self.advance();
+                    let (limit, offset) = self.parse_limit_offset_pair()?;
+                    select.limit = limit;
+                    select.offset = offset;
+                    if self.match_token(TokenType::Offset) {
+                        select.offset = Some(self.parse_expr()?);
+                    }
+                }
+                TokenType::Distinct => {
+                    self.advance();
+                    select.distinct = true;
+                }
+                TokenType::Select => {
+                    self.advance();
+                    let columns = self.parse_select_items()?;
+                    self.wrap_pipeline_select(select, columns, None);
+                }
+                TokenType::As => {
+                    self.advance();
+                    let (alias, quote_style) = self.expect_alias_name_with_quote()?;
+                    self.wrap_pipeline_select(
+                        select,
+                        vec![SelectItem::Wildcard],
+                        Some((alias, quote_style)),
+                    );
+                }
+                TokenType::Join
+                | TokenType::Inner
+                | TokenType::Left
+                | TokenType::Right
+                | TokenType::Full
+                | TokenType::Cross => {
+                    let mut joins = self.parse_joins()?;
+                    select.joins.append(&mut joins);
+                }
+                _ => break,
+            }
+        }
+        Ok(())
+    }
+
+    fn match_pipeline_operator(&mut self) -> bool {
+        if self.peek_type() == &TokenType::BitwiseOr && self.peek_n_type(1) == &TokenType::Gt {
+            self.advance();
+            self.advance();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn wrap_pipeline_select(
+        &mut self,
+        select: &mut SelectStatement,
+        columns: Vec<SelectItem>,
+        alias: Option<(String, QuoteStyle)>,
+    ) {
+        let (name, name_quote_style) = alias.unwrap_or_else(|| {
+            let mut index = select.ctes.len() + 1;
+            loop {
+                let candidate = format!("__tmp{index}");
+                if !select.ctes.iter().any(|cte| cte.name == candidate) {
+                    break (candidate, QuoteStyle::None);
+                }
+                index += 1;
+            }
+        });
+
+        let mut inner = select.clone();
+        inner.ctes = vec![];
+        inner.columns = columns;
+        let cte = Cte {
+            name: name.clone(),
+            name_quote_style,
+            columns: vec![],
+            query: Box::new(Statement::Select(inner)),
+            materialized: None,
+            recursive: false,
+        };
+        select.ctes.push(cte);
+        select.distinct = false;
+        select.distinct_on.clear();
+        select.top = None;
+        select.columns = vec![SelectItem::Wildcard];
+        select.from = Some(FromClause {
+            source: TableSource::Table(TableRef {
+                catalog: None,
+                schema: None,
+                name,
+                alias: None,
+                name_quote_style,
+                alias_quote_style: QuoteStyle::None,
+            }),
+        });
+        select.joins.clear();
+        select.where_clause = None;
+        select.group_by.clear();
+        select.having = None;
+        select.order_by.clear();
+        select.limit = None;
+        select.offset = None;
+        select.fetch_first = None;
+        select.qualify = None;
+        select.window_definitions.clear();
+        select.lock = None;
     }
 
     fn parse_select_body(&mut self, ctes: Vec<Cte>) -> Result<SelectStatement> {
@@ -3741,7 +3857,9 @@ impl Parser {
                 TokenType::Plus => Some(BinaryOperator::Plus),
                 TokenType::Minus => Some(BinaryOperator::Minus),
                 TokenType::Concat => Some(BinaryOperator::Concat),
-                TokenType::BitwiseOr => Some(BinaryOperator::BitwiseOr),
+                TokenType::BitwiseOr if self.peek_n_type(1) != &TokenType::Gt => {
+                    Some(BinaryOperator::BitwiseOr)
+                }
                 TokenType::BitwiseXor if self.peek().value == "^" => Some(BinaryOperator::Power),
                 TokenType::BitwiseXor => Some(BinaryOperator::BitwiseXor),
                 TokenType::ShiftLeft => Some(BinaryOperator::ShiftLeft),
