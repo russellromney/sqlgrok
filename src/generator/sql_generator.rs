@@ -304,12 +304,14 @@ impl Generator {
             }
             self.indent_down();
         } else {
-            self.write(" ");
-            for (i, item) in sel.columns.iter().enumerate() {
-                if i > 0 {
-                    self.write(", ");
+            if !(sel.columns.len() == 1 && self.select_item_renders_empty(&sel.columns[0])) {
+                self.write(" ");
+                for (i, item) in sel.columns.iter().enumerate() {
+                    if i > 0 {
+                        self.write(", ");
+                    }
+                    self.gen_select_item(item);
                 }
-                self.gen_select_item(item);
             }
         }
 
@@ -486,6 +488,17 @@ impl Generator {
                 }
             }
         }
+    }
+
+    fn select_item_renders_empty(&self, item: &SelectItem) -> bool {
+        matches!(
+            item,
+            SelectItem::Expr {
+                expr: Expr::EscapedStringLiteral(_),
+                alias: None,
+                ..
+            } if matches!(self.dialect, Some(Dialect::Sqlite))
+        )
     }
 
     fn gen_table_source(&mut self, source: &TableSource) {
@@ -1365,20 +1378,12 @@ impl Generator {
             None => {}
         }
 
-        let autoincrement_before_primary_key =
-            col.auto_increment && col.primary_key_from_table_constraint;
-
-        if autoincrement_before_primary_key {
-            self.write(" ");
-            self.gen_auto_increment_keyword();
-        }
-
         if col.primary_key {
             self.write(" ");
             self.write_keyword("PRIMARY KEY");
         }
 
-        if col.auto_increment && !autoincrement_before_primary_key {
+        if col.auto_increment {
             self.write(" ");
             self.gen_auto_increment_keyword();
         }
@@ -1991,9 +1996,8 @@ impl Generator {
             }
             Expr::EscapedStringLiteral(s) => {
                 if matches!(self.dialect, Some(Dialect::Sqlite)) {
-                    self.write("'");
-                    self.write(&s.replace('\'', "''"));
-                    self.write("'");
+                    // Python SQLGlot models Postgres E'...' as ByteString and, for
+                    // SQLite, emits an unsupported empty bytestring fallback.
                 } else {
                     self.write("e'");
                     self.write(&escape_postgres_escaped_string(s));

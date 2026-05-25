@@ -83,6 +83,9 @@ this file records what landed.
 - Matched SQLGlot's `BEGIN` normalization plus Postgres transaction-option dropping and MySQL partition/locking table-tail carriers, reducing forced-suite rust-errors to `1264`/`1292`/`1249` for MySQL/Postgres/SQLite with no row-level regressions.
 - Added a broader forced-suite parser-carrier batch for MySQL `MATCH ... AGAINST`, `STRAIGHT_JOIN`, dotted `@@GLOBAL` variables, aliased `VALUES` upserts, and Postgres aggregate `FILTER(...) OVER (...)` suffixes; refreshed forced reports now show MySQL/Postgres/SQLite rust-errors down to `1251`/`1280`/`1243` with no row-level regressions.
 - Updated the roadmap to mark the Postgres `E'...'` SQLite quoting issue as fixed upstream by SQLGlot [#7677](https://github.com/tobymao/sqlglot/pull/7677), replacing the old open-PR follow-up note.
+- Resynced the local Python SQLGlot oracle to upstream `main` at `d6a53b43` and refreshed forced-suite reports against `15,170` helper attempts per lane; MySQL/Postgres/SQLite rust-errors are now `1177`/`1206`/`1168`.
+- Added exact SQLite-targeted parser parity for qualified function names such as `SAFE.*`, `NET.*`, and `assert.true(...)`, plus standalone cast aliases, `interval::int`, and SQLGlot-style `IF ... THEN ... END` expressions.
+- Reconciled oracle drift from SQLGlot [#7677](https://github.com/tobymao/sqlglot/pull/7677) by matching SQLite-targeted Postgres `E'...'` byte-string fallback output, and updated MySQL `AUTO_INCREMENT` primary-key ordering for the current SQLGlot oracle.
 
 ## 2026-05-20
 

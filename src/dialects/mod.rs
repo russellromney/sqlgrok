@@ -405,9 +405,7 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 }
                 if matches!(target, Dialect::Sqlite)
                     && is_mysql_family(source)
-                    && (!matches!(col.data_type, DataType::Int)
-                        || !col.primary_key
-                        || col.auto_increment_before_primary_key)
+                    && (!matches!(col.data_type, DataType::Int) || !col.primary_key)
                 {
                     col.auto_increment = false;
                 }

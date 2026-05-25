@@ -444,9 +444,7 @@ impl Parser {
                     self.maybe_parse_set_operation(inner)
                 } else {
                     self.pos = saved_pos;
-                    Err(SqlglotError::ParserError {
-                        message: "Expected statement".into(),
-                    })
+                    self.parse_expr().map(Statement::Expression)
                 }
             }
             _ if self.check_keyword("COPY") => self.parse_raw_statement(),
@@ -488,6 +486,15 @@ impl Parser {
             TokenType::Use => self.parse_use().map(Statement::Use),
             _ => self.parse_expr().map(Statement::Expression),
         }?;
+        if matches!(stmt, Statement::Expression(_)) && self.match_token(TokenType::As) {
+            let name = self.expect_name()?;
+            if let Statement::Expression(expr) = stmt {
+                stmt = Statement::Expression(Expr::Alias {
+                    expr: Box::new(expr),
+                    name,
+                });
+            }
+        }
         if !comments.is_empty() {
             attach_comments_to_statement(&mut stmt, comments);
         }
@@ -4725,21 +4732,37 @@ impl Parser {
             // ── IF(condition, true, false) ──────────────────────────
             TokenType::If => {
                 self.advance();
-                self.expect(TokenType::LParen)?;
-                let condition = self.parse_expr()?;
-                self.expect(TokenType::Comma)?;
-                let true_val = self.parse_expr()?;
-                let false_val = if self.match_token(TokenType::Comma) {
-                    Some(Box::new(self.parse_expr()?))
+                if self.match_token(TokenType::LParen) {
+                    let condition = self.parse_expr()?;
+                    self.expect(TokenType::Comma)?;
+                    let true_val = self.parse_expr()?;
+                    let false_val = if self.match_token(TokenType::Comma) {
+                        Some(Box::new(self.parse_expr()?))
+                    } else {
+                        None
+                    };
+                    self.expect(TokenType::RParen)?;
+                    Ok(Expr::If {
+                        condition: Box::new(condition),
+                        true_val: Box::new(true_val),
+                        false_val,
+                    })
                 } else {
-                    None
-                };
-                self.expect(TokenType::RParen)?;
-                Ok(Expr::If {
-                    condition: Box::new(condition),
-                    true_val: Box::new(true_val),
-                    false_val,
-                })
+                    let condition = self.parse_expr()?;
+                    self.expect(TokenType::Then)?;
+                    let true_val = self.parse_expr()?;
+                    let false_val = if self.match_token(TokenType::Else) {
+                        Some(Box::new(self.parse_expr()?))
+                    } else {
+                        None
+                    };
+                    self.expect(TokenType::End)?;
+                    Ok(Expr::If {
+                        condition: Box::new(condition),
+                        true_val: Box::new(true_val),
+                        false_val,
+                    })
+                }
             }
 
             // ── EXISTS ──────────────────────────────────────────────
@@ -4783,6 +4806,7 @@ impl Parser {
                         | TokenType::Comma
                         | TokenType::Asc
                         | TokenType::Desc
+                        | TokenType::DoubleColon
                         | TokenType::Eof
                 ) {
                     self.advance();
@@ -4908,108 +4932,16 @@ impl Parser {
                 // Function call: name(...)
                 if self.peek_type() == &TokenType::LParen {
                     self.advance();
-
-                    if matches!(
-                        name.to_uppercase().as_str(),
-                        "MAKE_INTERVAL" | "XMLELEMENT" | "OVERLAY"
-                    ) {
-                        let raw_args = self.parse_raw_function_args()?;
-                        return Ok(Expr::Function {
-                            name,
-                            args: vec![Expr::StringLiteral(raw_args)],
-                            distinct: false,
-                            filter: None,
-                            over: None,
-                        });
+                    self.parse_function_call_after_open(name, name_token.position)
+                }
+                // Qualified function call: namespace.name(...)
+                else if self.is_qualified_function_ahead() {
+                    let mut parts = vec![name];
+                    while self.match_token(TokenType::Dot) {
+                        parts.push(self.advance().value.clone());
                     }
-
-                    // Special: COUNT(*), COUNT(DISTINCT x)
-                    let distinct = self.match_token(TokenType::Distinct);
-
-                    if name.eq_ignore_ascii_case("TRIM") {
-                        let expr = self.parse_trim_function()?;
-                        self.expect(TokenType::RParen)?;
-                        return Ok(expr);
-                    }
-
-                    if name.eq_ignore_ascii_case("SAFE_CAST") {
-                        let expr = self.parse_cast_function_body()?;
-                        self.expect(TokenType::RParen)?;
-                        return Ok(expr);
-                    }
-
-                    let args = if name.eq_ignore_ascii_case("GROUP_CONCAT") {
-                        self.parse_group_concat_args()?
-                    } else if name.eq_ignore_ascii_case("JSON_VALUE") {
-                        self.parse_json_value_args()?
-                    } else if matches!(
-                        name.to_uppercase().as_str(),
-                        "ARRAY_AGG" | "JSON_AGG" | "STRING_AGG"
-                    ) {
-                        self.parse_ordered_function_args()?
-                    } else if name.eq_ignore_ascii_case("POSITION") {
-                        self.parse_position_args()?
-                    } else if name.eq_ignore_ascii_case("SUBSTRING")
-                        || name.eq_ignore_ascii_case("SUBSTR")
-                    {
-                        self.parse_substring_args()?
-                    } else if name.eq_ignore_ascii_case("CHAR")
-                        || name.eq_ignore_ascii_case("CONVERT")
-                    {
-                        self.parse_using_function_args()?
-                    } else if self.peek_type() == &TokenType::RParen {
-                        vec![]
-                    } else if self.peek_type() == &TokenType::Star {
-                        self.advance();
-                        vec![Expr::Wildcard]
-                    } else {
-                        self.parse_expr_list()?
-                    };
-                    self.expect(TokenType::RParen)?;
-
-                    if name.eq_ignore_ascii_case("MATCH") && self.match_keyword("AGAINST") {
-                        self.expect(TokenType::LParen)?;
-                        self.parse_raw_function_args()?;
-                        let start = self.char_pos_to_byte(name_token.position);
-                        let end = self
-                            .tokens
-                            .get(self.pos.saturating_sub(1))
-                            .map(|token| {
-                                self.char_pos_to_byte(token.position + token.value.chars().count())
-                            })
-                            .unwrap_or(start);
-                        return Ok(Expr::Function {
-                            name: "__RAW_EXPR__".to_string(),
-                            args: vec![Expr::StringLiteral(self.sql[start..end].to_string())],
-                            distinct: false,
-                            filter: None,
-                            over: None,
-                        });
-                    }
-
-                    // Try to construct a typed function variant. Keep COUNT() as
-                    // a raw function because SQLGlot preserves the empty call.
-                    if name.eq_ignore_ascii_case("COUNT") && args.is_empty() {
-                        Ok(Expr::Function {
-                            name: "COUNT".to_string(),
-                            args,
-                            distinct,
-                            filter: None,
-                            over: None,
-                        })
-                    } else if let Some(typed) =
-                        Self::try_typed_function(&name, args.clone(), distinct)
-                    {
-                        Ok(typed)
-                    } else {
-                        Ok(Expr::Function {
-                            name,
-                            args,
-                            distinct,
-                            filter: None,
-                            over: None,
-                        })
-                    }
+                    self.expect(TokenType::LParen)?;
+                    self.parse_function_call_after_open(parts.join("."), name_token.position)
                 }
                 // Qualified column: table.column or table.*
                 else if self.match_token(TokenType::Dot) {
@@ -5036,6 +4968,132 @@ impl Parser {
             }
 
             _ => Err(SqlglotError::UnexpectedToken { token }),
+        }
+    }
+
+    fn is_qualified_function_ahead(&self) -> bool {
+        let mut pos = self.pos;
+        while self
+            .tokens
+            .get(pos)
+            .is_some_and(|token| token.token_type == TokenType::Dot)
+        {
+            pos += 1;
+            let Some(part) = self.tokens.get(pos) else {
+                return false;
+            };
+            if matches!(part.token_type, TokenType::Star | TokenType::Eof) {
+                return false;
+            }
+            pos += 1;
+            if self
+                .tokens
+                .get(pos)
+                .is_some_and(|token| token.token_type == TokenType::LParen)
+            {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn parse_function_call_after_open(
+        &mut self,
+        name: String,
+        name_position: usize,
+    ) -> Result<Expr> {
+        if matches!(
+            name.to_uppercase().as_str(),
+            "MAKE_INTERVAL" | "XMLELEMENT" | "OVERLAY"
+        ) {
+            let raw_args = self.parse_raw_function_args()?;
+            return Ok(Expr::Function {
+                name,
+                args: vec![Expr::StringLiteral(raw_args)],
+                distinct: false,
+                filter: None,
+                over: None,
+            });
+        }
+
+        // Special: COUNT(*), COUNT(DISTINCT x)
+        let distinct = self.match_token(TokenType::Distinct);
+
+        if name.eq_ignore_ascii_case("TRIM") {
+            let expr = self.parse_trim_function()?;
+            self.expect(TokenType::RParen)?;
+            return Ok(expr);
+        }
+
+        if name.eq_ignore_ascii_case("SAFE_CAST") {
+            let expr = self.parse_cast_function_body()?;
+            self.expect(TokenType::RParen)?;
+            return Ok(expr);
+        }
+
+        let args = if name.eq_ignore_ascii_case("GROUP_CONCAT") {
+            self.parse_group_concat_args()?
+        } else if name.eq_ignore_ascii_case("JSON_VALUE") {
+            self.parse_json_value_args()?
+        } else if matches!(
+            name.to_uppercase().as_str(),
+            "ARRAY_AGG" | "ARRAY_CONCAT_AGG" | "JSON_AGG" | "STRING_AGG"
+        ) {
+            self.parse_ordered_function_args()?
+        } else if name.eq_ignore_ascii_case("POSITION") {
+            self.parse_position_args()?
+        } else if name.eq_ignore_ascii_case("SUBSTRING") || name.eq_ignore_ascii_case("SUBSTR") {
+            self.parse_substring_args()?
+        } else if name.eq_ignore_ascii_case("CHAR") || name.eq_ignore_ascii_case("CONVERT") {
+            self.parse_using_function_args()?
+        } else if self.peek_type() == &TokenType::RParen {
+            vec![]
+        } else if self.peek_type() == &TokenType::Star {
+            self.advance();
+            vec![Expr::Wildcard]
+        } else {
+            self.parse_expr_list()?
+        };
+        self.expect(TokenType::RParen)?;
+
+        if name.eq_ignore_ascii_case("MATCH") && self.match_keyword("AGAINST") {
+            self.expect(TokenType::LParen)?;
+            self.parse_raw_function_args()?;
+            let start = self.char_pos_to_byte(name_position);
+            let end = self
+                .tokens
+                .get(self.pos.saturating_sub(1))
+                .map(|token| self.char_pos_to_byte(token.position + token.value.chars().count()))
+                .unwrap_or(start);
+            return Ok(Expr::Function {
+                name: "__RAW_EXPR__".to_string(),
+                args: vec![Expr::StringLiteral(self.sql[start..end].to_string())],
+                distinct: false,
+                filter: None,
+                over: None,
+            });
+        }
+
+        // Try to construct a typed function variant. Keep COUNT() as
+        // a raw function because SQLGlot preserves the empty call.
+        if name.eq_ignore_ascii_case("COUNT") && args.is_empty() {
+            Ok(Expr::Function {
+                name: "COUNT".to_string(),
+                args,
+                distinct,
+                filter: None,
+                over: None,
+            })
+        } else if let Some(typed) = Self::try_typed_function(&name, args.clone(), distinct) {
+            Ok(typed)
+        } else {
+            Ok(Expr::Function {
+                name,
+                args,
+                distinct,
+                filter: None,
+                over: None,
+            })
         }
     }
 

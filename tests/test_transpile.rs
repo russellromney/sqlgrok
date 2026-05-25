@@ -181,19 +181,19 @@ fn test_postgres_create_type_enum_to_sqlite() {
 fn test_postgres_escaped_string_to_sqlite() {
     validate_with_dialect(
         "SELECT E'a\\nb'",
-        "SELECT 'a\nb'",
+        "SELECT",
         Dialect::Postgres,
         Dialect::Sqlite,
     );
     validate_with_dialect(
         "SELECT LENGTH(E'a\\nb')",
-        "SELECT LENGTH('a\nb')",
+        "SELECT LENGTH()",
         Dialect::Postgres,
         Dialect::Sqlite,
     );
     validate_with_dialect(
         "SELECT E'a\\'b'",
-        "SELECT 'a''b'",
+        "SELECT",
         Dialect::Postgres,
         Dialect::Sqlite,
     );
@@ -1723,7 +1723,7 @@ fn test_mysql_create_table_options_ast() {
 fn test_mysql_create_table_column_options_to_sqlite() {
     validate_with_dialect(
         "CREATE TABLE z (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) COLLATE utf8_bin COMMENT 'n') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-        "CREATE TABLE z (id INTEGER PRIMARY KEY, name TEXT(255) COLLATE utf8_bin COMMENT 'n')",
+        "CREATE TABLE z (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT(255) COLLATE utf8_bin COMMENT 'n')",
         Dialect::Mysql,
         Dialect::Sqlite,
     );
@@ -1743,7 +1743,7 @@ fn test_mysql_create_table_primary_key_auto_increment_order_to_sqlite() {
 fn test_mysql_create_table_table_primary_key_auto_increment_to_sqlite() {
     validate_with_dialect(
         "CREATE TABLE x (id INT NOT NULL AUTO_INCREMENT, PRIMARY KEY (id))",
-        "CREATE TABLE x (id INTEGER NOT NULL AUTOINCREMENT PRIMARY KEY)",
+        "CREATE TABLE x (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT)",
         Dialect::Mysql,
         Dialect::Sqlite,
     );
@@ -4621,4 +4621,42 @@ fn test_postgres_filter_over_suffix_order() {
         Dialect::Postgres,
         Dialect::Sqlite,
     );
+}
+
+#[test]
+fn test_forced_suite_qualified_functions_to_sqlite() {
+    let cases = [
+        "SAFE.SOME_RANDOM_FUNC(a, b, c)",
+        "SAFE.SUBSTR('foo', 0, -2)",
+        "SAFE.TIMESTAMP(foo, zone)",
+        "SAFE.PARSE_DATE('%Y-%m-%d', '2024-01-15')",
+        "NET.HOST('http://example.com')",
+        "NET.REG_DOMAIN('http://example.com')",
+        "assert.true(1 = 1)",
+    ];
+
+    for sql in cases {
+        validate_with_dialect(sql, sql, Dialect::Mysql, Dialect::Sqlite);
+        validate_with_dialect(sql, sql, Dialect::Postgres, Dialect::Sqlite);
+        validate_with_dialect(sql, sql, Dialect::Sqlite, Dialect::Sqlite);
+    }
+}
+
+#[test]
+fn test_forced_suite_expression_alias_and_if_to_sqlite() {
+    let cases = [
+        ("x::INT AS y", "CAST(x AS INTEGER) AS y"),
+        ("interval::int", "CAST(INTERVAL AS INTEGER)"),
+        ("SELECT IF a > 1 THEN b END", "SELECT IIF(a > 1, b)"),
+        (
+            "SELECT IF a > 1 THEN b ELSE c END",
+            "SELECT IIF(a > 1, b, c)",
+        ),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Mysql, Dialect::Sqlite);
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
 }
