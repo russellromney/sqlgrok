@@ -2224,11 +2224,10 @@ impl Generator {
                 high,
                 negated,
             } => {
-                self.gen_expr(expr);
                 if *negated {
-                    self.write(" ");
-                    self.write_keyword("NOT");
+                    self.write_keyword("NOT ");
                 }
+                self.gen_expr(expr);
                 self.write(" ");
                 self.write_keyword("BETWEEN ");
                 self.gen_expr(low);

@@ -1243,7 +1243,7 @@ fn test_identity_case() {
 fn test_identity_predicates() {
     let cases = [
         "SELECT * FROM t WHERE x BETWEEN 1 AND 10",
-        "SELECT * FROM t WHERE x NOT BETWEEN 1 AND 10",
+        "SELECT * FROM t WHERE NOT x BETWEEN 1 AND 10",
         "SELECT * FROM t WHERE x IN (1, 2, 3)",
         "SELECT * FROM t WHERE x NOT IN (1, 2, 3)",
         "SELECT * FROM t WHERE x IS NULL",
@@ -4651,6 +4651,34 @@ fn test_forced_suite_expression_alias_and_if_to_sqlite() {
         (
             "SELECT IF a > 1 THEN b ELSE c END",
             "SELECT IIF(a > 1, b, c)",
+        ),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Mysql, Dialect::Sqlite);
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
+}
+
+#[test]
+fn test_forced_suite_between_symmetric_to_sqlite() {
+    let cases = [
+        (
+            "SELECT x BETWEEN SYMMETRIC 10 AND 2",
+            "SELECT (x BETWEEN 10 AND 2 OR x BETWEEN 2 AND 10)",
+        ),
+        (
+            "SELECT x BETWEEN ASYMMETRIC 10 AND 2",
+            "SELECT x BETWEEN 10 AND 2",
+        ),
+        (
+            "SELECT x NOT BETWEEN SYMMETRIC 10 AND 2",
+            "SELECT NOT (x BETWEEN 10 AND 2 OR x BETWEEN 2 AND 10)",
+        ),
+        (
+            "SELECT x NOT BETWEEN ASYMMETRIC 10 AND 2",
+            "SELECT NOT x BETWEEN 10 AND 2",
         ),
     ];
 

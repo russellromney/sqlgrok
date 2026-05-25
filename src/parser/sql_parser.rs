@@ -4034,14 +4034,45 @@ impl Parser {
                         glob
                     };
                 } else if self.match_token(TokenType::Between) {
+                    let symmetric = self.match_keyword("SYMMETRIC");
+                    let _asymmetric = !symmetric && self.match_keyword("ASYMMETRIC");
+                    let expr = left;
                     let low = self.parse_addition()?;
                     self.expect(TokenType::And)?;
                     let high = self.parse_addition()?;
-                    left = Expr::Between {
-                        expr: Box::new(left),
-                        low: Box::new(low),
-                        high: Box::new(high),
-                        negated,
+                    let between = Expr::Between {
+                        expr: Box::new(expr.clone()),
+                        low: Box::new(low.clone()),
+                        high: Box::new(high.clone()),
+                        negated: false,
+                    };
+                    left = if symmetric {
+                        let swapped = Expr::Between {
+                            expr: Box::new(expr),
+                            low: Box::new(high),
+                            high: Box::new(low),
+                            negated: false,
+                        };
+                        let either_order = Expr::Nested(Box::new(Expr::BinaryOp {
+                            left: Box::new(between),
+                            op: BinaryOperator::Or,
+                            right: Box::new(swapped),
+                        }));
+                        if negated {
+                            Expr::UnaryOp {
+                                op: UnaryOperator::Not,
+                                expr: Box::new(either_order),
+                            }
+                        } else {
+                            either_order
+                        }
+                    } else if negated {
+                        Expr::UnaryOp {
+                            op: UnaryOperator::Not,
+                            expr: Box::new(between),
+                        }
+                    } else {
+                        between
                     };
                 } else {
                     break;

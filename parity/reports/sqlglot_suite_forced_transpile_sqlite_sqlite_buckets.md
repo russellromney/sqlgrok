@@ -8,37 +8,37 @@ Total rows: `15170`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8472 |
-| `mismatch` | 3845 |
+| `match` | 8495 |
+| `mismatch` | 3844 |
 | `oracle-error` | 1546 |
-| `rust-error` | 1168 |
+| `rust-error` | 1146 |
 | `unsupported-harness-shape` | 139 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 8472 |
-| `mismatch` | `sqlite` | `sqlite` | 3845 |
+| `match` | `sqlite` | `sqlite` | 8495 |
+| `mismatch` | `sqlite` | `sqlite` | 3844 |
 | `oracle-error` | `sqlite` | `sqlite` | 1546 |
-| `rust-error` | `sqlite` | `sqlite` | 1168 |
+| `rust-error` | `sqlite` | `sqlite` | 1146 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 139 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5949 |
+| `match` | `validate_all` | 5971 |
 | `mismatch` | `validate_all` | 2750 |
 | `match` | `validate_identity` | 2436 |
 | `mismatch` | `validate_identity` | 1012 |
 | `oracle-error` | `validate_identity` | 993 |
 | `rust-error` | `validate_identity` | 619 |
-| `rust-error` | `validate_all` | 545 |
 | `oracle-error` | `validate_all` | 544 |
+| `rust-error` | `validate_all` | 523 |
 | `unsupported-harness-shape` | `validate_all` | 124 |
-| `match` | `validate` | 87 |
-| `mismatch` | `validate` | 83 |
+| `match` | `validate` | 88 |
+| `mismatch` | `validate` | 82 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -48,7 +48,7 @@ Total rows: `15170`
 
 | Status | Shape | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 581 |
+| `match` | `SELECT` | 603 |
 | `match` | `CAST()` | 495 |
 | `mismatch` | `CREATE TABLE` | 266 |
 | `match` | `SELECT operator multiply` | 234 |
@@ -59,9 +59,9 @@ Total rows: `15170`
 | `match` | `CREATE TABLE` | 174 |
 | `match` | `CREATE` | 165 |
 | `match` | `TRUNC()` | 162 |
-| `rust-error` | `SELECT` | 146 |
 | `oracle-error` | `SELECT operator multiply` | 143 |
 | `mismatch` | `SELECT operator multiply` | 140 |
+| `rust-error` | `SELECT` | 124 |
 | `match` | `ALTER TABLE` | 116 |
 | `rust-error` | `SELECT operator multiply` | 116 |
 | `oracle-error` | `CREATE TABLE` | 113 |
@@ -78,9 +78,9 @@ Total rows: `15170`
 | `match` | `GRANT` | 62 |
 | `match` | `ANALYZE` | 60 |
 | `mismatch` | `WITH` | 58 |
+| `match` | `A` | 57 |
 | `mismatch` | `CAST()` | 57 |
 | `mismatch` | `TIME_STR_TO_TIME()` | 57 |
-| `match` | `A` | 56 |
 | `match` | `REGEXP_INSTR()` | 56 |
 | `match` | `REVOKE` | 56 |
 | `match` | `SELECT SUM()` | 56 |
@@ -103,7 +103,6 @@ Total rows: `15170`
 | `rust-error` | `parser: Expected RParen, got Identifier ('TO')` | 34 |
 | `rust-error` | `parser: Expected RParen, got Comma (',')` | 28 |
 | `oracle-error` | `oracle parse: The number of provided arguments (2) is greater than the maximum number of supported arguments (1)` | 24 |
-| `rust-error` | `parser: Expected And, got Number ('10')` | 22 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: LBrace, value: "{", line: 1, col: 8, position: 7, quote_char: '\0' }` | 21 |
 | `rust-error` | `parser: Expected VALUES, SELECT, or DEFAULT VALUES after INSERT` | 20 |
 | `oracle-error` | `oracle parse: The number of provided arguments (4) is greater than the maximum number of supported arguments (2)` | 19 |
@@ -133,6 +132,7 @@ Total rows: `15170`
 | `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.HASH, text: #, line: 1, col: 39, start: 38, end: 38, comments: []>` | 7 |
 | `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.L_BRACE, text: {, line: 1, col: 15, start: 14, end: 14, comments: []>` | 7 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: Into, value: "INTO", line: 1, col: 34, position: 33, quote_char: '\0' }` | 7 |
+| `rust-error` | `ValueError: Unexpected token: Token { token_type: Where, value: "WHERE", line: 1, col: 34, position: 33, quote_char: '\0' }` | 7 |
 
 ## Mismatch Signature Buckets
 
@@ -176,7 +176,7 @@ Total rows: `15170`
 | `mismatch` | `SELECT COUNT_IF()` | 20 |
 | `mismatch` | `date/time rendering: EOMONTH()` | 20 |
 | `mismatch` | `STRPOS()` | 19 |
-| `mismatch` | `A` | 18 |
+| `mismatch` | `A` | 17 |
 | `mismatch` | `SELECT UNNEST()` | 17 |
 
 ## Source Test Buckets
@@ -553,18 +553,6 @@ Total rows: `15170`
   - expected: `SELECT a FROM x LATERAL VIEW EXPLODE(y) t AS a`
   - error: `ValueError: Unexpected token: Token { token_type: Lateral, value: "LATERAL", line: 1, col: 17, position: 16, quote_char: '\0' }`
 
-### `rust-error` `parser: Expected And, got Number ('10')`
-
-- `tests/dialects/test_dialect.py`:4122 `test_between` via `validate_all`: `SELECT x BETWEEN SYMMETRIC 10 AND 2`
-  - expected: `SELECT (x BETWEEN 10 AND 2 OR x BETWEEN 2 AND 10)`
-  - error: `ValueError: Parser error: Expected And, got Number ('10') at line 1 col 28`
-- `tests/dialects/test_dialect.py`:4122 `test_between` via `validate_all`: `SELECT x BETWEEN SYMMETRIC 10 AND 2`
-  - expected: `SELECT (x BETWEEN 10 AND 2 OR x BETWEEN 2 AND 10)`
-  - error: `ValueError: Parser error: Expected And, got Number ('10') at line 1 col 28`
-- `tests/dialects/test_dialect.py`:4122 `test_between` via `validate_all`: `SELECT x BETWEEN SYMMETRIC 10 AND 2`
-  - expected: `SELECT (x BETWEEN 10 AND 2 OR x BETWEEN 2 AND 10)`
-  - error: `ValueError: Parser error: Expected And, got Number ('10') at line 1 col 28`
-
 ### `rust-error` `parser: Expected Join, got Union ('UNION')`
 
 - `tests/dialects/test_bigquery.py`:3096 `test_set_operations` via `validate_identity`: `SELECT 1 AS foo INNER UNION ALL SELECT 3 AS foo, 4 AS bar`
@@ -600,6 +588,18 @@ Total rows: `15170`
 - `tests/dialects/test_dialect.py`:4161 `test_like_quantifiers` via `validate_all`: `SELECT col LIKE ALL (x, y, z)`
   - expected: `SELECT col LIKE ALL (x, y, z)`
   - error: `ValueError: Parser error: Expected RParen, got Comma (',') at line 1 col 23`
+
+### `rust-error` `parser: Expected RParen, got FatArrow ('=>')`
+
+- `tests/dialects/test_duckdb.py`:450 `test_duckdb` via `validate_identity`: `SELECT * FROM my_ducklake.demo AT (VERSION => 2)`
+  - expected: `SELECT * FROM my_ducklake.demo AT (VERSION => 2)`
+  - error: `ValueError: Parser error: Expected RParen, got FatArrow ('=>') at line 1 col 44`
+- `tests/dialects/test_snowflake.py`:5811 `test_from_changes` via `validate_identity`: `SELECT C1 FROM t1 CHANGES (INFORMATION => APPEND_ONLY) AT (STREAM => 's1') END (TIMESTAMP => $ts2)`
+  - expected: `SELECT C1 FROM t1 CHANGES (INFORMATION => APPEND_ONLY) AT (STREAM => 's1') END (TIMESTAMP => $ts2)`
+  - error: `ValueError: Parser error: Expected RParen, got FatArrow ('=>') at line 1 col 40`
+- `tests/dialects/test_snowflake.py`:5814 `test_from_changes` via `validate_identity`: `SELECT C1 FROM t1 CHANGES (INFORMATION => APPEND_ONLY) BEFORE (STATEMENT => 'STMT_ID') END (TIMESTAMP => $ts2)`
+  - expected: `SELECT C1 FROM t1 CHANGES (INFORMATION => APPEND_ONLY) BEFORE (STATEMENT => 'STMT_ID') END (TIMESTAMP => $ts2)`
+  - error: `ValueError: Parser error: Expected RParen, got FatArrow ('=>') at line 1 col 40`
 
 ### `rust-error` `parser: Expected RParen, got Identifier ('FORMAT')`
 

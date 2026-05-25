@@ -86,6 +86,7 @@ this file records what landed.
 - Resynced the local Python SQLGlot oracle to upstream `main` at `d6a53b43` and refreshed forced-suite reports against `15,170` helper attempts per lane; MySQL/Postgres/SQLite rust-errors are now `1177`/`1206`/`1168`.
 - Added exact SQLite-targeted parser parity for qualified function names such as `SAFE.*`, `NET.*`, and `assert.true(...)`, plus standalone cast aliases, `interval::int`, and SQLGlot-style `IF ... THEN ... END` expressions.
 - Reconciled oracle drift from SQLGlot [#7677](https://github.com/tobymao/sqlglot/pull/7677) by matching SQLite-targeted Postgres `E'...'` byte-string fallback output, and updated MySQL `AUTO_INCREMENT` primary-key ordering for the current SQLGlot oracle.
+- Matched SQLGlot's `BETWEEN SYMMETRIC`/`ASYMMETRIC` rewrites and prefix `NOT BETWEEN` rendering; refreshed forced-suite reports now show MySQL/Postgres/SQLite rust-errors at `1155`/`1184`/`1146`.
 
 ## 2026-05-20
 
