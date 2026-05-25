@@ -8,33 +8,33 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8734 |
-| `mismatch` | 3502 |
+| `match` | 8743 |
+| `mismatch` | 3500 |
 | `oracle-error` | 1457 |
-| `rust-error` | 1334 |
+| `rust-error` | 1327 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 8734 |
-| `mismatch` | `postgres` | `sqlite` | 3502 |
+| `match` | `postgres` | `sqlite` | 8743 |
+| `mismatch` | `postgres` | `sqlite` | 3500 |
 | `oracle-error` | `postgres` | `sqlite` | 1457 |
-| `rust-error` | `postgres` | `sqlite` | 1334 |
+| `rust-error` | `postgres` | `sqlite` | 1327 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 6173 |
+| `match` | `validate_all` | 6174 |
 | `mismatch` | `validate_all` | 2491 |
-| `match` | `validate_identity` | 2468 |
+| `match` | `validate_identity` | 2476 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 937 |
-| `rust-error` | `validate_identity` | 705 |
-| `rust-error` | `validate_all` | 619 |
+| `mismatch` | `validate_identity` | 935 |
+| `rust-error` | `validate_identity` | 699 |
+| `rust-error` | `validate_all` | 618 |
 | `oracle-error` | `validate_all` | 502 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 93 |
@@ -213,8 +213,8 @@ Total rows: `15164`
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 83 |
 | `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 82 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 78 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 76 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 74 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 72 |
 | `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 72 |
 | `mismatch` | `tests/dialects/test_presto.py` | `test_presto` | 70 |

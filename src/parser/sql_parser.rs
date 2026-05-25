@@ -3327,10 +3327,40 @@ impl Parser {
     fn parse_truncate(&mut self) -> Result<TruncateStatement> {
         self.expect(TokenType::Truncate)?;
         let _ = self.match_token(TokenType::Table);
-        let table = self.parse_table_ref()?;
+        let mut targets = Vec::new();
+        loop {
+            let only = self.match_keyword("ONLY");
+            let table = self.parse_table_ref_no_alias()?;
+            let _ = self.match_token(TokenType::Star);
+            targets.push(TruncateTarget { only, table });
+            if !self.match_token(TokenType::Comma) {
+                break;
+            }
+        }
+
+        let identity = if self.match_keyword("CONTINUE") {
+            self.expect_keyword("IDENTITY")?;
+            Some("CONTINUE IDENTITY".to_string())
+        } else if self.match_keyword("RESTART") {
+            self.expect_keyword("IDENTITY")?;
+            Some("RESTART IDENTITY".to_string())
+        } else {
+            None
+        };
+
+        let option = if self.match_token(TokenType::Cascade) {
+            Some("CASCADE".to_string())
+        } else if self.match_token(TokenType::Restrict) {
+            Some("RESTRICT".to_string())
+        } else {
+            None
+        };
+
         Ok(TruncateStatement {
             comments: vec![],
-            table,
+            targets,
+            identity,
+            option,
         })
     }
 

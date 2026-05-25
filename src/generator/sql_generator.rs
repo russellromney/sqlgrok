@@ -1648,7 +1648,23 @@ impl Generator {
 
     fn gen_truncate(&mut self, t: &TruncateStatement) {
         self.write_keyword("TRUNCATE TABLE ");
-        self.gen_table_ref(&t.table);
+        for (i, target) in t.targets.iter().enumerate() {
+            if i > 0 {
+                self.write(", ");
+            }
+            if target.only {
+                self.write_keyword("ONLY ");
+            }
+            self.gen_table_ref(&target.table);
+        }
+        if let Some(identity) = &t.identity {
+            self.write(" ");
+            self.write_keyword(identity);
+        }
+        if let Some(option) = &t.option {
+            self.write(" ");
+            self.write_keyword(option);
+        }
     }
 
     // ── Transaction ─────────────────────────────────────────────

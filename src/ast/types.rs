@@ -1856,6 +1856,17 @@ pub struct TruncateStatement {
     /// Comments attached to this statement.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub comments: Vec<String>,
+    pub targets: Vec<TruncateTarget>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub option: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TruncateTarget {
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub only: bool,
     pub table: TableRef,
 }
 

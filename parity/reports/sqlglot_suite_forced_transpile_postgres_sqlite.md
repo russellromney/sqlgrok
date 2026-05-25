@@ -13,23 +13,23 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8734 |
-| `mismatch` | 3502 |
+| `match` | 8743 |
+| `mismatch` | 3500 |
 | `oracle-error` | 1457 |
-| `rust-error` | 1334 |
+| `rust-error` | 1327 |
 | `unsupported-harness-shape` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 6173 |
+| `match` | `validate_all` | 6174 |
 | `mismatch` | `validate_all` | 2491 |
-| `match` | `validate_identity` | 2468 |
+| `match` | `validate_identity` | 2476 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 937 |
-| `rust-error` | `validate_identity` | 705 |
-| `rust-error` | `validate_all` | 619 |
+| `mismatch` | `validate_identity` | 935 |
+| `rust-error` | `validate_identity` | 699 |
+| `rust-error` | `validate_all` | 618 |
 | `oracle-error` | `validate_all` | 502 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 93 |

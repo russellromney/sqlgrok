@@ -8,33 +8,33 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8368 |
-| `mismatch` | 3820 |
+| `match` | 8376 |
+| `mismatch` | 3819 |
 | `oracle-error` | 1549 |
-| `rust-error` | 1290 |
+| `rust-error` | 1283 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 8368 |
-| `mismatch` | `sqlite` | `sqlite` | 3820 |
+| `match` | `sqlite` | `sqlite` | 8376 |
+| `mismatch` | `sqlite` | `sqlite` | 3819 |
 | `oracle-error` | `sqlite` | `sqlite` | 1549 |
-| `rust-error` | `sqlite` | `sqlite` | 1290 |
+| `rust-error` | `sqlite` | `sqlite` | 1283 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5902 |
+| `match` | `validate_all` | 5903 |
 | `mismatch` | `validate_all` | 2752 |
-| `match` | `validate_identity` | 2382 |
+| `match` | `validate_identity` | 2389 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 988 |
-| `rust-error` | `validate_identity` | 696 |
-| `rust-error` | `validate_all` | 584 |
+| `mismatch` | `validate_identity` | 987 |
+| `rust-error` | `validate_identity` | 690 |
+| `rust-error` | `validate_all` | 583 |
 | `oracle-error` | `validate_all` | 547 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 84 |

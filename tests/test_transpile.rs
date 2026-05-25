@@ -2822,6 +2822,40 @@ fn test_identity_truncate() {
     validate_identity("TRUNCATE TABLE t");
 }
 
+#[test]
+fn test_postgres_truncate_options_to_sqlite() {
+    validate_with_dialect(
+        "TRUNCATE TABLE t1 CASCADE",
+        "TRUNCATE TABLE t1 CASCADE",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "TRUNCATE TABLE t1 RESTRICT",
+        "TRUNCATE TABLE t1 RESTRICT",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "TRUNCATE TABLE t1 CONTINUE IDENTITY CASCADE",
+        "TRUNCATE TABLE t1 CONTINUE IDENTITY CASCADE",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "TRUNCATE TABLE t1 RESTART IDENTITY RESTRICT",
+        "TRUNCATE TABLE t1 RESTART IDENTITY RESTRICT",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "TRUNCATE TABLE ONLY t1, t2*, ONLY t3, t4, t5* RESTART IDENTITY CASCADE",
+        "TRUNCATE TABLE ONLY t1, t2, ONLY t3, t4, t5 RESTART IDENTITY CASCADE",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // SELECT TOP N (T-SQL) — Issue #1
 // ═════════════════════════════════════════════════════════════════════════════
