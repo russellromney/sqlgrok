@@ -8,33 +8,33 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8239 |
-| `mismatch` | 3840 |
+| `match` | 8252 |
+| `mismatch` | 3844 |
 | `oracle-error` | 1549 |
-| `rust-error` | 1399 |
+| `rust-error` | 1382 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 8239 |
-| `mismatch` | `sqlite` | `sqlite` | 3840 |
+| `match` | `sqlite` | `sqlite` | 8252 |
+| `mismatch` | `sqlite` | `sqlite` | 3844 |
 | `oracle-error` | `sqlite` | `sqlite` | 1549 |
-| `rust-error` | `sqlite` | `sqlite` | 1399 |
+| `rust-error` | `sqlite` | `sqlite` | 1382 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5845 |
+| `match` | `validate_all` | 5848 |
 | `mismatch` | `validate_all` | 2775 |
-| `match` | `validate_identity` | 2316 |
+| `match` | `validate_identity` | 2326 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 982 |
-| `rust-error` | `validate_identity` | 768 |
-| `rust-error` | `validate_all` | 618 |
+| `mismatch` | `validate_identity` | 986 |
+| `rust-error` | `validate_identity` | 754 |
+| `rust-error` | `validate_all` | 615 |
 | `oracle-error` | `validate_all` | 547 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `mismatch` | `validate` | 83 |
@@ -53,27 +53,27 @@ Total rows: `15164`
 | `mismatch` | `CREATE TABLE` | 268 |
 | `match` | `SELECT operator multiply` | 217 |
 | `match` | `SHOW` | 215 |
-| `mismatch` | `SELECT` | 204 |
+| `mismatch` | `SELECT` | 205 |
 | `oracle-error` | `SELECT` | 198 |
 | `mismatch` | `CREATE` | 178 |
 | `match` | `CREATE TABLE` | 166 |
 | `match` | `CREATE` | 165 |
 | `match` | `TRUNC()` | 162 |
-| `rust-error` | `SELECT` | 154 |
+| `rust-error` | `SELECT` | 153 |
 | `oracle-error` | `SELECT operator multiply` | 143 |
 | `rust-error` | `SELECT operator multiply` | 137 |
 | `mismatch` | `SELECT operator multiply` | 136 |
 | `match` | `ALTER TABLE` | 116 |
 | `oracle-error` | `CREATE TABLE` | 113 |
 | `match` | `X` | 107 |
-| `rust-error` | `FROM` | 104 |
 | `rust-error` | `CREATE TABLE` | 99 |
+| `rust-error` | `FROM` | 99 |
 | `mismatch` | `SELECT UNNEST()` | 90 |
 | `match` | `SELECT DATEDIFF()` | 82 |
+| `match` | `WITH` | 81 |
 | `mismatch` | `CAST()` | 81 |
 | `rust-error` | `CAST()` | 79 |
 | `match` | `SET` | 78 |
-| `match` | `WITH` | 78 |
 | `mismatch` | `DATE_ADD()` | 78 |
 | `match` | `DATE_TRUNC()` | 69 |
 | `match` | `LOG()` | 67 |
@@ -97,12 +97,12 @@ Total rows: `15164`
 | `oracle-error` | `oracle parse: Expecting )` | 474 |
 | `oracle-error` | `oracle parse: Required keyword missing` | 132 |
 | `unsupported-harness-shape` | `SQLGlot expects UnsupportedError` | 119 |
-| `rust-error` | `ValueError: Unexpected token: Token { token_type: From, value: "FROM", line: 1, col: 1, position: 0, quote_char: '\0' }` | 113 |
-| `rust-error` | `parser: Expected identifier` | 78 |
-| `rust-error` | `parser: Expected statement` | 72 |
+| `rust-error` | `ValueError: Unexpected token: Token { token_type: BitwiseOr, value: "\|", line: 1, col: 8, position: 7, quote_char: '\0' }` | 83 |
+| `rust-error` | `parser: Expected identifier` | 74 |
+| `rust-error` | `parser: Expected statement` | 71 |
 | `rust-error` | `parser: Expected RParen, got As ('AS')` | 36 |
+| `rust-error` | `parser: Expected RParen, got LParen ('(')` | 36 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('TO')` | 34 |
-| `rust-error` | `parser: Expected RParen, got LParen ('(')` | 34 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('VARYING')` | 32 |
 | `rust-error` | `parser: Expected RParen, got Comma (',')` | 28 |
 | `oracle-error` | `oracle parse: The number of provided arguments (2) is greater than the maximum number of supported arguments (1)` | 24 |
@@ -122,12 +122,12 @@ Total rows: `15164`
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 57, position: 56, quote_char: '\0' }` | 13 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 69, position: 68, quote_char: '\0' }` | 13 |
 | `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.HASH, text: #, line: 1, col: 14, start: 13, end: 13, comments: []>` | 12 |
+| `rust-error` | `ValueError: Unexpected token: Token { token_type: BitwiseOr, value: "\|", line: 1, col: 7, position: 6, quote_char: '\0' }` | 12 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: Dot, value: ".", line: 1, col: 31, position: 30, quote_char: '\0' }` | 10 |
 | `rust-error` | `parser: Expected RParen, got Having ('HAVING')` | 10 |
 | `rust-error` | `parser: Expected data type, got Struct` | 10 |
 | `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.HASH, text: #, line: 1, col: 15, start: 14, end: 14, comments: []>` | 9 |
 | `oracle-error` | `oracle parse: The number of provided arguments (3) is greater than the maximum number of supported arguments (2)` | 9 |
-| `rust-error` | `parser: Expected SELECT or INSERT after WITH clause` | 9 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: All, value: "ALL", line: 1, col: 19, position: 18, quote_char: '\0' }` | 8 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: Colon, value: ":", line: 1, col: 40, position: 39, quote_char: '\0' }` | 8 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: On, value: "ON", line: 1, col: 14, position: 13, quote_char: '\0' }` | 8 |
@@ -142,7 +142,7 @@ Total rows: `15164`
 | `mismatch` | `DDL/create-table rendering` | 255 |
 | `mismatch` | `missing quoted identifier` | 245 |
 | `mismatch` | `case-only rendering difference` | 216 |
-| `mismatch` | `SELECT` | 136 |
+| `mismatch` | `SELECT` | 137 |
 | `mismatch` | `SELECT operator multiply` | 134 |
 | `mismatch` | `CREATE` | 101 |
 | `mismatch` | `cast/type rendering: CAST()` | 73 |
@@ -186,14 +186,14 @@ Total rows: `15164`
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 828 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 412 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 315 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 287 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 286 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 294 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 288 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 225 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 224 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 193 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 180 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 177 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 174 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 176 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 136 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 128 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 117 |
@@ -202,13 +202,13 @@ Total rows: `15164`
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 105 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 100 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 95 |
-| `rust-error` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 92 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
-| `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 89 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 88 |
+| `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 88 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 87 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 84 |
+| `rust-error` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 82 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 80 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 80 |
 | `mismatch` | `tests/dialects/test_presto.py` | `test_presto` | 76 |
@@ -520,17 +520,17 @@ Total rows: `15164`
 - `tests/dialects/test_hive.py`:751 `test_hive` via `validate_all`: `map(a, b, c, d)`
   - error: `ParseError: The number of provided arguments (4) is greater than the maximum number of supported arguments (2). Line 1, Col: 15. map(a, b, c, d)`
 
-### `rust-error` `ValueError: Unexpected token: Token { token_type: From, value: "FROM", line: 1, col: 1, position: 0, quote_char: '\0' }`
+### `rust-error` `ValueError: Unexpected token: Token { token_type: BitwiseOr, value: "\|", line: 1, col: 8, position: 7, quote_char: '\0' }`
 
-- `tests/dialects/test_duckdb.py`:485 `test_duckdb` via `validate_identity`: `FROM x SELECT x UNION SELECT 1`
-  - expected: `SELECT x FROM x UNION SELECT 1`
-  - error: `ValueError: Unexpected token: Token { token_type: From, value: "FROM", line: 1, col: 1, position: 0, quote_char: '\0' }`
-- `tests/dialects/test_duckdb.py`:486 `test_duckdb` via `validate_identity`: `FROM (FROM tbl)`
-  - expected: `SELECT * FROM (SELECT * FROM tbl)`
-  - error: `ValueError: Unexpected token: Token { token_type: From, value: "FROM", line: 1, col: 1, position: 0, quote_char: '\0' }`
-- `tests/dialects/test_duckdb.py`:487 `test_duckdb` via `validate_identity`: `FROM tbl`
-  - expected: `SELECT * FROM tbl`
-  - error: `ValueError: Unexpected token: Token { token_type: From, value: "FROM", line: 1, col: 1, position: 0, quote_char: '\0' }`
+- `tests/dialects/test_pipe_syntax.py`:140 `test_aggregate` via `validate_identity`: `FROM x |> AGGREGATE SUM(x1), MAX(x2), MIN(x3)`
+  - expected: `WITH __tmp1 AS (SELECT SUM(x1), MAX(x2), MIN(x3) FROM x) SELECT * FROM __tmp1`
+  - error: `ValueError: Unexpected token: Token { token_type: BitwiseOr, value: "|", line: 1, col: 8, position: 7, quote_char: '\0' }`
+- `tests/dialects/test_pipe_syntax.py`:144 `test_aggregate` via `validate_identity`: `FROM x |> AGGREGATE SUM(x1) AS s_x1 |> SELECT s_x1`
+  - expected: `WITH __tmp1 AS (SELECT SUM(x1) AS s_x1 FROM x), __tmp2 AS (SELECT s_x1 FROM __tmp1) SELECT * FROM __tmp2`
+  - error: `ValueError: Unexpected token: Token { token_type: BitwiseOr, value: "|", line: 1, col: 8, position: 7, quote_char: '\0' }`
+- `tests/dialects/test_pipe_syntax.py`:148 `test_aggregate` via `validate_identity`: `FROM x |> AGGREGATE SUM(x1), MAX(x2), MIN(x3) GROUP BY x4, x5`
+  - expected: `WITH __tmp1 AS (SELECT SUM(x1), MAX(x2), MIN(x3), x4, x5 FROM x GROUP BY x4, x5) SELECT * FROM __tmp1`
+  - error: `ValueError: Unexpected token: Token { token_type: BitwiseOr, value: "|", line: 1, col: 8, position: 7, quote_char: '\0' }`
 
 ### `rust-error` `ValueError: Unexpected token: Token { token_type: LBrace, value: "{", line: 1, col: 8, position: 7, quote_char: '\0' }`
 

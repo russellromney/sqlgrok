@@ -385,11 +385,18 @@ impl Parser {
                 let select = self.parse_select_body(vec![])?;
                 self.maybe_parse_set_operation(Statement::Select(select))
             }
+            TokenType::From => {
+                let select = self.parse_from_first_select(vec![])?;
+                self.maybe_parse_set_operation(Statement::Select(select))
+            }
             TokenType::LParen => {
                 // Could be a parenthesized SELECT
                 let saved_pos = self.pos;
                 self.advance(); // consume '('
-                if matches!(self.peek_type(), TokenType::Select | TokenType::With) {
+                if matches!(
+                    self.peek_type(),
+                    TokenType::Select | TokenType::With | TokenType::From
+                ) {
                     let inner = self.parse_statement_inner()?;
                     self.expect(TokenType::RParen)?;
                     self.maybe_parse_set_operation(inner)
@@ -616,6 +623,10 @@ impl Parser {
                 let select = self.parse_select_body(ctes)?;
                 self.maybe_parse_set_operation(Statement::Select(select))
             }
+            TokenType::From => {
+                let select = self.parse_from_first_select(ctes)?;
+                self.maybe_parse_set_operation(Statement::Select(select))
+            }
             TokenType::Insert => {
                 // WITH ... INSERT is supported in some dialects
                 let ins = self.parse_insert()?;
@@ -685,6 +696,106 @@ impl Parser {
     }
 
     // ── SELECT ──────────────────────────────────────────────────────
+
+    fn parse_from_first_select(&mut self, ctes: Vec<Cte>) -> Result<SelectStatement> {
+        self.expect(TokenType::From)?;
+        let from = Some(FromClause {
+            source: self.parse_table_source()?,
+        });
+        let joins = self.parse_joins()?;
+
+        let columns = if self.match_token(TokenType::Select) {
+            self.parse_select_items()?
+        } else {
+            vec![SelectItem::Wildcard]
+        };
+
+        let where_clause = if self.match_token(TokenType::Where) {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
+
+        let group_by = if self.match_token(TokenType::Group) {
+            self.expect(TokenType::By)?;
+            self.parse_group_by_list()?
+        } else {
+            vec![]
+        };
+
+        let having = if self.match_token(TokenType::Having) {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
+
+        let qualify = if self.match_token(TokenType::Qualify) {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
+
+        let window_definitions = if self.match_token(TokenType::Window) {
+            self.parse_window_definitions()?
+        } else {
+            vec![]
+        };
+
+        let order_by = if self.match_token(TokenType::Order) {
+            self.expect(TokenType::By)?;
+            self.parse_order_by_items()?
+        } else {
+            vec![]
+        };
+
+        let (limit, offset) = if self.match_token(TokenType::Limit) {
+            let first = if self.match_token(TokenType::All) {
+                Expr::Column {
+                    table: None,
+                    name: "ALL".to_string(),
+                    quote_style: QuoteStyle::None,
+                    table_quote_style: QuoteStyle::None,
+                }
+            } else {
+                self.parse_expr()?
+            };
+            if self.match_token(TokenType::Comma) {
+                let count = self.parse_expr()?;
+                (Some(count), Some(first))
+            } else {
+                (Some(first), None)
+            }
+        } else {
+            (None, None)
+        };
+
+        let offset = if offset.is_none() && self.match_token(TokenType::Offset) {
+            Some(self.parse_expr()?)
+        } else {
+            offset
+        };
+
+        Ok(SelectStatement {
+            comments: vec![],
+            ctes,
+            distinct: false,
+            distinct_on: vec![],
+            top: None,
+            columns,
+            from,
+            joins,
+            where_clause,
+            group_by,
+            having,
+            order_by,
+            limit,
+            offset,
+            fetch_first: None,
+            qualify,
+            window_definitions,
+            lock: None,
+        })
+    }
 
     fn parse_select_body(&mut self, ctes: Vec<Cte>) -> Result<SelectStatement> {
         self.expect(TokenType::Select)?;
@@ -986,6 +1097,7 @@ impl Parser {
                         | "ON"
                         | "WINDOW"
                         | "QUALIFY"
+                        | "SELECT"
                         | "INTO"
                         | "VALUES"
                         | "SET"
@@ -1060,7 +1172,10 @@ impl Parser {
         if self.peek_type() == &TokenType::LParen {
             let saved = self.pos;
             self.advance();
-            if matches!(self.peek_type(), TokenType::Select | TokenType::With) {
+            if matches!(
+                self.peek_type(),
+                TokenType::Select | TokenType::With | TokenType::From
+            ) {
                 let query = self.parse_statement_inner()?;
                 self.expect(TokenType::RParen)?;
                 let (alias, alias_quote_style) = match self.parse_optional_alias()? {
@@ -1288,6 +1403,7 @@ impl Parser {
                 | TokenType::Having
                 | TokenType::Window
                 | TokenType::Qualify
+                | TokenType::Select
                 | TokenType::On
                 | TokenType::RParen
         )

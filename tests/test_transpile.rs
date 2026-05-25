@@ -4056,6 +4056,36 @@ fn test_postgres_parser_carriers_to_sqlite() {
         Dialect::Sqlite,
     );
     validate_with_dialect(
+        "FROM tbl",
+        "SELECT * FROM tbl",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "FROM tbl SELECT x",
+        "SELECT x FROM tbl",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "FROM t1, t2 SELECT *",
+        "SELECT * FROM t1, t2",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "FROM t1 LEFT JOIN t2 USING (id) SELECT *",
+        "SELECT * FROM t1 LEFT JOIN t2 USING (id)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "FROM (FROM tbl)",
+        "SELECT * FROM (SELECT * FROM tbl)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
         "SELECT $$Dianne's horse$$",
         "SELECT 'Dianne''s horse'",
         Dialect::Postgres,
