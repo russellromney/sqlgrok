@@ -2289,6 +2289,62 @@ fn test_sqlite_function_operator_mapping_batch() {
         Dialect::Mysql,
         Dialect::Sqlite,
     );
+    for source in [Dialect::Sqlite, Dialect::Mysql, Dialect::Postgres] {
+        validate_with_dialect(
+            "SELECT STR_POSITION(haystack, needle)",
+            "SELECT INSTR(haystack, needle)",
+            source,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT STR_POSITION(haystack, needle, position)",
+            "SELECT IIF(INSTR(SUBSTRING(haystack, position), needle) = 0, 0, INSTR(SUBSTRING(haystack, position), needle) + position - 1)",
+            source,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT LOCATE(needle, haystack)",
+            "SELECT INSTR(haystack, needle)",
+            source,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT NVL2(a, b, c)",
+            "SELECT CASE WHEN NOT a IS NULL THEN b ELSE c END",
+            source,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT NVL2(a, b)",
+            "SELECT CASE WHEN NOT a IS NULL THEN b END",
+            source,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT DECODE(a, 1, 'one', 2, 'two', 'other')",
+            "SELECT CASE WHEN a = 1 THEN 'one' WHEN a = 2 THEN 'two' ELSE 'other' END",
+            source,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT DECODE(a, NULL, 'nil', 'other')",
+            "SELECT CASE WHEN a IS NULL THEN 'nil' ELSE 'other' END",
+            source,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT DECODE(a, b, c, d + 1, e)",
+            "SELECT CASE WHEN a = b OR (a IS NULL AND b IS NULL) THEN c WHEN a = (d + 1) OR (a IS NULL AND (d + 1) IS NULL) THEN e END",
+            source,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT DECODE(a, F(b), c, TRUE, d, -1, e)",
+            "SELECT CASE WHEN a = F(b) OR (a IS NULL AND F(b) IS NULL) THEN c WHEN a = TRUE OR (a IS NULL AND TRUE IS NULL) THEN d WHEN a = -1 OR (a IS NULL AND -1 IS NULL) THEN e END",
+            source,
+            Dialect::Sqlite,
+        );
+    }
     validate_with_dialect("CONCAT(a)", "a", Dialect::Postgres, Dialect::Sqlite);
     validate_with_dialect(
         "CONCAT(a, b, c)",

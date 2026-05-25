@@ -725,7 +725,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
-                && is_mysql_family(source)
                 && name.eq_ignore_ascii_case("LOCATE")
                 && !distinct
                 && filter.is_none()
@@ -744,36 +743,109 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 let needle = new_args[0].clone();
                 let haystack = new_args[1].clone();
                 let position = new_args[2].clone();
-                let substring = Expr::Function {
-                    name: "SUBSTRING".to_string(),
-                    args: vec![haystack, position.clone()],
-                    distinct: false,
-                    filter: None,
-                    over: None,
+                return sqlite_instr_with_position(haystack, needle, position);
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("STR_POSITION")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && (new_args.len() == 2 || new_args.len() == 3)
+            {
+                if new_args.len() == 2 {
+                    return Expr::Function {
+                        name: "INSTR".to_string(),
+                        args: new_args,
+                        distinct,
+                        filter,
+                        over,
+                    };
+                }
+                return sqlite_instr_with_position(
+                    new_args[0].clone(),
+                    new_args[1].clone(),
+                    new_args[2].clone(),
+                );
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("NVL2")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && (new_args.len() == 2 || new_args.len() == 3)
+            {
+                return Expr::Case {
+                    operand: None,
+                    when_clauses: vec![(
+                        Expr::UnaryOp {
+                            op: UnaryOperator::Not,
+                            expr: Box::new(Expr::IsNull {
+                                expr: Box::new(new_args[0].clone()),
+                                negated: false,
+                            }),
+                        },
+                        new_args[1].clone(),
+                    )],
+                    else_clause: (new_args.len() == 3).then(|| Box::new(new_args[2].clone())),
                 };
-                let instr = Expr::Function {
-                    name: "INSTR".to_string(),
-                    args: vec![substring, needle],
-                    distinct: false,
-                    filter: None,
-                    over: None,
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("DECODE")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() >= 3
+            {
+                let expr = new_args[0].clone();
+                let comparisons = &new_args[1..];
+                let has_default = comparisons.len() % 2 == 1;
+                let comparison_count = if has_default {
+                    comparisons.len() - 1
+                } else {
+                    comparisons.len()
                 };
-                return Expr::If {
-                    condition: Box::new(Expr::BinaryOp {
-                        left: Box::new(instr.clone()),
-                        op: BinaryOperator::Eq,
-                        right: Box::new(Expr::Number("0".to_string())),
-                    }),
-                    true_val: Box::new(Expr::Number("0".to_string())),
-                    false_val: Some(Box::new(Expr::BinaryOp {
-                        left: Box::new(Expr::BinaryOp {
-                            left: Box::new(instr),
-                            op: BinaryOperator::Plus,
-                            right: Box::new(position),
-                        }),
-                        op: BinaryOperator::Minus,
-                        right: Box::new(Expr::Number("1".to_string())),
-                    })),
+                let mut when_clauses = Vec::new();
+                for pair in comparisons[..comparison_count].chunks(2) {
+                    let condition = if matches!(pair[0], Expr::Null) {
+                        Expr::IsNull {
+                            expr: Box::new(expr.clone()),
+                            negated: false,
+                        }
+                    } else if sqlite_decode_uses_plain_equality(&pair[0]) {
+                        Expr::BinaryOp {
+                            left: Box::new(expr.clone()),
+                            op: BinaryOperator::Eq,
+                            right: Box::new(pair[0].clone()),
+                        }
+                    } else {
+                        let search = sqlite_decode_search_expr(pair[0].clone());
+                        Expr::BinaryOp {
+                            left: Box::new(Expr::BinaryOp {
+                                left: Box::new(expr.clone()),
+                                op: BinaryOperator::Eq,
+                                right: Box::new(search.clone()),
+                            }),
+                            op: BinaryOperator::Or,
+                            right: Box::new(Expr::Nested(Box::new(Expr::BinaryOp {
+                                left: Box::new(Expr::IsNull {
+                                    expr: Box::new(expr.clone()),
+                                    negated: false,
+                                }),
+                                op: BinaryOperator::And,
+                                right: Box::new(Expr::IsNull {
+                                    expr: Box::new(search),
+                                    negated: false,
+                                }),
+                            }))),
+                        }
+                    };
+                    when_clauses.push((condition, pair[1].clone()));
+                }
+                return Expr::Case {
+                    operand: None,
+                    when_clauses,
+                    else_clause: has_default
+                        .then(|| Box::new(comparisons[comparisons.len() - 1].clone())),
                 };
             }
             if matches!(target, Dialect::Sqlite)
@@ -1383,6 +1455,57 @@ fn concat_expr(args: Vec<Expr>) -> Expr {
         op: BinaryOperator::Concat,
         right: Box::new(right),
     })
+}
+
+fn sqlite_instr_with_position(haystack: Expr, needle: Expr, position: Expr) -> Expr {
+    let substring = Expr::Function {
+        name: "SUBSTRING".to_string(),
+        args: vec![haystack, position.clone()],
+        distinct: false,
+        filter: None,
+        over: None,
+    };
+    let instr = Expr::Function {
+        name: "INSTR".to_string(),
+        args: vec![substring, needle],
+        distinct: false,
+        filter: None,
+        over: None,
+    };
+    Expr::If {
+        condition: Box::new(Expr::BinaryOp {
+            left: Box::new(instr.clone()),
+            op: BinaryOperator::Eq,
+            right: Box::new(Expr::Number("0".to_string())),
+        }),
+        true_val: Box::new(Expr::Number("0".to_string())),
+        false_val: Some(Box::new(Expr::BinaryOp {
+            left: Box::new(Expr::BinaryOp {
+                left: Box::new(instr),
+                op: BinaryOperator::Plus,
+                right: Box::new(position),
+            }),
+            op: BinaryOperator::Minus,
+            right: Box::new(Expr::Number("1".to_string())),
+        })),
+    }
+}
+
+fn sqlite_decode_uses_plain_equality(expr: &Expr) -> bool {
+    matches!(
+        expr,
+        Expr::Number(_)
+            | Expr::StringLiteral(_)
+            | Expr::EscapedStringLiteral(_)
+            | Expr::HexString(_)
+    )
+}
+
+fn sqlite_decode_search_expr(expr: Expr) -> Expr {
+    match expr {
+        Expr::BinaryOp { .. } => Expr::Nested(Box::new(expr)),
+        other => other,
+    }
 }
 
 fn sqlite_real_cast(expr: Expr) -> Expr {

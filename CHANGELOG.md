@@ -62,6 +62,7 @@ this file records what landed.
 - Widened `TestTranspile.validate` bridge support for `pretty`, `identity`, and unsupported-level helper kwargs, and added bridge coverage accounting for observed helper attempts versus read/write-filtered routes.
 - Added SQLGlot suite bridge forced-pair mode, which replays pytest-discovered transpile SQL through Python SQLGlot's oracle for a requested read/write pair; checked in forced reports for MySQL-to-SQLite, Postgres-to-SQLite, and SQLite identity covering all `15,164` observed helper attempts per lane.
 - Added an `xtask bucket-suite-report` summarizer for SQLGlot suite reports and checked in bucket maps for the forced MySQL-to-SQLite, Postgres-to-SQLite, and SQLite identity lanes.
+- Burned down the first forced-suite function mismatch cluster by matching SQLite-targeted `LOCATE`, `STR_POSITION`, `NVL2`, and `DECODE` rewrites across MySQL, Postgres, and SQLite source modes, including positioned string search, two-argument `NVL2`, and null-safe `DECODE` expression comparisons.
 
 ## 2026-05-20
 

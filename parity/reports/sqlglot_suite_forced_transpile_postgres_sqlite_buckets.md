@@ -8,8 +8,8 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8114 |
-| `mismatch` | 3708 |
+| `match` | 8275 |
+| `mismatch` | 3547 |
 | `oracle-error` | 1457 |
 | `rust-error` | 1748 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15164`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 8114 |
-| `mismatch` | `postgres` | `sqlite` | 3708 |
+| `match` | `postgres` | `sqlite` | 8275 |
+| `mismatch` | `postgres` | `sqlite` | 3547 |
 | `rust-error` | `postgres` | `sqlite` | 1748 |
 | `oracle-error` | `postgres` | `sqlite` | 1457 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15164`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5721 |
-| `mismatch` | `validate_all` | 2675 |
-| `match` | `validate_identity` | 2326 |
+| `match` | `validate_all` | 5881 |
+| `mismatch` | `validate_all` | 2515 |
+| `match` | `validate_identity` | 2327 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 942 |
+| `mismatch` | `validate_identity` | 941 |
 | `rust-error` | `validate_all` | 887 |
 | `rust-error` | `validate_identity` | 842 |
 | `oracle-error` | `validate_all` | 502 |
@@ -87,7 +87,7 @@ Total rows: `15164`
 | `rust-error` | `SELECT CAST()` | 56 |
 | `match` | `SELECT CAST()` | 55 |
 | `match` | `SELECT UNNEST()` | 53 |
-| `mismatch` | `STR_POSITION()` | 52 |
+| `mismatch` | `ALTER TABLE` | 49 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -148,15 +148,11 @@ Total rows: `15164`
 | `mismatch` | `cast/type rendering: CAST()` | 70 |
 | `mismatch` | `date/time rendering: DATE_ADD()` | 69 |
 | `mismatch` | `date/time rendering: TIME_STR_TO_TIME()` | 57 |
-| `mismatch` | `STR_POSITION()` | 52 |
 | `mismatch` | `date/time rendering: SELECT DATE_SUB()` | 49 |
 | `mismatch` | `ALTER TABLE` | 45 |
-| `mismatch` | `SELECT NVL2()` | 45 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 32 |
 | `mismatch` | `date/time rendering: SELECT DATEADD()` | 32 |
 | `mismatch` | `DECLARE` | 30 |
-| `mismatch` | `LOCATE()` | 30 |
-| `mismatch` | `SELECT DECODE()` | 30 |
 | `mismatch` | `date/time rendering: SELECT DATE_ADD()` | 29 |
 | `mismatch` | `date/time rendering: SELECT DATE_FORMAT()` | 29 |
 | `mismatch` | `LEVENSHTEIN()` | 28 |
@@ -178,33 +174,36 @@ Total rows: `15164`
 | `mismatch` | `cast/type rendering: SELECT TO_CHAR()` | 19 |
 | `mismatch` | `SELECT operator index` | 18 |
 | `mismatch` | `BEGIN` | 17 |
+| `mismatch` | `date/time rendering: SELECT DATE_TRUNC()` | 17 |
+| `mismatch` | `date/time rendering: STR_TO_TIME()` | 17 |
+| `mismatch` | `LTRIM()` | 16 |
+| `mismatch` | `MOD()` | 16 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 819 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 824 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 384 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 308 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 301 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 296 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 291 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 227 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 224 |
+| `match` | `tests/dialects/test_dialect.py` | `test_operators` | 200 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 190 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 160 |
 | `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 147 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 139 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 139 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 136 |
-| `match` | `tests/dialects/test_dialect.py` | `test_operators` | 136 |
-| `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 136 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 125 |
 | `rust-error` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 121 |
+| `match` | `tests/dialects/test_hive.py` | `test_hive` | 107 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 102 |
-| `match` | `tests/dialects/test_hive.py` | `test_hive` | 99 |
+| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 95 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 91 |
-| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 89 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 88 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 87 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
@@ -216,6 +215,7 @@ Total rows: `15164`
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 76 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 74 |
+| `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 72 |
 | `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 72 |
 | `mismatch` | `tests/dialects/test_presto.py` | `test_presto` | 70 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 67 |
@@ -274,17 +274,41 @@ Total rows: `15164`
   - expected: `DECLARE x BIGNUMERIC(76, 38)`
   - actual: `DECLARE`
 
-### `mismatch` `LOCATE()`
+### `mismatch` `LEVENSHTEIN()`
 
-- `tests/dialects/test_dialect.py`:2308 `test_operators` via `validate_all`: `LOCATE(needle, haystack)`
-  - expected: `INSTR(haystack, needle)`
-  - actual: `LOCATE(needle, haystack)`
-- `tests/dialects/test_dialect.py`:2308 `test_operators` via `validate_all`: `LOCATE(needle, haystack)`
-  - expected: `INSTR(haystack, needle)`
-  - actual: `LOCATE(needle, haystack)`
-- `tests/dialects/test_dialect.py`:2308 `test_operators` via `validate_all`: `LOCATE(needle, haystack)`
-  - expected: `INSTR(haystack, needle)`
-  - actual: `LOCATE(needle, haystack)`
+- `tests/dialects/test_dialect.py`:2549 `test_operators` via `validate_all`: `LEVENSHTEIN(col1, col2)`
+  - expected: `EDITDIST3(col1, col2)`
+  - actual: `LEVENSHTEIN(col1, col2)`
+- `tests/dialects/test_dialect.py`:2549 `test_operators` via `validate_all`: `LEVENSHTEIN(col1, col2)`
+  - expected: `EDITDIST3(col1, col2)`
+  - actual: `LEVENSHTEIN(col1, col2)`
+- `tests/dialects/test_dialect.py`:2549 `test_operators` via `validate_all`: `LEVENSHTEIN(col1, col2)`
+  - expected: `EDITDIST3(col1, col2)`
+  - actual: `LEVENSHTEIN(col1, col2)`
+
+### `mismatch` `MEDIAN()`
+
+- `tests/dialects/test_dialect.py`:3998 `test_median` via `validate_all`: `MEDIAN(x)`
+  - expected: `PERCENTILE_CONT(x, 0.5)`
+  - actual: `MEDIAN(x)`
+- `tests/dialects/test_dialect.py`:3998 `test_median` via `validate_all`: `MEDIAN(x)`
+  - expected: `PERCENTILE_CONT(x, 0.5)`
+  - actual: `MEDIAN(x)`
+- `tests/dialects/test_dialect.py`:3998 `test_median` via `validate_all`: `MEDIAN(x)`
+  - expected: `PERCENTILE_CONT(x, 0.5)`
+  - actual: `MEDIAN(x)`
+
+### `mismatch` `REGEXP_EXTRACT()`
+
+- `tests/dialects/test_bigquery.py`:2897 `test_regexp_extract` via `validate_identity`: `REGEXP_EXTRACT(x, '(?<)')`
+  - expected: `REGEXP_EXTRACT(x, '(?<)')`
+  - actual: `REGEXP_SUBSTR(x, '(?<)')`
+- `tests/dialects/test_hive.py`:900 `test_hive` via `validate_all`: `REGEXP_EXTRACT('abc', '(a)(b)(c)')`
+  - expected: `REGEXP_EXTRACT('abc', '(a)(b)(c)')`
+  - actual: `REGEXP_SUBSTR('abc', '(a)(b)(c)')`
+- `tests/dialects/test_hive.py`:900 `test_hive` via `validate_all`: `REGEXP_EXTRACT('abc', '(a)(b)(c)')`
+  - expected: `REGEXP_EXTRACT('abc', '(a)(b)(c)')`
+  - actual: `REGEXP_SUBSTR('abc', '(a)(b)(c)')`
 
 ### `mismatch` `SELECT`
 
@@ -297,30 +321,6 @@ Total rows: `15164`
 - `tests/test_transpile.py`:119 `test_comments` via `validate`: `select /* asfd /* asdf */ asdf */ 1`
   - expected: `/* asfd / * asdf * / asdf */ SELECT 1`
   - actual: `SELECT 1`
-
-### `mismatch` `SELECT DECODE()`
-
-- `tests/dialects/test_dialect.py`:577 `test_decode` via `validate_all`: `SELECT DECODE(a, 1, 'one')`
-  - expected: `SELECT CASE WHEN a = 1 THEN 'one' END`
-  - actual: `SELECT DECODE(a, 1, 'one')`
-- `tests/dialects/test_dialect.py`:577 `test_decode` via `validate_all`: `SELECT DECODE(a, 1, 'one')`
-  - expected: `SELECT CASE WHEN a = 1 THEN 'one' END`
-  - actual: `SELECT DECODE(a, 1, 'one')`
-- `tests/dialects/test_dialect.py`:577 `test_decode` via `validate_all`: `SELECT DECODE(a, 1, 'one')`
-  - expected: `SELECT CASE WHEN a = 1 THEN 'one' END`
-  - actual: `SELECT DECODE(a, 1, 'one')`
-
-### `mismatch` `SELECT NVL2()`
-
-- `tests/dialects/test_dialect.py`:698 `test_nvl2` via `validate_all`: `SELECT NVL2(a, b, c)`
-  - expected: `SELECT CASE WHEN NOT a IS NULL THEN b ELSE c END`
-  - actual: `SELECT NVL2(a, b, c)`
-- `tests/dialects/test_dialect.py`:698 `test_nvl2` via `validate_all`: `SELECT NVL2(a, b, c)`
-  - expected: `SELECT CASE WHEN NOT a IS NULL THEN b ELSE c END`
-  - actual: `SELECT NVL2(a, b, c)`
-- `tests/dialects/test_dialect.py`:698 `test_nvl2` via `validate_all`: `SELECT NVL2(a, b, c)`
-  - expected: `SELECT CASE WHEN NOT a IS NULL THEN b ELSE c END`
-  - actual: `SELECT NVL2(a, b, c)`
 
 ### `mismatch` `SELECT UNNEST()`
 
@@ -345,18 +345,6 @@ Total rows: `15164`
 - `tests/test_transpile.py`:147 `test_comments` via `validate`: `SELECT * FROM a INNER /* comments */ JOIN b`
   - expected: `SELECT * FROM a /* comments */ INNER JOIN b`
   - actual: `SELECT * FROM a INNER JOIN b`
-
-### `mismatch` `STR_POSITION()`
-
-- `tests/dialects/test_dialect.py`:2331 `test_operators` via `validate_all`: `STR_POSITION(haystack, needle)`
-  - expected: `INSTR(haystack, needle)`
-  - actual: `STR_POSITION(haystack, needle)`
-- `tests/dialects/test_dialect.py`:2331 `test_operators` via `validate_all`: `STR_POSITION(haystack, needle)`
-  - expected: `INSTR(haystack, needle)`
-  - actual: `STR_POSITION(haystack, needle)`
-- `tests/dialects/test_dialect.py`:2331 `test_operators` via `validate_all`: `STR_POSITION(haystack, needle)`
-  - expected: `INSTR(haystack, needle)`
-  - actual: `STR_POSITION(haystack, needle)`
 
 ### `mismatch` `case-only rendering difference`
 
@@ -429,6 +417,18 @@ Total rows: `15164`
 - `tests/dialects/test_databricks.py`:399 `test_add_date` via `validate_all`: `SELECT DATE_ADD('2020-01-01', 1)`
   - expected: `SELECT DATE('2020-01-01', '1')`
   - actual: `SELECT DATE_ADD('2020-01-01', 1)`
+
+### `mismatch` `date/time rendering: SELECT DATE_FORMAT()`
+
+- `tests/dialects/test_clickhouse.py`:617 `test_clickhouse` via `validate_all`: `SELECT DATE_FORMAT(NOW(), '%Y-%m-%d')`
+  - expected: `SELECT DATE_FORMAT(CURRENT_TIMESTAMP, '%Y-%m-%d')`
+  - actual: `SELECT STRFTIME('%Y-%m-%%w', CURRENT_TIMESTAMP)`
+- `tests/dialects/test_exasol.py`:317 `test_stringFunctions` via `validate_all`: `SELECT DATE_FORMAT('2009-10-04 22:23:00', '%W %M %Y')`
+  - expected: `SELECT DATE_FORMAT('2009-10-04 22:23:00', '%W %M %Y')`
+  - actual: `SELECT STRFTIME('%W %M %Y', '2009-10-04 22:23:00')`
+- `tests/dialects/test_mysql.py`:724 `test_date_format` via `validate_all`: `SELECT DATE_FORMAT('2017-06-15', '%Y')`
+  - expected: `SELECT DATE_FORMAT('2017-06-15', '%Y')`
+  - actual: `SELECT STRFTIME('%Y', '2017-06-15')`
 
 ### `mismatch` `date/time rendering: SELECT DATE_SUB()`
 

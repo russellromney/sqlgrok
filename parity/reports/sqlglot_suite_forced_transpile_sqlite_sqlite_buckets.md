@@ -8,8 +8,8 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7786 |
-| `mismatch` | 3990 |
+| `match` | 7947 |
+| `mismatch` | 3829 |
 | `oracle-error` | 1549 |
 | `rust-error` | 1702 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15164`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 7786 |
-| `mismatch` | `sqlite` | `sqlite` | 3990 |
+| `match` | `sqlite` | `sqlite` | 7947 |
+| `mismatch` | `sqlite` | `sqlite` | 3829 |
 | `rust-error` | `sqlite` | `sqlite` | 1702 |
 | `oracle-error` | `sqlite` | `sqlite` | 1549 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15164`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5484 |
-| `mismatch` | `validate_all` | 2903 |
-| `match` | `validate_identity` | 2243 |
+| `match` | `validate_all` | 5644 |
+| `mismatch` | `validate_all` | 2743 |
+| `match` | `validate_identity` | 2244 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 991 |
+| `mismatch` | `validate_identity` | 990 |
 | `rust-error` | `validate_all` | 851 |
 | `rust-error` | `validate_identity` | 832 |
 | `oracle-error` | `validate_all` | 547 |
@@ -148,16 +148,12 @@ Total rows: `15164`
 | `mismatch` | `cast/type rendering: CAST()` | 72 |
 | `mismatch` | `date/time rendering: DATE_ADD()` | 69 |
 | `mismatch` | `date/time rendering: TIME_STR_TO_TIME()` | 57 |
-| `mismatch` | `STR_POSITION()` | 52 |
 | `mismatch` | `date/time rendering: SELECT DATE_SUB()` | 49 |
-| `mismatch` | `SELECT NVL2()` | 45 |
 | `mismatch` | `ALTER TABLE` | 42 |
 | `mismatch` | `cast/type rendering: SELECT TO_CHAR()` | 41 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 32 |
 | `mismatch` | `date/time rendering: SELECT DATEADD()` | 32 |
 | `mismatch` | `quote-style difference` | 32 |
-| `mismatch` | `LOCATE()` | 30 |
-| `mismatch` | `SELECT DECODE()` | 30 |
 | `mismatch` | `date/time rendering: STR_TO_TIME()` | 30 |
 | `mismatch` | `REGEXP_EXTRACT()` | 29 |
 | `mismatch` | `date/time rendering: SELECT DATE_ADD()` | 29 |
@@ -178,31 +174,35 @@ Total rows: `15164`
 | `mismatch` | `SELECT COUNT_IF()` | 20 |
 | `mismatch` | `date/time rendering: EOMONTH()` | 20 |
 | `mismatch` | `STRPOS()` | 19 |
+| `mismatch` | `A` | 18 |
+| `mismatch` | `BEGIN` | 17 |
+| `mismatch` | `SELECT UNNEST()` | 17 |
+| `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 793 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 798 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 358 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 324 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 319 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 280 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 259 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 225 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 224 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 193 |
+| `match` | `tests/dialects/test_dialect.py` | `test_operators` | 177 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 175 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 162 |
-| `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 159 |
 | `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 150 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 136 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 131 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 128 |
 | `rust-error` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 118 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 117 |
-| `match` | `tests/dialects/test_dialect.py` | `test_operators` | 113 |
+| `match` | `tests/dialects/test_hive.py` | `test_hive` | 115 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 108 |
-| `match` | `tests/dialects/test_hive.py` | `test_hive` | 107 |
+| `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 95 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 88 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 87 |
@@ -213,11 +213,11 @@ Total rows: `15164`
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 77 |
 | `mismatch` | `tests/dialects/test_presto.py` | `test_presto` | 76 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
+| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 72 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 70 |
 | `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 69 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 67 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 66 |
-| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 66 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 65 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 64 |
 | `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
@@ -262,17 +262,17 @@ Total rows: `15164`
   - expected: `CREATE TABLE george.t (id INTEGER COMMENT 'foo \\ bar')`
   - actual: `CREATE EXTERNAL TABLE george.t (id INT COMMENT 'foo \\ bar') LOCATION 's3://my-bucket/'`
 
-### `mismatch` `LOCATE()`
+### `mismatch` `REGEXP_EXTRACT()`
 
-- `tests/dialects/test_dialect.py`:2308 `test_operators` via `validate_all`: `LOCATE(needle, haystack)`
-  - expected: `INSTR(haystack, needle)`
-  - actual: `LOCATE(needle, haystack)`
-- `tests/dialects/test_dialect.py`:2308 `test_operators` via `validate_all`: `LOCATE(needle, haystack)`
-  - expected: `INSTR(haystack, needle)`
-  - actual: `LOCATE(needle, haystack)`
-- `tests/dialects/test_dialect.py`:2308 `test_operators` via `validate_all`: `LOCATE(needle, haystack)`
-  - expected: `INSTR(haystack, needle)`
-  - actual: `LOCATE(needle, haystack)`
+- `tests/dialects/test_bigquery.py`:2897 `test_regexp_extract` via `validate_identity`: `REGEXP_EXTRACT(x, '(?<)')`
+  - expected: `REGEXP_EXTRACT(x, '(?<)')`
+  - actual: `REGEXP_SUBSTR(x, '(?<)')`
+- `tests/dialects/test_bigquery.py`:2898 `test_regexp_extract` via `validate_identity`: `` REGEXP_EXTRACT(`foo`, 'bar: (.+?)', 1, 1) ``
+  - expected: `REGEXP_EXTRACT("foo", 'bar: (.+?)', 1, 1)`
+  - actual: `REGEXP_SUBSTR("foo", 'bar: (.+?)', 1)`
+- `tests/dialects/test_hive.py`:900 `test_hive` via `validate_all`: `REGEXP_EXTRACT('abc', '(a)(b)(c)')`
+  - expected: `REGEXP_EXTRACT('abc', '(a)(b)(c)')`
+  - actual: `REGEXP_SUBSTR('abc', '(a)(b)(c)')`
 
 ### `mismatch` `SELECT`
 
@@ -286,30 +286,6 @@ Total rows: `15164`
   - expected: `SELECT CASE WHEN a THEN b ELSE c END /* test */`
   - actual: `SELECT CASE WHEN a THEN b ELSE c END`
 
-### `mismatch` `SELECT DECODE()`
-
-- `tests/dialects/test_dialect.py`:577 `test_decode` via `validate_all`: `SELECT DECODE(a, 1, 'one')`
-  - expected: `SELECT CASE WHEN a = 1 THEN 'one' END`
-  - actual: `SELECT DECODE(a, 1, 'one')`
-- `tests/dialects/test_dialect.py`:577 `test_decode` via `validate_all`: `SELECT DECODE(a, 1, 'one')`
-  - expected: `SELECT CASE WHEN a = 1 THEN 'one' END`
-  - actual: `SELECT DECODE(a, 1, 'one')`
-- `tests/dialects/test_dialect.py`:577 `test_decode` via `validate_all`: `SELECT DECODE(a, 1, 'one')`
-  - expected: `SELECT CASE WHEN a = 1 THEN 'one' END`
-  - actual: `SELECT DECODE(a, 1, 'one')`
-
-### `mismatch` `SELECT NVL2()`
-
-- `tests/dialects/test_dialect.py`:698 `test_nvl2` via `validate_all`: `SELECT NVL2(a, b, c)`
-  - expected: `SELECT CASE WHEN NOT a IS NULL THEN b ELSE c END`
-  - actual: `SELECT NVL2(a, b, c)`
-- `tests/dialects/test_dialect.py`:698 `test_nvl2` via `validate_all`: `SELECT NVL2(a, b, c)`
-  - expected: `SELECT CASE WHEN NOT a IS NULL THEN b ELSE c END`
-  - actual: `SELECT NVL2(a, b, c)`
-- `tests/dialects/test_dialect.py`:698 `test_nvl2` via `validate_all`: `SELECT NVL2(a, b, c)`
-  - expected: `SELECT CASE WHEN NOT a IS NULL THEN b ELSE c END`
-  - actual: `SELECT NVL2(a, b, c)`
-
 ### `mismatch` `SELECT operator multiply`
 
 - `tests/test_transpile.py`:131 `test_comments` via `validate`: `SELECT * FROM t1 /*x*/ UNION ALL SELECT * FROM t2`
@@ -321,18 +297,6 @@ Total rows: `15164`
 - `tests/test_transpile.py`:147 `test_comments` via `validate`: `SELECT * FROM a INNER /* comments */ JOIN b`
   - expected: `SELECT * FROM a /* comments */ INNER JOIN b ON TRUE`
   - actual: `SELECT * FROM a INNER JOIN b`
-
-### `mismatch` `STR_POSITION()`
-
-- `tests/dialects/test_dialect.py`:2331 `test_operators` via `validate_all`: `STR_POSITION(haystack, needle)`
-  - expected: `INSTR(haystack, needle)`
-  - actual: `STR_POSITION(haystack, needle)`
-- `tests/dialects/test_dialect.py`:2331 `test_operators` via `validate_all`: `STR_POSITION(haystack, needle)`
-  - expected: `INSTR(haystack, needle)`
-  - actual: `STR_POSITION(haystack, needle)`
-- `tests/dialects/test_dialect.py`:2331 `test_operators` via `validate_all`: `STR_POSITION(haystack, needle)`
-  - expected: `INSTR(haystack, needle)`
-  - actual: `STR_POSITION(haystack, needle)`
 
 ### `mismatch` `case-only rendering difference`
 
@@ -406,6 +370,30 @@ Total rows: `15164`
   - expected: `SELECT DATEADD(year, 1, '2020-01-01')`
   - actual: `SELECT DATE_ADD('2020-01-01', 1, YEAR)`
 
+### `mismatch` `date/time rendering: SELECT DATE_ADD()`
+
+- `tests/dialects/test_clickhouse.py`:1558 `test_datetime_funcs` via `validate_identity`: `SELECT DATE_ADD(date, INTERVAL '3' YEAR)`
+  - expected: `SELECT DATE(date, 'INTERVAL '3' YEAR')`
+  - actual: `SELECT DATE_ADD(date, INTERVAL '3' YEAR)`
+- `tests/dialects/test_clickhouse.py`:1568 `test_datetime_funcs` via `validate_identity`: `SELECT DATE_ADD(SECOND, 1, bar)`
+  - expected: `SELECT DATE(SECOND, '1 BAR')`
+  - actual: `SELECT DATE_ADD(SECOND, 1)`
+- `tests/dialects/test_databricks.py`:399 `test_add_date` via `validate_all`: `SELECT DATE_ADD('2020-01-01', 1)`
+  - expected: `SELECT DATE('2020-01-01', '1')`
+  - actual: `SELECT DATE_ADD('2020-01-01', 1)`
+
+### `mismatch` `date/time rendering: SELECT DATE_FORMAT()`
+
+- `tests/dialects/test_clickhouse.py`:617 `test_clickhouse` via `validate_all`: `SELECT DATE_FORMAT(NOW(), '%Y-%m-%d')`
+  - expected: `SELECT DATE_FORMAT(NOW(), '%Y-%m-%d')`
+  - actual: `SELECT STRFTIME('%Y-%m-%d', NOW())`
+- `tests/dialects/test_exasol.py`:317 `test_stringFunctions` via `validate_all`: `SELECT DATE_FORMAT('2009-10-04 22:23:00', '%W %M %Y')`
+  - expected: `SELECT DATE_FORMAT('2009-10-04 22:23:00', '%W %M %Y')`
+  - actual: `SELECT STRFTIME('%W %M %Y', '2009-10-04 22:23:00')`
+- `tests/dialects/test_mysql.py`:724 `test_date_format` via `validate_all`: `SELECT DATE_FORMAT('2017-06-15', '%Y')`
+  - expected: `SELECT DATE_FORMAT('2017-06-15', '%Y')`
+  - actual: `SELECT STRFTIME('%Y', '2017-06-15')`
+
 ### `mismatch` `date/time rendering: SELECT DATE_SUB()`
 
 - `tests/dialects/test_bigquery.py`:478 `test_bigquery` via `validate_all`: `SELECT DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)`
@@ -417,6 +405,18 @@ Total rows: `15164`
 - `tests/dialects/test_bigquery.py`:485 `test_bigquery` via `validate_all`: `SELECT DATE_SUB(DATE '2008-12-25', INTERVAL 5 DAY)`
   - expected: `SELECT DATE_SUB(DATE('2008-12-25'), INTERVAL '5' DAY)`
   - actual: `SELECT DATE_SUB(DATE('2008-12-25'), INTERVAL 5 DAY)`
+
+### `mismatch` `date/time rendering: STR_TO_TIME()`
+
+- `tests/test_transpile.py`:791 `test_time` via `validate`: `STR_TO_TIME('x', 'y')`
+  - expected: `STR_TO_TIME('x', 'y')`
+  - actual: `TO_TIMESTAMP('x', 'y')`
+- `tests/test_transpile.py`:806 `test_time` via `validate`: `STR_TO_TIME(x, 'y')`
+  - expected: `STR_TO_TIME(x, 'y')`
+  - actual: `TO_TIMESTAMP(x, 'y')`
+- `tests/test_transpile.py`:811 `test_time` via `validate`: `STR_TO_TIME(x, 'yyyy-MM-dd HH:mm:ss')`
+  - expected: `STR_TO_TIME(x, 'yyyy-MM-dd HH:mm:ss')`
+  - actual: `TO_TIMESTAMP(x, 'yyyy-MM-dd HH:mm:ss')`
 
 ### `mismatch` `date/time rendering: TIME_STR_TO_TIME()`
 
