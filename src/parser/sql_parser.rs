@@ -52,6 +52,94 @@ fn data_type_with_format(data_type: DataType, format: &Expr) -> DataType {
     ))
 }
 
+fn identifier_data_type_name(name: &str) -> bool {
+    matches!(
+        name.to_ascii_uppercase().as_str(),
+        "BIGINT"
+            | "BIGSERIAL"
+            | "BINARY"
+            | "BIT"
+            | "BLOB"
+            | "BOOL"
+            | "BOOLEAN"
+            | "BYTEA"
+            | "BYTES"
+            | "CHAR"
+            | "CIDR"
+            | "DATE"
+            | "DATETIME"
+            | "DECIMAL"
+            | "DOUBLE"
+            | "FLOAT"
+            | "GEOGRAPHY"
+            | "GEOMETRY"
+            | "HSTORE"
+            | "INET"
+            | "INT"
+            | "INT32"
+            | "INT64"
+            | "INTEGER"
+            | "INTERVAL"
+            | "JSON"
+            | "JSONB"
+            | "MACADDR"
+            | "MAP"
+            | "MONEY"
+            | "NCHAR"
+            | "NULL"
+            | "NUMERIC"
+            | "NVARCHAR"
+            | "OBJECT"
+            | "REAL"
+            | "REGCLASS"
+            | "REGTYPE"
+            | "SERIAL"
+            | "SMALLINT"
+            | "SMALLSERIAL"
+            | "STRING"
+            | "STRUCT"
+            | "SUPER"
+            | "TEXT"
+            | "TIME"
+            | "TIMESTAMP"
+            | "TIMESTAMPTZ"
+            | "TINYINT"
+            | "UUID"
+            | "VARBINARY"
+            | "VARCHAR"
+            | "VARIANT"
+            | "XML"
+    )
+}
+
+fn simple_data_type_from_name(name: &str) -> DataType {
+    match name.trim().to_ascii_uppercase().as_str() {
+        "BIGINT" | "INT64" => DataType::BigInt,
+        "BOOL" | "BOOLEAN" => DataType::Boolean,
+        "DATE" => DataType::Date,
+        "DOUBLE" => DataType::Double,
+        "FLOAT" => DataType::Float,
+        "INT" | "INT32" | "INTEGER" => DataType::Int,
+        "JSON" => DataType::Json,
+        "JSONB" => DataType::Jsonb,
+        "REAL" => DataType::Real,
+        "SMALLINT" => DataType::SmallInt,
+        "STRING" => DataType::String,
+        "TEXT" => DataType::Text,
+        "TIMESTAMP" => DataType::Timestamp {
+            precision: None,
+            with_tz: false,
+        },
+        "TIMESTAMPTZ" => DataType::Timestamp {
+            precision: None,
+            with_tz: true,
+        },
+        "TINYINT" => DataType::TinyInt,
+        "UUID" => DataType::Uuid,
+        other => DataType::Unknown(other.to_string()),
+    }
+}
+
 fn normalize_dollar_quoted_strings(sql: &str) -> String {
     let bytes = sql.as_bytes();
     let mut out = String::with_capacity(sql.len());
@@ -1963,13 +2051,26 @@ impl Parser {
     }
 
     fn parse_expr_list(&mut self) -> Result<Vec<Expr>> {
-        let mut exprs = vec![self.parse_expr()?];
+        let mut exprs = vec![self.parse_expr_list_item()?];
         self.consume_null_treatment();
         while self.match_token(TokenType::Comma) {
-            exprs.push(self.parse_expr()?);
+            exprs.push(self.parse_expr_list_item()?);
             self.consume_null_treatment();
         }
         Ok(exprs)
+    }
+
+    fn parse_expr_list_item(&mut self) -> Result<Expr> {
+        let expr = self.parse_expr()?;
+        if self.match_token(TokenType::As) {
+            let name = self.expect_name()?;
+            Ok(Expr::Alias {
+                expr: Box::new(expr),
+                name,
+            })
+        } else {
+            Ok(expr)
+        }
     }
 
     /// Parse a GROUP BY list, which may contain regular expressions,
@@ -3103,7 +3204,7 @@ impl Parser {
                 self.advance();
                 Ok(DataType::Text)
             }
-            TokenType::Boolean => {
+            TokenType::Boolean | TokenType::Bool => {
                 self.advance();
                 Ok(DataType::Boolean)
             }
@@ -3178,12 +3279,18 @@ impl Parser {
                 self.advance();
                 if self.match_token(TokenType::Lt) {
                     let inner = self.parse_data_type()?;
-                    self.expect(TokenType::Gt)?;
+                    self.expect_type_gt()?;
+                    Ok(DataType::Array(Some(Box::new(inner))))
+                } else if self.match_token(TokenType::LParen) {
+                    let inner = self.parse_data_type()?;
+                    self.expect(TokenType::RParen)?;
                     Ok(DataType::Array(Some(Box::new(inner))))
                 } else {
                     Ok(DataType::Array(None))
                 }
             }
+            TokenType::Map => self.parse_map_data_type(),
+            TokenType::Struct => self.parse_struct_data_type(),
             TokenType::Identifier => {
                 let raw_name = token.value.clone();
                 let name = raw_name.to_uppercase();
@@ -3204,6 +3311,9 @@ impl Parser {
                         Ok(DataType::Unknown(format!("{name} {next}")))
                     }
                     "STRING" => Ok(DataType::String),
+                    "INT64" => Ok(DataType::BigInt),
+                    "INT32" => Ok(DataType::Int),
+                    "BOOL" => Ok(DataType::Boolean),
                     "BINARY" => {
                         let len = self.parse_single_type_param()?;
                         Ok(DataType::Binary(len))
@@ -3276,6 +3386,99 @@ impl Parser {
             dt = DataType::Array(Some(Box::new(dt)));
         }
         Ok(dt)
+    }
+
+    fn parse_complex_type_delimiter(&mut self) -> Option<TokenType> {
+        if self.match_token(TokenType::Lt) {
+            Some(TokenType::Gt)
+        } else if self.match_token(TokenType::LParen) {
+            Some(TokenType::RParen)
+        } else if self.match_token(TokenType::LBracket) {
+            Some(TokenType::RBracket)
+        } else {
+            None
+        }
+    }
+
+    fn parse_map_data_type(&mut self) -> Result<DataType> {
+        self.advance();
+        if self.peek_type() == &TokenType::Identifier
+            && self.peek().quote_char == '['
+            && (self.peek().value.contains("=>") || self.peek().value.contains(','))
+        {
+            let raw = self.advance().value.clone();
+            let (key, value) = raw
+                .split_once("=>")
+                .or_else(|| raw.split_once(','))
+                .ok_or_else(|| SqlglotError::ParserError {
+                    message: format!("Expected map key/value types, got {raw}"),
+                })?;
+            return Ok(DataType::Map {
+                key: Box::new(simple_data_type_from_name(key)),
+                value: Box::new(simple_data_type_from_name(value)),
+            });
+        }
+        let Some(end_token) = self.parse_complex_type_delimiter() else {
+            return Ok(DataType::Unknown("MAP".to_string()));
+        };
+
+        let key = self.parse_data_type()?;
+        if !self.match_token(TokenType::FatArrow) {
+            let _ = self.match_token(TokenType::Comma);
+        }
+        let value = self.parse_data_type()?;
+        self.expect_complex_type_end(end_token)?;
+        Ok(DataType::Map {
+            key: Box::new(key),
+            value: Box::new(value),
+        })
+    }
+
+    fn parse_struct_data_type(&mut self) -> Result<DataType> {
+        self.advance();
+        let Some(end_token) = self.parse_complex_type_delimiter() else {
+            return Ok(DataType::Unknown("STRUCT".to_string()));
+        };
+
+        let mut fields = Vec::new();
+        while self.peek_type() != &end_token && self.peek_type() != &TokenType::Eof {
+            let field = if self.peek_type() == &TokenType::Identifier
+                && !identifier_data_type_name(&self.peek().value)
+            {
+                let name = self.advance().value.clone();
+                let _ = self.match_token(TokenType::Colon);
+                let data_type = self.parse_data_type()?;
+                (name, data_type)
+            } else {
+                ("".to_string(), self.parse_data_type()?)
+            };
+            fields.push(field);
+            if !self.match_token(TokenType::Comma) {
+                break;
+            }
+        }
+        self.expect_complex_type_end(end_token)?;
+        Ok(DataType::Struct(fields))
+    }
+
+    fn expect_complex_type_end(&mut self, end_token: TokenType) -> Result<Token> {
+        if end_token == TokenType::Gt {
+            self.expect_type_gt()
+        } else {
+            self.expect(end_token)
+        }
+    }
+
+    fn expect_type_gt(&mut self) -> Result<Token> {
+        if self.peek_type() == &TokenType::ShiftRight {
+            let mut second = self.peek().clone();
+            second.token_type = TokenType::Gt;
+            second.value = ">".to_string();
+            self.tokens[self.pos].token_type = TokenType::Gt;
+            self.tokens[self.pos].value = ">".to_string();
+            self.tokens.insert(self.pos + 1, second);
+        }
+        self.expect(TokenType::Gt)
     }
 
     fn consume_balanced_parentheses(&mut self) {
@@ -4077,6 +4280,28 @@ impl Parser {
                 } else {
                     break;
                 }
+            } else if self.match_token(TokenType::DoubleColon) {
+                let data_type = self.parse_data_type()?;
+                left = match (matches!(data_type, DataType::Boolean), left) {
+                    (
+                        true,
+                        Expr::IsNull {
+                            expr,
+                            negated: true,
+                        },
+                    ) => Expr::UnaryOp {
+                        op: UnaryOperator::Not,
+                        expr: Box::new(Expr::IsNull {
+                            expr,
+                            negated: false,
+                        }),
+                    },
+                    (_, expr) => expr,
+                };
+                left = Expr::Cast {
+                    expr: Box::new(left),
+                    data_type,
+                };
             } else {
                 break;
             }
@@ -4733,14 +4958,9 @@ impl Parser {
             TokenType::Cast => {
                 self.advance();
                 self.expect(TokenType::LParen)?;
-                let expr = self.parse_expr()?;
-                self.expect(TokenType::As)?;
-                let data_type = self.parse_data_type()?;
+                let expr = self.parse_cast_function_body()?;
                 self.expect(TokenType::RParen)?;
-                Ok(Expr::Cast {
-                    expr: Box::new(expr),
-                    data_type,
-                })
+                Ok(expr)
             }
 
             // ── EXTRACT ─────────────────────────────────────────────
@@ -5047,6 +5267,19 @@ impl Parser {
             });
         }
 
+        if matches!(name.to_uppercase().as_str(), "CEIL" | "CEILING" | "FLOOR")
+            && self.function_args_contain_top_level_to()
+        {
+            let raw_args = self.parse_raw_function_args()?;
+            return Ok(Expr::Function {
+                name,
+                args: vec![Expr::StringLiteral(raw_args)],
+                distinct: false,
+                filter: None,
+                over: None,
+            });
+        }
+
         // Special: COUNT(*), COUNT(DISTINCT x)
         let distinct = self.match_token(TokenType::Distinct);
 
@@ -5128,15 +5361,43 @@ impl Parser {
         }
     }
 
+    fn function_args_contain_top_level_to(&self) -> bool {
+        let mut depth = 0usize;
+        let mut pos = self.pos;
+        while pos < self.tokens.len() {
+            match self.tokens[pos].token_type {
+                TokenType::LParen | TokenType::LBracket | TokenType::LBrace => depth += 1,
+                TokenType::RParen => {
+                    if depth == 0 {
+                        return false;
+                    }
+                    depth -= 1;
+                }
+                TokenType::Identifier
+                    if depth == 0 && self.tokens[pos].value.eq_ignore_ascii_case("TO") =>
+                {
+                    return true;
+                }
+                _ => {}
+            }
+            pos += 1;
+        }
+        false
+    }
+
     fn parse_cast_function_body(&mut self) -> Result<Expr> {
         let expr = self.parse_expr()?;
         self.expect(TokenType::As)?;
         let data_type = self.parse_data_type()?;
         if self.match_keyword("FORMAT") && self.peek_type() != &TokenType::RParen {
             let format = self.parse_primary()?;
-            if matches!(data_type, DataType::Date) {
+            if matches!(data_type, DataType::Date | DataType::Timestamp { .. }) {
                 return Ok(Expr::Function {
-                    name: "__SAFE_CAST_DATE_FORMAT".to_string(),
+                    name: if matches!(data_type, DataType::Timestamp { .. }) {
+                        "__SAFE_CAST_TIME_FORMAT".to_string()
+                    } else {
+                        "__SAFE_CAST_DATE_FORMAT".to_string()
+                    },
                     args: vec![expr, format],
                     distinct: false,
                     filter: None,
@@ -5410,13 +5671,23 @@ impl Parser {
     }
 
     fn parse_like_quantified_pattern(&mut self) -> Result<Expr> {
-        if self.match_token(TokenType::All) {
+        let quantifier = if self.match_token(TokenType::All) {
+            Some("ALL")
+        } else if self.match_token(TokenType::Any) {
+            Some("ANY")
+        } else if self.match_token(TokenType::Some) {
+            Some("SOME")
+        } else {
+            None
+        };
+
+        if let Some(name) = quantifier {
             self.expect(TokenType::LParen)?;
-            let expr = self.parse_expr()?;
+            let args = self.parse_expr_list()?;
             self.expect(TokenType::RParen)?;
             Ok(Expr::Function {
-                name: "ALL".to_string(),
-                args: vec![expr],
+                name: name.to_string(),
+                args,
                 distinct: false,
                 filter: None,
                 over: None,

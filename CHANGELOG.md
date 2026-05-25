@@ -87,6 +87,7 @@ this file records what landed.
 - Added exact SQLite-targeted parser parity for qualified function names such as `SAFE.*`, `NET.*`, and `assert.true(...)`, plus standalone cast aliases, `interval::int`, and SQLGlot-style `IF ... THEN ... END` expressions.
 - Reconciled oracle drift from SQLGlot [#7677](https://github.com/tobymao/sqlglot/pull/7677) by matching SQLite-targeted Postgres `E'...'` byte-string fallback output, and updated MySQL `AUTO_INCREMENT` primary-key ordering for the current SQLGlot oracle.
 - Matched SQLGlot's `BETWEEN SYMMETRIC`/`ASYMMETRIC` rewrites and prefix `NOT BETWEEN` rendering; refreshed forced-suite reports now show MySQL/Postgres/SQLite rust-errors at `1155`/`1184`/`1146`.
+- Burned down another forced-suite parser batch by matching SQLite-targeted `CAST(... FORMAT ...)`, recursive `MAP`/`STRUCT` type casts, quantified `LIKE`/`ILIKE` lists, predicate-side boolean casts, `STRUCT(... AS ...)` arguments, and `FLOOR`/`CEIL(... TO ...)` carriers; refreshed forced-suite reports now show MySQL/Postgres/SQLite exact matches at `8408`/`9076`/`8683` and rust-errors at `994`/`1022`/`999`.
 
 ## 2026-05-20
 

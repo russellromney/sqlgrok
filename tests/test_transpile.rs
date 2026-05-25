@@ -4688,3 +4688,95 @@ fn test_forced_suite_between_symmetric_to_sqlite() {
         validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
     }
 }
+
+#[test]
+fn test_forced_suite_cast_format_and_complex_types_to_sqlite() {
+    let cases = [
+        (
+            "SELECT CAST(CURRENT_DATE AS STRING FORMAT 'DAY') AS current_day",
+            "SELECT CAST(CURRENT_DATE AS TEXT FORMAT 'DAY') AS current_day",
+        ),
+        (
+            "SELECT CAST('20201225' AS TIMESTAMP FORMAT 'YYYYMMDD')",
+            "SELECT STR_TO_TIME('20201225', '%Y%m%d')",
+        ),
+        (
+            "SELECT CAST(NULL AS MAP[TEXT => INT])",
+            "SELECT CAST(NULL AS MAP<TEXT, INTEGER>)",
+        ),
+        (
+            "SELECT CAST(MAP('a', '1') AS MAP(TEXT, TEXT))",
+            "SELECT CAST(MAP('a', '1') AS MAP<TEXT, TEXT>)",
+        ),
+        (
+            "SELECT CAST((1, 2) AS STRUCT<a: TINYINT, b: BIGINT>)",
+            "SELECT CAST((1, 2) AS STRUCT<a INTEGER, b INTEGER>)",
+        ),
+        (
+            "SELECT CAST(x AS STRUCT<list ARRAY<INT64>>)",
+            "SELECT CAST(x AS STRUCT<list ARRAY<INTEGER>>)",
+        ),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
+    }
+}
+
+#[test]
+fn test_forced_suite_quantified_like_and_predicate_casts_to_sqlite() {
+    let cases = [
+        (
+            "SELECT col LIKE ALL (x, y, z)",
+            "SELECT col LIKE ALL (x, y, z)",
+        ),
+        (
+            "SELECT col ILIKE ALL (x, y, z)",
+            "SELECT LOWER(col) LIKE LOWER(ALL (x, y, z))",
+        ),
+        (
+            "SELECT col NOT ILIKE ANY (x, y, z)",
+            "SELECT LOWER(col) NOT LIKE LOWER(ANY (x, y, z))",
+        ),
+        (
+            "SELECT 'testa 1' NOT LIKE ANY(ARRAY['testa%', 'testb%'])",
+            "SELECT 'testa 1' NOT LIKE ANY(ARRAY('testa%', 'testb%'))",
+        ),
+        (
+            "SELECT 'testa 1' NOT LIKE ALL (ARRAY['testa%', 'testb%'])",
+            "SELECT 'testa 1' NOT LIKE ALL (ARRAY('testa%', 'testb%'))",
+        ),
+        (
+            "SELECT col IS NULL::BOOLEAN FROM t",
+            "SELECT CAST(col IS NULL AS INTEGER) FROM t",
+        ),
+        (
+            "SELECT col IS NOT NULL::BOOLEAN FROM t",
+            "SELECT CAST(NOT col IS NULL AS INTEGER) FROM t",
+        ),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
+    }
+}
+
+#[test]
+fn test_forced_suite_struct_alias_args_and_floor_to_unit_to_sqlite() {
+    let cases = [
+        ("STRUCT(values AS value)", "STRUCT(values AS value)"),
+        (
+            "SELECT STRUCT(1, 2, 3), STRUCT(), STRUCT('abc'), STRUCT(1, t.str_col), STRUCT(1 as a, 'abc' AS b), STRUCT(str_col AS abc)",
+            "SELECT STRUCT(1, 2, 3), STRUCT(), STRUCT('abc'), STRUCT(1, t.str_col), STRUCT(1 AS a, 'abc' AS b), STRUCT(str_col AS abc)",
+        ),
+        (
+            "SELECT CEIL(__time TO WEEK) FROM t",
+            "SELECT CEIL(__time TO WEEK) FROM t",
+        ),
+        ("FLOOR(__time TO WEEK)", "FLOOR(__time TO WEEK)"),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
+    }
+}

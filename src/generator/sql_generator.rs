@@ -1863,8 +1863,10 @@ impl Generator {
                     if i > 0 {
                         self.write(", ");
                     }
-                    self.write(name);
-                    self.write(" ");
+                    if !name.is_empty() {
+                        self.write(name);
+                        self.write(" ");
+                    }
                     self.gen_data_type(dt);
                 }
                 self.write(">");
@@ -2109,7 +2111,7 @@ impl Generator {
                 }
                 if matches!(
                     name.to_ascii_uppercase().as_str(),
-                    "MAKE_INTERVAL" | "XMLELEMENT" | "OVERLAY"
+                    "CEIL" | "CEILING" | "FLOOR" | "MAKE_INTERVAL" | "XMLELEMENT" | "OVERLAY"
                 ) && args.len() == 1
                     && let Expr::StringLiteral(raw_args) = &args[0]
                 {
@@ -2119,9 +2121,15 @@ impl Generator {
                     self.write(")");
                     return;
                 }
-                if name.eq_ignore_ascii_case("ALL") && args.len() == 1 {
-                    self.write_keyword("ALL (");
-                    self.gen_expr(&args[0]);
+                if matches!(name.to_ascii_uppercase().as_str(), "ALL" | "ANY" | "SOME") {
+                    let upper_name = name.to_ascii_uppercase();
+                    self.write_keyword(&upper_name);
+                    if upper_name != "ALL" && args.len() == 1 {
+                        self.write("(");
+                    } else {
+                        self.write(" (");
+                    }
+                    self.gen_expr_list(args);
                     self.write(")");
                     return;
                 }

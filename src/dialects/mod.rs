@@ -710,6 +710,24 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("__SAFE_CAST_TIME_FORMAT")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::Function {
+                    name: "STR_TO_TIME".to_string(),
+                    args: vec![
+                        new_args[0].clone(),
+                        transform_safe_cast_date_format(new_args[1].clone(), source, target),
+                    ],
+                    distinct,
+                    filter,
+                    over,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("TRUNC")
                 && !distinct
                 && filter.is_none()
@@ -1907,6 +1925,7 @@ fn format_postgres_safe_cast_date_format(format: &str) -> String {
     format
         .replace("YYYY", "%Y")
         .replace("YY", "%y")
+        .replace("MM", "%m")
         .replace("DD", "%d")
 }
 
@@ -2221,6 +2240,29 @@ pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
             data_type: Box::new(map_data_type(*data_type, target)),
             collation,
         },
+        (DataType::Array(inner), target) if matches!(target, Dialect::Sqlite) => {
+            DataType::Array(inner.map(|inner| Box::new(map_data_type(*inner, target))))
+        }
+        (DataType::Map { key, value }, target) if matches!(target, Dialect::Sqlite) => {
+            DataType::Map {
+                key: Box::new(map_data_type(*key, target)),
+                value: Box::new(map_data_type(*value, target)),
+            }
+        }
+        (DataType::Struct(fields), target) if matches!(target, Dialect::Sqlite) => {
+            DataType::Struct(
+                fields
+                    .into_iter()
+                    .map(|(name, dt)| (name, map_data_type(dt, target)))
+                    .collect(),
+            )
+        }
+        (DataType::Tuple(types), target) if matches!(target, Dialect::Sqlite) => DataType::Tuple(
+            types
+                .into_iter()
+                .map(|dt| map_data_type(dt, target))
+                .collect(),
+        ),
         // ── SQLite type affinity ─────────────────────────────────────────
         (
             DataType::TinyInt | DataType::SmallInt | DataType::Int | DataType::BigInt,
