@@ -1392,6 +1392,7 @@ impl Parser {
         let table_start = self.char_pos_to_byte(self.peek().position);
         let mut table_ref = self.parse_table_ref()?;
         self.consume_mysql_index_hints()?;
+        self.consume_table_sample()?;
         if table_ref.alias.is_none()
             && let Some((alias, alias_quote_style)) = self.parse_optional_alias()?
         {
@@ -1656,6 +1657,21 @@ impl Parser {
                 }
             }
             self.expect(TokenType::RParen)?;
+        }
+        Ok(())
+    }
+
+    fn consume_table_sample(&mut self) -> Result<()> {
+        if !self.match_token(TokenType::Tablesample) {
+            return Ok(());
+        }
+
+        let _ = self.expect_name()?;
+        self.expect(TokenType::LParen)?;
+        self.consume_balanced_parentheses_after_open();
+        if self.match_keyword("REPEATABLE") {
+            self.expect(TokenType::LParen)?;
+            self.consume_balanced_parentheses_after_open();
         }
         Ok(())
     }
@@ -3211,6 +3227,10 @@ impl Parser {
         if !self.match_token(TokenType::LParen) {
             return;
         }
+        self.consume_balanced_parentheses_after_open();
+    }
+
+    fn consume_balanced_parentheses_after_open(&mut self) {
         let mut depth = 1;
         while depth > 0 && self.peek_type() != &TokenType::Eof {
             if self.match_token(TokenType::LParen) {

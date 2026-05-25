@@ -2878,6 +2878,22 @@ fn test_postgres_comment_on_to_sqlite() {
     );
 }
 
+#[test]
+fn test_postgres_tablesample_to_sqlite() {
+    validate_with_dialect(
+        "SELECT * FROM t TABLESAMPLE SYSTEM (50)",
+        "SELECT * FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM t TABLESAMPLE SYSTEM (50) REPEATABLE (55)",
+        "SELECT * FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // SELECT TOP N (T-SQL) — Issue #1
 // ═════════════════════════════════════════════════════════════════════════════
