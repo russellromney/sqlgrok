@@ -206,7 +206,7 @@ Deliverables:
 - Add issue labels or fixture tags for `parser`, `generator`, `dialect`, `function`, `join`, and `aggregate`.
 - Track a parity dashboard in generated Markdown or CI output.
 - Add a semantic execution check for SQLite-backed examples when string output alone is insufficient.
-- Check in on SQLGlot issue [#7676](https://github.com/tobymao/sqlglot/issues/7676) and open a PR from `russellromney/codex/sqlite-postgres-escape-strings` once maintainers confirm the preferred escape-string modeling.
+- Track the upstream SQLGlot fix for Postgres `E'...'` escape strings: issue [#7676](https://github.com/tobymao/sqlglot/issues/7676) was closed by [#7677](https://github.com/tobymao/sqlglot/pull/7677), so sqlgrok should keep matching the released oracle behavior instead of carrying an open upstream follow-up.
 
 Acceptance checks:
 
