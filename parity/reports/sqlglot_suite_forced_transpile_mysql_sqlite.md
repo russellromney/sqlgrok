@@ -13,28 +13,28 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8002 |
-| `mismatch` | 3930 |
+| `match` | 8031 |
+| `mismatch` | 3906 |
 | `oracle-error` | 1743 |
-| `rust-error` | 1352 |
+| `rust-error` | 1347 |
 | `unsupported-harness-shape` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5811 |
-| `mismatch` | `validate_all` | 2698 |
-| `match` | `validate_identity` | 2106 |
-| `mismatch` | `validate_identity` | 1156 |
+| `match` | `validate_all` | 5826 |
+| `mismatch` | `validate_all` | 2684 |
+| `match` | `validate_identity` | 2116 |
+| `mismatch` | `validate_identity` | 1147 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `rust-error` | `validate_all` | 677 |
-| `rust-error` | `validate_identity` | 662 |
+| `rust-error` | `validate_all` | 676 |
+| `rust-error` | `validate_identity` | 661 |
 | `oracle-error` | `validate_all` | 599 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `match` | `validate` | 85 |
-| `mismatch` | `validate` | 76 |
-| `rust-error` | `validate` | 13 |
+| `match` | `validate` | 89 |
+| `mismatch` | `validate` | 75 |
+| `rust-error` | `validate` | 10 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -51,8 +51,8 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 212 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 196 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 192 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 183 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 182 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 182 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 161 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 159 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 140 |

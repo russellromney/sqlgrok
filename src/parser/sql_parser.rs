@@ -4043,6 +4043,15 @@ impl Parser {
                     filter: None,
                     over: None,
                 };
+            } else if self.match_keyword("AT") {
+                self.expect(TokenType::Time)?;
+                self.expect_keyword("ZONE")?;
+                let zone = self.parse_primary()?;
+                expr = Expr::BinaryOp {
+                    left: Box::new(expr),
+                    op: BinaryOperator::AtTimeZone,
+                    right: Box::new(zone),
+                };
             } else {
                 break;
             }
@@ -4391,20 +4400,12 @@ impl Parser {
                     data_type: DataType::Time { precision: None },
                 })
             }
-            TokenType::Timestamp
-                if self
-                    .tokens
-                    .get(self.pos + 1)
-                    .is_some_and(|next| next.token_type == TokenType::String) =>
-            {
-                self.advance();
-                let value = self.advance().value.clone();
+            TokenType::Timestamp if self.is_timestamp_typed_literal_start() => {
+                let data_type = self.parse_data_type()?;
+                let expr = self.parse_primary()?;
                 Ok(Expr::Cast {
-                    expr: Box::new(Expr::StringLiteral(value)),
-                    data_type: DataType::Timestamp {
-                        precision: None,
-                        with_tz: false,
-                    },
+                    expr: Box::new(expr),
+                    data_type,
                 })
             }
             _ if self.is_typed_literal_data_type_start()
@@ -4841,6 +4842,42 @@ impl Parser {
             TokenType::Int | TokenType::Integer | TokenType::Varchar | TokenType::Text
         ) || matches!(self.peek_type(), TokenType::Identifier)
             && matches!(self.peek().value.to_uppercase().as_str(), "STRING")
+    }
+
+    fn is_timestamp_typed_literal_start(&self) -> bool {
+        if self.peek_type() != &TokenType::Timestamp {
+            return false;
+        }
+        if self.peek_n_type(1) == &TokenType::String {
+            return true;
+        }
+        let mut pos = self.pos + 1;
+        if self.tokens.get(pos).map(|token| &token.token_type) == Some(&TokenType::LParen) {
+            let mut depth = 1usize;
+            pos += 1;
+            while let Some(token) = self.tokens.get(pos) {
+                match token.token_type {
+                    TokenType::LParen => depth += 1,
+                    TokenType::RParen => {
+                        depth = depth.saturating_sub(1);
+                        if depth == 0 {
+                            pos += 1;
+                            break;
+                        }
+                    }
+                    TokenType::Eof => return false,
+                    _ => {}
+                }
+                pos += 1;
+            }
+        }
+        matches!(
+            self.tokens
+                .get(pos)
+                .map(|token| token.value.to_uppercase())
+                .as_deref(),
+            Some("WITH" | "WITHOUT")
+        )
     }
 
     fn is_typed_literal_value_token(token: &Token) -> bool {

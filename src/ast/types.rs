@@ -1516,6 +1516,7 @@ pub enum BinaryOperator {
     ArrayContains,
     ArrayContainedBy,
     RangeAdjacent,
+    AtTimeZone,
     Distance,
     Distance3D,
     Glob,

@@ -1888,6 +1888,7 @@ impl Generator {
             BinaryOperator::ArrayContains => " @> ",
             BinaryOperator::ArrayContainedBy => " <@ ",
             BinaryOperator::RangeAdjacent => " -|- ",
+            BinaryOperator::AtTimeZone => " AT TIME ZONE ",
             BinaryOperator::Distance => " <-> ",
             BinaryOperator::Distance3D => " <<->> ",
             BinaryOperator::Glob => " GLOB ",

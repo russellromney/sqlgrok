@@ -735,6 +735,10 @@ fn infer_binary_op_type(
         // JSON operators
         Arrow => Some(DataType::Json),
         DoubleArrow => Some(DataType::Text),
+        AtTimeZone => Some(DataType::Timestamp {
+            precision: None,
+            with_tz: true,
+        }),
         FatArrow | Assign => right.cloned().or_else(|| left.cloned()),
     }
 }

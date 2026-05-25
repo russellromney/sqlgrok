@@ -1083,6 +1083,34 @@ fn test_postgres_time_functions_to_sqlite() {
 }
 
 #[test]
+fn test_postgres_timestamp_with_time_zone_literals_to_sqlite() {
+    validate_with_dialect(
+        "SELECT TIMESTAMP WITH TIME ZONE '2020-01-01'",
+        "SELECT CAST('2020-01-01' AS TIMESTAMPTZ)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TIMESTAMP(9) WITH TIME ZONE '2020-01-01'",
+        "SELECT CAST('2020-01-01' AS TIMESTAMPTZ(9))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT timestamp with time zone '2025-11-20 00:00:00+00' AT TIME ZONE 'Africa/Cairo'",
+        "SELECT CAST('2025-11-20 00:00:00+00' AS TIMESTAMPTZ) AT TIME ZONE 'Africa/Cairo'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TIMESTAMP WITHOUT TIME ZONE '2020-01-01'",
+        "SELECT CAST('2020-01-01' AS TIMESTAMP)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_postgres_limit_all_to_sqlite() {
     validate_with_dialect(
         "SELECT x FROM t LIMIT ALL",
