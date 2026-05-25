@@ -33,6 +33,25 @@ fn is_identifier_like(value: &str) -> bool {
         && chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
 }
 
+fn data_type_with_format(data_type: DataType, format: &Expr) -> DataType {
+    let Expr::StringLiteral(format) = format else {
+        return data_type;
+    };
+    let data_type = match data_type {
+        DataType::String => "STRING".to_string(),
+        DataType::Text => "TEXT".to_string(),
+        DataType::Date => "DATE".to_string(),
+        DataType::Timestamp { .. } => "TIMESTAMP".to_string(),
+        DataType::Unknown(name) => name,
+        other => return other,
+    };
+    DataType::Unknown(format!(
+        "{} FORMAT '{}'",
+        data_type,
+        format.replace('\'', "''")
+    ))
+}
+
 /// A recursive-descent SQL parser.
 ///
 /// Supports CTEs (WITH), subqueries, UNION/INTERSECT/EXCEPT, CAST,
@@ -4361,6 +4380,12 @@ impl Parser {
                         return Ok(expr);
                     }
 
+                    if name.eq_ignore_ascii_case("SAFE_CAST") {
+                        let expr = self.parse_cast_function_body()?;
+                        self.expect(TokenType::RParen)?;
+                        return Ok(expr);
+                    }
+
                     let args = if name.eq_ignore_ascii_case("GROUP_CONCAT") {
                         self.parse_group_concat_args()?
                     } else if name.eq_ignore_ascii_case("JSON_VALUE") {
@@ -4440,6 +4465,33 @@ impl Parser {
 
             _ => Err(SqlglotError::UnexpectedToken { token }),
         }
+    }
+
+    fn parse_cast_function_body(&mut self) -> Result<Expr> {
+        let expr = self.parse_expr()?;
+        self.expect(TokenType::As)?;
+        let data_type = self.parse_data_type()?;
+        if self.match_keyword("FORMAT") && self.peek_type() != &TokenType::RParen {
+            let format = self.parse_primary()?;
+            if matches!(data_type, DataType::Date) {
+                return Ok(Expr::Function {
+                    name: "__SAFE_CAST_DATE_FORMAT".to_string(),
+                    args: vec![expr, format],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                });
+            }
+            let data_type = data_type_with_format(data_type, &format);
+            return Ok(Expr::Cast {
+                expr: Box::new(expr),
+                data_type,
+            });
+        }
+        Ok(Expr::Cast {
+            expr: Box::new(expr),
+            data_type,
+        })
     }
 
     fn is_data_type_token(&self) -> bool {

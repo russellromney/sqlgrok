@@ -8,37 +8,37 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7441 |
-| `mismatch` | 4170 |
+| `match` | 7725 |
+| `mismatch` | 3892 |
 | `oracle-error` | 1743 |
-| `rust-error` | 1673 |
+| `rust-error` | 1667 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 7441 |
-| `mismatch` | `mysql` | `sqlite` | 4170 |
+| `match` | `mysql` | `sqlite` | 7725 |
+| `mismatch` | `mysql` | `sqlite` | 3892 |
 | `oracle-error` | `mysql` | `sqlite` | 1743 |
-| `rust-error` | `mysql` | `sqlite` | 1673 |
+| `rust-error` | `mysql` | `sqlite` | 1667 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5384 |
-| `mismatch` | `validate_all` | 2924 |
-| `match` | `validate_identity` | 1981 |
-| `mismatch` | `validate_identity` | 1164 |
+| `match` | `validate_all` | 5636 |
+| `mismatch` | `validate_all` | 2676 |
+| `match` | `validate_identity` | 2005 |
+| `mismatch` | `validate_identity` | 1142 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `rust-error` | `validate_all` | 878 |
-| `rust-error` | `validate_identity` | 779 |
+| `rust-error` | `validate_all` | 874 |
+| `rust-error` | `validate_identity` | 777 |
 | `oracle-error` | `validate_all` | 599 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `mismatch` | `validate` | 82 |
-| `match` | `validate` | 76 |
+| `match` | `validate` | 84 |
+| `mismatch` | `validate` | 74 |
 | `rust-error` | `validate` | 16 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
@@ -48,21 +48,21 @@ Total rows: `15164`
 
 | Status | Shape | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 558 |
-| `match` | `CAST()` | 358 |
-| `mismatch` | `CREATE TABLE` | 280 |
+| `match` | `SELECT` | 578 |
+| `match` | `CAST()` | 379 |
+| `mismatch` | `CREATE TABLE` | 278 |
 | `match` | `SELECT operator multiply` | 232 |
-| `mismatch` | `SELECT` | 226 |
+| `mismatch` | `SELECT` | 206 |
 | `mismatch` | `CREATE` | 181 |
 | `oracle-error` | `SELECT` | 181 |
 | `rust-error` | `SELECT` | 167 |
+| `match` | `TRUNC()` | 162 |
 | `match` | `CREATE` | 161 |
 | `rust-error` | `SELECT operator multiply` | 149 |
 | `oracle-error` | `CREATE TABLE` | 148 |
 | `oracle-error` | `SELECT operator multiply` | 135 |
-| `match` | `CREATE TABLE` | 130 |
+| `match` | `CREATE TABLE` | 132 |
 | `mismatch` | `SELECT operator multiply` | 117 |
-| `match` | `TRUNC()` | 110 |
 | `mismatch` | `SELECT UNNEST()` | 108 |
 | `mismatch` | `SHOW` | 108 |
 | `match` | `SHOW` | 105 |
@@ -73,21 +73,21 @@ Total rows: `15164`
 | `rust-error` | `CREATE TABLE` | 88 |
 | `mismatch` | `ALTER TABLE` | 84 |
 | `match` | `ALTER TABLE` | 81 |
-| `mismatch` | `CAST()` | 79 |
+| `match` | `SELECT DATEDIFF()` | 79 |
 | `match` | `SET` | 78 |
 | `match` | `WITH` | 77 |
-| `match` | `SELECT DATEDIFF()` | 76 |
+| `match` | `DATE_TRUNC()` | 71 |
 | `match` | `LOG()` | 67 |
 | `match` | `SELECT UNNEST()` | 67 |
 | `match` | `GRANT` | 62 |
 | `mismatch` | `WITH` | 61 |
 | `match` | `ANALYZE` | 60 |
 | `oracle-error` | `SELECT OPTION()` | 60 |
+| `mismatch` | `CAST()` | 58 |
 | `match` | `A` | 57 |
 | `match` | `REGEXP_INSTR()` | 56 |
 | `match` | `REVOKE` | 56 |
 | `rust-error` | `SELECT CAST()` | 55 |
-| `mismatch` | `TRUNC()` | 54 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -106,11 +106,11 @@ Total rows: `15164`
 | `rust-error` | `parser: Expected statement` | 66 |
 | `oracle-error` | `oracle parse: The number of provided arguments (2) is greater than the maximum number of supported arguments (1)` | 46 |
 | `oracle-error` | `oracle parse: Expected type` | 39 |
-| `rust-error` | `parser: Expected RParen, got As ('AS')` | 38 |
 | `rust-error` | `parser: Expected RParen, got LParen ('(')` | 38 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('TO')` | 34 |
 | `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.SENTINEL, text: SENTINEL, line: 1, col: 1, start: 0, end: 0, comments: []>` | 33 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('VARYING')` | 32 |
+| `rust-error` | `parser: Expected RParen, got As ('AS')` | 30 |
 | `rust-error` | `parser: Expected data type, got Map` | 24 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: Range, value: "RANGE", line: 1, col: 8, position: 7, quote_char: '\0' }` | 22 |
 | `rust-error` | `parser: Expected And, got Number ('10')` | 22 |
@@ -139,22 +139,21 @@ Total rows: `15164`
 | Status | Signature | Count |
 | --- | --- | ---: |
 | `mismatch` | `missing AS or alias rendering` | 316 |
-| `mismatch` | `DDL/create-table rendering` | 276 |
+| `mismatch` | `DDL/create-table rendering` | 274 |
 | `mismatch` | `case-only rendering difference` | 159 |
 | `mismatch` | `SELECT` | 155 |
 | `mismatch` | `SELECT operator multiply` | 114 |
 | `mismatch` | `SHOW` | 107 |
 | `mismatch` | `CREATE` | 105 |
-| `mismatch` | `cast/type rendering: CAST()` | 79 |
 | `mismatch` | `SELECT UNNEST()` | 78 |
 | `mismatch` | `ALTER TABLE` | 75 |
+| `mismatch` | `cast/type rendering: CAST()` | 58 |
 | `mismatch` | `missing quoted identifier` | 57 |
-| `mismatch` | `cast/type rendering: TRUNC()` | 52 |
 | `mismatch` | `date/time rendering: SELECT DATE_SUB()` | 52 |
-| `mismatch` | `cast/type rendering: SELECT CAST()` | 41 |
 | `mismatch` | `cast/type rendering: SELECT TO_CHAR()` | 41 |
 | `mismatch` | `date/time rendering: SELECT TO_TIMESTAMP()` | 39 |
 | `mismatch` | `date/time rendering: TIME_STR_TO_TIME()` | 36 |
+| `mismatch` | `cast/type rendering: SELECT CAST()` | 34 |
 | `mismatch` | `date/time rendering: SELECT DATEADD()` | 32 |
 | `mismatch` | `date/time rendering: STR_TO_TIME()` | 30 |
 | `mismatch` | `REGEXP_EXTRACT()` | 29 |
@@ -169,62 +168,75 @@ Total rows: `15164`
 | `mismatch` | `quote-style difference` | 27 |
 | `mismatch` | `date/time rendering: MONTH()` | 26 |
 | `mismatch` | `date/time rendering: YEAR()` | 24 |
-| `mismatch` | `cast/type rendering: SELECT` | 23 |
-| `mismatch` | `cast/type rendering: SELECT EXTRACT()` | 23 |
 | `mismatch` | `date/time rendering: CREATE` | 23 |
 | `mismatch` | `SELECT REGEXP_EXTRACT()` | 22 |
-| `mismatch` | `cast/type rendering: DATE_TRUNC()` | 22 |
+| `mismatch` | `cast/type rendering: SELECT EXTRACT()` | 22 |
 | `mismatch` | `SHA256()` | 21 |
 | `mismatch` | `date/time rendering: DAY()` | 21 |
 | `mismatch` | `SELECT COUNT_IF()` | 20 |
 | `mismatch` | `SELECT operator index` | 20 |
+| `mismatch` | `X` | 20 |
+| `mismatch` | `date/time rendering: EOMONTH()` | 20 |
+| `mismatch` | `STRPOS()` | 19 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 752 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 359 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 317 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 297 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 240 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 199 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 197 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 761 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 350 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 334 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 286 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 246 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 212 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 196 |
-| `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 166 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 157 |
-| `match` | `tests/dialects/test_dialect.py` | `test_time` | 154 |
-| `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 144 |
-| `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 143 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 137 |
-| `match` | `tests/dialects/test_dialect.py` | `test_cast` | 132 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 191 |
+| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 182 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 164 |
+| `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 161 |
+| `match` | `tests/dialects/test_dialect.py` | `test_time` | 159 |
+| `match` | `tests/dialects/test_dialect.py` | `test_cast` | 140 |
+| `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 137 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 127 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 124 |
 | `rust-error` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 122 |
-| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 118 |
-| `match` | `tests/dialects/test_hive.py` | `test_hive` | 102 |
-| `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 97 |
+| `match` | `tests/dialects/test_hive.py` | `test_hive` | 105 |
+| `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 96 |
+| `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
-| `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 95 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
+| `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 88 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `mismatch` | `tests/dialects/test_presto.py` | `test_presto` | 86 |
 | `oracle-error` | `tests/dialects/test_tsql.py` | `test_option` | 86 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 84 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 85 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 80 |
+| `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 80 |
 | `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 80 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 77 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 76 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 75 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 75 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 74 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 67 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 66 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 66 |
 | `mismatch` | `tests/dialects/test_oracle.py` | `test_oracle` | 66 |
-| `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
-| `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 63 |
-| `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 63 |
+| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 65 |
 
 ## Bucket Examples
+
+### `mismatch` `A`
+
+- `tests/test_transpile.py`:682 `test_not_range` via `validate`: `a NOT BETWEEN b AND c`
+  - expected: `NOT a BETWEEN b AND c`
+  - actual: `a NOT BETWEEN b AND c`
+- `tests/test_transpile.py`:683 `test_not_range` via `validate`: `a NOT IN (1, 2)`
+  - expected: `NOT a IN (1, 2)`
+  - actual: `a NOT IN (1, 2)`
+- `tests/test_transpile.py`:684 `test_not_range` via `validate`: `a IS NOT NULL`
+  - expected: `NOT a IS NULL`
+  - actual: `a IS NOT NULL`
 
 ### `mismatch` `ALTER TABLE`
 
@@ -336,15 +348,15 @@ Total rows: `15164`
 
 ### `mismatch` `cast/type rendering: CAST()`
 
-- `tests/dialects/test_bigquery.py`:201 `test_bigquery` via `validate_identity`: `CAST(x AS TIMESTAMP)`
-  - expected: `CAST(x AS TIMESTAMPTZ)`
-  - actual: `CAST(x AS TIMESTAMP)`
 - `tests/dialects/test_bigquery.py`:223 `test_bigquery` via `validate_identity`: `CAST(x AS BIGNUMERIC)`
   - expected: `CAST(x AS BIGDECIMAL)`
   - actual: `CAST(x AS BIGNUMERIC)`
-- `tests/dialects/test_bigquery.py`:236 `test_bigquery` via `validate_identity`: `CAST(x AS TIMESTAMPTZ)`
-  - expected: `CAST(x AS TIMESTAMPTZ)`
-  - actual: `CAST(x AS TIMESTAMP WITH TIME ZONE)`
+- `tests/dialects/test_bigquery.py`:1261 `test_bigquery` via `validate_all`: `CAST(a AS INT64)`
+  - expected: `CAST(a AS INTEGER)`
+  - actual: `CAST(a AS INT64)`
+- `tests/dialects/test_bigquery.py`:1261 `test_bigquery` via `validate_all`: `CAST(a AS INT64)`
+  - expected: `CAST(a AS INTEGER)`
+  - actual: `CAST(a AS INT64)`
 
 ### `mismatch` `cast/type rendering: SELECT CAST()`
 
@@ -362,25 +374,13 @@ Total rows: `15164`
 
 - `tests/dialects/test_dremio.py`:101 `test_time_mapping` via `validate_all`: `SELECT TO_CHAR(CAST('2025-06-24 12:34:56' AS TIMESTAMP), 'yyyy-mm-dd hh24:mi:ss')`
   - expected: `SELECT CAST(CAST('2025-06-24 12:34:56' AS TIMESTAMPTZ) AS TEXT)`
-  - actual: `SELECT STRFTIME('yyyy-mm-dd hh24:mi:ss', CAST('2025-06-24 12:34:56' AS TIMESTAMP))`
+  - actual: `SELECT STRFTIME('yyyy-mm-dd hh24:mi:ss', CAST('2025-06-24 12:34:56' AS TIMESTAMPTZ))`
 - `tests/dialects/test_dremio.py`:101 `test_time_mapping` via `validate_all`: `SELECT TO_CHAR(CAST('2025-06-24 12:34:56' AS TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')`
   - expected: `SELECT CAST(CAST('2025-06-24 12:34:56' AS TIMESTAMPTZ) AS TEXT)`
-  - actual: `SELECT STRFTIME('YYYY-MM-DD HH24:MI:SS', CAST('2025-06-24 12:34:56' AS TIMESTAMP))`
+  - actual: `SELECT STRFTIME('YYYY-MM-DD HH24:MI:SS', CAST('2025-06-24 12:34:56' AS TIMESTAMPTZ))`
 - `tests/dialects/test_dremio.py`:101 `test_time_mapping` via `validate_all`: `SELECT TO_CHAR(CAST('2025-06-24 12:34:56' AS TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')`
   - expected: `SELECT CAST(CAST('2025-06-24 12:34:56' AS TIMESTAMPTZ) AS TEXT)`
-  - actual: `SELECT STRFTIME('YYYY-MM-DD HH24:MI:SS', CAST('2025-06-24 12:34:56' AS TIMESTAMP))`
-
-### `mismatch` `cast/type rendering: TRUNC()`
-
-- `tests/dialects/test_exasol.py`:653 `test_number_functions` via `validate_all`: `TRUNC(CAST(x AS TIMESTAMP), 'YYYY')`
-  - expected: `TRUNC(CAST(x AS TIMESTAMPTZ))`
-  - actual: `TRUNC(CAST(x AS TIMESTAMP))`
-- `tests/dialects/test_exasol.py`:653 `test_number_functions` via `validate_all`: `TRUNC(CAST(x AS TIMESTAMP), 'YYYY')`
-  - expected: `TRUNC(CAST(x AS TIMESTAMPTZ))`
-  - actual: `TRUNC(CAST(x AS TIMESTAMP))`
-- `tests/dialects/test_exasol.py`:653 `test_number_functions` via `validate_all`: `TRUNC(CAST(x AS TIMESTAMP), 'MM')`
-  - expected: `TRUNC(CAST(x AS TIMESTAMPTZ))`
-  - actual: `TRUNC(CAST(x AS TIMESTAMP))`
+  - actual: `SELECT STRFTIME('YYYY-MM-DD HH24:MI:SS', CAST('2025-06-24 12:34:56' AS TIMESTAMPTZ))`
 
 ### `mismatch` `date/time rendering: SELECT DATEADD()`
 
@@ -564,15 +564,15 @@ Total rows: `15164`
 
 ### `rust-error` `parser: Expected RParen, got As ('AS')`
 
-- `tests/dialects/test_bigquery.py`:173 `test_bigquery` via `validate_identity`: `SAFE_CAST(encrypted_value AS STRING FORMAT 'BASE64')`
-  - expected: `CAST(encrypted_value AS TEXT FORMAT 'BASE64')`
-  - error: `ValueError: Parser error: Expected RParen, got As ('AS') at line 1 col 27`
-- `tests/dialects/test_bigquery.py`:180 `test_bigquery` via `validate_identity`: `SAFE_CAST(x AS STRING)`
-  - expected: `CAST(x AS TEXT)`
-  - error: `ValueError: Parser error: Expected RParen, got As ('AS') at line 1 col 13`
-- `tests/dialects/test_bigquery.py`:517 `test_bigquery` via `validate_all`: `SAFE_CAST(some_date AS DATE FORMAT 'DD MONTH YYYY')`
-  - expected: `STR_TO_DATE(some_date, 'DD MONTH YYYY')`
-  - error: `ValueError: Parser error: Expected RParen, got As ('AS') at line 1 col 21`
+- `tests/dialects/test_bigquery.py`:1963 `test_bigquery` via `validate_identity`: `TO_JSON(STRUCT(1 AS id, [10, 20] AS cords))`
+  - expected: `TO_JSON(STRUCT(1 AS id, ARRAY(10, 20) AS cords))`
+  - error: `ValueError: Parser error: Expected RParen, got As ('AS') at line 1 col 18`
+- `tests/dialects/test_bigquery.py`:3345 `test_json_array` via `validate_identity`: `JSON_ARRAY(STRUCT(10 AS a, 'foo' AS b))`
+  - expected: `JSON_ARRAY(STRUCT(10 AS a, 'foo' AS b))`
+  - error: `ValueError: Parser error: Expected RParen, got As ('AS') at line 1 col 22`
+- `tests/dialects/test_bigquery.py`:2542 `test_json_object` via `validate_identity`: `SELECT JSON_OBJECT(['a', 'b'], [STRUCT(10 AS id, 'Red' AS color), STRUCT(20 AS id, 'Blue' AS color)]) AS json_data`
+  - expected: `SELECT JSON_OBJECT(ARRAY('a', 'b'), ARRAY(STRUCT(10 AS id, 'Red' AS color), STRUCT(20 AS id, 'Blue' AS color))) AS json_data`
+  - error: `ValueError: Parser error: Expected RParen, got As ('AS') at line 1 col 43`
 
 ### `rust-error` `parser: Expected RParen, got Comma (',')`
 

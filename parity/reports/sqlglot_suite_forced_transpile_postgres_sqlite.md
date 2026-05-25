@@ -13,23 +13,23 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8299 |
+| `match` | 8305 |
 | `mismatch` | 3527 |
 | `oracle-error` | 1457 |
-| `rust-error` | 1744 |
+| `rust-error` | 1738 |
 | `unsupported-harness-shape` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5881 |
+| `match` | `validate_all` | 5885 |
 | `mismatch` | `validate_all` | 2515 |
-| `match` | `validate_identity` | 2333 |
+| `match` | `validate_identity` | 2335 |
 | `oracle-error` | `validate_identity` | 949 |
 | `mismatch` | `validate_identity` | 936 |
-| `rust-error` | `validate_all` | 887 |
-| `rust-error` | `validate_identity` | 841 |
+| `rust-error` | `validate_all` | 883 |
+| `rust-error` | `validate_identity` | 839 |
 | `oracle-error` | `validate_all` | 502 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 85 |
@@ -44,7 +44,7 @@ Filtered by read/write: `0`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 824 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 384 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 390 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 308 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 301 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 291 |
@@ -53,7 +53,7 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 200 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 190 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 160 |
-| `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 147 |
+| `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 141 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 139 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 139 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 136 |

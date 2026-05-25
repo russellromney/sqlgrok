@@ -694,6 +694,24 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("__SAFE_CAST_DATE_FORMAT")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::Function {
+                    name: "STR_TO_DATE".to_string(),
+                    args: vec![
+                        new_args[0].clone(),
+                        transform_safe_cast_date_format(new_args[1].clone(), source, target),
+                    ],
+                    distinct,
+                    filter,
+                    over,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("TRUNC")
                 && !distinct
                 && filter.is_none()
@@ -1875,6 +1893,22 @@ fn transform_format_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
     }
 }
 
+fn transform_safe_cast_date_format(expr: Expr, source: Dialect, target: Dialect) -> Expr {
+    match (expr, source, target) {
+        (Expr::StringLiteral(format), Dialect::Postgres, Dialect::Sqlite) => {
+            Expr::StringLiteral(format_postgres_safe_cast_date_format(&format))
+        }
+        (expr, _, _) => transform_expr(expr, source, target),
+    }
+}
+
+fn format_postgres_safe_cast_date_format(format: &str) -> String {
+    format
+        .replace("YYYY", "%Y")
+        .replace("YY", "%y")
+        .replace("DD", "%d")
+}
+
 fn source_time_format_style(format_str: &str, source: Dialect) -> time::TimeFormatStyle {
     match source {
         Dialect::Ansi | Dialect::Prql => detect_format_style(format_str),
@@ -2258,6 +2292,14 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
                     || name.eq_ignore_ascii_case("UNSIGNED INTEGER")) =>
         {
             DataType::Unknown("UBIGINT".to_string())
+        }
+        (DataType::Timestamp { .. }, s, Dialect::Sqlite) if is_mysql_family(s) => {
+            DataType::Unknown("TIMESTAMPTZ".to_string())
+        }
+        (DataType::Unknown(name), _, Dialect::Sqlite)
+            if name.to_ascii_uppercase().starts_with("STRING FORMAT ") =>
+        {
+            DataType::Unknown(format!("TEXT{}", &name["STRING".len()..]))
         }
         (DataType::Unknown(name), _, Dialect::Sqlite)
             if matches!(

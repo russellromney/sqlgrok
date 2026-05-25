@@ -8,19 +8,19 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7971 |
+| `match` | 7977 |
 | `mismatch` | 3809 |
 | `oracle-error` | 1549 |
-| `rust-error` | 1698 |
+| `rust-error` | 1692 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 7971 |
+| `match` | `sqlite` | `sqlite` | 7977 |
 | `mismatch` | `sqlite` | `sqlite` | 3809 |
-| `rust-error` | `sqlite` | `sqlite` | 1698 |
+| `rust-error` | `sqlite` | `sqlite` | 1692 |
 | `oracle-error` | `sqlite` | `sqlite` | 1549 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
@@ -28,13 +28,13 @@ Total rows: `15164`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5644 |
+| `match` | `validate_all` | 5648 |
 | `mismatch` | `validate_all` | 2743 |
-| `match` | `validate_identity` | 2250 |
+| `match` | `validate_identity` | 2252 |
 | `oracle-error` | `validate_identity` | 993 |
 | `mismatch` | `validate_identity` | 985 |
-| `rust-error` | `validate_all` | 851 |
-| `rust-error` | `validate_identity` | 831 |
+| `rust-error` | `validate_all` | 847 |
+| `rust-error` | `validate_identity` | 829 |
 | `oracle-error` | `validate_all` | 547 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `mismatch` | `validate` | 81 |
@@ -102,8 +102,8 @@ Total rows: `15164`
 | `rust-error` | `parser: Expected RParen, got Comma (',')` | 102 |
 | `rust-error` | `parser: Expected statement` | 69 |
 | `rust-error` | `parser: Expected RParen, got FatArrow ('=>')` | 67 |
-| `rust-error` | `parser: Expected RParen, got As ('AS')` | 40 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('TO')` | 34 |
+| `rust-error` | `parser: Expected RParen, got As ('AS')` | 32 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('VARYING')` | 32 |
 | `rust-error` | `parser: Expected RParen, got LParen ('(')` | 31 |
 | `rust-error` | `parser: Expected RParen, got Ignore ('IGNORE')` | 30 |
@@ -184,7 +184,7 @@ Total rows: `15164`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 798 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 358 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 364 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 319 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 280 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 259 |
@@ -194,7 +194,7 @@ Total rows: `15164`
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 177 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 175 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 162 |
-| `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 150 |
+| `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 144 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 136 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 131 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 128 |
@@ -564,12 +564,12 @@ Total rows: `15164`
 - `tests/dialects/test_bigquery.py`:108 `test_bigquery` via `validate_identity`: `STRUCT(values AS value)`
   - expected: `STRUCT(values AS value)`
   - error: `ValueError: Parser error: Expected RParen, got As ('AS') at line 1 col 15`
-- `tests/dialects/test_bigquery.py`:173 `test_bigquery` via `validate_identity`: `SAFE_CAST(encrypted_value AS STRING FORMAT 'BASE64')`
-  - expected: `CAST(encrypted_value AS TEXT FORMAT 'BASE64')`
-  - error: `ValueError: Parser error: Expected RParen, got As ('AS') at line 1 col 27`
-- `tests/dialects/test_bigquery.py`:180 `test_bigquery` via `validate_identity`: `SAFE_CAST(x AS STRING)`
-  - expected: `CAST(x AS TEXT)`
-  - error: `ValueError: Parser error: Expected RParen, got As ('AS') at line 1 col 13`
+- `tests/dialects/test_bigquery.py`:1963 `test_bigquery` via `validate_identity`: `TO_JSON(STRUCT(1 AS id, [10, 20] AS cords))`
+  - expected: `TO_JSON(STRUCT(1 AS id, "10, 20" AS cords))`
+  - error: `ValueError: Parser error: Expected RParen, got As ('AS') at line 1 col 18`
+- `tests/dialects/test_bigquery.py`:3345 `test_json_array` via `validate_identity`: `JSON_ARRAY(STRUCT(10 AS a, 'foo' AS b))`
+  - expected: `JSON_ARRAY(STRUCT(10 AS a, 'foo' AS b))`
+  - error: `ValueError: Parser error: Expected RParen, got As ('AS') at line 1 col 22`
 
 ### `rust-error` `parser: Expected RParen, got Comma (',')`
 

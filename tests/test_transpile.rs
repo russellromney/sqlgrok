@@ -1812,6 +1812,52 @@ fn test_explicit_reserved_aliases_to_sqlite() {
 }
 
 #[test]
+fn test_safe_cast_to_sqlite_cast() {
+    validate_with_dialect(
+        "SAFE_CAST(x AS STRING)",
+        "CAST(x AS TEXT)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SAFE_CAST(x AS STRING)",
+        "CAST(x AS TEXT)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SAFE_CAST(x AS TIMESTAMP)",
+        "CAST(x AS TIMESTAMPTZ)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SAFE_CAST(x AS TIMESTAMP)",
+        "CAST(x AS TIMESTAMP)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SAFE_CAST(encrypted_value AS STRING FORMAT 'BASE64')",
+        "CAST(encrypted_value AS TEXT FORMAT 'BASE64')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SAFE_CAST(some_date AS DATE FORMAT 'DD MONTH YYYY')",
+        "STR_TO_DATE(some_date, '%d MONTH %Y')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SAFE_CAST(some_date AS DATE FORMAT 'DD MONTH YYYY')",
+        "STR_TO_DATE(some_date, 'DD MONTH YYYY')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_create_index_to_sqlite() {
     validate_with_dialect(
         "CREATE INDEX idx ON x (a)",
