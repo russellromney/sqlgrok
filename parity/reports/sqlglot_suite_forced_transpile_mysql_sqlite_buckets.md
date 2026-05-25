@@ -8,8 +8,8 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7420 |
-| `mismatch` | 4187 |
+| `match` | 7435 |
+| `mismatch` | 4172 |
 | `oracle-error` | 1743 |
 | `rust-error` | 1677 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15164`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 7420 |
-| `mismatch` | `mysql` | `sqlite` | 4187 |
+| `match` | `mysql` | `sqlite` | 7435 |
+| `mismatch` | `mysql` | `sqlite` | 4172 |
 | `oracle-error` | `mysql` | `sqlite` | 1743 |
 | `rust-error` | `mysql` | `sqlite` | 1677 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -30,15 +30,15 @@ Total rows: `15164`
 | --- | --- | ---: |
 | `match` | `validate_all` | 5384 |
 | `mismatch` | `validate_all` | 2924 |
-| `match` | `validate_identity` | 1975 |
-| `mismatch` | `validate_identity` | 1169 |
+| `match` | `validate_identity` | 1980 |
+| `mismatch` | `validate_identity` | 1164 |
 | `oracle-error` | `validate_identity` | 1135 |
 | `rust-error` | `validate_all` | 878 |
 | `rust-error` | `validate_identity` | 780 |
 | `oracle-error` | `validate_all` | 599 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `mismatch` | `validate` | 94 |
-| `match` | `validate` | 61 |
+| `mismatch` | `validate` | 84 |
+| `match` | `validate` | 71 |
 | `rust-error` | `validate` | 19 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
@@ -53,12 +53,12 @@ Total rows: `15164`
 | `mismatch` | `CREATE TABLE` | 280 |
 | `match` | `SELECT operator multiply` | 232 |
 | `mismatch` | `SELECT` | 226 |
-| `mismatch` | `CREATE` | 196 |
+| `mismatch` | `CREATE` | 181 |
 | `oracle-error` | `SELECT` | 181 |
 | `rust-error` | `SELECT` | 171 |
+| `match` | `CREATE` | 161 |
 | `rust-error` | `SELECT operator multiply` | 149 |
 | `oracle-error` | `CREATE TABLE` | 148 |
-| `match` | `CREATE` | 146 |
 | `oracle-error` | `SELECT operator multiply` | 135 |
 | `match` | `CREATE TABLE` | 130 |
 | `mismatch` | `SELECT operator multiply` | 117 |
@@ -142,9 +142,9 @@ Total rows: `15164`
 | `mismatch` | `DDL/create-table rendering` | 276 |
 | `mismatch` | `case-only rendering difference` | 159 |
 | `mismatch` | `SELECT` | 155 |
-| `mismatch` | `CREATE` | 120 |
 | `mismatch` | `SELECT operator multiply` | 114 |
 | `mismatch` | `SHOW` | 107 |
+| `mismatch` | `CREATE` | 105 |
 | `mismatch` | `cast/type rendering: CAST()` | 79 |
 | `mismatch` | `SELECT UNNEST()` | 78 |
 | `mismatch` | `ALTER TABLE` | 75 |
@@ -213,9 +213,9 @@ Total rows: `15164`
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 80 |
 | `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 80 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 77 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 77 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 76 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 75 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 75 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 66 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 66 |
@@ -240,15 +240,15 @@ Total rows: `15164`
 
 ### `mismatch` `CREATE`
 
-- `tests/test_transpile.py`:1008 `test_sql_security` via `validate`: `CREATE VIEW v SQL SECURITY INVOKER AS SELECT 1`
-  - expected: `CREATE VIEW v AS SELECT 1`
-  - actual: `CREATE VIEW v SQL SECURITY INVOKER AS SELECT 1`
-- `tests/test_transpile.py`:1009 `test_sql_security` via `validate`: `CREATE VIEW v SQL SECURITY INVOKER AS SELECT 1`
-  - expected: `CREATE VIEW v AS SELECT 1`
-  - actual: `CREATE VIEW v SQL SECURITY INVOKER AS SELECT 1`
-- `tests/test_transpile.py`:1008 `test_sql_security` via `validate`: `CREATE VIEW v SECURITY INVOKER AS SELECT 1`
-  - expected: `CREATE VIEW v AS SELECT 1`
-  - actual: `CREATE VIEW v SECURITY INVOKER AS SELECT 1`
+- `tests/dialects/test_athena.py`:121 `test_ddl_quoting` via `validate_identity`: `CREATE VIEW "foo" AS SELECT "id" FROM "tbl"`
+  - expected: `CREATE VIEW "foo" AS SELECT 'id' FROM "tbl"`
+  - actual: `CREATE VIEW "foo" AS SELECT "id" FROM "tbl"`
+- `tests/dialects/test_athena.py`:136 `test_ddl_quoting` via `validate_identity`: `CREATE VIEW "foo" AS SELECT "id" FROM "tbl"`
+  - expected: `CREATE VIEW "foo" AS SELECT 'id' FROM "tbl"`
+  - actual: `CREATE VIEW "foo" AS SELECT "id" FROM "tbl"`
+- `tests/dialects/test_bigquery.py`:104 `test_bigquery` via `validate_identity`: `CREATE SCHEMA x DEFAULT COLLATE 'en'`
+  - expected: `CREATE SCHEMA x`
+  - actual: `CREATE SCHEMA x DEFAULT COLLATE 'en'`
 
 ### `mismatch` `DDL/create-table rendering`
 

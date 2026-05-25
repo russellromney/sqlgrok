@@ -2052,6 +2052,8 @@ impl Parser {
 
         let materialized = self.match_token(TokenType::Materialized);
 
+        self.consume_sql_security_property();
+
         if self.match_token(TokenType::View) {
             return self
                 .parse_create_view(or_replace, materialized)
@@ -2183,6 +2185,8 @@ impl Parser {
             vec![]
         };
 
+        self.consume_sql_security_property();
+
         self.expect(TokenType::As)?;
         let query = self.parse_statement_inner()?;
 
@@ -2195,6 +2199,19 @@ impl Parser {
             materialized,
             if_not_exists,
         })
+    }
+
+    fn consume_sql_security_property(&mut self) -> bool {
+        let saved_pos = self.pos;
+        let _ = self.match_keyword("SQL");
+        if !self.match_keyword("SECURITY") {
+            self.pos = saved_pos;
+            return false;
+        }
+        if self.check_keyword("INVOKER") || self.check_keyword("DEFINER") {
+            self.advance();
+        }
+        true
     }
 
     fn parse_table_constraint(&mut self) -> Result<TableConstraint> {

@@ -126,11 +126,11 @@ instead of reading the full JSONL by hand.
 As of the latest checked-in reports, the forced-pair bridge sees all `15,164` transpile
 helper attempts for each tracked lane:
 
-- MySQL->SQLite: `7,420` match, `4,187` mismatch, `1,677` rust-error, `1,743` oracle-error,
+- MySQL->SQLite: `7,435` match, `4,172` mismatch, `1,677` rust-error, `1,743` oracle-error,
   `137` unsupported harness shape.
-- Postgres->SQLite: `8,278` match, `3,544` mismatch, `1,748` rust-error, `1,457`
+- Postgres->SQLite: `8,293` match, `3,529` mismatch, `1,748` rust-error, `1,457`
   oracle-error, `137` unsupported harness shape.
-- SQLite->SQLite: `7,950` match, `3,826` mismatch, `1,702` rust-error, `1,549`
+- SQLite->SQLite: `7,965` match, `3,811` mismatch, `1,702` rust-error, `1,549`
   oracle-error, `137` unsupported harness shape.
 
 ## Case Format

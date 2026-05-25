@@ -8,8 +8,8 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7950 |
-| `mismatch` | 3826 |
+| `match` | 7965 |
+| `mismatch` | 3811 |
 | `oracle-error` | 1549 |
 | `rust-error` | 1702 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15164`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 7950 |
-| `mismatch` | `sqlite` | `sqlite` | 3826 |
+| `match` | `sqlite` | `sqlite` | 7965 |
+| `mismatch` | `sqlite` | `sqlite` | 3811 |
 | `rust-error` | `sqlite` | `sqlite` | 1702 |
 | `oracle-error` | `sqlite` | `sqlite` | 1549 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -30,15 +30,15 @@ Total rows: `15164`
 | --- | --- | ---: |
 | `match` | `validate_all` | 5644 |
 | `mismatch` | `validate_all` | 2743 |
-| `match` | `validate_identity` | 2244 |
+| `match` | `validate_identity` | 2249 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 990 |
+| `mismatch` | `validate_identity` | 985 |
 | `rust-error` | `validate_all` | 851 |
 | `rust-error` | `validate_identity` | 832 |
 | `oracle-error` | `validate_all` | 547 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `mismatch` | `validate` | 93 |
-| `match` | `validate` | 62 |
+| `mismatch` | `validate` | 83 |
+| `match` | `validate` | 72 |
 | `rust-error` | `validate` | 19 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
@@ -55,11 +55,11 @@ Total rows: `15164`
 | `match` | `SHOW` | 215 |
 | `mismatch` | `SELECT` | 203 |
 | `oracle-error` | `SELECT` | 198 |
-| `mismatch` | `CREATE` | 193 |
+| `mismatch` | `CREATE` | 178 |
 | `match` | `CREATE TABLE` | 166 |
+| `match` | `CREATE` | 165 |
 | `rust-error` | `SELECT` | 164 |
 | `match` | `TRUNC()` | 162 |
-| `match` | `CREATE` | 150 |
 | `oracle-error` | `SELECT operator multiply` | 143 |
 | `rust-error` | `SELECT operator multiply` | 139 |
 | `mismatch` | `SELECT operator multiply` | 136 |
@@ -144,7 +144,7 @@ Total rows: `15164`
 | `mismatch` | `case-only rendering difference` | 212 |
 | `mismatch` | `SELECT` | 136 |
 | `mismatch` | `SELECT operator multiply` | 134 |
-| `mismatch` | `CREATE` | 116 |
+| `mismatch` | `CREATE` | 101 |
 | `mismatch` | `cast/type rendering: CAST()` | 72 |
 | `mismatch` | `date/time rendering: DATE_ADD()` | 69 |
 | `mismatch` | `date/time rendering: TIME_STR_TO_TIME()` | 57 |
@@ -240,15 +240,15 @@ Total rows: `15164`
 
 ### `mismatch` `CREATE`
 
-- `tests/test_transpile.py`:1008 `test_sql_security` via `validate`: `CREATE VIEW v SQL SECURITY INVOKER AS SELECT 1`
-  - expected: `CREATE VIEW v AS SELECT 1`
-  - actual: `CREATE VIEW v SQL SECURITY INVOKER AS SELECT 1`
-- `tests/test_transpile.py`:1009 `test_sql_security` via `validate`: `CREATE VIEW v SQL SECURITY INVOKER AS SELECT 1`
-  - expected: `CREATE VIEW v AS SELECT 1`
-  - actual: `CREATE VIEW v SQL SECURITY INVOKER AS SELECT 1`
-- `tests/test_transpile.py`:1008 `test_sql_security` via `validate`: `CREATE VIEW v SECURITY INVOKER AS SELECT 1`
-  - expected: `CREATE VIEW v AS SELECT 1`
-  - actual: `CREATE VIEW v SECURITY INVOKER AS SELECT 1`
+- `tests/dialects/test_bigquery.py`:104 `test_bigquery` via `validate_identity`: `CREATE SCHEMA x DEFAULT COLLATE 'en'`
+  - expected: `CREATE SCHEMA x`
+  - actual: `CREATE SCHEMA x DEFAULT COLLATE 'en'`
+- `tests/dialects/test_bigquery.py`:380 `test_bigquery` via `validate_identity`: `CREATE TEMPORARY FUNCTION FOO() RETURNS STRING LANGUAGE js AS 'return "Hello world!"'`
+  - expected: `CREATE TEMPORARY FUNCTION FOO() AS 'return "Hello world!"'`
+  - actual: `CREATE TEMPORARY FUNCTION FOO() RETURNS STRING LANGUAGE js AS 'return "Hello world!"'`
+- `tests/dialects/test_clickhouse.py`:207 `test_clickhouse` via `validate_identity`: `CREATE MATERIALIZED VIEW test_view TO db.table1 (id UInt8) AS SELECT * FROM test_data`
+  - expected: `CREATE VIEW test_view (id UInt8) AS SELECT * FROM test_data`
+  - actual: `CREATE MATERIALIZED VIEW test_view TO db.table1 (id UInt8) AS SELECT * FROM test_data`
 
 ### `mismatch` `DDL/create-table rendering`
 

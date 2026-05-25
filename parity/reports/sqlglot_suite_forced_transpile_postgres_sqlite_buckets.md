@@ -8,8 +8,8 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8278 |
-| `mismatch` | 3544 |
+| `match` | 8293 |
+| `mismatch` | 3529 |
 | `oracle-error` | 1457 |
 | `rust-error` | 1748 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15164`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 8278 |
-| `mismatch` | `postgres` | `sqlite` | 3544 |
+| `match` | `postgres` | `sqlite` | 8293 |
+| `mismatch` | `postgres` | `sqlite` | 3529 |
 | `rust-error` | `postgres` | `sqlite` | 1748 |
 | `oracle-error` | `postgres` | `sqlite` | 1457 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -30,15 +30,15 @@ Total rows: `15164`
 | --- | --- | ---: |
 | `match` | `validate_all` | 5881 |
 | `mismatch` | `validate_all` | 2515 |
-| `match` | `validate_identity` | 2327 |
+| `match` | `validate_identity` | 2332 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 941 |
+| `mismatch` | `validate_identity` | 936 |
 | `rust-error` | `validate_all` | 887 |
 | `rust-error` | `validate_identity` | 842 |
 | `oracle-error` | `validate_all` | 502 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `mismatch` | `validate` | 88 |
-| `match` | `validate` | 70 |
+| `match` | `validate` | 80 |
+| `mismatch` | `validate` | 78 |
 | `rust-error` | `validate` | 19 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 6 |
@@ -54,12 +54,12 @@ Total rows: `15164`
 | `match` | `SELECT operator multiply` | 228 |
 | `match` | `SHOW` | 215 |
 | `oracle-error` | `SELECT` | 213 |
-| `mismatch` | `CREATE` | 210 |
+| `mismatch` | `CREATE` | 195 |
 | `match` | `CREATE TABLE` | 166 |
+| `match` | `CREATE` | 162 |
 | `match` | `TRUNC()` | 162 |
 | `rust-error` | `SELECT` | 158 |
 | `oracle-error` | `SELECT operator multiply` | 150 |
-| `match` | `CREATE` | 147 |
 | `rust-error` | `SELECT operator multiply` | 136 |
 | `mismatch` | `SELECT` | 132 |
 | `mismatch` | `SELECT operator multiply` | 119 |
@@ -141,8 +141,8 @@ Total rows: `15164`
 | `mismatch` | `DDL/create-table rendering` | 273 |
 | `mismatch` | `missing AS or alias rendering` | 271 |
 | `mismatch` | `case-only rendering difference` | 215 |
-| `mismatch` | `CREATE` | 136 |
 | `mismatch` | `SELECT` | 123 |
+| `mismatch` | `CREATE` | 121 |
 | `mismatch` | `SELECT operator multiply` | 118 |
 | `mismatch` | `SELECT UNNEST()` | 77 |
 | `mismatch` | `cast/type rendering: CAST()` | 70 |
@@ -240,15 +240,15 @@ Total rows: `15164`
 
 ### `mismatch` `CREATE`
 
-- `tests/test_transpile.py`:1008 `test_sql_security` via `validate`: `CREATE VIEW v SQL SECURITY INVOKER AS SELECT 1`
-  - expected: `CREATE VIEW v AS SELECT 1`
-  - actual: `CREATE VIEW v SQL SECURITY INVOKER AS SELECT 1`
-- `tests/test_transpile.py`:1009 `test_sql_security` via `validate`: `CREATE VIEW v SQL SECURITY INVOKER AS SELECT 1`
-  - expected: `CREATE VIEW v AS SELECT 1`
-  - actual: `CREATE VIEW v SQL SECURITY INVOKER AS SELECT 1`
-- `tests/test_transpile.py`:1008 `test_sql_security` via `validate`: `CREATE VIEW v SECURITY INVOKER AS SELECT 1`
-  - expected: `CREATE VIEW v AS SELECT 1`
-  - actual: `CREATE VIEW v SECURITY INVOKER AS SELECT 1`
+- `tests/dialects/test_bigquery.py`:104 `test_bigquery` via `validate_identity`: `CREATE SCHEMA x DEFAULT COLLATE 'en'`
+  - expected: `CREATE SCHEMA x`
+  - actual: `CREATE SCHEMA x DEFAULT COLLATE 'en'`
+- `tests/dialects/test_bigquery.py`:380 `test_bigquery` via `validate_identity`: `CREATE TEMPORARY FUNCTION FOO() RETURNS STRING LANGUAGE js AS 'return "Hello world!"'`
+  - expected: `CREATE TEMPORARY FUNCTION FOO() AS 'return "Hello world!"'`
+  - actual: `CREATE TEMPORARY FUNCTION FOO() RETURNS STRING LANGUAGE js AS 'return "Hello world!"'`
+- `tests/dialects/test_clickhouse.py`:207 `test_clickhouse` via `validate_identity`: `CREATE MATERIALIZED VIEW test_view TO db.table1 (id UInt8) AS SELECT * FROM test_data`
+  - expected: `CREATE VIEW test_view (id UInt8) AS SELECT * FROM test_data`
+  - actual: `CREATE MATERIALIZED VIEW test_view TO db.table1 (id UInt8) AS SELECT * FROM test_data`
 
 ### `mismatch` `DDL/create-table rendering`
 

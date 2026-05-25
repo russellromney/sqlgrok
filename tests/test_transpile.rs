@@ -1754,6 +1754,37 @@ fn test_identity_views() {
 }
 
 #[test]
+fn test_create_view_sql_security_to_sqlite() {
+    let cases = [
+        "CREATE VIEW v SQL SECURITY INVOKER AS SELECT 1",
+        "CREATE VIEW v SECURITY INVOKER AS SELECT 1",
+        "CREATE SQL SECURITY INVOKER VIEW v AS SELECT 1",
+        "CREATE VIEW v SQL SECURITY DEFINER AS SELECT 1",
+        "CREATE VIEW v SECURITY DEFINER AS SELECT 1",
+    ];
+    for sql in cases {
+        validate_with_dialect(
+            sql,
+            "CREATE VIEW v AS SELECT 1",
+            Dialect::Postgres,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            sql,
+            "CREATE VIEW v AS SELECT 1",
+            Dialect::Mysql,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            sql,
+            "CREATE VIEW v AS SELECT 1",
+            Dialect::Sqlite,
+            Dialect::Sqlite,
+        );
+    }
+}
+
+#[test]
 fn test_create_index_to_sqlite() {
     validate_with_dialect(
         "CREATE INDEX idx ON x (a)",
