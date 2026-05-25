@@ -1283,6 +1283,7 @@ impl Parser {
                         | "FULL"
                         | "CROSS"
                         | "NATURAL"
+                        | "STRAIGHT_JOIN"
                         | "ON"
                         | "WINDOW"
                         | "QUALIFY"
@@ -1879,6 +1880,12 @@ impl Parser {
                     self.expect(TokenType::Join)?;
                     JoinType::Cross
                 }
+                TokenType::Identifier
+                    if self.peek().value.eq_ignore_ascii_case("STRAIGHT_JOIN") =>
+                {
+                    self.advance();
+                    JoinType::Straight
+                }
                 TokenType::Identifier if self.peek().value.eq_ignore_ascii_case("NATURAL") => {
                     self.advance();
                     self.expect(TokenType::Join)?;
@@ -2155,6 +2162,12 @@ impl Parser {
             });
         };
 
+        let source_alias = if self.match_token(TokenType::As) {
+            Some(self.expect_name()?)
+        } else {
+            None
+        };
+
         // ON CONFLICT
         let on_conflict = if self.match_token(TokenType::On) {
             if self.match_token(TokenType::Conflict) {
@@ -2257,6 +2270,7 @@ impl Parser {
             table,
             columns,
             source,
+            source_alias,
             on_conflict,
             returning,
         })
@@ -4296,58 +4310,8 @@ impl Parser {
         }
 
         if self.match_token(TokenType::Over) {
-            let spec = if self.match_token(TokenType::LParen) {
-                let ws = self.parse_window_spec()?;
-                self.expect(TokenType::RParen)?;
-                ws
-            } else {
-                // Named window reference
-                let wref = self.expect_name()?;
-                WindowSpec {
-                    window_ref: Some(wref),
-                    partition_by: vec![],
-                    order_by: vec![],
-                    frame: None,
-                }
-            };
-            match expr {
-                Expr::Function {
-                    name,
-                    args,
-                    distinct,
-                    filter,
-                    ..
-                } => {
-                    expr = Expr::Function {
-                        name,
-                        args,
-                        distinct,
-                        filter,
-                        over: Some(spec),
-                    };
-                }
-                Expr::TypedFunction { func, filter, .. } => {
-                    expr = Expr::TypedFunction {
-                        func,
-                        filter,
-                        over: Some(spec),
-                    };
-                }
-                Expr::WithinGroup {
-                    expr: inner,
-                    order_by,
-                    filter,
-                    ..
-                } => {
-                    expr = Expr::WithinGroup {
-                        expr: inner,
-                        order_by,
-                        filter,
-                        over: Some(spec),
-                    };
-                }
-                _ => {}
-            }
+            let spec = self.parse_over_spec()?;
+            expr = Self::attach_over_spec(expr, spec);
         }
 
         // FILTER (WHERE ...) for aggregate functions
@@ -4396,7 +4360,62 @@ impl Parser {
             }
         }
 
+        if self.match_token(TokenType::Over) {
+            let spec = self.parse_over_spec()?;
+            expr = Self::attach_over_spec(expr, spec);
+        }
+
         Ok(expr)
+    }
+
+    fn parse_over_spec(&mut self) -> Result<WindowSpec> {
+        if self.match_token(TokenType::LParen) {
+            let spec = self.parse_window_spec()?;
+            self.expect(TokenType::RParen)?;
+            Ok(spec)
+        } else {
+            Ok(WindowSpec {
+                window_ref: Some(self.expect_name()?),
+                partition_by: vec![],
+                order_by: vec![],
+                frame: None,
+            })
+        }
+    }
+
+    fn attach_over_spec(expr: Expr, spec: WindowSpec) -> Expr {
+        match expr {
+            Expr::Function {
+                name,
+                args,
+                distinct,
+                filter,
+                ..
+            } => Expr::Function {
+                name,
+                args,
+                distinct,
+                filter,
+                over: Some(spec),
+            },
+            Expr::TypedFunction { func, filter, .. } => Expr::TypedFunction {
+                func,
+                filter,
+                over: Some(spec),
+            },
+            Expr::WithinGroup {
+                expr,
+                order_by,
+                filter,
+                ..
+            } => Expr::WithinGroup {
+                expr,
+                order_by,
+                filter,
+                over: Some(spec),
+            },
+            other => other,
+        }
     }
 
     fn consume_null_treatment(&mut self) -> bool {
@@ -4660,6 +4679,10 @@ impl Parser {
                     name.push('@');
                 }
                 name.push_str(&self.expect_name()?);
+                while self.match_token(TokenType::Dot) {
+                    name.push('.');
+                    name.push_str(&self.expect_name()?);
+                }
                 Ok(Expr::Column {
                     table: None,
                     name,
@@ -4943,6 +4966,26 @@ impl Parser {
                         self.parse_expr_list()?
                     };
                     self.expect(TokenType::RParen)?;
+
+                    if name.eq_ignore_ascii_case("MATCH") && self.match_keyword("AGAINST") {
+                        self.expect(TokenType::LParen)?;
+                        self.parse_raw_function_args()?;
+                        let start = self.char_pos_to_byte(name_token.position);
+                        let end = self
+                            .tokens
+                            .get(self.pos.saturating_sub(1))
+                            .map(|token| {
+                                self.char_pos_to_byte(token.position + token.value.chars().count())
+                            })
+                            .unwrap_or(start);
+                        return Ok(Expr::Function {
+                            name: "__RAW_EXPR__".to_string(),
+                            args: vec![Expr::StringLiteral(self.sql[start..end].to_string())],
+                            distinct: false,
+                            filter: None,
+                            over: None,
+                        });
+                    }
 
                     // Try to construct a typed function variant. Keep COUNT() as
                     // a raw function because SQLGlot preserves the empty call.

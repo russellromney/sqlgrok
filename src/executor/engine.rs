@@ -202,7 +202,9 @@ impl<'a> ExecutionContext<'a> {
         let right_rows = self.resolve_table_source(&join.table)?;
 
         match join.join_type {
-            JoinType::Inner => self.inner_join(left_rows, &right_rows, &join.on, &join.using),
+            JoinType::Inner | JoinType::Straight => {
+                self.inner_join(left_rows, &right_rows, &join.on, &join.using)
+            }
             JoinType::Left => self.left_join(left_rows, &right_rows, &join.on, &join.using),
             JoinType::Right => self.right_join(left_rows, &right_rows, &join.on, &join.using),
             JoinType::Full => self.full_join(left_rows, &right_rows, &join.on, &join.using),

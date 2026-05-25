@@ -8,33 +8,33 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8423 |
-| `mismatch` | 3806 |
+| `match` | 8436 |
+| `mismatch` | 3799 |
 | `oracle-error` | 1549 |
-| `rust-error` | 1249 |
+| `rust-error` | 1243 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 8423 |
-| `mismatch` | `sqlite` | `sqlite` | 3806 |
+| `match` | `sqlite` | `sqlite` | 8436 |
+| `mismatch` | `sqlite` | `sqlite` | 3799 |
 | `oracle-error` | `sqlite` | `sqlite` | 1549 |
-| `rust-error` | `sqlite` | `sqlite` | 1249 |
+| `rust-error` | `sqlite` | `sqlite` | 1243 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5921 |
-| `mismatch` | `validate_all` | 2740 |
-| `match` | `validate_identity` | 2418 |
+| `match` | `validate_all` | 5931 |
+| `mismatch` | `validate_all` | 2733 |
+| `match` | `validate_identity` | 2421 |
 | `oracle-error` | `validate_identity` | 993 |
 | `mismatch` | `validate_identity` | 986 |
-| `rust-error` | `validate_identity` | 662 |
-| `rust-error` | `validate_all` | 577 |
+| `rust-error` | `validate_identity` | 659 |
+| `rust-error` | `validate_all` | 574 |
 | `oracle-error` | `validate_all` | 547 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 84 |
@@ -69,7 +69,7 @@ Total rows: `15164`
 | `rust-error` | `CREATE TABLE` | 99 |
 | `mismatch` | `SELECT UNNEST()` | 90 |
 | `match` | `SELECT DATEDIFF()` | 83 |
-| `match` | `WITH` | 81 |
+| `match` | `WITH` | 83 |
 | `match` | `SET` | 78 |
 | `mismatch` | `DATE_ADD()` | 78 |
 | `match` | `DATE_TRUNC()` | 71 |
@@ -77,9 +77,9 @@ Total rows: `15164`
 | `match` | `SELECT CAST()` | 64 |
 | `match` | `GRANT` | 62 |
 | `match` | `ANALYZE` | 60 |
-| `mismatch` | `WITH` | 59 |
 | `mismatch` | `CAST()` | 57 |
 | `mismatch` | `TIME_STR_TO_TIME()` | 57 |
+| `mismatch` | `WITH` | 57 |
 | `match` | `A` | 56 |
 | `match` | `REGEXP_INSTR()` | 56 |
 | `match` | `REVOKE` | 56 |
@@ -165,9 +165,9 @@ Total rows: `15164`
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 27 |
 | `mismatch` | `json rendering: JSON_EXTRACT()` | 27 |
 | `mismatch` | `MONTH()` | 26 |
-| `mismatch` | `WITH` | 25 |
 | `mismatch` | `YEAR()` | 24 |
 | `mismatch` | `date/time rendering: CREATE` | 24 |
+| `mismatch` | `WITH` | 23 |
 | `mismatch` | `SELECT REGEXP_EXTRACT()` | 22 |
 | `mismatch` | `cast/type rendering: SELECT EXTRACT()` | 22 |
 | `mismatch` | `SHA256()` | 21 |
@@ -186,14 +186,14 @@ Total rows: `15164`
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 833 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 415 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 313 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 295 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 299 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 286 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 229 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 224 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 193 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 182 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 177 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 175 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 171 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 170 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 128 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 117 |

@@ -81,6 +81,7 @@ this file records what landed.
 - Added a Postgres `COMMENT ON ...` raw carrier with dollar-quoted body normalization, reducing forced-suite rust-errors to `1295`/`1323`/`1280` for MySQL/Postgres/SQLite with no row-level regressions.
 - Matched SQLite-targeted `TABLESAMPLE` dropping for table sources, reducing forced-suite rust-errors to `1284`/`1312`/`1269` for MySQL/Postgres/SQLite with no row-level regressions.
 - Matched SQLGlot's `BEGIN` normalization plus Postgres transaction-option dropping and MySQL partition/locking table-tail carriers, reducing forced-suite rust-errors to `1264`/`1292`/`1249` for MySQL/Postgres/SQLite with no row-level regressions.
+- Added a broader forced-suite parser-carrier batch for MySQL `MATCH ... AGAINST`, `STRAIGHT_JOIN`, dotted `@@GLOBAL` variables, aliased `VALUES` upserts, and Postgres aggregate `FILTER(...) OVER (...)` suffixes; refreshed forced reports now show MySQL/Postgres/SQLite rust-errors down to `1251`/`1280`/`1243` with no row-level regressions.
 
 ## 2026-05-20
 

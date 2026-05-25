@@ -724,6 +724,7 @@ impl Generator {
             JoinType::Comma => ",",
             JoinType::Natural => "NATURAL JOIN",
             JoinType::Lateral => "LATERAL JOIN",
+            JoinType::Straight => "STRAIGHT_JOIN",
         };
         if join.join_type == JoinType::Comma {
             self.write(",");
@@ -858,8 +859,25 @@ impl Generator {
             self.write(")");
         }
 
-        match &ins.source {
-            InsertSource::Values(rows) => {
+        match (&ins.source, &ins.source_alias) {
+            (InsertSource::Values(rows), Some(alias)) => {
+                self.sep();
+                self.write("(");
+                self.write_keyword("VALUES");
+                self.write(" ");
+                for (i, row) in rows.iter().enumerate() {
+                    if i > 0 {
+                        self.write(", ");
+                    }
+                    self.write("(");
+                    self.gen_expr_list(row);
+                    self.write(")");
+                }
+                self.write(")");
+                self.write_keyword(" AS ");
+                self.write(alias);
+            }
+            (InsertSource::Values(rows), None) => {
                 self.sep();
                 self.write_keyword("VALUES");
                 if self.pretty {
@@ -886,11 +904,19 @@ impl Generator {
                     }
                 }
             }
-            InsertSource::Query(query) => {
+            (InsertSource::Query(query), alias) => {
                 self.sep();
-                self.gen_statement(query);
+                if let Some(alias) = alias {
+                    self.write("(");
+                    self.gen_statement(query);
+                    self.write(")");
+                    self.write_keyword(" AS ");
+                    self.write(alias);
+                } else {
+                    self.gen_statement(query);
+                }
             }
-            InsertSource::Default => {
+            (InsertSource::Default, _) => {
                 self.sep();
                 self.write_keyword("DEFAULT VALUES");
             }
@@ -2060,6 +2086,13 @@ impl Generator {
                 filter,
                 over,
             } => {
+                if name.eq_ignore_ascii_case("__RAW_EXPR__")
+                    && args.len() == 1
+                    && let Expr::StringLiteral(raw_sql) = &args[0]
+                {
+                    self.write(raw_sql);
+                    return;
+                }
                 if name.eq_ignore_ascii_case("ARRAY")
                     && args.len() == 1
                     && let Expr::Subquery(query) = &args[0]
@@ -2098,7 +2131,7 @@ impl Generator {
 
                 if let Some(filter_expr) = filter {
                     self.write(" ");
-                    self.write_keyword("FILTER (WHERE ");
+                    self.write_keyword("FILTER(WHERE ");
                     self.gen_expr(filter_expr);
                     self.write(")");
                 }
@@ -2493,7 +2526,7 @@ impl Generator {
 
                 if let Some(filter_expr) = filter {
                     self.write(" ");
-                    self.write_keyword("FILTER (WHERE ");
+                    self.write_keyword("FILTER(WHERE ");
                     self.gen_expr(filter_expr);
                     self.write(")");
                 }

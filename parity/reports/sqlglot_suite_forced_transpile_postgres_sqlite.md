@@ -13,23 +13,23 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8792 |
-| `mismatch` | 3486 |
+| `match` | 8816 |
+| `mismatch` | 3474 |
 | `oracle-error` | 1457 |
-| `rust-error` | 1292 |
+| `rust-error` | 1280 |
 | `unsupported-harness-shape` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 6192 |
-| `match` | `validate_identity` | 2507 |
-| `mismatch` | `validate_all` | 2479 |
+| `match` | `validate_all` | 6212 |
+| `match` | `validate_identity` | 2511 |
+| `mismatch` | `validate_all` | 2466 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 933 |
-| `rust-error` | `validate_identity` | 670 |
-| `rust-error` | `validate_all` | 612 |
+| `mismatch` | `validate_identity` | 934 |
+| `rust-error` | `validate_identity` | 665 |
+| `rust-error` | `validate_all` | 605 |
 | `oracle-error` | `validate_all` | 502 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 93 |
@@ -45,7 +45,7 @@ Filtered by read/write: `0`
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 859 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 443 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 345 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 349 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 309 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 285 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 228 |
@@ -54,7 +54,7 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 191 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 180 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 170 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 139 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 135 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 125 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 110 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 108 |

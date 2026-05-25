@@ -337,6 +337,8 @@ pub enum JoinType {
     Natural,
     /// LATERAL JOIN
     Lateral,
+    /// MySQL STRAIGHT_JOIN
+    Straight,
 }
 
 /// An ORDER BY item.
@@ -1558,6 +1560,9 @@ pub struct InsertStatement {
     pub table: TableRef,
     pub columns: Vec<String>,
     pub source: InsertSource,
+    /// Optional source alias after VALUES/query source.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_alias: Option<String>,
     /// ON CONFLICT / ON DUPLICATE KEY
     pub on_conflict: Option<OnConflict>,
     /// RETURNING clause

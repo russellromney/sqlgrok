@@ -1382,7 +1382,10 @@ fn test_identity_window_frames() {
 
 #[test]
 fn test_identity_window_filter() {
-    validate_identity("SELECT SUM(x) FILTER (WHERE x > 1)");
+    validate(
+        "SELECT SUM(x) FILTER (WHERE x > 1)",
+        "SELECT SUM(x) FILTER(WHERE x > 1)",
+    );
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -3238,8 +3241,14 @@ fn test_typed_first_last_value() {
 
 #[test]
 fn test_typed_window_with_filter() {
-    validate_identity("SELECT COUNT(*) FILTER (WHERE active) FROM t");
-    validate_identity("SELECT SUM(amount) FILTER (WHERE status = 'paid') FROM orders");
+    validate(
+        "SELECT COUNT(*) FILTER (WHERE active) FROM t",
+        "SELECT COUNT(*) FILTER(WHERE active) FROM t",
+    );
+    validate(
+        "SELECT SUM(amount) FILTER (WHERE status = 'paid') FROM orders",
+        "SELECT SUM(amount) FILTER(WHERE status = 'paid') FROM orders",
+    );
 }
 
 // ── Math typed functions ──
@@ -4565,4 +4574,51 @@ fn test_large_similar_to_sqlglot_shaped_corpus() {
     for (sql, expected) in cases {
         validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
     }
+}
+
+#[test]
+fn test_mysql_match_against_sqlglot_shapes() {
+    let cases = [
+        "MATCH(col1, col2) AGAINST('abc' IN NATURAL LANGUAGE MODE)",
+        "MATCH(col1, col2) AGAINST('abc' IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)",
+        "MATCH(col1, col2) AGAINST('abc' IN BOOLEAN MODE)",
+        "MATCH(col1, col2) AGAINST('abc' WITH QUERY EXPANSION)",
+        "SELECT MATCH(name) AGAINST('search term') FROM products",
+    ];
+
+    for sql in cases {
+        validate_with_dialect(sql, sql, Dialect::Mysql, Dialect::Sqlite);
+    }
+}
+
+#[test]
+fn test_mysql_raw_parser_carriers_from_forced_suite() {
+    validate_with_dialect(
+        "SELECT e.* FROM e STRAIGHT_JOIN p ON e.x = p.y",
+        "SELECT e.* FROM e STRAIGHT_JOIN p ON e.x = p.y",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "@@GLOBAL.max_connections",
+        "@@GLOBAL.max_connections",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "INSERT INTO things (a, b) VALUES (1, 2) AS new_data ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), a = new_data.a, b = new_data.b",
+        "INSERT INTO things (a, b) (VALUES (1, 2)) AS new_data ON DUPLICATE KEY UPDATE SET id = LAST_INSERT_ID(id), a = new_data.a, b = new_data.b",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_postgres_filter_over_suffix_order() {
+    validate_with_dialect(
+        "SELECT CORR(a, b) FILTER(WHERE c > 0) OVER (PARTITION BY d)",
+        "SELECT CORR(a, b) FILTER(WHERE c > 0) OVER (PARTITION BY d)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
 }
