@@ -1382,6 +1382,10 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             path: Box::new(normalize_json_access_path(*path, target)),
             as_text,
         },
+        Expr::Alias { expr, name } => Expr::Alias {
+            expr: Box::new(transform_expr(*expr, source, target)),
+            name,
+        },
         Expr::Nested(inner) => Expr::Nested(Box::new(transform_expr(*inner, source, target))),
         Expr::WithinGroup {
             expr,

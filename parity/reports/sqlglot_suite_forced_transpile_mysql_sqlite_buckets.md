@@ -8,8 +8,8 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7435 |
-| `mismatch` | 4172 |
+| `match` | 7437 |
+| `mismatch` | 4170 |
 | `oracle-error` | 1743 |
 | `rust-error` | 1677 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15164`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 7435 |
-| `mismatch` | `mysql` | `sqlite` | 4172 |
+| `match` | `mysql` | `sqlite` | 7437 |
+| `mismatch` | `mysql` | `sqlite` | 4170 |
 | `oracle-error` | `mysql` | `sqlite` | 1743 |
 | `rust-error` | `mysql` | `sqlite` | 1677 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -37,8 +37,8 @@ Total rows: `15164`
 | `rust-error` | `validate_identity` | 780 |
 | `oracle-error` | `validate_all` | 599 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `mismatch` | `validate` | 84 |
-| `match` | `validate` | 71 |
+| `mismatch` | `validate` | 82 |
+| `match` | `validate` | 73 |
 | `rust-error` | `validate` | 19 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
@@ -83,7 +83,7 @@ Total rows: `15164`
 | `mismatch` | `WITH` | 61 |
 | `match` | `ANALYZE` | 60 |
 | `oracle-error` | `SELECT OPTION()` | 60 |
-| `match` | `A` | 56 |
+| `match` | `A` | 57 |
 | `match` | `REGEXP_INSTR()` | 56 |
 | `match` | `REVOKE` | 56 |
 | `rust-error` | `SELECT CAST()` | 55 |
@@ -138,7 +138,7 @@ Total rows: `15164`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 320 |
+| `mismatch` | `missing AS or alias rendering` | 316 |
 | `mismatch` | `DDL/create-table rendering` | 276 |
 | `mismatch` | `case-only rendering difference` | 159 |
 | `mismatch` | `SELECT` | 155 |
@@ -444,15 +444,15 @@ Total rows: `15164`
 
 ### `mismatch` `missing AS or alias rendering`
 
-- `tests/test_transpile.py`:685 `test_not_range` via `validate`: `a LIKE TEXT 'y'`
-  - expected: `a LIKE CAST('y' AS TEXT)`
-  - actual: `a LIKE TEXT`
 - `tests/test_transpile.py`:771 `test_time` via `validate`: `TIMESTAMP WITHOUT TIME ZONE '2020-01-01'`
   - expected: `CAST('2020-01-01' AS TIMESTAMPTZ)`
   - actual: `TIMESTAMP`
 - `tests/test_transpile.py`:836 `test_time` via `validate`: `TIME_TO_TIME_STR(x)`
   - expected: `CAST(x AS TEXT)`
   - actual: `TIME_TO_TIME_STR(x)`
+- `tests/dialects/test_bigquery.py`:3819 `test_bignumeric` via `validate_all`: `SELECT BIGNUMERIC '1'`
+  - expected: `SELECT CAST('1' AS BIGDECIMAL)`
+  - actual: `SELECT BIGNUMERIC`
 
 ### `mismatch` `missing quoted identifier`
 

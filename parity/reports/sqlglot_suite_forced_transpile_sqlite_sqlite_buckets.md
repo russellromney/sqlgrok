@@ -8,8 +8,8 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7965 |
-| `mismatch` | 3811 |
+| `match` | 7967 |
+| `mismatch` | 3809 |
 | `oracle-error` | 1549 |
 | `rust-error` | 1702 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15164`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 7965 |
-| `mismatch` | `sqlite` | `sqlite` | 3811 |
+| `match` | `sqlite` | `sqlite` | 7967 |
+| `mismatch` | `sqlite` | `sqlite` | 3809 |
 | `rust-error` | `sqlite` | `sqlite` | 1702 |
 | `oracle-error` | `sqlite` | `sqlite` | 1549 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -37,8 +37,8 @@ Total rows: `15164`
 | `rust-error` | `validate_identity` | 832 |
 | `oracle-error` | `validate_all` | 547 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `mismatch` | `validate` | 83 |
-| `match` | `validate` | 72 |
+| `mismatch` | `validate` | 81 |
+| `match` | `validate` | 74 |
 | `rust-error` | `validate` | 19 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
@@ -81,10 +81,10 @@ Total rows: `15164`
 | `match` | `ANALYZE` | 60 |
 | `match` | `SELECT CAST()` | 57 |
 | `mismatch` | `TIME_STR_TO_TIME()` | 57 |
+| `match` | `A` | 56 |
 | `match` | `REGEXP_INSTR()` | 56 |
 | `match` | `REVOKE` | 56 |
 | `mismatch` | `WITH` | 56 |
-| `match` | `A` | 55 |
 | `match` | `SELECT TO_TIMESTAMP()` | 55 |
 | `match` | `SELECT UNNEST()` | 55 |
 | `rust-error` | `SELECT CAST()` | 54 |
@@ -138,7 +138,7 @@ Total rows: `15164`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 427 |
+| `mismatch` | `missing AS or alias rendering` | 423 |
 | `mismatch` | `DDL/create-table rendering` | 255 |
 | `mismatch` | `missing quoted identifier` | 245 |
 | `mismatch` | `case-only rendering difference` | 212 |

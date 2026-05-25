@@ -1785,6 +1785,19 @@ fn test_create_view_sql_security_to_sqlite() {
 }
 
 #[test]
+fn test_typed_literals_to_sqlite_casts() {
+    let cases = [
+        ("INT 1", "CAST(1 AS INTEGER)"),
+        ("a LIKE TEXT 'y'", "a LIKE CAST('y' AS TEXT)"),
+    ];
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
+        validate_with_dialect(sql, expected, Dialect::Mysql, Dialect::Sqlite);
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
+}
+
+#[test]
 fn test_create_index_to_sqlite() {
     validate_with_dialect(
         "CREATE INDEX idx ON x (a)",

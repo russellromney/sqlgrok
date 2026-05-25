@@ -65,6 +65,7 @@ this file records what landed.
 - Burned down the first forced-suite function mismatch cluster by matching SQLite-targeted `LOCATE`, `STR_POSITION`, `NVL2`, and `DECODE` rewrites across MySQL, Postgres, and SQLite source modes, including positioned string search, two-argument `NVL2`, and null-safe `DECODE` expression comparisons.
 - Preserved quoted reserved-word implicit select aliases such as `SELECT x "union"` so SQLite-targeted output matches SQLGlot's `AS "union"` rendering.
 - Matched SQLGlot's SQLite-targeted `CREATE VIEW` handling for `SQL SECURITY` / `SECURITY` properties by parsing and dropping those unsupported view options.
+- Matched SQLGlot's typed-literal SQLite casts for `INT 1` and predicate-side `TEXT 'x'` forms, improving each forced MySQL/Postgres/SQLite-to-SQLite lane by two matches without increasing rust-errors.
 
 ## 2026-05-20
 

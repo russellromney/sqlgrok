@@ -4057,6 +4057,19 @@ impl Parser {
                     },
                 })
             }
+            _ if self.is_typed_literal_data_type_start()
+                && self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(Self::is_typed_literal_value_token) =>
+            {
+                let data_type = self.parse_data_type()?;
+                let expr = self.parse_primary()?;
+                Ok(Expr::Cast {
+                    expr: Box::new(expr),
+                    data_type,
+                })
+            }
             TokenType::Star => {
                 self.advance();
                 Ok(Expr::Wildcard)
@@ -4431,6 +4444,27 @@ impl Parser {
                 | TokenType::Array
                 | TokenType::Map
                 | TokenType::Struct
+        )
+    }
+
+    fn is_typed_literal_data_type_start(&self) -> bool {
+        matches!(
+            self.peek_type(),
+            TokenType::Int | TokenType::Integer | TokenType::Varchar | TokenType::Text
+        ) || matches!(self.peek_type(), TokenType::Identifier)
+            && matches!(self.peek().value.to_uppercase().as_str(), "STRING")
+    }
+
+    fn is_typed_literal_value_token(token: &Token) -> bool {
+        matches!(
+            token.token_type,
+            TokenType::Number
+                | TokenType::String
+                | TokenType::EscapedString
+                | TokenType::True
+                | TokenType::False
+                | TokenType::Null
+                | TokenType::Parameter
         )
     }
 

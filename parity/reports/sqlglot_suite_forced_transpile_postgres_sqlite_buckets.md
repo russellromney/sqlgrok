@@ -8,8 +8,8 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8293 |
-| `mismatch` | 3529 |
+| `match` | 8295 |
+| `mismatch` | 3527 |
 | `oracle-error` | 1457 |
 | `rust-error` | 1748 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15164`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 8293 |
-| `mismatch` | `postgres` | `sqlite` | 3529 |
+| `match` | `postgres` | `sqlite` | 8295 |
+| `mismatch` | `postgres` | `sqlite` | 3527 |
 | `rust-error` | `postgres` | `sqlite` | 1748 |
 | `oracle-error` | `postgres` | `sqlite` | 1457 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -37,8 +37,8 @@ Total rows: `15164`
 | `rust-error` | `validate_identity` | 842 |
 | `oracle-error` | `validate_all` | 502 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `match` | `validate` | 80 |
-| `mismatch` | `validate` | 78 |
+| `match` | `validate` | 82 |
+| `mismatch` | `validate` | 76 |
 | `rust-error` | `validate` | 19 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 6 |
@@ -81,7 +81,7 @@ Total rows: `15164`
 | `mismatch` | `WITH` | 61 |
 | `match` | `ANALYZE` | 60 |
 | `match` | `REVOKE` | 59 |
-| `match` | `A` | 57 |
+| `match` | `A` | 58 |
 | `mismatch` | `TIME_STR_TO_TIME()` | 57 |
 | `match` | `REGEXP_INSTR()` | 56 |
 | `rust-error` | `SELECT CAST()` | 56 |
@@ -139,7 +139,7 @@ Total rows: `15164`
 | Status | Signature | Count |
 | --- | --- | ---: |
 | `mismatch` | `DDL/create-table rendering` | 273 |
-| `mismatch` | `missing AS or alias rendering` | 271 |
+| `mismatch` | `missing AS or alias rendering` | 267 |
 | `mismatch` | `case-only rendering difference` | 215 |
 | `mismatch` | `SELECT` | 123 |
 | `mismatch` | `CREATE` | 121 |
@@ -456,15 +456,15 @@ Total rows: `15164`
 
 ### `mismatch` `missing AS or alias rendering`
 
-- `tests/test_transpile.py`:685 `test_not_range` via `validate`: `a LIKE TEXT 'y'`
-  - expected: `a LIKE CAST('y' AS TEXT)`
-  - actual: `a LIKE TEXT`
 - `tests/test_transpile.py`:771 `test_time` via `validate`: `TIMESTAMP WITHOUT TIME ZONE '2020-01-01'`
   - expected: `CAST('2020-01-01' AS TIMESTAMP)`
   - actual: `TIMESTAMP`
 - `tests/test_transpile.py`:836 `test_time` via `validate`: `TIME_TO_TIME_STR(x)`
   - expected: `CAST(x AS TEXT)`
   - actual: `TIME_TO_TIME_STR(x)`
+- `tests/dialects/test_bigquery.py`:3819 `test_bignumeric` via `validate_all`: `SELECT BIGNUMERIC '1'`
+  - expected: `SELECT CAST('1' AS BIGDECIMAL)`
+  - actual: `SELECT BIGNUMERIC`
 
 ### `oracle-error` `oracle parse: Expecting )`
 
