@@ -1221,6 +1221,9 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                             over,
                         };
                     }
+                    TypedFunction::ParseJSON { expr } => {
+                        return transform_expr(*expr, source, target);
+                    }
                     TypedFunction::Substring {
                         expr,
                         start,

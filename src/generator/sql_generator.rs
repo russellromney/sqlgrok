@@ -1872,6 +1872,7 @@ impl Generator {
             BinaryOperator::LtEq => " <= ",
             BinaryOperator::GtEq => " >= ",
             BinaryOperator::NullSafeEq => " <=> ",
+            BinaryOperator::FatArrow => " => ",
             BinaryOperator::Assign => " := ",
             BinaryOperator::And => " AND ",
             BinaryOperator::Or => " OR ",

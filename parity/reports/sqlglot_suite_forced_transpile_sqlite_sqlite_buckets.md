@@ -8,19 +8,19 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8046 |
-| `mismatch` | 3814 |
+| `match` | 8121 |
+| `mismatch` | 3789 |
 | `oracle-error` | 1549 |
-| `rust-error` | 1618 |
+| `rust-error` | 1568 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 8046 |
-| `mismatch` | `sqlite` | `sqlite` | 3814 |
-| `rust-error` | `sqlite` | `sqlite` | 1618 |
+| `match` | `sqlite` | `sqlite` | 8121 |
+| `mismatch` | `sqlite` | `sqlite` | 3789 |
+| `rust-error` | `sqlite` | `sqlite` | 1568 |
 | `oracle-error` | `sqlite` | `sqlite` | 1549 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
@@ -28,13 +28,13 @@ Total rows: `15164`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5714 |
-| `mismatch` | `validate_all` | 2748 |
-| `match` | `validate_identity` | 2255 |
+| `match` | `validate_all` | 5752 |
+| `mismatch` | `validate_all` | 2734 |
+| `match` | `validate_identity` | 2292 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 985 |
-| `rust-error` | `validate_identity` | 826 |
-| `rust-error` | `validate_all` | 776 |
+| `mismatch` | `validate_identity` | 974 |
+| `rust-error` | `validate_identity` | 800 |
+| `rust-error` | `validate_all` | 752 |
 | `oracle-error` | `validate_all` | 547 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `mismatch` | `validate` | 81 |
@@ -53,13 +53,13 @@ Total rows: `15164`
 | `mismatch` | `CREATE TABLE` | 268 |
 | `match` | `SELECT operator multiply` | 215 |
 | `match` | `SHOW` | 215 |
-| `mismatch` | `SELECT` | 203 |
+| `mismatch` | `SELECT` | 204 |
 | `oracle-error` | `SELECT` | 198 |
 | `mismatch` | `CREATE` | 178 |
 | `match` | `CREATE TABLE` | 166 |
 | `match` | `CREATE` | 165 |
 | `match` | `TRUNC()` | 162 |
-| `rust-error` | `SELECT` | 158 |
+| `rust-error` | `SELECT` | 157 |
 | `oracle-error` | `SELECT operator multiply` | 143 |
 | `rust-error` | `SELECT operator multiply` | 139 |
 | `mismatch` | `SELECT operator multiply` | 136 |
@@ -99,12 +99,11 @@ Total rows: `15164`
 | `unsupported-harness-shape` | `SQLGlot expects UnsupportedError` | 119 |
 | `rust-error` | `parser: Expected identifier` | 117 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: From, value: "FROM", line: 1, col: 1, position: 0, quote_char: '\0' }` | 113 |
-| `rust-error` | `parser: Expected statement` | 69 |
-| `rust-error` | `parser: Expected RParen, got FatArrow ('=>')` | 67 |
+| `rust-error` | `parser: Expected statement` | 71 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('TO')` | 34 |
 | `rust-error` | `parser: Expected RParen, got As ('AS')` | 32 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('VARYING')` | 32 |
-| `rust-error` | `parser: Expected RParen, got LParen ('(')` | 31 |
+| `rust-error` | `parser: Expected RParen, got LParen ('(')` | 32 |
 | `rust-error` | `parser: Expected RParen, got Ignore ('IGNORE')` | 30 |
 | `rust-error` | `parser: Expected RParen, got Comma (',')` | 28 |
 | `oracle-error` | `oracle parse: The number of provided arguments (2) is greater than the maximum number of supported arguments (1)` | 24 |
@@ -121,6 +120,7 @@ Total rows: `15164`
 | `oracle-error` | `oracle parse: Expecting (` | 16 |
 | `rust-error` | `parser: Expected RParen, got Order ('ORDER')` | 15 |
 | `rust-error` | `parser: Expected Join, got Union ('UNION')` | 14 |
+| `rust-error` | `parser: Expected RParen, got FatArrow ('=>')` | 14 |
 | `unsupported-harness-shape` | `identify helper option is not supported yet` | 14 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 57, position: 56, quote_char: '\0' }` | 13 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 69, position: 68, quote_char: '\0' }` | 13 |
@@ -138,7 +138,7 @@ Total rows: `15164`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 423 |
+| `mismatch` | `missing AS or alias rendering` | 425 |
 | `mismatch` | `DDL/create-table rendering` | 255 |
 | `mismatch` | `missing quoted identifier` | 245 |
 | `mismatch` | `case-only rendering difference` | 216 |
@@ -183,21 +183,21 @@ Total rows: `15164`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 798 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 367 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 319 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 280 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 261 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 803 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 390 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 315 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 277 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 262 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 225 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 224 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 193 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 180 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 177 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 175 |
-| `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 141 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 174 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 136 |
-| `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 131 |
+| `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 130 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 128 |
+| `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 121 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 117 |
 | `rust-error` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 116 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 115 |
@@ -218,8 +218,8 @@ Total rows: `15164`
 | `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 69 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 67 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 66 |
+| `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 65 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 65 |
-| `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 64 |
 | `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
 | `mismatch` | `tests/dialects/test_oracle.py` | `test_oracle` | 64 |
 | `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 63 |
@@ -583,18 +583,6 @@ Total rows: `15164`
   - expected: `SELECT col LIKE ALL (x, y, z)`
   - error: `ValueError: Parser error: Expected RParen, got Comma (',') at line 1 col 23`
 
-### `rust-error` `parser: Expected RParen, got FatArrow ('=>')`
-
-- `tests/dialects/test_bigquery.py`:106 `test_bigquery` via `validate_identity`: `PARSE_JSON('{}', wide_number_mode => 'exact')`
-  - expected: `'{}'`
-  - error: `ValueError: Parser error: Expected RParen, got FatArrow ('=>') at line 1 col 35`
-- `tests/dialects/test_bigquery.py`:111 `test_bigquery` via `validate_identity`: `SELECT SEARCH(data_to_search, 'search_query', json_scope => 'JSON_KEYS_AND_VALUES')`
-  - expected: `SELECT SEARCH(data_to_search, 'search_query', json_scope => 'JSON_KEYS_AND_VALUES')`
-  - error: `ValueError: Parser error: Expected RParen, got FatArrow ('=>') at line 1 col 58`
-- `tests/dialects/test_bigquery.py`:114 `test_bigquery` via `validate_identity`: `SELECT SEARCH(data_to_search, 'search_query', analyzer => 'PATTERN_ANALYZER')`
-  - expected: `SELECT SEARCH(data_to_search, 'search_query', analyzer => 'PATTERN_ANALYZER')`
-  - error: `ValueError: Parser error: Expected RParen, got FatArrow ('=>') at line 1 col 56`
-
 ### `rust-error` `parser: Expected RParen, got Identifier ('TO')`
 
 - `tests/dialects/test_druid.py`:10 `test_druid` via `validate_identity`: `SELECT CEIL(__time TO WEEK) FROM t`
@@ -642,6 +630,18 @@ Total rows: `15164`
 - `tests/dialects/test_bigquery.py`:2307 `test_remove_precision_parameterized_types` via `validate_identity`: `SELECT cola FROM (SELECT CAST('1' AS STRING(10)) AS cola UNION ALL SELECT CAST('2' AS STRING(10)) AS cola)`
   - expected: `SELECT cola FROM (SELECT CAST('1' AS TEXT(10)) AS cola UNION ALL SELECT CAST('2' AS TEXT(10)) AS cola)`
   - error: `ValueError: Parser error: Expected RParen, got LParen ('(') at line 1 col 44`
+
+### `rust-error` `parser: Expected RParen, got Respect ('RESPECT')`
+
+- `tests/dialects/test_bigquery.py`:3730 `test_approx_quantiles` via `validate_identity`: `APPROX_QUANTILES(x, 2 RESPECT NULLS)`
+  - expected: `APPROX_QUANTILES(x, 2)`
+  - error: `ValueError: Parser error: Expected RParen, got Respect ('RESPECT') at line 1 col 23`
+- `tests/dialects/test_bigquery.py`:3732 `test_approx_quantiles` via `validate_identity`: `APPROX_QUANTILES(DISTINCT x, 2 RESPECT NULLS)`
+  - expected: `APPROX_QUANTILES(DISTINCT x, 2)`
+  - error: `ValueError: Parser error: Expected RParen, got Respect ('RESPECT') at line 1 col 32`
+- `tests/dialects/test_bigquery.py`:3491 `test_approx_qunatiles` via `validate_identity`: `APPROX_QUANTILES(DISTINCT foo, 2 RESPECT NULLS)`
+  - expected: `APPROX_QUANTILES(DISTINCT foo, 2)`
+  - error: `ValueError: Parser error: Expected RParen, got Respect ('RESPECT') at line 1 col 34`
 
 ### `rust-error` `parser: Expected VALUES, SELECT, or DEFAULT VALUES after INSERT`
 

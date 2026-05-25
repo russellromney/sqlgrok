@@ -2078,6 +2078,36 @@ fn test_array_function_args_to_sqlite() {
     }
 }
 
+#[test]
+fn test_fat_arrow_named_args_to_sqlite() {
+    for dialect in [Dialect::Postgres, Dialect::Mysql, Dialect::Sqlite] {
+        validate_with_dialect(
+            "SELECT SEARCH(data_to_search, 'search_query', json_scope => 'JSON_VALUES', analyzer => 'LOG_ANALYZER')",
+            "SELECT SEARCH(data_to_search, 'search_query', json_scope => 'JSON_VALUES', analyzer => 'LOG_ANALYZER')",
+            dialect,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT ROUND(EXPR => 2.25, SCALE => 1)",
+            "SELECT ROUND(EXPR => 2.25, SCALE => 1)",
+            dialect,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT * FROM TABLE(FLATTEN(INPUT => ARRAY_CONSTRUCT(1, 2, 3, 5)))",
+            "SELECT * FROM TABLE(FLATTEN(INPUT => ARRAY_CONSTRUCT(1, 2, 3, 5)))",
+            dialect,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT PARSE_JSON('{}', wide_number_mode => 'exact')",
+            "SELECT '{}'",
+            dialect,
+            Dialect::Sqlite,
+        );
+    }
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – Postgres-style cast (::)
 // (from Python test_transpile.py::test_types)

@@ -3159,6 +3159,7 @@ impl Parser {
                 TokenType::Eq => Some(BinaryOperator::Eq),
                 TokenType::Neq => Some(BinaryOperator::Neq),
                 TokenType::NullSafeEq => Some(BinaryOperator::NullSafeEq),
+                TokenType::FatArrow => Some(BinaryOperator::FatArrow),
                 TokenType::ColonEq => Some(BinaryOperator::Assign),
                 TokenType::Lt => Some(BinaryOperator::Lt),
                 TokenType::Gt => Some(BinaryOperator::Gt),

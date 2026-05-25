@@ -1500,6 +1500,7 @@ pub enum BinaryOperator {
     LtEq,
     GtEq,
     NullSafeEq,
+    FatArrow,
     Assign,
     And,
     Or,

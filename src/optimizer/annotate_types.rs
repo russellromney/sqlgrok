@@ -735,7 +735,7 @@ fn infer_binary_op_type(
         // JSON operators
         Arrow => Some(DataType::Json),
         DoubleArrow => Some(DataType::Text),
-        Assign => right.cloned().or_else(|| left.cloned()),
+        FatArrow | Assign => right.cloned().or_else(|| left.cloned()),
     }
 }
 
