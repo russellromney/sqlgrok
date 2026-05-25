@@ -1798,6 +1798,20 @@ fn test_typed_literals_to_sqlite_casts() {
 }
 
 #[test]
+fn test_explicit_reserved_aliases_to_sqlite() {
+    let cases = [
+        ("SELECT x AS union", "SELECT x AS union"),
+        ("SELECT x AS from", "SELECT x AS from"),
+        ("SELECT x AS join", "SELECT x AS join"),
+    ];
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
+        validate_with_dialect(sql, expected, Dialect::Mysql, Dialect::Sqlite);
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
+}
+
+#[test]
 fn test_create_index_to_sqlite() {
     validate_with_dialect(
         "CREATE INDEX idx ON x (a)",

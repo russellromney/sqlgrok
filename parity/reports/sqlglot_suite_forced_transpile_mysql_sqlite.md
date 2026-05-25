@@ -13,10 +13,10 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7437 |
+| `match` | 7441 |
 | `mismatch` | 4170 |
 | `oracle-error` | 1743 |
-| `rust-error` | 1677 |
+| `rust-error` | 1673 |
 | `unsupported-harness-shape` | 137 |
 
 ## Helper Buckets
@@ -25,16 +25,16 @@ Filtered by read/write: `0`
 | --- | --- | ---: |
 | `match` | `validate_all` | 5384 |
 | `mismatch` | `validate_all` | 2924 |
-| `match` | `validate_identity` | 1980 |
+| `match` | `validate_identity` | 1981 |
 | `mismatch` | `validate_identity` | 1164 |
 | `oracle-error` | `validate_identity` | 1135 |
 | `rust-error` | `validate_all` | 878 |
-| `rust-error` | `validate_identity` | 780 |
+| `rust-error` | `validate_identity` | 779 |
 | `oracle-error` | `validate_all` | 599 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `mismatch` | `validate` | 82 |
-| `match` | `validate` | 73 |
-| `rust-error` | `validate` | 19 |
+| `match` | `validate` | 76 |
+| `rust-error` | `validate` | 16 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -71,16 +71,6 @@ Filtered by read/write: `0`
 
 ## Examples
 
-### `rust-error` `tests/test_transpile.py:51`
-
-- test: `test_alias`
-- helper: `validate`
-- read/write: `mysql` -> `sqlite`
-- sql: `SELECT x AS union`
-- expected: `SELECT x AS union`
-- actual: ``
-- error: `ValueError: Parser error: Expected identifier, got Union ('union') at line 1 col 13`
-
 ### `oracle-error` `tests/test_transpile.py:55`
 
 - test: `test_alias`
@@ -91,16 +81,6 @@ Filtered by read/write: `0`
 - actual: ``
 - error: `ParseError: Required keyword: 'expression' missing for <class 'sqlglot.expressions.query.Union'>. Line 1, Col: 14.\n  SELECT x [4munion[0m`
 
-### `rust-error` `tests/test_transpile.py:51`
-
-- test: `test_alias`
-- helper: `validate`
-- read/write: `mysql` -> `sqlite`
-- sql: `SELECT x AS from`
-- expected: `SELECT x AS from`
-- actual: ``
-- error: `ValueError: Parser error: Expected identifier, got From ('from') at line 1 col 13`
-
 ### `oracle-error` `tests/test_transpile.py:55`
 
 - test: `test_alias`
@@ -110,16 +90,6 @@ Filtered by read/write: `0`
 - expected: ``
 - actual: ``
 - error: `ParseError: Expected table name but got <Token token_type: TokenType.SENTINEL, text: SENTINEL, line: 1, col: 1, start: 0, end: 0, comments: []>. Line 1, Col: 13.\n  SELECT x [4mfrom[0m`
-
-### `rust-error` `tests/test_transpile.py:51`
-
-- test: `test_alias`
-- helper: `validate`
-- read/write: `mysql` -> `sqlite`
-- sql: `SELECT x AS join`
-- expected: `SELECT x AS join`
-- actual: ``
-- error: `ValueError: Parser error: Expected identifier, got Join ('join') at line 1 col 13`
 
 ### `oracle-error` `tests/test_transpile.py:55`
 
@@ -170,4 +140,34 @@ Filtered by read/write: `0`
 - expected: `/* comment * / DROP TABLE users -- */ SELECT 1`
 - actual: `SELECT 1`
 - error: ``
+
+### `oracle-error` `tests/test_transpile.py:654`
+
+- test: `test_comment_single_line_with_block_close`
+- helper: `validate`
+- read/write: `mysql` -> `sqlite`
+- sql: `SELECT c /* c1 /* c2 */ c3 */`
+- expected: ``
+- actual: ``
+- error: `ParseError: Invalid expression / Unexpected token. Line 1, Col: 28.\n  SELECT c /* c1 /* c2 */ c3 [4m*[0m/`
+
+### `oracle-error` `tests/test_transpile.py:658`
+
+- test: `test_comment_single_line_with_block_close`
+- helper: `validate`
+- read/write: `mysql` -> `sqlite`
+- sql: `SELECT c /* c1 /* c2 /* c3 */ */ */`
+- expected: ``
+- actual: ``
+- error: `ParseError: Required keyword: 'expression' missing for <class 'sqlglot.expressions.core.Mul'>. Line 1, Col: 32.\n  SELECT c /* c1 /* c2 /* c3 */ *[4m/[0m */`
+
+### `oracle-error` `tests/test_transpile.py:119`
+
+- test: `test_comments`
+- helper: `validate`
+- read/write: `mysql` -> `sqlite`
+- sql: `select /* asfd /* asdf */ asdf */ 1`
+- expected: ``
+- actual: ``
+- error: `ParseError: Required keyword: 'expression' missing for <class 'sqlglot.expressions.core.Mul'>. Line 1, Col: 33.\n  select /* asfd /* asdf */ asdf *[4m/[0m 1`
 

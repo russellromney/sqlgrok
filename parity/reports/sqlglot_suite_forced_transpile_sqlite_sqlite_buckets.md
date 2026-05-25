@@ -8,19 +8,19 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7967 |
+| `match` | 7971 |
 | `mismatch` | 3809 |
 | `oracle-error` | 1549 |
-| `rust-error` | 1702 |
+| `rust-error` | 1698 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 7967 |
+| `match` | `sqlite` | `sqlite` | 7971 |
 | `mismatch` | `sqlite` | `sqlite` | 3809 |
-| `rust-error` | `sqlite` | `sqlite` | 1702 |
+| `rust-error` | `sqlite` | `sqlite` | 1698 |
 | `oracle-error` | `sqlite` | `sqlite` | 1549 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
@@ -30,16 +30,16 @@ Total rows: `15164`
 | --- | --- | ---: |
 | `match` | `validate_all` | 5644 |
 | `mismatch` | `validate_all` | 2743 |
-| `match` | `validate_identity` | 2249 |
+| `match` | `validate_identity` | 2250 |
 | `oracle-error` | `validate_identity` | 993 |
 | `mismatch` | `validate_identity` | 985 |
 | `rust-error` | `validate_all` | 851 |
-| `rust-error` | `validate_identity` | 832 |
+| `rust-error` | `validate_identity` | 831 |
 | `oracle-error` | `validate_all` | 547 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `mismatch` | `validate` | 81 |
-| `match` | `validate` | 74 |
-| `rust-error` | `validate` | 19 |
+| `match` | `validate` | 77 |
+| `rust-error` | `validate` | 16 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -48,7 +48,7 @@ Total rows: `15164`
 
 | Status | Shape | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 567 |
+| `match` | `SELECT` | 571 |
 | `match` | `CAST()` | 439 |
 | `mismatch` | `CREATE TABLE` | 268 |
 | `match` | `SELECT operator multiply` | 215 |
@@ -58,8 +58,8 @@ Total rows: `15164`
 | `mismatch` | `CREATE` | 178 |
 | `match` | `CREATE TABLE` | 166 |
 | `match` | `CREATE` | 165 |
-| `rust-error` | `SELECT` | 164 |
 | `match` | `TRUNC()` | 162 |
+| `rust-error` | `SELECT` | 160 |
 | `oracle-error` | `SELECT operator multiply` | 143 |
 | `rust-error` | `SELECT operator multiply` | 139 |
 | `mismatch` | `SELECT operator multiply` | 136 |
@@ -96,8 +96,8 @@ Total rows: `15164`
 | `oracle-error` | `oracle parse: Invalid expression / Unexpected token` | 752 |
 | `oracle-error` | `oracle parse: Expecting )` | 474 |
 | `oracle-error` | `oracle parse: Required keyword missing` | 132 |
-| `rust-error` | `parser: Expected identifier` | 121 |
 | `unsupported-harness-shape` | `SQLGlot expects UnsupportedError` | 119 |
+| `rust-error` | `parser: Expected identifier` | 117 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: From, value: "FROM", line: 1, col: 1, position: 0, quote_char: '\0' }` | 113 |
 | `rust-error` | `parser: Expected RParen, got Comma (',')` | 102 |
 | `rust-error` | `parser: Expected statement` | 69 |
@@ -657,15 +657,15 @@ Total rows: `15164`
 
 ### `rust-error` `parser: Expected identifier`
 
-- `tests/test_transpile.py`:51 `test_alias` via `validate`: `SELECT x AS union`
-  - expected: `SELECT x AS union`
-  - error: `ValueError: Parser error: Expected identifier, got Union ('union') at line 1 col 13`
-- `tests/test_transpile.py`:51 `test_alias` via `validate`: `SELECT x AS from`
-  - expected: `SELECT x AS from`
-  - error: `ValueError: Parser error: Expected identifier, got From ('from') at line 1 col 13`
-- `tests/test_transpile.py`:51 `test_alias` via `validate`: `SELECT x AS join`
-  - expected: `SELECT x AS join`
-  - error: `ValueError: Parser error: Expected identifier, got Join ('join') at line 1 col 13`
+- `tests/test_transpile.py`:127 `test_comments` via `validate`: `SELECT c AS /* foo */ (a, b, c) FROM t`
+  - expected: `SELECT c AS (a, b, c) /* foo */ FROM t`
+  - error: `ValueError: Parser error: Expected identifier, got LParen ('(') at line 1 col 23`
+- `tests/test_transpile.py`:730 `test_with` via `validate`: `WITH a AS (SELECT 1), WITH b AS (SELECT 2) SELECT *`
+  - expected: `WITH a AS (SELECT 1), b AS (SELECT 2) SELECT *`
+  - error: `ValueError: Parser error: Expected identifier, got With ('WITH') at line 1 col 23`
+- `tests/dialects/test_bigquery.py`:95 `test_bigquery` via `validate_identity`: `assert.true(1 = 1)`
+  - expected: `assert.true(1 = 1)`
+  - error: `ValueError: Parser error: Expected identifier, got True ('true') at line 1 col 8`
 
 ### `rust-error` `parser: Expected statement`
 

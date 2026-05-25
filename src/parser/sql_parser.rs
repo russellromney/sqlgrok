@@ -24,6 +24,15 @@ fn dialect_normalizes_bit_literals(dialect: Dialect) -> bool {
     matches!(dialect, Dialect::Mysql | Dialect::Postgres)
 }
 
+fn is_identifier_like(value: &str) -> bool {
+    let mut chars = value.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    (first.is_ascii_alphabetic() || first == '_')
+        && chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+}
+
 /// A recursive-descent SQL parser.
 ///
 /// Supports CTEs (WITH), subqueries, UNION/INTERSECT/EXCEPT, CAST,
@@ -907,7 +916,7 @@ impl Parser {
 
     fn parse_optional_alias(&mut self) -> Result<Option<(String, QuoteStyle)>> {
         if self.match_token(TokenType::As) {
-            return Ok(Some(self.expect_name_with_quote()?));
+            return Ok(Some(self.expect_alias_name_with_quote()?));
         }
         // Implicit alias
         if self.is_name_token() {
@@ -951,6 +960,25 @@ impl Parser {
             }
         }
         Ok(None)
+    }
+
+    fn expect_alias_name_with_quote(&mut self) -> Result<(String, QuoteStyle)> {
+        if self.is_name_token() {
+            return self.expect_name_with_quote();
+        }
+
+        let token = self.peek().clone();
+        if is_identifier_like(&token.value) {
+            self.advance();
+            return Ok((token.value.clone(), quote_style_from_char(token.quote_char)));
+        }
+
+        Err(SqlglotError::ParserError {
+            message: format!(
+                "Expected identifier, got {:?} ('{}') at line {} col {}",
+                token.token_type, token.value, token.line, token.col
+            ),
+        })
     }
 
     fn parse_table_source(&mut self) -> Result<TableSource> {

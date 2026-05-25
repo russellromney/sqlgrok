@@ -13,10 +13,10 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8295 |
+| `match` | 8299 |
 | `mismatch` | 3527 |
 | `oracle-error` | 1457 |
-| `rust-error` | 1748 |
+| `rust-error` | 1744 |
 | `unsupported-harness-shape` | 137 |
 
 ## Helper Buckets
@@ -25,16 +25,16 @@ Filtered by read/write: `0`
 | --- | --- | ---: |
 | `match` | `validate_all` | 5881 |
 | `mismatch` | `validate_all` | 2515 |
-| `match` | `validate_identity` | 2332 |
+| `match` | `validate_identity` | 2333 |
 | `oracle-error` | `validate_identity` | 949 |
 | `mismatch` | `validate_identity` | 936 |
 | `rust-error` | `validate_all` | 887 |
-| `rust-error` | `validate_identity` | 842 |
+| `rust-error` | `validate_identity` | 841 |
 | `oracle-error` | `validate_all` | 502 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `match` | `validate` | 82 |
+| `match` | `validate` | 85 |
 | `mismatch` | `validate` | 76 |
-| `rust-error` | `validate` | 19 |
+| `rust-error` | `validate` | 16 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 6 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -71,16 +71,6 @@ Filtered by read/write: `0`
 
 ## Examples
 
-### `rust-error` `tests/test_transpile.py:51`
-
-- test: `test_alias`
-- helper: `validate`
-- read/write: `postgres` -> `sqlite`
-- sql: `SELECT x AS union`
-- expected: `SELECT x AS union`
-- actual: ``
-- error: `ValueError: Parser error: Expected identifier, got Union ('union') at line 1 col 13`
-
 ### `oracle-error` `tests/test_transpile.py:55`
 
 - test: `test_alias`
@@ -91,16 +81,6 @@ Filtered by read/write: `0`
 - actual: ``
 - error: `ParseError: Required keyword: 'expression' missing for <class 'sqlglot.expressions.query.Union'>. Line 1, Col: 14.\n  SELECT x [4munion[0m`
 
-### `rust-error` `tests/test_transpile.py:51`
-
-- test: `test_alias`
-- helper: `validate`
-- read/write: `postgres` -> `sqlite`
-- sql: `SELECT x AS from`
-- expected: `SELECT x AS from`
-- actual: ``
-- error: `ValueError: Parser error: Expected identifier, got From ('from') at line 1 col 13`
-
 ### `oracle-error` `tests/test_transpile.py:55`
 
 - test: `test_alias`
@@ -110,16 +90,6 @@ Filtered by read/write: `0`
 - expected: ``
 - actual: ``
 - error: `ParseError: Expected table name but got <Token token_type: TokenType.SENTINEL, text: SENTINEL, line: 1, col: 1, start: 0, end: 0, comments: []>. Line 1, Col: 13.\n  SELECT x [4mfrom[0m`
-
-### `rust-error` `tests/test_transpile.py:51`
-
-- test: `test_alias`
-- helper: `validate`
-- read/write: `postgres` -> `sqlite`
-- sql: `SELECT x AS join`
-- expected: `SELECT x AS join`
-- actual: ``
-- error: `ValueError: Parser error: Expected identifier, got Join ('join') at line 1 col 13`
 
 ### `oracle-error` `tests/test_transpile.py:55`
 
@@ -168,6 +138,36 @@ Filtered by read/write: `0`
 - read/write: `postgres` -> `sqlite`
 - sql: `-- comment */ DROP TABLE users --\nSELECT 1`
 - expected: `/* comment * / DROP TABLE users -- */ SELECT 1`
+- actual: `SELECT 1`
+- error: ``
+
+### `mismatch` `tests/test_transpile.py:654`
+
+- test: `test_comment_single_line_with_block_close`
+- helper: `validate`
+- read/write: `postgres` -> `sqlite`
+- sql: `SELECT c /* c1 /* c2 */ c3 */`
+- expected: `SELECT c /* c1 / * c2 * / c3 */`
+- actual: `SELECT c`
+- error: ``
+
+### `mismatch` `tests/test_transpile.py:658`
+
+- test: `test_comment_single_line_with_block_close`
+- helper: `validate`
+- read/write: `postgres` -> `sqlite`
+- sql: `SELECT c /* c1 /* c2 /* c3 */ */ */`
+- expected: `SELECT c /* c1 / * c2 / * c3 * / * / */`
+- actual: `SELECT c`
+- error: ``
+
+### `mismatch` `tests/test_transpile.py:119`
+
+- test: `test_comments`
+- helper: `validate`
+- read/write: `postgres` -> `sqlite`
+- sql: `select /* asfd /* asdf */ asdf */ 1`
+- expected: `/* asfd / * asdf * / asdf */ SELECT 1`
 - actual: `SELECT 1`
 - error: ``
 
