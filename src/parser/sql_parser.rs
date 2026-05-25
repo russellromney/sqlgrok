@@ -2892,6 +2892,10 @@ impl Parser {
             }
             TokenType::Char => {
                 self.advance();
+                if self.match_keyword("VARYING") {
+                    let len = self.parse_single_type_param()?;
+                    return Ok(DataType::Varchar(len));
+                }
                 let len = self.parse_single_type_param()?;
                 Ok(DataType::Char(len))
             }

@@ -8,33 +8,33 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8031 |
+| `match` | 8063 |
 | `mismatch` | 3906 |
 | `oracle-error` | 1743 |
-| `rust-error` | 1347 |
+| `rust-error` | 1315 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 8031 |
+| `match` | `mysql` | `sqlite` | 8063 |
 | `mismatch` | `mysql` | `sqlite` | 3906 |
 | `oracle-error` | `mysql` | `sqlite` | 1743 |
-| `rust-error` | `mysql` | `sqlite` | 1347 |
+| `rust-error` | `mysql` | `sqlite` | 1315 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5826 |
+| `match` | `validate_all` | 5856 |
 | `mismatch` | `validate_all` | 2684 |
-| `match` | `validate_identity` | 2116 |
+| `match` | `validate_identity` | 2118 |
 | `mismatch` | `validate_identity` | 1147 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `rust-error` | `validate_all` | 676 |
-| `rust-error` | `validate_identity` | 661 |
+| `rust-error` | `validate_identity` | 659 |
+| `rust-error` | `validate_all` | 646 |
 | `oracle-error` | `validate_all` | 599 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 89 |
@@ -49,7 +49,7 @@ Total rows: `15164`
 | Status | Shape | Count |
 | --- | --- | ---: |
 | `match` | `SELECT` | 583 |
-| `match` | `CAST()` | 395 |
+| `match` | `CAST()` | 427 |
 | `mismatch` | `CREATE TABLE` | 278 |
 | `match` | `SELECT operator multiply` | 236 |
 | `mismatch` | `SELECT` | 208 |
@@ -68,7 +68,6 @@ Total rows: `15164`
 | `match` | `SHOW` | 105 |
 | `match` | `X` | 104 |
 | `oracle-error` | `CAST()` | 96 |
-| `rust-error` | `CAST()` | 94 |
 | `rust-error` | `CREATE TABLE` | 88 |
 | `match` | `WITH` | 85 |
 | `mismatch` | `ALTER TABLE` | 84 |
@@ -80,6 +79,7 @@ Total rows: `15164`
 | `match` | `SELECT UNNEST()` | 67 |
 | `mismatch` | `WITH` | 64 |
 | `match` | `GRANT` | 62 |
+| `rust-error` | `CAST()` | 62 |
 | `match` | `ANALYZE` | 60 |
 | `oracle-error` | `SELECT OPTION()` | 60 |
 | `match` | `SELECT CAST()` | 58 |
@@ -107,7 +107,6 @@ Total rows: `15164`
 | `rust-error` | `parser: Expected RParen, got As ('AS')` | 34 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('TO')` | 34 |
 | `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.SENTINEL, text: SENTINEL, line: 1, col: 1, start: 0, end: 0, comments: []>` | 33 |
-| `rust-error` | `parser: Expected RParen, got Identifier ('VARYING')` | 32 |
 | `rust-error` | `parser: Expected RParen, got Comma (',')` | 28 |
 | `rust-error` | `parser: Expected data type, got Map` | 24 |
 | `rust-error` | `parser: Expected And, got Number ('10')` | 22 |
@@ -133,12 +132,13 @@ Total rows: `15164`
 | `oracle-error` | `KeyError: <class 'sqlglot.expressions.properties.PartitionByRangeProperty'>` | 8 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: All, value: "ALL", line: 1, col: 19, position: 18, quote_char: '\0' }` | 8 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: Colon, value: ":", line: 1, col: 40, position: 39, quote_char: '\0' }` | 8 |
+| `rust-error` | `parser: Expected Join, got Identifier ('DIRECTED')` | 8 |
 
 ## Mismatch Signature Buckets
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 319 |
+| `mismatch` | `missing AS or alias rendering` | 318 |
 | `mismatch` | `DDL/create-table rendering` | 274 |
 | `mismatch` | `case-only rendering difference` | 163 |
 | `mismatch` | `SELECT` | 156 |
@@ -183,7 +183,7 @@ Total rows: `15164`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 781 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 783 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 371 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 346 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 284 |
@@ -193,11 +193,11 @@ Total rows: `15164`
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 192 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 183 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 182 |
+| `match` | `tests/dialects/test_dialect.py` | `test_cast` | 170 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 161 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 159 |
-| `match` | `tests/dialects/test_dialect.py` | `test_cast` | 140 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 124 |
-| `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 111 |
+| `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 109 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 105 |
 | `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 102 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 100 |
@@ -538,6 +538,15 @@ Total rows: `15164`
 - `tests/dialects/test_exasol.py`:152 `test_bits` via `validate_all`: `SELECT BIT_AND(x, 1)`
   - error: `ParseError: The number of provided arguments (2) is greater than the maximum number of supported arguments (1). Line 1, Col: 20. SELECT BIT_AND(x, 1)`
 
+### `oracle-error` `oracle parse: The number of provided arguments (4) is greater than the maximum number of supported arguments (2)`
+
+- `tests/dialects/test_clickhouse.py`:90 `test_clickhouse` via `validate_identity`: `'a' IN mapKeys(map('a', 1, 'b', 2))`
+  - error: `ParseError: The number of provided arguments (4) is greater than the maximum number of supported arguments (2). Line 1, Col: 34. 'a' IN mapKeys(map('a', 1, 'b', 2))`
+- `tests/dialects/test_clickhouse.py`:1765 `test_functions` via `validate_identity`: `SELECT TRANSFORM(foo, [1, 2], ['first', 'second'], 'default') FROM table`
+  - error: `ParseError: The number of provided arguments (4) is greater than the maximum number of supported arguments (2). Line 1, Col: 61. SELECT TRANSFORM(foo, [1, 2], ['first', 'second'], 'default') FROM table`
+- `tests/dialects/test_hive.py`:751 `test_hive` via `validate_all`: `map(a, b, c, d)`
+  - error: `ParseError: The number of provided arguments (4) is greater than the maximum number of supported arguments (2). Line 1, Col: 15. map(a, b, c, d)`
+
 ### `rust-error` `ValueError: Unexpected token: Token { token_type: LBrace, value: "{", line: 1, col: 8, position: 7, quote_char: '\0' }`
 
 - `tests/dialects/test_clickhouse.py`:835 `test_parameterization` via `validate_all`: `SELECT {abc: UInt32}, {b: String}, {c: DateTime},{d: Map(String, Array(UInt8))}, {e: Tuple(UInt8, String)}`
@@ -597,18 +606,6 @@ Total rows: `15164`
 - `tests/dialects/test_druid.py`:21 `test_druid` via `validate_all`: `FLOOR(__time TO WEEK)`
   - expected: `FLOOR(__time TO WEEK)`
   - error: `ValueError: Parser error: Expected RParen, got Identifier ('TO') at line 1 col 14`
-
-### `rust-error` `parser: Expected RParen, got Identifier ('VARYING')`
-
-- `tests/dialects/test_dialect.py`:378 `test_cast` via `validate_all`: `CAST(a AS CHARACTER VARYING)`
-  - expected: `CAST(a AS TEXT)`
-  - error: `ValueError: Parser error: Expected RParen, got Identifier ('VARYING') at line 1 col 21`
-- `tests/dialects/test_dialect.py`:378 `test_cast` via `validate_all`: `CAST(a AS CHARACTER VARYING)`
-  - expected: `CAST(a AS TEXT)`
-  - error: `ValueError: Parser error: Expected RParen, got Identifier ('VARYING') at line 1 col 21`
-- `tests/dialects/test_dialect.py`:378 `test_cast` via `validate_all`: `CAST(a AS CHARACTER VARYING)`
-  - expected: `CAST(a AS TEXT)`
-  - error: `ValueError: Parser error: Expected RParen, got Identifier ('VARYING') at line 1 col 21`
 
 ### `rust-error` `parser: Expected RParen, got LParen ('(')`
 

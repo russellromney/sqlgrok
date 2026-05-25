@@ -13,23 +13,23 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8333 |
+| `match` | 8365 |
 | `mismatch` | 3820 |
 | `oracle-error` | 1549 |
-| `rust-error` | 1325 |
+| `rust-error` | 1293 |
 | `unsupported-harness-shape` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5872 |
+| `match` | `validate_all` | 5902 |
 | `mismatch` | `validate_all` | 2752 |
-| `match` | `validate_identity` | 2377 |
+| `match` | `validate_identity` | 2379 |
 | `oracle-error` | `validate_identity` | 993 |
 | `mismatch` | `validate_identity` | 988 |
-| `rust-error` | `validate_identity` | 701 |
-| `rust-error` | `validate_all` | 614 |
+| `rust-error` | `validate_identity` | 699 |
+| `rust-error` | `validate_all` | 584 |
 | `oracle-error` | `validate_all` | 547 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 84 |
@@ -43,7 +43,7 @@ Filtered by read/write: `0`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 830 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 832 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 413 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 313 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 295 |
@@ -54,12 +54,12 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 182 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 177 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 175 |
-| `match` | `tests/dialects/test_dialect.py` | `test_cast` | 140 |
+| `match` | `tests/dialects/test_dialect.py` | `test_cast` | 170 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 128 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 117 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 115 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 107 |
-| `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 105 |
+| `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 103 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 100 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 95 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |

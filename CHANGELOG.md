@@ -75,6 +75,7 @@ this file records what landed.
 - Added a first DuckDB-style `FROM`-first select parser slice for `FROM tbl`, `FROM tbl SELECT x`, comma/join sources, and nested `(FROM ...)` subqueries, reducing forced-suite rust-errors to `1404`/`1426`/`1382` for MySQL/Postgres/SQLite.
 - Added a first `|>` pipeline parser slice for `FROM`-first `WHERE`, `ORDER BY`, `LIMIT/OFFSET`, `DISTINCT`, `SELECT`, `AS`, and join stages, reducing forced-suite rust-errors to `1352`/`1374`/`1330` for MySQL/Postgres/SQLite.
 - Matched SQLGlot SQLite-targeted rendering for `TIMESTAMP [precision] WITH/WITHOUT TIME ZONE` typed literals and `AT TIME ZONE`, lifting forced-suite exact matches to `8031`/`8700`/`8333` for MySQL/Postgres/SQLite.
+- Parsed `CHARACTER VARYING` and `CHARACTER VARYING(n)` casts as SQLite-targeted `TEXT`/`TEXT(n)`, reducing forced-suite rust-errors by `32` in each tracked MySQL/Postgres/SQLite lane.
 
 ## 2026-05-20
 

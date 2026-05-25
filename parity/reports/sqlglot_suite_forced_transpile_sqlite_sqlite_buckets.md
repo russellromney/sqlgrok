@@ -8,33 +8,33 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8333 |
+| `match` | 8365 |
 | `mismatch` | 3820 |
 | `oracle-error` | 1549 |
-| `rust-error` | 1325 |
+| `rust-error` | 1293 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 8333 |
+| `match` | `sqlite` | `sqlite` | 8365 |
 | `mismatch` | `sqlite` | `sqlite` | 3820 |
 | `oracle-error` | `sqlite` | `sqlite` | 1549 |
-| `rust-error` | `sqlite` | `sqlite` | 1325 |
+| `rust-error` | `sqlite` | `sqlite` | 1293 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5872 |
+| `match` | `validate_all` | 5902 |
 | `mismatch` | `validate_all` | 2752 |
-| `match` | `validate_identity` | 2377 |
+| `match` | `validate_identity` | 2379 |
 | `oracle-error` | `validate_identity` | 993 |
 | `mismatch` | `validate_identity` | 988 |
-| `rust-error` | `validate_identity` | 701 |
-| `rust-error` | `validate_all` | 614 |
+| `rust-error` | `validate_identity` | 699 |
+| `rust-error` | `validate_all` | 584 |
 | `oracle-error` | `validate_all` | 547 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 84 |
@@ -49,7 +49,7 @@ Total rows: `15164`
 | Status | Shape | Count |
 | --- | --- | ---: |
 | `match` | `SELECT` | 576 |
-| `match` | `CAST()` | 463 |
+| `match` | `CAST()` | 495 |
 | `mismatch` | `CREATE TABLE` | 267 |
 | `match` | `SELECT operator multiply` | 219 |
 | `match` | `SHOW` | 215 |
@@ -70,7 +70,6 @@ Total rows: `15164`
 | `mismatch` | `SELECT UNNEST()` | 90 |
 | `match` | `SELECT DATEDIFF()` | 83 |
 | `match` | `WITH` | 81 |
-| `rust-error` | `CAST()` | 79 |
 | `match` | `SET` | 78 |
 | `mismatch` | `DATE_ADD()` | 78 |
 | `match` | `DATE_TRUNC()` | 71 |
@@ -88,6 +87,7 @@ Total rows: `15164`
 | `match` | `SELECT TO_TIMESTAMP()` | 55 |
 | `match` | `SELECT UNNEST()` | 55 |
 | `oracle-error` | `WITH` | 52 |
+| `rust-error` | `FROM` | 52 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -102,7 +102,6 @@ Total rows: `15164`
 | `rust-error` | `parser: Expected RParen, got As ('AS')` | 36 |
 | `rust-error` | `parser: Expected RParen, got LParen ('(')` | 36 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('TO')` | 34 |
-| `rust-error` | `parser: Expected RParen, got Identifier ('VARYING')` | 32 |
 | `rust-error` | `parser: Expected RParen, got Comma (',')` | 28 |
 | `oracle-error` | `oracle parse: The number of provided arguments (2) is greater than the maximum number of supported arguments (1)` | 24 |
 | `rust-error` | `parser: Expected And, got Number ('10')` | 22 |
@@ -133,14 +132,15 @@ Total rows: `15164`
 | `rust-error` | `parser: Expected Join, got Identifier ('DIRECTED')` | 8 |
 | `rust-error` | `parser: Expected RParen, got As ('as')` | 8 |
 | `rust-error` | `parser: Expected RParen, got Dot ('.')` | 8 |
+| `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.HASH, text: #, line: 1, col: 39, start: 38, end: 38, comments: []>` | 7 |
 
 ## Mismatch Signature Buckets
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 428 |
+| `mismatch` | `missing AS or alias rendering` | 427 |
 | `mismatch` | `DDL/create-table rendering` | 254 |
-| `mismatch` | `missing quoted identifier` | 245 |
+| `mismatch` | `missing quoted identifier` | 246 |
 | `mismatch` | `case-only rendering difference` | 216 |
 | `mismatch` | `SELECT` | 137 |
 | `mismatch` | `SELECT operator multiply` | 134 |
@@ -183,7 +183,7 @@ Total rows: `15164`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 830 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 832 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 413 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 313 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 295 |
@@ -194,12 +194,12 @@ Total rows: `15164`
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 182 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 177 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 175 |
-| `match` | `tests/dialects/test_dialect.py` | `test_cast` | 140 |
+| `match` | `tests/dialects/test_dialect.py` | `test_cast` | 170 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 128 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 117 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 115 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 107 |
-| `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 105 |
+| `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 103 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 100 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 95 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
@@ -616,18 +616,6 @@ Total rows: `15164`
   - expected: `FLOOR(__time TO WEEK)`
   - error: `ValueError: Parser error: Expected RParen, got Identifier ('TO') at line 1 col 14`
 
-### `rust-error` `parser: Expected RParen, got Identifier ('VARYING')`
-
-- `tests/dialects/test_dialect.py`:378 `test_cast` via `validate_all`: `CAST(a AS CHARACTER VARYING)`
-  - expected: `CAST(a AS TEXT)`
-  - error: `ValueError: Parser error: Expected RParen, got Identifier ('VARYING') at line 1 col 21`
-- `tests/dialects/test_dialect.py`:378 `test_cast` via `validate_all`: `CAST(a AS CHARACTER VARYING)`
-  - expected: `CAST(a AS TEXT)`
-  - error: `ValueError: Parser error: Expected RParen, got Identifier ('VARYING') at line 1 col 21`
-- `tests/dialects/test_dialect.py`:378 `test_cast` via `validate_all`: `CAST(a AS CHARACTER VARYING)`
-  - expected: `CAST(a AS TEXT)`
-  - error: `ValueError: Parser error: Expected RParen, got Identifier ('VARYING') at line 1 col 21`
-
 ### `rust-error` `parser: Expected RParen, got LParen ('(')`
 
 - `tests/dialects/test_bigquery.py`:2295 `test_remove_precision_parameterized_types` via `validate_identity`: `INSERT INTO test (cola, colb) VALUES (CAST(7 AS STRING(10)), CAST(14 AS STRING(10)))`
@@ -651,6 +639,18 @@ Total rows: `15164`
 - `tests/dialects/test_databricks.py`:45 `test_databricks` via `validate_identity`: `INSERT INTO a REPLACE WHERE cond VALUES (1), (2)`
   - expected: `INSERT INTO a REPLACE WHERE cond VALUES (1), (2)`
   - error: `ValueError: Parser error: Expected VALUES, SELECT, or DEFAULT VALUES after INSERT`
+
+### `rust-error` `parser: Expected data type, got Map`
+
+- `tests/dialects/test_dialect.py`:287 `test_cast` via `validate_all`: `CAST(MAP('a', '1') AS MAP(TEXT, TEXT))`
+  - expected: `CAST(MAP('a', '1') AS MAP<TEXT, TEXT>)`
+  - error: `ValueError: Parser error: Expected data type, got Map`
+- `tests/dialects/test_risingwave.py`:26 `test_datatypes` via `validate_identity`: `SELECT CAST(NULL AS MAP(VARCHAR, INT)) AS map_column`
+  - expected: `SELECT CAST(NULL AS MAP<TEXT, INTEGER>) AS map_column`
+  - error: `ValueError: Parser error: Expected data type, got Map`
+- `tests/dialects/test_risingwave.py`:28 `test_datatypes` via `validate_identity`: `SELECT NULL::MAP<VARCHAR, INT> AS map_column`
+  - expected: `SELECT CAST(NULL AS MAP<TEXT, INTEGER>) AS map_column`
+  - error: `ValueError: Parser error: Expected data type, got Map`
 
 ### `rust-error` `parser: Expected identifier`
 

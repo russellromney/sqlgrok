@@ -1111,6 +1111,24 @@ fn test_postgres_timestamp_with_time_zone_literals_to_sqlite() {
 }
 
 #[test]
+fn test_character_varying_casts_to_sqlite() {
+    for dialect in [Dialect::Postgres, Dialect::Mysql, Dialect::Sqlite] {
+        validate_with_dialect(
+            "SELECT CAST(a AS CHARACTER VARYING)",
+            "SELECT CAST(a AS TEXT)",
+            dialect,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT CAST(a AS CHARACTER VARYING(3))",
+            "SELECT CAST(a AS TEXT(3))",
+            dialect,
+            Dialect::Sqlite,
+        );
+    }
+}
+
+#[test]
 fn test_postgres_limit_all_to_sqlite() {
     validate_with_dialect(
         "SELECT x FROM t LIMIT ALL",
