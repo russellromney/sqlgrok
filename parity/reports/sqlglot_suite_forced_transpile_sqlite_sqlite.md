@@ -13,23 +13,23 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8389 |
-| `mismatch` | 3820 |
+| `match` | 8423 |
+| `mismatch` | 3806 |
 | `oracle-error` | 1549 |
-| `rust-error` | 1269 |
+| `rust-error` | 1249 |
 | `unsupported-harness-shape` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5907 |
-| `mismatch` | `validate_all` | 2752 |
-| `match` | `validate_identity` | 2398 |
+| `match` | `validate_all` | 5921 |
+| `mismatch` | `validate_all` | 2740 |
+| `match` | `validate_identity` | 2418 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 988 |
-| `rust-error` | `validate_identity` | 680 |
-| `rust-error` | `validate_all` | 579 |
+| `mismatch` | `validate_identity` | 986 |
+| `rust-error` | `validate_identity` | 662 |
+| `rust-error` | `validate_all` | 577 |
 | `oracle-error` | `validate_all` | 547 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 84 |
@@ -44,10 +44,10 @@ Filtered by read/write: `0`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 833 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 414 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 415 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 313 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 295 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 287 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 286 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 229 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 224 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 193 |

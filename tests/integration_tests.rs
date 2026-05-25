@@ -197,7 +197,7 @@ fn test_roundtrip_drop_view() {
 #[test]
 fn test_roundtrip_begin() {
     let ast = parse("BEGIN", Dialect::Ansi).unwrap();
-    assert_eq!(generate(&ast, Dialect::Ansi), "BEGIN");
+    assert_eq!(generate(&ast, Dialect::Ansi), "BEGIN TRANSACTION");
 }
 
 #[test]

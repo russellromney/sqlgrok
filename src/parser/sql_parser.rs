@@ -839,6 +839,33 @@ impl Parser {
         }
     }
 
+    fn parse_select_lock(&mut self) -> Option<String> {
+        if self.match_keyword("LOCK") {
+            if self.match_token(TokenType::In) {
+                let _ = self.match_keyword("SHARE");
+                let _ = self.match_keyword("MODE");
+            }
+            return Some("LOCK IN SHARE MODE".to_string());
+        }
+
+        let mut lock = None;
+        while self.match_keyword("FOR") {
+            if lock.is_none() {
+                lock = Some("FOR UPDATE".to_string());
+            }
+            while !matches!(
+                self.peek_type(),
+                TokenType::Semicolon | TokenType::Eof | TokenType::RParen
+            ) {
+                if self.peek().value.eq_ignore_ascii_case("FOR") {
+                    break;
+                }
+                self.advance();
+            }
+        }
+        lock
+    }
+
     fn parse_pipeline_stages(&mut self, select: &mut SelectStatement) -> Result<()> {
         while self.match_pipeline_operator() {
             match self.peek_type() {
@@ -1082,15 +1109,7 @@ impl Parser {
             None
         };
 
-        let lock = if self.match_keyword("FOR") {
-            if self.match_token(TokenType::Update) {
-                Some("FOR UPDATE".to_string())
-            } else {
-                Some(format!("FOR {}", self.expect_name()?.to_uppercase()))
-            }
-        } else {
-            None
-        };
+        let lock = self.parse_select_lock();
 
         Ok(SelectStatement {
             comments: vec![],
@@ -1278,6 +1297,7 @@ impl Parser {
                         | "FORCE"
                         | "USE"
                         | "IGNORE"
+                        | "LOCK"
                         | "INDEXED"
                 )
             {
@@ -1392,6 +1412,20 @@ impl Parser {
         let table_start = self.char_pos_to_byte(self.peek().position);
         let mut table_ref = self.parse_table_ref()?;
         self.consume_mysql_index_hints()?;
+        if self.match_token(TokenType::Partition) {
+            self.expect(TokenType::LParen)?;
+            self.consume_balanced_parentheses_after_open();
+            let end = self
+                .tokens
+                .get(self.pos)
+                .map(|token| self.char_pos_to_byte(token.position))
+                .unwrap_or_else(|| self.sql.len());
+            return Ok(TableSource::Raw {
+                sql: self.sql[table_start..end].trim().to_string(),
+                alias: None,
+                alias_quote_style: QuoteStyle::None,
+            });
+        }
         self.consume_table_sample()?;
         if table_ref.alias.is_none()
             && let Some((alias, alias_quote_style)) = self.parse_optional_alias()?
@@ -3444,7 +3478,10 @@ impl Parser {
         match self.peek_type() {
             TokenType::Begin => {
                 self.advance();
-                let _ = self.match_token(TokenType::Transaction);
+                let _ = self.match_token(TokenType::Transaction) || self.match_keyword("WORK");
+                while !matches!(self.peek_type(), TokenType::Semicolon | TokenType::Eof) {
+                    self.advance();
+                }
                 Ok(TransactionStatement::Begin)
             }
             TokenType::Commit => {

@@ -1671,7 +1671,7 @@ impl Generator {
 
     fn gen_transaction(&mut self, t: &TransactionStatement) {
         match t {
-            TransactionStatement::Begin => self.write_keyword("BEGIN"),
+            TransactionStatement::Begin => self.write_keyword("BEGIN TRANSACTION"),
             TransactionStatement::Commit => self.write_keyword("COMMIT"),
             TransactionStatement::CommitAndChain { chain } => {
                 self.write_keyword("COMMIT AND ");

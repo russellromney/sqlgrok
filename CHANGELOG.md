@@ -80,6 +80,7 @@ this file records what landed.
 - Matched SQLGlot's preserved Postgres `TRUNCATE` options and multi-target rendering, reducing forced-suite rust-errors to `1298`/`1327`/`1283` for MySQL/Postgres/SQLite with no row-level regressions.
 - Added a Postgres `COMMENT ON ...` raw carrier with dollar-quoted body normalization, reducing forced-suite rust-errors to `1295`/`1323`/`1280` for MySQL/Postgres/SQLite with no row-level regressions.
 - Matched SQLite-targeted `TABLESAMPLE` dropping for table sources, reducing forced-suite rust-errors to `1284`/`1312`/`1269` for MySQL/Postgres/SQLite with no row-level regressions.
+- Matched SQLGlot's `BEGIN` normalization plus Postgres transaction-option dropping and MySQL partition/locking table-tail carriers, reducing forced-suite rust-errors to `1264`/`1292`/`1249` for MySQL/Postgres/SQLite with no row-level regressions.
 
 ## 2026-05-20
 

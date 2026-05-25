@@ -2036,9 +2036,31 @@ fn test_alter_table_constraints_to_sqlite() {
 
 #[test]
 fn test_identity_transactions() {
-    let cases = ["BEGIN", "COMMIT", "ROLLBACK"];
-    for sql in &cases {
-        validate_identity(sql);
+    validate_with_dialect(
+        "BEGIN",
+        "BEGIN TRANSACTION",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+    validate_identity("COMMIT");
+    validate_identity("ROLLBACK");
+}
+
+#[test]
+fn test_postgres_begin_options_to_sqlite() {
+    for sql in [
+        "BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE, ISOLATION LEVEL SERIALIZABLE",
+        "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED, ISOLATION LEVEL READ COMMITTED",
+        "BEGIN TRANSACTION NOT DEFFERABLE, NOT DEFFERABLE",
+        "BEGIN TRANSACTION READ WRITE, READ WRITE",
+        "BEGIN TRANSACTION DEFERRABLE, DEFERRABLE",
+        "BEGIN WORK ISOLATION LEVEL SERIALIZABLE, ISOLATION LEVEL SERIALIZABLE",
+        "BEGIN WORK ISOLATION LEVEL READ COMMITTED, ISOLATION LEVEL READ COMMITTED",
+        "BEGIN WORK NOT DEFFERABLE, NOT DEFFERABLE",
+        "BEGIN WORK READ WRITE, READ WRITE",
+        "BEGIN WORK DEFERRABLE, DEFERRABLE",
+    ] {
+        validate_with_dialect(sql, "BEGIN TRANSACTION", Dialect::Postgres, Dialect::Sqlite);
     }
 }
 
@@ -2890,6 +2912,34 @@ fn test_postgres_tablesample_to_sqlite() {
         "SELECT * FROM t TABLESAMPLE SYSTEM (50) REPEATABLE (55)",
         "SELECT * FROM t",
         Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_mysql_table_tail_carriers_to_sqlite() {
+    validate_with_dialect(
+        "SELECT * FROM t1 PARTITION(p0)",
+        "SELECT * FROM t1 PARTITION(p0)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM t LOCK IN SHARE MODE",
+        "SELECT * FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM t1, t2 FOR SHARE OF t1, t2 SKIP LOCKED",
+        "SELECT * FROM t1, t2",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM t1, t2, t3 FOR SHARE OF t1 NOWAIT FOR UPDATE OF t2, t3 SKIP LOCKED",
+        "SELECT * FROM t1, t2, t3",
+        Dialect::Mysql,
         Dialect::Sqlite,
     );
 }

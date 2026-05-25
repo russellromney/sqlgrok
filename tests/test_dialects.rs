@@ -1878,7 +1878,7 @@ fn test_validate_all_compound_query() {
 #[test]
 fn test_transaction_identity_all_dialects() {
     for dialect in Dialect::all() {
-        assert_identity("BEGIN", *dialect);
+        assert_transpile("BEGIN", "BEGIN TRANSACTION", *dialect, *dialect);
         assert_identity("COMMIT", *dialect);
         assert_identity("ROLLBACK", *dialect);
     }
