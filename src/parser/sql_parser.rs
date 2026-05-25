@@ -905,9 +905,28 @@ impl Parser {
     fn parse_select_items(&mut self) -> Result<Vec<SelectItem>> {
         let mut items = vec![self.parse_select_item()?];
         while self.match_token(TokenType::Comma) {
+            if self.is_select_item_boundary() {
+                break;
+            }
             items.push(self.parse_select_item()?);
         }
         Ok(items)
+    }
+
+    fn is_select_item_boundary(&self) -> bool {
+        matches!(
+            self.peek_type(),
+            TokenType::From
+                | TokenType::Where
+                | TokenType::Group
+                | TokenType::Order
+                | TokenType::Limit
+                | TokenType::Having
+                | TokenType::Qualify
+                | TokenType::Window
+                | TokenType::RParen
+                | TokenType::Eof
+        )
     }
 
     fn parse_select_item(&mut self) -> Result<SelectItem> {
@@ -1278,13 +1297,17 @@ impl Parser {
         self.expect(TokenType::Values)?;
         let mut rows = Vec::new();
         loop {
-            self.expect(TokenType::LParen)?;
-            let row = if self.peek_type() == &TokenType::RParen {
-                vec![]
+            let row = if self.match_token(TokenType::LParen) {
+                let row = if self.peek_type() == &TokenType::RParen {
+                    vec![]
+                } else {
+                    self.parse_expr_list()?
+                };
+                self.expect(TokenType::RParen)?;
+                row
             } else {
-                self.parse_expr_list()?
+                vec![self.parse_expr()?]
             };
-            self.expect(TokenType::RParen)?;
             rows.push(row);
             if !self.match_token(TokenType::Comma) {
                 break;
@@ -1550,8 +1573,10 @@ impl Parser {
 
     fn parse_expr_list(&mut self) -> Result<Vec<Expr>> {
         let mut exprs = vec![self.parse_expr()?];
+        self.consume_null_treatment();
         while self.match_token(TokenType::Comma) {
             exprs.push(self.parse_expr()?);
+            self.consume_null_treatment();
         }
         Ok(exprs)
     }
@@ -1569,6 +1594,15 @@ impl Parser {
     /// Parse a single GROUP BY item: a CUBE, ROLLUP, GROUPING SETS, or regular expression.
     fn parse_group_by_item(&mut self) -> Result<Expr> {
         match self.peek_type() {
+            TokenType::All => {
+                self.advance();
+                Ok(Expr::Column {
+                    table: None,
+                    name: "ALL".to_string(),
+                    quote_style: QuoteStyle::None,
+                    table_quote_style: QuoteStyle::None,
+                })
+            }
             TokenType::Cube => {
                 self.advance();
                 self.expect(TokenType::LParen)?;
@@ -3142,6 +3176,23 @@ impl Parser {
                 continue;
             }
 
+            if self.peek_type() == &TokenType::AtSign
+                && self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|token| token.token_type == TokenType::Gt)
+            {
+                self.advance();
+                self.advance();
+                let right = self.parse_addition()?;
+                left = Expr::BinaryOp {
+                    left: Box::new(left),
+                    op: BinaryOperator::ArrayContains,
+                    right: Box::new(right),
+                };
+                continue;
+            }
+
             if self.peek_type() == &TokenType::Lt
                 && self
                     .tokens
@@ -3764,6 +3815,8 @@ impl Parser {
         }
 
         // Check for window function: expr OVER (...)
+        self.consume_null_treatment();
+
         if self.match_keyword("WITHIN") {
             self.expect(TokenType::Group)?;
             self.expect(TokenType::LParen)?;
@@ -3881,6 +3934,17 @@ impl Parser {
         }
 
         Ok(expr)
+    }
+
+    fn consume_null_treatment(&mut self) -> bool {
+        let saved = self.pos;
+        if (self.match_token(TokenType::Ignore) || self.match_token(TokenType::Respect))
+            && self.match_token(TokenType::Nulls)
+        {
+            return true;
+        }
+        self.pos = saved;
+        false
     }
 
     fn parse_window_spec(&mut self) -> Result<WindowSpec> {
@@ -4652,15 +4716,24 @@ impl Parser {
         }
 
         let mut args = vec![self.parse_expr()?];
+        self.consume_null_treatment();
         while self.match_token(TokenType::Comma) {
             if self.peek_type() == &TokenType::Order {
                 break;
             }
             args.push(self.parse_expr()?);
+            self.consume_null_treatment();
         }
         if self.match_token(TokenType::Order) {
             self.expect(TokenType::By)?;
             let _ = self.parse_order_by_items()?;
+        }
+        self.consume_null_treatment();
+        if self.match_token(TokenType::Limit) {
+            let _ = self.parse_expr()?;
+            if self.match_token(TokenType::Comma) {
+                let _ = self.parse_expr()?;
+            }
         }
         Ok(args)
     }

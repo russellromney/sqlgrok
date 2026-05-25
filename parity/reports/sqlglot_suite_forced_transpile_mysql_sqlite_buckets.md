@@ -8,38 +8,38 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7892 |
-| `mismatch` | 3905 |
+| `match` | 7954 |
+| `mismatch` | 3909 |
 | `oracle-error` | 1743 |
-| `rust-error` | 1487 |
+| `rust-error` | 1421 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 7892 |
-| `mismatch` | `mysql` | `sqlite` | 3905 |
+| `match` | `mysql` | `sqlite` | 7954 |
+| `mismatch` | `mysql` | `sqlite` | 3909 |
 | `oracle-error` | `mysql` | `sqlite` | 1743 |
-| `rust-error` | `mysql` | `sqlite` | 1487 |
+| `rust-error` | `mysql` | `sqlite` | 1421 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5758 |
-| `mismatch` | `validate_all` | 2696 |
-| `match` | `validate_identity` | 2050 |
+| `match` | `validate_all` | 5808 |
+| `mismatch` | `validate_all` | 2698 |
+| `match` | `validate_identity` | 2061 |
 | `mismatch` | `validate_identity` | 1135 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `rust-error` | `validate_identity` | 739 |
-| `rust-error` | `validate_all` | 732 |
+| `rust-error` | `validate_identity` | 728 |
+| `rust-error` | `validate_all` | 680 |
 | `oracle-error` | `validate_all` | 599 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `match` | `validate` | 84 |
-| `mismatch` | `validate` | 74 |
-| `rust-error` | `validate` | 16 |
+| `match` | `validate` | 85 |
+| `mismatch` | `validate` | 76 |
+| `rust-error` | `validate` | 13 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -48,18 +48,18 @@ Total rows: `15164`
 
 | Status | Shape | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 580 |
+| `match` | `SELECT` | 583 |
 | `match` | `CAST()` | 379 |
 | `mismatch` | `CREATE TABLE` | 278 |
-| `match` | `SELECT operator multiply` | 232 |
+| `match` | `SELECT operator multiply` | 234 |
 | `mismatch` | `SELECT` | 207 |
 | `mismatch` | `CREATE` | 181 |
 | `oracle-error` | `SELECT` | 181 |
-| `rust-error` | `SELECT` | 164 |
 | `match` | `TRUNC()` | 162 |
 | `match` | `CREATE` | 161 |
-| `rust-error` | `SELECT operator multiply` | 149 |
+| `rust-error` | `SELECT` | 161 |
 | `oracle-error` | `CREATE TABLE` | 148 |
+| `rust-error` | `SELECT operator multiply` | 147 |
 | `oracle-error` | `SELECT operator multiply` | 135 |
 | `match` | `CREATE TABLE` | 132 |
 | `mismatch` | `SELECT operator multiply` | 117 |
@@ -115,7 +115,6 @@ Total rows: `15164`
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: LBrace, value: "{", line: 1, col: 8, position: 7, quote_char: '\0' }` | 21 |
 | `rust-error` | `parser: Expected VALUES, SELECT, or DEFAULT VALUES after INSERT` | 20 |
 | `oracle-error` | `oracle parse: The number of provided arguments (4) is greater than the maximum number of supported arguments (2)` | 19 |
-| `rust-error` | `parser: Expected RParen, got Respect ('RESPECT')` | 19 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('FORMAT')` | 18 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: Lateral, value: "LATERAL", line: 1, col: 17, position: 16, quote_char: '\0' }` | 17 |
 | `oracle-error` | `oracle parse: Expecting (` | 16 |
@@ -133,6 +132,7 @@ Total rows: `15164`
 | `rust-error` | `parser: Expected RParen, got Having ('HAVING')` | 9 |
 | `rust-error` | `parser: Expected SELECT or INSERT after WITH clause` | 9 |
 | `oracle-error` | `KeyError: <class 'sqlglot.expressions.properties.PartitionByRangeProperty'>` | 8 |
+| `rust-error` | `ValueError: Unexpected token: Token { token_type: All, value: "ALL", line: 1, col: 19, position: 18, quote_char: '\0' }` | 8 |
 
 ## Mismatch Signature Buckets
 
@@ -183,11 +183,11 @@ Total rows: `15164`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 766 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 360 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 781 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 371 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 346 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 283 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 268 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 271 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 212 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 196 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 190 |
@@ -196,12 +196,12 @@ Total rows: `15164`
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 161 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 159 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 140 |
-| `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 126 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 124 |
-| `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 114 |
+| `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 111 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 105 |
-| `rust-error` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 101 |
+| `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 103 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 100 |
+| `rust-error` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 98 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 96 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |

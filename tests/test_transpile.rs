@@ -2049,6 +2049,22 @@ fn test_postgres_array_literal_to_sqlite() {
 }
 
 #[test]
+fn test_postgres_array_contains_operator_to_sqlite() {
+    validate_with_dialect(
+        "SELECT ARRAY[1, 2, 3] @> ARRAY[1, 2]",
+        "SELECT ARRAY(1, 2, 3) @> ARRAY(1, 2)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT [1, 2, 3] @> [1, 2]",
+        "SELECT ARRAY(1, 2, 3) @> ARRAY(1, 2)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_array_function_args_to_sqlite() {
     for dialect in [Dialect::Postgres, Dialect::Mysql, Dialect::Sqlite] {
         validate_with_dialect(
@@ -4006,6 +4022,36 @@ fn test_postgres_parser_carriers_to_sqlite() {
     validate_with_dialect(
         "SELECT * FROM (VALUES (1)) AS t1",
         "SELECT * FROM (VALUES (1)) AS t1",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT BOOL_OR(a > 10) FROM (VALUES 1, 2, 15) AS T(a)",
+        "SELECT MAX(a > 10) FROM (VALUES (1), (2), (15)) AS T",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT id, city, COUNT(*) FROM dealer GROUP BY ALL",
+        "SELECT id, city, COUNT(*) FROM dealer GROUP BY ALL",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT x, FROM foo",
+        "SELECT x FROM foo",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT LAG(x) IGNORE NULLS OVER (PARTITION BY y ORDER BY z)",
+        "SELECT LAG(x) OVER (PARTITION BY y ORDER BY z NULLS LAST)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT SUM(x RESPECT NULLS) AS x",
+        "SELECT SUM(x) AS x",
         Dialect::Postgres,
         Dialect::Sqlite,
     );

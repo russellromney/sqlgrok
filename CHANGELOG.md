@@ -71,6 +71,7 @@ this file records what landed.
 - Parsed SQLGlot's `ARRAY(...)` expression-list form separately from `ARRAY(SELECT ...)`, reducing rust-errors by `74` in each forced MySQL/Postgres/SQLite-to-SQLite lane and lifting exact matches by `69` per lane.
 - Added `=>` named-argument expression support and SQLite-targeted `PARSE_JSON(...)` unwrapping, increasing forced-suite exact matches by `75+` per tracked lane while reducing rust-errors by roughly `50` per lane.
 - Accepted `RANGE(...)` table functions and top-level `REPLACE(...)` expressions, reducing another `58` forced-suite rust-errors per tracked lane and surfacing the remaining differences as explicit mismatches.
+- Accepted SQLGlot forced-suite parser forms for trailing select-list commas, shorthand `VALUES 1, 2` rows, `GROUP BY ALL`, Postgres `@>` array containment, and `IGNORE`/`RESPECT NULLS` carriers; refreshed forced reports now show MySQL/Postgres/SQLite rust-errors down to `1421`/`1443`/`1399`.
 
 ## 2026-05-20
 
