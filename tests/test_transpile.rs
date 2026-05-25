@@ -2856,6 +2856,28 @@ fn test_postgres_truncate_options_to_sqlite() {
     );
 }
 
+#[test]
+fn test_postgres_comment_on_to_sqlite() {
+    validate_with_dialect(
+        "COMMENT ON TABLE mytable IS 'this'",
+        "COMMENT ON TABLE mytable IS 'this'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "COMMENT ON MATERIALIZED VIEW my_view IS 'this'",
+        "COMMENT ON MATERIALIZED VIEW my_view IS 'this'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "COMMENT ON TABLE mytable IS $$doc this$$",
+        "COMMENT ON TABLE mytable IS 'doc this'",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // SELECT TOP N (T-SQL) — Issue #1
 // ═════════════════════════════════════════════════════════════════════════════

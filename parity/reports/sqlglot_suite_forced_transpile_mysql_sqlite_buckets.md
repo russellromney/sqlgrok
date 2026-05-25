@@ -8,20 +8,20 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8081 |
+| `match` | 8084 |
 | `mismatch` | 3905 |
 | `oracle-error` | 1743 |
-| `rust-error` | 1298 |
+| `rust-error` | 1295 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 8081 |
+| `match` | `mysql` | `sqlite` | 8084 |
 | `mismatch` | `mysql` | `sqlite` | 3905 |
 | `oracle-error` | `mysql` | `sqlite` | 1743 |
-| `rust-error` | `mysql` | `sqlite` | 1298 |
+| `rust-error` | `mysql` | `sqlite` | 1295 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
 ## Helper Buckets
@@ -30,11 +30,11 @@ Total rows: `15164`
 | --- | --- | ---: |
 | `match` | `validate_all` | 5857 |
 | `mismatch` | `validate_all` | 2684 |
-| `match` | `validate_identity` | 2135 |
+| `match` | `validate_identity` | 2138 |
 | `mismatch` | `validate_identity` | 1146 |
 | `oracle-error` | `validate_identity` | 1135 |
 | `rust-error` | `validate_all` | 645 |
-| `rust-error` | `validate_identity` | 643 |
+| `rust-error` | `validate_identity` | 640 |
 | `oracle-error` | `validate_all` | 599 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 89 |
@@ -183,12 +183,12 @@ Total rows: `15164`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 783 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 784 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 371 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 346 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 284 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 279 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 212 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 214 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 196 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 192 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 183 |
@@ -197,7 +197,7 @@ Total rows: `15164`
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 161 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 159 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 124 |
-| `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 109 |
+| `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 108 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 105 |
 | `rust-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 102 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 100 |

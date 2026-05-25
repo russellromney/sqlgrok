@@ -8,20 +8,20 @@ Total rows: `15164`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8743 |
+| `match` | 8747 |
 | `mismatch` | 3500 |
 | `oracle-error` | 1457 |
-| `rust-error` | 1327 |
+| `rust-error` | 1323 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 8743 |
+| `match` | `postgres` | `sqlite` | 8747 |
 | `mismatch` | `postgres` | `sqlite` | 3500 |
 | `oracle-error` | `postgres` | `sqlite` | 1457 |
-| `rust-error` | `postgres` | `sqlite` | 1327 |
+| `rust-error` | `postgres` | `sqlite` | 1323 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
 
 ## Helper Buckets
@@ -30,10 +30,10 @@ Total rows: `15164`
 | --- | --- | ---: |
 | `match` | `validate_all` | 6174 |
 | `mismatch` | `validate_all` | 2491 |
-| `match` | `validate_identity` | 2476 |
+| `match` | `validate_identity` | 2480 |
 | `oracle-error` | `validate_identity` | 949 |
 | `mismatch` | `validate_identity` | 935 |
-| `rust-error` | `validate_identity` | 699 |
+| `rust-error` | `validate_identity` | 695 |
 | `rust-error` | `validate_all` | 618 |
 | `oracle-error` | `validate_all` | 502 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
@@ -183,10 +183,10 @@ Total rows: `15164`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 858 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 859 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 441 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 345 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 304 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 307 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 285 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 229 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 227 |
@@ -196,7 +196,7 @@ Total rows: `15164`
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 170 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 139 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 125 |
-| `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 111 |
+| `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 110 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 107 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 101 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 98 |

@@ -52,6 +52,48 @@ fn data_type_with_format(data_type: DataType, format: &Expr) -> DataType {
     ))
 }
 
+fn normalize_dollar_quoted_strings(sql: &str) -> String {
+    let bytes = sql.as_bytes();
+    let mut out = String::with_capacity(sql.len());
+    let mut cursor = 0usize;
+
+    while cursor < bytes.len() {
+        if bytes[cursor] != b'$' {
+            out.push(bytes[cursor] as char);
+            cursor += 1;
+            continue;
+        }
+
+        let mut delimiter_end = cursor + 1;
+        while delimiter_end < bytes.len()
+            && (bytes[delimiter_end].is_ascii_alphanumeric() || bytes[delimiter_end] == b'_')
+        {
+            delimiter_end += 1;
+        }
+        if delimiter_end >= bytes.len() || bytes[delimiter_end] != b'$' {
+            out.push('$');
+            cursor += 1;
+            continue;
+        }
+        delimiter_end += 1;
+
+        let delimiter = &sql[cursor..delimiter_end];
+        let body_start = delimiter_end;
+        if let Some(close_offset) = sql[body_start..].find(delimiter) {
+            let body_end = body_start + close_offset;
+            out.push('\'');
+            out.push_str(&sql[body_start..body_end].replace('\'', "''"));
+            out.push('\'');
+            cursor = body_end + delimiter.len();
+        } else {
+            out.push('$');
+            cursor += 1;
+        }
+    }
+
+    out
+}
+
 /// A recursive-descent SQL parser.
 ///
 /// Supports CTEs (WITH), subqueries, UNION/INTERSECT/EXCEPT, CAST,
@@ -419,6 +461,7 @@ impl Parser {
             | TokenType::Grant
             | TokenType::Revoke
             | TokenType::Show => self.parse_raw_statement(),
+            TokenType::Comment => self.parse_comment_statement(),
             TokenType::Insert if self.peek_n_type(1) == &TokenType::Or => {
                 self.parse_raw_statement()
             }
@@ -536,6 +579,17 @@ impl Parser {
             comments: vec![],
             sql: self.sql[start..end].trim().to_string(),
         }))
+    }
+
+    fn parse_comment_statement(&mut self) -> Result<Statement> {
+        let statement = self.parse_raw_statement()?;
+        Ok(match statement {
+            Statement::Raw(mut raw) => {
+                raw.sql = normalize_dollar_quoted_strings(&raw.sql);
+                Statement::Raw(raw)
+            }
+            other => other,
+        })
     }
 
     fn char_pos_to_byte(&self, char_pos: usize) -> usize {

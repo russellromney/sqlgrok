@@ -78,6 +78,7 @@ this file records what landed.
 - Parsed `CHARACTER VARYING` and `CHARACTER VARYING(n)` casts as SQLite-targeted `TEXT`/`TEXT(n)`, reducing forced-suite rust-errors by `32` in each tracked MySQL/Postgres/SQLite lane.
 - Matched MySQL-to-SQLite parser parity for table index hints plus MySQL `UPDATE`/`DELETE` `ORDER BY`/`LIMIT` tails, reducing forced-suite rust-errors to `1305`/`1334`/`1290` for MySQL/Postgres/SQLite without any forced-row regressions.
 - Matched SQLGlot's preserved Postgres `TRUNCATE` options and multi-target rendering, reducing forced-suite rust-errors to `1298`/`1327`/`1283` for MySQL/Postgres/SQLite with no row-level regressions.
+- Added a Postgres `COMMENT ON ...` raw carrier with dollar-quoted body normalization, reducing forced-suite rust-errors to `1295`/`1323`/`1280` for MySQL/Postgres/SQLite with no row-level regressions.
 
 ## 2026-05-20
 
