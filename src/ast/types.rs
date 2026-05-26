@@ -145,6 +145,9 @@ pub struct SelectStatement {
     pub order_by: Vec<OrderByItem>,
     pub limit: Option<Expr>,
     pub offset: Option<Expr>,
+    /// ClickHouse-style LIMIT n BY expr, ...
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub limit_by: Vec<Expr>,
     /// Oracle-style FETCH FIRST n ROWS ONLY
     pub fetch_first: Option<Expr>,
     /// QUALIFY clause (BigQuery, Snowflake)

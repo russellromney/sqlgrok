@@ -1014,6 +1014,7 @@ impl Parser {
             order_by: vec![],
             limit: None,
             offset: None,
+            limit_by: vec![],
             fetch_first: None,
             qualify: None,
             window_definitions: vec![],
@@ -1054,10 +1055,12 @@ impl Parser {
             let (limit, offset) = self.parse_limit_offset_pair()?;
             select.limit = limit;
             select.offset = offset;
+            select.limit_by = self.parse_limit_by()?;
         }
 
         if select.offset.is_none() && self.match_token(TokenType::Offset) {
             select.offset = Some(self.parse_expr()?);
+            select.limit_by = self.parse_limit_by()?;
         }
 
         self.parse_pipeline_stages(&mut select)?;
@@ -1080,6 +1083,14 @@ impl Parser {
             Ok((Some(count), Some(first)))
         } else {
             Ok((Some(first), None))
+        }
+    }
+
+    fn parse_limit_by(&mut self) -> Result<Vec<Expr>> {
+        if self.match_token(TokenType::By) {
+            self.parse_expr_list()
+        } else {
+            Ok(vec![])
         }
     }
 
@@ -1138,6 +1149,7 @@ impl Parser {
                     if self.match_token(TokenType::Offset) {
                         select.offset = Some(self.parse_expr()?);
                     }
+                    select.limit_by = self.parse_limit_by()?;
                 }
                 TokenType::Distinct => {
                     self.advance();
@@ -1232,6 +1244,7 @@ impl Parser {
         select.order_by.clear();
         select.limit = None;
         select.offset = None;
+        select.limit_by.clear();
         select.fetch_first = None;
         select.qualify = None;
         select.window_definitions.clear();
@@ -1312,29 +1325,17 @@ impl Parser {
             vec![]
         };
 
-        let (limit, offset) = if self.match_token(TokenType::Limit) {
-            let first = if self.match_token(TokenType::All) {
-                Expr::Column {
-                    table: None,
-                    name: "ALL".to_string(),
-                    quote_style: QuoteStyle::None,
-                    table_quote_style: QuoteStyle::None,
-                }
-            } else {
-                self.parse_expr()?
-            };
-            if self.match_token(TokenType::Comma) {
-                let count = self.parse_expr()?;
-                (Some(count), Some(first))
-            } else {
-                (Some(first), None)
-            }
+        let (limit, offset, mut limit_by) = if self.match_token(TokenType::Limit) {
+            let (limit, offset) = self.parse_limit_offset_pair()?;
+            (limit, offset, self.parse_limit_by()?)
         } else {
-            (None, None)
+            (None, None, vec![])
         };
 
         let offset = if offset.is_none() && self.match_token(TokenType::Offset) {
-            Some(self.parse_expr()?)
+            let offset = Some(self.parse_expr()?);
+            limit_by = self.parse_limit_by()?;
+            offset
         } else {
             offset
         };
@@ -1370,6 +1371,7 @@ impl Parser {
             order_by,
             limit,
             offset,
+            limit_by,
             fetch_first,
             qualify,
             window_definitions,
@@ -3330,6 +3332,43 @@ impl Parser {
                 self.parse_create_table_option_value().unwrap_or_default(),
             ));
         }
+        if self.match_keyword("PARTITIONED") {
+            let _ = self.match_token(TokenType::By);
+            return Some(CreateTableOption::Unknown {
+                name: "PARTITIONED BY".to_string(),
+                value: self.parse_create_table_parenthesized_option_value(),
+            });
+        }
+        if self.match_keyword("DISTRIBUTED") {
+            let _ = self.match_token(TokenType::By);
+            let mut value = self
+                .parse_create_table_option_word_or_call()
+                .unwrap_or_default();
+            if self.match_keyword("BUCKETS") {
+                let buckets = self.parse_create_table_option_value().unwrap_or_default();
+                if value.is_empty() {
+                    value = format!("BUCKETS {buckets}");
+                } else {
+                    value = format!("{value} BUCKETS {buckets}");
+                }
+            }
+            return Some(CreateTableOption::Unknown {
+                name: "DISTRIBUTED BY".to_string(),
+                value: (!value.is_empty()).then_some(value),
+            });
+        }
+        if self.match_keyword("LOCATION") {
+            return Some(CreateTableOption::Unknown {
+                name: "LOCATION".to_string(),
+                value: self.parse_create_table_option_value(),
+            });
+        }
+        if self.match_keyword("TBLPROPERTIES") {
+            return Some(CreateTableOption::Unknown {
+                name: "TBLPROPERTIES".to_string(),
+                value: self.parse_create_table_parenthesized_option_value(),
+            });
+        }
         if self.match_token(TokenType::Default) {
             if self.match_keyword("CHARSET") {
                 return Some(CreateTableOption::CharacterSet {
@@ -3373,6 +3412,21 @@ impl Parser {
         }
 
         None
+    }
+
+    fn parse_create_table_parenthesized_option_value(&mut self) -> Option<String> {
+        self.parse_create_table_option_value()
+            .map(|value| format!("({value})"))
+    }
+
+    fn parse_create_table_option_word_or_call(&mut self) -> Option<String> {
+        let value = self.parse_create_table_option_value()?;
+        if matches!(self.peek_type(), TokenType::LParen) {
+            let inner = self.parse_create_table_parenthesized_option_value()?;
+            Some(format!("{value}{inner}"))
+        } else {
+            Some(value)
+        }
     }
 
     fn parse_create_table_option_value(&mut self) -> Option<String> {

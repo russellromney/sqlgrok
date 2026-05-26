@@ -8,34 +8,34 @@ Total rows: `15170`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 9264 |
-| `mismatch` | 3455 |
+| `match` | 9283 |
+| `mismatch` | 3464 |
 | `oracle-error` | 1457 |
-| `rust-error` | 855 |
+| `rust-error` | 827 |
 | `unsupported-harness-shape` | 139 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 9264 |
-| `mismatch` | `postgres` | `sqlite` | 3455 |
+| `match` | `postgres` | `sqlite` | 9283 |
+| `mismatch` | `postgres` | `sqlite` | 3464 |
 | `oracle-error` | `postgres` | `sqlite` | 1457 |
-| `rust-error` | `postgres` | `sqlite` | 855 |
+| `rust-error` | `postgres` | `sqlite` | 827 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 139 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 6540 |
-| `match` | `validate_identity` | 2627 |
+| `match` | `validate_all` | 6544 |
+| `match` | `validate_identity` | 2642 |
 | `mismatch` | `validate_all` | 2381 |
-| `mismatch` | `validate_identity` | 998 |
+| `mismatch` | `validate_identity` | 1007 |
 | `oracle-error` | `validate_identity` | 949 |
 | `oracle-error` | `validate_all` | 502 |
-| `rust-error` | `validate_identity` | 486 |
-| `rust-error` | `validate_all` | 365 |
+| `rust-error` | `validate_identity` | 462 |
+| `rust-error` | `validate_all` | 361 |
 | `unsupported-harness-shape` | `validate_all` | 124 |
 | `match` | `validate` | 97 |
 | `mismatch` | `validate` | 76 |
@@ -50,9 +50,9 @@ Total rows: `15170`
 | --- | --- | ---: |
 | `match` | `SELECT` | 719 |
 | `match` | `CAST()` | 547 |
-| `match` | `SELECT operator multiply` | 301 |
-| `mismatch` | `CREATE TABLE` | 229 |
-| `match` | `CREATE TABLE` | 215 |
+| `match` | `SELECT operator multiply` | 304 |
+| `mismatch` | `CREATE TABLE` | 238 |
+| `match` | `CREATE TABLE` | 230 |
 | `match` | `SHOW` | 215 |
 | `oracle-error` | `SELECT` | 213 |
 | `mismatch` | `CREATE` | 195 |
@@ -64,14 +64,14 @@ Total rows: `15170`
 | `match` | `X` | 113 |
 | `mismatch` | `SELECT UNNEST()` | 113 |
 | `oracle-error` | `CREATE TABLE` | 106 |
-| `rust-error` | `CREATE TABLE` | 102 |
 | `mismatch` | `SELECT operator multiply` | 93 |
 | `match` | `WITH` | 90 |
-| `rust-error` | `SELECT operator multiply` | 89 |
+| `rust-error` | `SELECT operator multiply` | 86 |
 | `match` | `SELECT DATEDIFF()` | 83 |
 | `match` | `SELECT CAST()` | 79 |
 | `match` | `SET` | 78 |
 | `mismatch` | `DATE_ADD()` | 78 |
+| `rust-error` | `CREATE TABLE` | 78 |
 | `rust-error` | `SELECT` | 74 |
 | `match` | `DATE_TRUNC()` | 71 |
 | `match` | `LOG()` | 67 |
@@ -104,8 +104,6 @@ Total rows: `15170`
 | `oracle-error` | `oracle parse: The number of provided arguments (3) is greater than the maximum number of supported arguments (2)` | 16 |
 | `oracle-error` | `oracle parse: Expecting (` | 14 |
 | `unsupported-harness-shape` | `identify helper option is not supported yet` | 14 |
-| `rust-error` | `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 57, position: 56, quote_char: '\0' }` | 13 |
-| `rust-error` | `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 69, position: 68, quote_char: '\0' }` | 13 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('x')` | 13 |
 | `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.HASH, text: #, line: 1, col: 14, start: 13, end: 13, comments: []>` | 12 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: Dot, value: ".", line: 1, col: 31, position: 30, quote_char: '\0' }` | 10 |
@@ -133,13 +131,15 @@ Total rows: `15170`
 | `rust-error` | `parser: Expected RParen, got Identifier ('ARRAY[1')` | 6 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('PLAN')` | 6 |
 | `rust-error` | `parser: Expected RParen, got Union ('UNION')` | 6 |
+| `rust-error` | `parser: Expected RParen, got With ('WITH')` | 6 |
+| `rust-error` | `ValueError: Unexpected token: Token { token_type: As, value: "AS", line: 1, col: 8, position: 7, quote_char: '\0' }` | 5 |
 
 ## Mismatch Signature Buckets
 
 | Status | Signature | Count |
 | --- | --- | ---: |
 | `mismatch` | `missing AS or alias rendering` | 307 |
-| `mismatch` | `DDL/create-table rendering` | 232 |
+| `mismatch` | `DDL/create-table rendering` | 241 |
 | `mismatch` | `case-only rendering difference` | 222 |
 | `mismatch` | `CREATE` | 121 |
 | `mismatch` | `SELECT` | 107 |
@@ -199,9 +199,9 @@ Total rows: `15170`
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 113 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 110 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 107 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 100 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 98 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 97 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 88 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
@@ -484,6 +484,15 @@ Total rows: `15170`
 - `tests/dialects/test_tsql.py`:2146 `test_identifier_prefixes` via `validate_all`: `SELECT * FROM #mytemptable`
   - error: `ParseError: Expected table name but got <Token token_type: TokenType.HASH, text: #, line: 1, col: 15, start: 14, end: 14, comments: []>. Line 1, Col: 15. SELECT * FROM #mytemptable`
 
+### `oracle-error` `oracle parse: Expected table name but got <Token token_type: TokenType.HASH, text: #, line: 1, col: 39, start: 38, end: 38, comments: []>`
+
+- `tests/dialects/test_tsql.py`:182 `test_tsql` via `validate_all`: `WITH t(c) AS (SELECT 1) SELECT c INTO #foo FROM t`
+  - error: `ParseError: Expected table name but got <Token token_type: TokenType.HASH, text: #, line: 1, col: 39, start: 38, end: 38, comments: []>. Line 1, Col: 39. WITH t(c) AS (SELECT 1) SELECT c INTO #foo FROM t`
+- `tests/dialects/test_tsql.py`:182 `test_tsql` via `validate_all`: `WITH t(c) AS (SELECT 1) SELECT c INTO #foo FROM t`
+  - error: `ParseError: Expected table name but got <Token token_type: TokenType.HASH, text: #, line: 1, col: 39, start: 38, end: 38, comments: []>. Line 1, Col: 39. WITH t(c) AS (SELECT 1) SELECT c INTO #foo FROM t`
+- `tests/dialects/test_tsql.py`:182 `test_tsql` via `validate_all`: `WITH t(c) AS (SELECT 1) SELECT c INTO #foo FROM t`
+  - error: `ParseError: Expected table name but got <Token token_type: TokenType.HASH, text: #, line: 1, col: 39, start: 38, end: 38, comments: []>. Line 1, Col: 39. WITH t(c) AS (SELECT 1) SELECT c INTO #foo FROM t`
+
 ### `oracle-error` `oracle parse: Expected table name but got <Token token_type: TokenType.L_BRACKET, text: [, line: 1, col: 14, start: 13, end: 13, comments: []>`
 
 - `tests/dialects/test_tsql.py`:1208 `test_ddl` via `validate_all`: `CREATE TABLE [#temptest] (name INTEGER)`
@@ -556,30 +565,6 @@ Total rows: `15170`
 - `tests/dialects/test_hive.py`:751 `test_hive` via `validate_all`: `map(a, b, c, d)`
   - error: `ParseError: The number of provided arguments (4) is greater than the maximum number of supported arguments (2). Line 1, Col: 15. map(a, b, c, d)`
 
-### `rust-error` `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 57, position: 56, quote_char: '\0' }`
-
-- `tests/dialects/test_starrocks.py`:75 `test_ddl` via `validate_identity`: `CREATE TABLE foo (col1 BIGINT, col2 BIGINT) DISTRIBUTED BY HASH (col1) BUCKETS 1`
-  - expected: `CREATE TABLE foo (col1 INTEGER, col2 INTEGER)`
-  - error: `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 57, position: 56, quote_char: '\0' }`
-- `tests/dialects/test_starrocks.py`:75 `test_ddl` via `validate_identity`: `CREATE TABLE foo (col1 BIGINT, col2 BIGINT) DISTRIBUTED BY HASH (col1)`
-  - expected: `CREATE TABLE foo (col1 INTEGER, col2 INTEGER)`
-  - error: `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 57, position: 56, quote_char: '\0' }`
-- `tests/dialects/test_starrocks.py`:75 `test_ddl` via `validate_identity`: `CREATE TABLE foo (col1 BIGINT, col2 BIGINT) DISTRIBUTED BY RANDOM BUCKETS 1`
-  - expected: `CREATE TABLE foo (col1 INTEGER, col2 INTEGER)`
-  - error: `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 57, position: 56, quote_char: '\0' }`
-
-### `rust-error` `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 69, position: 68, quote_char: '\0' }`
-
-- `tests/dialects/test_starrocks.py`:76 `test_ddl` via `validate_identity`: `CREATE TABLE foo (col1 BIGINT, col2 BIGINT) ENGINE=OLAP DISTRIBUTED BY HASH (col1) BUCKETS 1`
-  - expected: `CREATE TABLE foo (col1 INTEGER, col2 INTEGER)`
-  - error: `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 69, position: 68, quote_char: '\0' }`
-- `tests/dialects/test_starrocks.py`:76 `test_ddl` via `validate_identity`: `CREATE TABLE foo (col1 BIGINT, col2 BIGINT) ENGINE=OLAP DISTRIBUTED BY HASH (col1)`
-  - expected: `CREATE TABLE foo (col1 INTEGER, col2 INTEGER)`
-  - error: `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 69, position: 68, quote_char: '\0' }`
-- `tests/dialects/test_starrocks.py`:76 `test_ddl` via `validate_identity`: `CREATE TABLE foo (col1 BIGINT, col2 BIGINT) ENGINE=OLAP DISTRIBUTED BY RANDOM BUCKETS 1`
-  - expected: `CREATE TABLE foo (col1 INTEGER, col2 INTEGER)`
-  - error: `ValueError: Unexpected token: Token { token_type: By, value: "BY", line: 1, col: 69, position: 68, quote_char: '\0' }`
-
 ### `rust-error` `ValueError: Unexpected token: Token { token_type: Colon, value: ":", line: 1, col: 40, position: 39, quote_char: '\0' }`
 
 - `tests/dialects/test_snowflake.py`:1367 `test_snowflake` via `validate_all`: `SELECT PARSE_JSON('{"fruit":"banana"}'):fruit`
@@ -627,6 +612,18 @@ Total rows: `15170`
 - `tests/dialects/test_hive.py`:921 `test_hive` via `validate_all`: `SELECT EXISTS(ARRAY(2, 3), x -> x % 2 = 0)`
   - expected: `SELECT EXISTS(ARRAY(2, 3))`
   - error: `ValueError: Parser error: Expected RParen, got Comma (',') at line 1 col 26`
+
+### `rust-error` `parser: Expected RParen, got Dot ('.')`
+
+- `tests/dialects/test_bigquery.py`:1488 `test_bigquery` via `validate_all`: `DELETE FROM db.t1 AS t1 WHERE NOT t1.c IN (SELECT db.t2.c FROM db.t2)`
+  - expected: `DELETE FROM db.t1 AS t1 WHERE NOT t1.c IN (SELECT db.t2.c FROM db.t2)`
+  - error: `ValueError: Parser error: Expected RParen, got Dot ('.') at line 1 col 56`
+- `tests/dialects/test_bigquery.py`:1488 `test_bigquery` via `validate_all`: `DELETE FROM db.t1 AS t1 WHERE NOT t1.c IN (SELECT db.t2.c FROM db.t2)`
+  - expected: `DELETE FROM db.t1 AS t1 WHERE NOT t1.c IN (SELECT db.t2.c FROM db.t2)`
+  - error: `ValueError: Parser error: Expected RParen, got Dot ('.') at line 1 col 56`
+- `tests/dialects/test_dialect.py`:3090 `test_merge` via `validate_all`: `MERGE INTO foo AS target USING (SELECT a, b FROM tbl) AS src ON src.a = target.a WHEN MATCHED AND target.a <> src.a THEN UPDATE SET target.b = 'FOO' WHEN NOT MATCHED THEN INSERT (target.a, target.b) VALUES (src.a, src.b)`
+  - expected: `MERGE INTO foo AS target USING (SELECT a, b FROM tbl) AS src ON src.a = target.a WHEN MATCHED AND target.a <> src.a THEN UPDATE SET target.b = 'FOO' WHEN NOT MATCHED THEN INSERT (target.a, target.b) VALUES (src.a, src.b)`
+  - error: `ValueError: Parser error: Expected RParen, got Dot ('.') at line 3 col 49`
 
 ### `rust-error` `parser: Expected RParen, got Identifier ('x')`
 

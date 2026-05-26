@@ -861,6 +861,7 @@ impl SelectBuilder {
                 order_by: Vec::new(),
                 limit: None,
                 offset: None,
+                limit_by: Vec::new(),
                 fetch_first: None,
                 qualify: None,
                 window_definitions: Vec::new(),

@@ -13,24 +13,24 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 9264 |
-| `mismatch` | 3455 |
+| `match` | 9283 |
+| `mismatch` | 3464 |
 | `oracle-error` | 1457 |
-| `rust-error` | 855 |
+| `rust-error` | 827 |
 | `unsupported-harness-shape` | 139 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 6540 |
-| `match` | `validate_identity` | 2627 |
+| `match` | `validate_all` | 6544 |
+| `match` | `validate_identity` | 2642 |
 | `mismatch` | `validate_all` | 2381 |
-| `mismatch` | `validate_identity` | 998 |
+| `mismatch` | `validate_identity` | 1007 |
 | `oracle-error` | `validate_identity` | 949 |
 | `oracle-error` | `validate_all` | 502 |
-| `rust-error` | `validate_identity` | 486 |
-| `rust-error` | `validate_all` | 365 |
+| `rust-error` | `validate_identity` | 462 |
+| `rust-error` | `validate_all` | 361 |
 | `unsupported-harness-shape` | `validate_all` | 124 |
 | `match` | `validate` | 97 |
 | `mismatch` | `validate` | 76 |
@@ -59,9 +59,9 @@ Filtered by read/write: `0`
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 113 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 110 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 107 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 100 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 98 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 97 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 88 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |

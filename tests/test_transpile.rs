@@ -4846,6 +4846,62 @@ fn test_forced_suite_table_source_tails_and_directed_join_to_sqlite() {
 }
 
 #[test]
+fn test_forced_suite_limit_by_to_sqlite() {
+    let cases = [
+        (
+            "SELECT * FROM table LIMIT 1 BY a, b",
+            "SELECT * FROM table LIMIT 1 BY a, b",
+        ),
+        (
+            "SELECT * FROM table LIMIT 2 OFFSET 1 BY a, b",
+            "SELECT * FROM table LIMIT 2 OFFSET 1 BY a, b",
+        ),
+        (
+            "SELECT * FROM table LIMIT 1, 2 BY a, b",
+            "SELECT * FROM table LIMIT 2 OFFSET 1 BY a, b",
+        ),
+        (
+            "SELECT * FROM table LIMIT 1 BY CONCAT(datalayerVariantNo, datalayerProductId, warehouse)",
+            "SELECT * FROM table LIMIT 1 BY datalayerVariantNo || datalayerProductId || warehouse",
+        ),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
+}
+
+#[test]
+fn test_forced_suite_create_table_by_options_to_sqlite() {
+    let cases = [
+        (
+            "CREATE TABLE x (w STRING) PARTITIONED BY (y INT, z INT)",
+            "CREATE TABLE x (w TEXT)",
+        ),
+        (
+            "CREATE TABLE test_table (c1 INT, c2 INT) DISTRIBUTED BY RANDOM",
+            "CREATE TABLE test_table (c1 INTEGER, c2 INTEGER)",
+        ),
+        (
+            "CREATE TABLE test_table (c1 INT, c2 INT) DISTRIBUTED BY RANDOM BUCKETS 1",
+            "CREATE TABLE test_table (c1 INTEGER, c2 INTEGER)",
+        ),
+        (
+            "CREATE TABLE test_table (c1 INT, c2 INT) DISTRIBUTED BY HASH(c1) BUCKETS 1",
+            "CREATE TABLE test_table (c1 INTEGER, c2 INTEGER)",
+        ),
+        (
+            "CREATE TABLE iceberg_table (`id` BIGINT, `data` STRING, category STRING) PARTITIONED BY (category, BUCKET(16, id)) LOCATION 's3://bucket/path' TBLPROPERTIES ('format'='parquet')",
+            "CREATE TABLE iceberg_table (\"id\" INTEGER, \"data\" TEXT, category TEXT)",
+        ),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
+}
+
+#[test]
 fn test_forced_suite_parser_burn_down_to_sqlite() {
     let sqlite_cases = [
         (

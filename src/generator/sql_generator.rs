@@ -433,6 +433,12 @@ impl Generator {
             self.gen_expr(offset);
         }
 
+        if !sel.limit_by.is_empty() {
+            self.sep();
+            self.write_keyword("BY ");
+            self.gen_expr_list(&sel.limit_by);
+        }
+
         if let Some(fetch) = &sel.fetch_first {
             self.sep();
             self.write_keyword("FETCH FIRST ");

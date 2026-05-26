@@ -336,6 +336,9 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 *expr = transform_expr(expr.clone(), source, target);
             }
             transform_order_by_items(&mut sel.order_by, source, target);
+            for expr in &mut sel.limit_by {
+                *expr = transform_expr(expr.clone(), source, target);
+            }
             if let Some(having) = &mut sel.having {
                 *having = transform_expr(having.clone(), source, target);
             }
@@ -1704,6 +1707,7 @@ fn rewrite_postgres_distinct_on(
         order_by: vec![],
         limit: None,
         offset: None,
+        limit_by: vec![],
         fetch_first: None,
         qualify: None,
         window_definitions: vec![],

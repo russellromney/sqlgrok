@@ -582,6 +582,9 @@ fn transform_statement_plugin(statement: &mut Statement, target: &DialectRef) {
             for gb in &mut sel.group_by {
                 *gb = transform_expr_plugin(gb.clone(), target);
             }
+            for expr in &mut sel.limit_by {
+                *expr = transform_expr_plugin(expr.clone(), target);
+            }
             if let Some(having) = &mut sel.having {
                 *having = transform_expr_plugin(having.clone(), target);
             }

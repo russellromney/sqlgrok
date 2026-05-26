@@ -90,6 +90,7 @@ this file records what landed.
 - Matched SQLGlot's `BETWEEN SYMMETRIC`/`ASYMMETRIC` rewrites and prefix `NOT BETWEEN` rendering; refreshed forced-suite reports now show MySQL/Postgres/SQLite rust-errors at `1155`/`1184`/`1146`.
 - Burned down another forced-suite parser batch by matching SQLite-targeted `CAST(... FORMAT ...)`, recursive `MAP`/`STRUCT` type casts, quantified `LIKE`/`ILIKE` lists, predicate-side boolean casts, `STRUCT(... AS ...)` arguments, and `FLOOR`/`CEIL(... TO ...)` carriers; refreshed forced-suite reports now show MySQL/Postgres/SQLite exact matches at `8408`/`9076`/`8683` and rust-errors at `994`/`1022`/`999`.
 - Reduced the next forced-suite parser buckets with raw carriers for function-local `ORDER BY`/`HAVING`/`LIMIT` tails, SQLite null-treatment dropping in those raw function arguments, `ANY_VALUE` to `MAX`, `LATERAL VIEW` table tails, Snowflake-style `AT`/`CHANGES` table tails, and `DIRECTED JOIN` dropping while preserving explicit `OUTER`; refreshed forced-suite reports now show MySQL/Postgres/SQLite exact matches at `8548`/`9194`/`8803` and rust-errors at `926`/`950`/`927`.
+- Matched SQLGlot forced-suite `BY` parser forms for ClickHouse-style `LIMIT ... BY ...` and create-table `PARTITIONED BY`/`DISTRIBUTED BY`/`LOCATION`/`TBLPROPERTIES` tails; refreshed forced reports now show MySQL/Postgres/SQLite rust-errors down to `797`/`827`/`796`.
 
 ## 2026-05-20
 

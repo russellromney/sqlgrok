@@ -699,6 +699,7 @@ mod tests {
                 order_by: vec![],
                 limit: None,
                 offset: None,
+                limit_by: vec![],
                 fetch_first: None,
                 qualify: None,
                 window_definitions: vec![],
