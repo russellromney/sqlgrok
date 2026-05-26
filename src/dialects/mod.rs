@@ -2093,6 +2093,7 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
             }
         }
         "LENGTH" if is_tsql_family(target) => "LEN".to_string(),
+        "ANY_VALUE" if matches!(target, Dialect::Sqlite) => "MAX".to_string(),
 
         // ── SUBSTR / SUBSTRING ───────────────────────────────────────────
         "SUBSTR" => {

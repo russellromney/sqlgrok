@@ -1395,6 +1395,9 @@ impl Parser {
                         | "IGNORE"
                         | "LOCK"
                         | "INDEXED"
+                        | "AT"
+                        | "BEFORE"
+                        | "CHANGES"
                 )
             {
                 self.advance();
@@ -1541,6 +1544,20 @@ impl Parser {
             return Ok(TableSource::Table(table_ref));
         }
 
+        if self.starts_raw_table_tail() {
+            self.consume_raw_table_tail();
+            let end = self
+                .tokens
+                .get(self.pos)
+                .map(|token| self.char_pos_to_byte(token.position))
+                .unwrap_or_else(|| self.sql.len());
+            return Ok(TableSource::Raw {
+                sql: self.sql[table_start..end].trim().to_string(),
+                alias: None,
+                alias_quote_style: QuoteStyle::None,
+            });
+        }
+
         // Check if it's actually a table function: name(args...)
         if self.peek_type() == &TokenType::LParen && table_ref.schema.is_none() {
             self.advance();
@@ -1582,6 +1599,36 @@ impl Parser {
         }
 
         Ok(TableSource::Table(table_ref))
+    }
+
+    fn starts_raw_table_tail(&self) -> bool {
+        self.peek_type() == &TokenType::Lateral
+            || matches!(
+                self.peek().value.to_ascii_uppercase().as_str(),
+                "AT" | "BEFORE" | "CHANGES"
+            )
+    }
+
+    fn consume_raw_table_tail(&mut self) {
+        let mut depth = 0usize;
+        while self.peek_type() != &TokenType::Eof {
+            if depth == 0 && self.is_table_source_boundary() {
+                break;
+            }
+            match self.peek_type() {
+                TokenType::LParen | TokenType::LBracket | TokenType::LBrace => {
+                    depth += 1;
+                    self.advance();
+                }
+                TokenType::RParen | TokenType::RBracket | TokenType::RBrace => {
+                    depth = depth.saturating_sub(1);
+                    self.advance();
+                }
+                _ => {
+                    self.advance();
+                }
+            }
+        }
     }
 
     fn parse_raw_table_function_source(&mut self) -> Result<TableSource> {
@@ -1949,29 +1996,46 @@ impl Parser {
                 }
                 TokenType::Inner => {
                     self.advance();
+                    let _ = self.match_keyword("DIRECTED");
                     self.expect(TokenType::Join)?;
                     JoinType::Inner
                 }
                 TokenType::Left => {
                     self.advance();
-                    let _ = self.match_token(TokenType::Outer);
+                    let outer = self.match_token(TokenType::Outer);
+                    let _ = self.match_keyword("DIRECTED");
                     self.expect(TokenType::Join)?;
-                    JoinType::Left
+                    if outer {
+                        JoinType::LeftOuter
+                    } else {
+                        JoinType::Left
+                    }
                 }
                 TokenType::Right => {
                     self.advance();
-                    let _ = self.match_token(TokenType::Outer);
+                    let outer = self.match_token(TokenType::Outer);
+                    let _ = self.match_keyword("DIRECTED");
                     self.expect(TokenType::Join)?;
-                    JoinType::Right
+                    if outer {
+                        JoinType::RightOuter
+                    } else {
+                        JoinType::Right
+                    }
                 }
                 TokenType::Full => {
                     self.advance();
-                    let _ = self.match_token(TokenType::Outer);
+                    let outer = self.match_token(TokenType::Outer);
+                    let _ = self.match_keyword("DIRECTED");
                     self.expect(TokenType::Join)?;
-                    JoinType::Full
+                    if outer {
+                        JoinType::FullOuter
+                    } else {
+                        JoinType::Full
+                    }
                 }
                 TokenType::Cross => {
                     self.advance();
+                    let _ = self.match_keyword("DIRECTED");
                     self.expect(TokenType::Join)?;
                     JoinType::Cross
                 }
@@ -5280,6 +5344,29 @@ impl Parser {
             });
         }
 
+        let function_name_upper = name.to_uppercase();
+        if matches!(
+            function_name_upper.as_str(),
+            "ANY_VALUE"
+                | "ARG_MAX"
+                | "ARRAY_AGG"
+                | "JSON_ARRAYAGG"
+                | "LAST_VALUE"
+                | "LISTAGG"
+                | "NTILE"
+        ) && self.function_args_contain_top_level_clause()
+        {
+            let distinct = self.match_token(TokenType::Distinct);
+            let raw_args = self.parse_raw_function_args()?;
+            return Ok(Expr::Function {
+                name,
+                args: vec![Expr::StringLiteral(raw_args)],
+                distinct,
+                filter: None,
+                over: None,
+            });
+        }
+
         // Special: COUNT(*), COUNT(DISTINCT x)
         let distinct = self.match_token(TokenType::Distinct);
 
@@ -5376,6 +5463,28 @@ impl Parser {
                 TokenType::Identifier
                     if depth == 0 && self.tokens[pos].value.eq_ignore_ascii_case("TO") =>
                 {
+                    return true;
+                }
+                _ => {}
+            }
+            pos += 1;
+        }
+        false
+    }
+
+    fn function_args_contain_top_level_clause(&self) -> bool {
+        let mut depth = 0usize;
+        let mut pos = self.pos;
+        while pos < self.tokens.len() {
+            match self.tokens[pos].token_type {
+                TokenType::LParen | TokenType::LBracket | TokenType::LBrace => depth += 1,
+                TokenType::RParen => {
+                    if depth == 0 {
+                        return false;
+                    }
+                    depth -= 1;
+                }
+                TokenType::Having | TokenType::Limit | TokenType::Order if depth == 0 => {
                     return true;
                 }
                 _ => {}

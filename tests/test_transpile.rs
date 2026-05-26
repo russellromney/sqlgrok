@@ -4780,3 +4780,67 @@ fn test_forced_suite_struct_alias_args_and_floor_to_unit_to_sqlite() {
         validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
     }
 }
+
+#[test]
+fn test_forced_suite_function_clause_tails_to_sqlite() {
+    let cases = [
+        (
+            "ARG_MAX(keyword_name, keyword_category, 3 ORDER BY keyword_name DESC)",
+            "ARG_MAX(keyword_name, keyword_category, 3 ORDER BY keyword_name DESC)",
+        ),
+        (
+            "SELECT JSON_ARRAYAGG(name ORDER BY id ASC, name DESC) FROM t",
+            "SELECT JSON_ARRAYAGG(name ORDER BY id ASC, name DESC) FROM t",
+        ),
+        (
+            "SELECT ANY_VALUE(fruit HAVING MAX sold) FROM fruits",
+            "SELECT MAX(fruit HAVING MAX sold) FROM fruits",
+        ),
+        (
+            "ARRAY_AGG(DISTINCT x IGNORE NULLS HAVING MAX x ORDER BY x LIMIT 1)",
+            "ARRAY_AGG(DISTINCT x HAVING MAX x ORDER BY x LIMIT 1)",
+        ),
+        (
+            "SELECT LAST_VALUE(x ORDER BY x IGNORE NULLS) OVER (ORDER BY x) FROM t",
+            "SELECT LAST_VALUE(x ORDER BY x) OVER (ORDER BY x) FROM t",
+        ),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
+}
+
+#[test]
+fn test_forced_suite_table_source_tails_and_directed_join_to_sqlite() {
+    let cases = [
+        (
+            "SELECT a FROM x LATERAL VIEW EXPLODE(y) t AS a",
+            "SELECT a FROM x LATERAL VIEW EXPLODE(y) t AS a",
+        ),
+        (
+            "SELECT a, b FROM x LATERAL VIEW EXPLODE(y) t AS a LATERAL VIEW EXPLODE(z) u AS b",
+            "SELECT a, b FROM x LATERAL VIEW EXPLODE(y) t AS a LATERAL VIEW EXPLODE(z) u AS b",
+        ),
+        (
+            "SELECT * FROM a LEFT OUTER DIRECTED JOIN b USING (id)",
+            "SELECT * FROM a LEFT OUTER JOIN b USING (id)",
+        ),
+        (
+            "SELECT * FROM a CROSS DIRECTED JOIN b USING (id)",
+            "SELECT * FROM a CROSS JOIN b USING (id)",
+        ),
+        (
+            "SELECT * FROM my_table AT (STATEMENT => $query_id_var)",
+            "SELECT * FROM my_table AT (STATEMENT => $query_id_var)",
+        ),
+        (
+            "SELECT C1 FROM t1 CHANGES (INFORMATION => APPEND_ONLY) AT (STREAM => 's1') END (TIMESTAMP => $ts2)",
+            "SELECT C1 FROM t1 CHANGES (INFORMATION => APPEND_ONLY) AT (STREAM => 's1') END (TIMESTAMP => $ts2)",
+        ),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
+}

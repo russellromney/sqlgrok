@@ -1,6 +1,22 @@
 use crate::ast::*;
 use crate::dialects::Dialect;
 
+fn raw_args_contain_function_clause(raw_args: &str) -> bool {
+    let upper = raw_args.to_ascii_uppercase();
+    upper.contains(" HAVING ")
+        || upper.contains(" ORDER BY ")
+        || upper.contains(" LIMIT ")
+        || upper.starts_with("HAVING ")
+        || upper.starts_with("ORDER BY ")
+        || upper.starts_with("LIMIT ")
+}
+
+fn sqlite_function_raw_args(raw_args: &str) -> String {
+    raw_args
+        .replace(" IGNORE NULLS", "")
+        .replace(" RESPECT NULLS", "")
+}
+
 /// SQL code generator that converts an AST into a SQL string.
 ///
 /// Supports all statement and expression types defined in the AST,
@@ -731,8 +747,11 @@ impl Generator {
         let join_kw = match join.join_type {
             JoinType::Inner => "INNER JOIN",
             JoinType::Left => "LEFT JOIN",
+            JoinType::LeftOuter => "LEFT OUTER JOIN",
             JoinType::Right => "RIGHT JOIN",
+            JoinType::RightOuter => "RIGHT OUTER JOIN",
             JoinType::Full => "FULL JOIN",
+            JoinType::FullOuter => "FULL OUTER JOIN",
             JoinType::Cross => "CROSS JOIN",
             JoinType::Comma => ",",
             JoinType::Natural => "NATURAL JOIN",
@@ -2111,14 +2130,45 @@ impl Generator {
                 }
                 if matches!(
                     name.to_ascii_uppercase().as_str(),
-                    "CEIL" | "CEILING" | "FLOOR" | "MAKE_INTERVAL" | "XMLELEMENT" | "OVERLAY"
+                    "ANY_VALUE"
+                        | "ARG_MAX"
+                        | "ARRAY_AGG"
+                        | "CEIL"
+                        | "CEILING"
+                        | "FLOOR"
+                        | "JSON_ARRAYAGG"
+                        | "LAST_VALUE"
+                        | "LISTAGG"
+                        | "MAKE_INTERVAL"
+                        | "MAX"
+                        | "NTILE"
+                        | "XMLELEMENT"
+                        | "OVERLAY"
                 ) && args.len() == 1
                     && let Expr::StringLiteral(raw_args) = &args[0]
+                    && (raw_args_contain_function_clause(raw_args)
+                        || matches!(
+                            name.to_ascii_uppercase().as_str(),
+                            "CEIL"
+                                | "CEILING"
+                                | "FLOOR"
+                                | "MAKE_INTERVAL"
+                                | "XMLELEMENT"
+                                | "OVERLAY"
+                        ))
                 {
                     self.write(name);
                     self.write("(");
-                    self.write(raw_args);
+                    if *distinct {
+                        self.write_keyword("DISTINCT ");
+                    }
+                    if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                        self.write(&sqlite_function_raw_args(raw_args));
+                    } else {
+                        self.write(raw_args);
+                    }
                     self.write(")");
+                    self.gen_filter_and_over(filter.as_deref(), over.as_ref());
                     return;
                 }
                 if matches!(name.to_ascii_uppercase().as_str(), "ALL" | "ANY" | "SOME") {
@@ -2141,32 +2191,7 @@ impl Generator {
                 self.gen_expr_list(args);
                 self.write(")");
 
-                if let Some(filter_expr) = filter {
-                    self.write(" ");
-                    self.write_keyword("FILTER(WHERE ");
-                    self.gen_expr(filter_expr);
-                    self.write(")");
-                }
-                if let Some(spec) = over {
-                    self.write(" ");
-                    self.write_keyword("OVER ");
-                    if let Some(wref) = &spec.window_ref {
-                        if spec.partition_by.is_empty()
-                            && spec.order_by.is_empty()
-                            && spec.frame.is_none()
-                        {
-                            self.write(wref);
-                        } else {
-                            self.write("(");
-                            self.gen_window_spec(spec);
-                            self.write(")");
-                        }
-                    } else {
-                        self.write("(");
-                        self.gen_window_spec(spec);
-                        self.write(")");
-                    }
-                }
+                self.gen_filter_and_over(filter.as_deref(), over.as_ref());
             }
             Expr::WithinGroup {
                 expr,
@@ -2620,6 +2645,33 @@ impl Generator {
                 self.write(" ");
             }
             self.gen_window_frame(frame);
+        }
+    }
+
+    fn gen_filter_and_over(&mut self, filter: Option<&Expr>, over: Option<&WindowSpec>) {
+        if let Some(filter_expr) = filter {
+            self.write(" ");
+            self.write_keyword("FILTER(WHERE ");
+            self.gen_expr(filter_expr);
+            self.write(")");
+        }
+        if let Some(spec) = over {
+            self.write(" ");
+            self.write_keyword("OVER ");
+            if let Some(wref) = &spec.window_ref {
+                if spec.partition_by.is_empty() && spec.order_by.is_empty() && spec.frame.is_none()
+                {
+                    self.write(wref);
+                } else {
+                    self.write("(");
+                    self.gen_window_spec(spec);
+                    self.write(")");
+                }
+            } else {
+                self.write("(");
+                self.gen_window_spec(spec);
+                self.write(")");
+            }
         }
     }
 

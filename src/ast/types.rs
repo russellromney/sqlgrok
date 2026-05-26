@@ -328,8 +328,11 @@ pub struct JoinClause {
 pub enum JoinType {
     Inner,
     Left,
+    LeftOuter,
     Right,
+    RightOuter,
     Full,
+    FullOuter,
     Cross,
     /// Comma join syntax (`FROM a, b`), semantically a cross join.
     Comma,

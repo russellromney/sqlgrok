@@ -205,9 +205,15 @@ impl<'a> ExecutionContext<'a> {
             JoinType::Inner | JoinType::Straight => {
                 self.inner_join(left_rows, &right_rows, &join.on, &join.using)
             }
-            JoinType::Left => self.left_join(left_rows, &right_rows, &join.on, &join.using),
-            JoinType::Right => self.right_join(left_rows, &right_rows, &join.on, &join.using),
-            JoinType::Full => self.full_join(left_rows, &right_rows, &join.on, &join.using),
+            JoinType::Left | JoinType::LeftOuter => {
+                self.left_join(left_rows, &right_rows, &join.on, &join.using)
+            }
+            JoinType::Right | JoinType::RightOuter => {
+                self.right_join(left_rows, &right_rows, &join.on, &join.using)
+            }
+            JoinType::Full | JoinType::FullOuter => {
+                self.full_join(left_rows, &right_rows, &join.on, &join.using)
+            }
             JoinType::Cross | JoinType::Comma => self.cross_join(left_rows, &right_rows),
             JoinType::Natural => self.natural_join(left_rows, &right_rows),
             _ => Err(SqlglotError::Internal(format!(
