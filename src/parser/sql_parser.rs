@@ -198,6 +198,10 @@ pub struct Parser {
     pending_comments: Vec<String>,
 }
 
+fn is_create_table_empty_option(option: &CreateTableOption) -> bool {
+    matches!(option, CreateTableOption::Unknown { name, value: None } if name.eq_ignore_ascii_case("EMPTY"))
+}
+
 impl Parser {
     /// Create a new parser from a SQL string.
     pub fn new(sql: &str) -> Result<Self> {
@@ -912,6 +916,7 @@ impl Parser {
         let recursive = self.match_token(TokenType::Recursive);
         let mut ctes = vec![self.parse_cte(recursive)?];
         while self.match_token(TokenType::Comma) {
+            let _ = self.match_token(TokenType::With);
             ctes.push(self.parse_cte(recursive)?);
         }
 
@@ -949,9 +954,29 @@ impl Parser {
     }
 
     fn parse_cte(&mut self, recursive: bool) -> Result<Cte> {
-        let (name, name_quote_style) = self.expect_name_with_quote()?;
+        let (name, name_quote_style) = if self.peek_type() == &TokenType::String {
+            let token = self.advance().clone();
+            (token.value, QuoteStyle::DoubleQuote)
+        } else {
+            self.expect_name_with_quote()?
+        };
 
         let columns = if self.match_token(TokenType::LParen) {
+            if matches!(
+                self.peek_type(),
+                TokenType::Select | TokenType::From | TokenType::With
+            ) {
+                let query = self.parse_statement_inner()?;
+                self.expect(TokenType::RParen)?;
+                return Ok(Cte {
+                    name,
+                    name_quote_style,
+                    columns: vec![],
+                    query: Box::new(query),
+                    materialized: None,
+                    recursive,
+                });
+            }
             let mut cols = vec![self.expect_name()?];
             while self.match_token(TokenType::Comma) {
                 cols.push(self.expect_name()?);
@@ -1658,6 +1683,22 @@ impl Parser {
             });
         }
 
+        if self.peek_type() == &TokenType::String {
+            let token = self.advance().clone();
+            let (alias, alias_quote_style) = match self.parse_optional_alias()? {
+                Some((name, qs)) => (Some(name), qs),
+                None => (None, QuoteStyle::None),
+            };
+            return Ok(TableSource::Table(TableRef {
+                catalog: None,
+                schema: None,
+                name: token.value,
+                alias,
+                name_quote_style: QuoteStyle::DoubleQuote,
+                alias_quote_style,
+            }));
+        }
+
         // Regular table reference (possibly with function syntax)
         let table_start = self.char_pos_to_byte(self.peek().position);
         let mut table_ref = self.parse_table_ref()?;
@@ -1686,9 +1727,9 @@ impl Parser {
 
         if table_ref.alias.is_some() && self.match_token(TokenType::LParen) {
             if self.peek_type() != &TokenType::RParen {
-                let _ = self.expect_name()?;
+                let _ = self.expect_alias_name_with_quote()?;
                 while self.match_token(TokenType::Comma) {
-                    let _ = self.expect_name()?;
+                    let _ = self.expect_alias_name_with_quote()?;
                 }
             }
             self.expect(TokenType::RParen)?;
@@ -1945,10 +1986,10 @@ impl Parser {
         };
         if self.match_token(TokenType::LParen) {
             if self.peek_type() != &TokenType::RParen {
-                let _ = self.expect_name()?;
+                let _ = self.expect_alias_name_with_quote()?;
                 self.consume_alias_column_type_tail();
                 while self.match_token(TokenType::Comma) {
-                    let _ = self.expect_name()?;
+                    let _ = self.expect_alias_name_with_quote()?;
                     self.consume_alias_column_type_tail();
                 }
             }
@@ -2018,10 +2059,14 @@ impl Parser {
             return Ok(());
         }
 
-        let _ = self.expect_name()?;
+        let _ = self.match_keyword("SYSTEM") || self.match_keyword("BERNOULLI");
         self.expect(TokenType::LParen)?;
         self.consume_balanced_parentheses_after_open();
         if self.match_keyword("REPEATABLE") {
+            self.expect(TokenType::LParen)?;
+            self.consume_balanced_parentheses_after_open();
+        }
+        if self.match_keyword("SEED") {
             self.expect(TokenType::LParen)?;
             self.consume_balanced_parentheses_after_open();
         }
@@ -2985,7 +3030,15 @@ impl Parser {
             }
         }
         self.expect(TokenType::RParen)?;
-        let options = self.parse_create_table_options();
+        let mut options = self.parse_create_table_options();
+        let as_select = if self.match_token(TokenType::As) {
+            Some(Box::new(self.parse_statement_inner()?))
+        } else {
+            None
+        };
+        if as_select.is_some() && options.iter().any(is_create_table_empty_option) {
+            options.retain(|option| !is_create_table_empty_option(option));
+        }
 
         Ok(Statement::CreateTable(CreateTableStatement {
             comments: vec![],
@@ -2995,7 +3048,7 @@ impl Parser {
             columns,
             constraints,
             options,
-            as_select: None,
+            as_select,
         }))
     }
 
@@ -3293,6 +3346,12 @@ impl Parser {
     }
 
     fn parse_create_table_option(&mut self) -> Option<CreateTableOption> {
+        if self.match_keyword("EMPTY") {
+            return Some(CreateTableOption::Unknown {
+                name: "EMPTY".to_string(),
+                value: None,
+            });
+        }
         if self.match_keyword("ENGINE") {
             return Some(CreateTableOption::Engine(
                 self.parse_create_table_option_value().unwrap_or_default(),
@@ -3369,6 +3428,18 @@ impl Parser {
                 value: self.parse_create_table_parenthesized_option_value(),
             });
         }
+        if self.match_keyword("TTL") {
+            return Some(CreateTableOption::Unknown {
+                name: "TTL".to_string(),
+                value: self.parse_create_table_raw_option_tail(),
+            });
+        }
+        if self.match_token(TokenType::With) {
+            return Some(CreateTableOption::Unknown {
+                name: "WITH".to_string(),
+                value: self.parse_create_table_parenthesized_option_value(),
+            });
+        }
         if self.match_token(TokenType::Default) {
             if self.match_keyword("CHARSET") {
                 return Some(CreateTableOption::CharacterSet {
@@ -3412,6 +3483,36 @@ impl Parser {
         }
 
         None
+    }
+
+    fn parse_create_table_raw_option_tail(&mut self) -> Option<String> {
+        let mut depth = 0usize;
+        let mut parts = Vec::new();
+        while self.peek_type() != &TokenType::Eof {
+            if depth == 0
+                && matches!(
+                    self.peek_type(),
+                    TokenType::Semicolon | TokenType::As | TokenType::RParen
+                )
+            {
+                break;
+            }
+            match self.peek_type() {
+                TokenType::LParen | TokenType::LBracket | TokenType::LBrace => {
+                    depth += 1;
+                    parts.push(self.advance().value.clone());
+                }
+                TokenType::RParen | TokenType::RBracket | TokenType::RBrace => {
+                    if depth == 0 {
+                        break;
+                    }
+                    depth -= 1;
+                    parts.push(self.advance().value.clone());
+                }
+                _ => parts.push(self.advance().value.clone()),
+            }
+        }
+        (!parts.is_empty()).then(|| parts.join(" "))
     }
 
     fn parse_create_table_parenthesized_option_value(&mut self) -> Option<String> {
@@ -5668,6 +5769,7 @@ impl Parser {
 
         // Special: COUNT(*), COUNT(DISTINCT x)
         let distinct = self.match_token(TokenType::Distinct);
+        let _ = self.match_token(TokenType::All);
 
         if name.eq_ignore_ascii_case("TRIM") {
             let expr = self.parse_trim_function()?;

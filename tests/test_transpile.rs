@@ -4902,6 +4902,54 @@ fn test_forced_suite_create_table_by_options_to_sqlite() {
 }
 
 #[test]
+fn test_forced_suite_expected_identifier_burn_down_to_sqlite() {
+    let cases = [
+        (
+            "WITH a AS (SELECT 1), WITH b AS (SELECT 2) SELECT *",
+            "WITH a AS (SELECT 1), b AS (SELECT 2) SELECT *",
+        ),
+        (
+            "WITH x (select 1) SELECT * FROM x",
+            "WITH x AS (SELECT 1) SELECT * FROM x",
+        ),
+        (
+            "WITH 'x' AS (SELECT 1) SELECT * FROM x",
+            "WITH \"x\" AS (SELECT 1) SELECT * FROM x",
+        ),
+        (
+            "CREATE TABLE t (a String) EMPTY AS SELECT * FROM dummy",
+            "CREATE TABLE t (a TEXT) AS SELECT * FROM dummy",
+        ),
+        (
+            "CREATE TABLE x (w VARCHAR, y INTEGER, z INTEGER) WITH (PARTITIONED_BY=ARRAY['y', 'z'])",
+            "CREATE TABLE x (w TEXT, y INTEGER, z INTEGER)",
+        ),
+        (
+            "CREATE TABLE IF NOT EXISTS x (\"cola\" INTEGER, \"ds\" TEXT) COMMENT 'comment' WITH (PARTITIONED BY=(\"ds\"))",
+            "CREATE TABLE IF NOT EXISTS x (\"cola\" INTEGER, \"ds\" TEXT)",
+        ),
+        (
+            "SELECT * FROM example TABLESAMPLE (3) REPEATABLE (82)",
+            "SELECT * FROM example",
+        ),
+        (
+            "SELECT * FROM x AS foo TABLESAMPLE (1)",
+            "SELECT * FROM x AS foo",
+        ),
+        (
+            "SELECT * FROM testtable TABLESAMPLE SYSTEM (3) SEED (82)",
+            "SELECT * FROM testtable",
+        ),
+        ("SELECT * FROM 'x.y'", "SELECT * FROM \"x.y\""),
+        ("PERCENTILE_APPROX(ALL x, 0.5)", "PERCENTILE_APPROX(x, 0.5)"),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
+}
+
+#[test]
 fn test_forced_suite_parser_burn_down_to_sqlite() {
     let sqlite_cases = [
         (

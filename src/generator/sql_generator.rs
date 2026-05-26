@@ -1279,7 +1279,10 @@ impl Generator {
         }
         self.gen_table_ref(&ct.table);
 
-        if let Some(as_select) = &ct.as_select {
+        if let Some(as_select) = &ct.as_select
+            && ct.columns.is_empty()
+            && ct.constraints.is_empty()
+        {
             self.write(" ");
             self.write_keyword("AS ");
             self.gen_statement(as_select);
@@ -1323,6 +1326,11 @@ impl Generator {
 
         self.write(")");
         self.gen_create_table_options(&ct.options);
+        if let Some(as_select) = &ct.as_select {
+            self.write(" ");
+            self.write_keyword("AS ");
+            self.gen_statement(as_select);
+        }
     }
 
     fn gen_create_table_options(&mut self, options: &[CreateTableOption]) {
