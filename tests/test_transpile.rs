@@ -4844,3 +4844,86 @@ fn test_forced_suite_table_source_tails_and_directed_join_to_sqlite() {
         validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
     }
 }
+
+#[test]
+fn test_forced_suite_parser_burn_down_to_sqlite() {
+    let sqlite_cases = [
+        (
+            "SELECT CAST('1' AS STRING(10))",
+            "SELECT CAST('1' AS TEXT(10))",
+        ),
+        (
+            "CAST(val AS JSON(col1 String, SKIP col2))",
+            "CAST(val AS JSON(col1 TEXT, SKIP col2))",
+        ),
+        (
+            "INSERT INTO t (col1, col2) FORMAT Values('abcd', 1234)",
+            "INSERT INTO t (col1, col2) VALUES ('abcd', 1234)",
+        ),
+        (
+            "INSERT INTO a REPLACE WHERE cond VALUES (1), (2)",
+            "INSERT INTO a REPLACE WHERE cond VALUES (1), (2)",
+        ),
+        (
+            "INSERT FIRST WHEN x = 1 THEN INTO y SELECT * FROM z",
+            "INSERT FIRST WHEN x = 1 THEN INTO y SELECT * FROM z",
+        ),
+        (
+            "INSERT OVERWRITE TABLE test PARTITION(p1, p2) VALUES (1, 2)",
+            "INSERT OVERWRITE TABLE test PARTITION(p1, p2) VALUES (1, 2)",
+        ),
+        (
+            "INSERT ALL INTO dest_tab1 (id, description) VALUES (id, description) SELECT id, description FROM source_tab",
+            "INSERT ALL INTO dest_tab1 (id, description) VALUES (id, description) SELECT id, description FROM source_tab",
+        ),
+        (
+            "REPLACE VIEW view_b (COL1, COL2) AS LOCKING ROW FOR ACCESS SELECT COL1, COL2 FROM table_b",
+            "REPLACE VIEW view_b (COL1, COL2) AS LOCKING ROW FOR ACCESS SELECT COL1, COL2 FROM table_b",
+        ),
+        (
+            "SELECT 1 AS foo LEFT UNION ALL SELECT 2 AS foo",
+            "SELECT 1 AS foo LEFT UNION ALL SELECT 2 AS foo",
+        ),
+        (
+            "SELECT 1 AS foo INNER UNION ALL SELECT 3 AS foo, 4 AS bar",
+            "SELECT 1 AS foo INNER UNION ALL SELECT 3 AS foo, 4 AS bar",
+        ),
+        (
+            "SELECT 1 AS foo UNION ALL BY NAME SELECT 3 AS foo, 4 AS bar",
+            "SELECT 1 AS foo UNION ALL BY NAME SELECT 3 AS foo, 4 AS bar",
+        ),
+        (
+            "SELECT CAST(value AS FLOAT(8))",
+            "SELECT CAST(value AS REAL(8))",
+        ),
+        (
+            "SELECT * FROM Produce UNPIVOT((first_half_sales, second_half_sales) FOR semesters IN ((Q1, Q2) AS semester_1, (Q3, Q4) AS semester_2))",
+            "SELECT * FROM Produce",
+        ),
+        (
+            "TRUNCATE TABLE t1 ON CLUSTER 'cluster'",
+            "TRUNCATE TABLE t1 ON CLUSTER 'cluster'",
+        ),
+        (
+            "PIVOT Cities ON Year USING SUM(Population)",
+            "PIVOT Cities ON Year USING SUM(Population)",
+        ),
+    ];
+
+    for (sql, expected) in sqlite_cases {
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
+
+    validate_with_dialect(
+        "SELECT * FROM RANGE(1, 5) t(i)",
+        "SELECT * FROM RANGE(1, 5) AS t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM JSON_TO_RECORDSET(z) AS y(\"rank\" INT)",
+        "SELECT * FROM JSON_TO_RECORDSET(z) AS y",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}

@@ -2362,6 +2362,26 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
             DataType::Unknown(format!("TEXT{}", &name["STRING".len()..]))
         }
         (DataType::Unknown(name), _, Dialect::Sqlite)
+            if name.to_ascii_uppercase().starts_with("STRING(") =>
+        {
+            DataType::Unknown(format!("TEXT{}", &name["STRING".len()..]))
+        }
+        (DataType::Unknown(name), _, Dialect::Sqlite)
+            if name.to_ascii_uppercase().starts_with("FLOAT(") =>
+        {
+            DataType::Unknown(format!("REAL{}", &name["FLOAT".len()..]))
+        }
+        (DataType::Unknown(name), _, Dialect::Sqlite)
+            if name.to_ascii_uppercase().starts_with("JSON(") =>
+        {
+            DataType::Unknown(rewrite_raw_type_params_for_sqlite(name))
+        }
+        (DataType::Unknown(name), _, Dialect::Sqlite)
+            if name.to_ascii_uppercase().starts_with("JSONB(") =>
+        {
+            DataType::Unknown(rewrite_raw_type_params_for_sqlite(name))
+        }
+        (DataType::Unknown(name), _, Dialect::Sqlite)
             if matches!(
                 name.to_ascii_uppercase().as_str(),
                 "LONGVARCHAR" | "TINYTEXT" | "MEDIUMTEXT" | "LONGTEXT"
@@ -2387,6 +2407,33 @@ fn sqlite_type_with_params(name: &str, precision: Option<u32>, scale: Option<u32
         (Some(p), None) => DataType::Unknown(format!("{name}({p})")),
         (None, _) => DataType::Unknown(name.to_string()),
     }
+}
+
+fn rewrite_raw_type_params_for_sqlite(name: &str) -> String {
+    let mut output = String::with_capacity(name.len());
+    let mut chars = name.char_indices().peekable();
+    while let Some((start, ch)) = chars.next() {
+        if ch.is_ascii_alphabetic() || ch == '_' {
+            let mut end = start + ch.len_utf8();
+            while let Some((idx, next)) = chars.peek().copied() {
+                if next.is_ascii_alphanumeric() || next == '_' {
+                    chars.next();
+                    end = idx + next.len_utf8();
+                } else {
+                    break;
+                }
+            }
+            let word = &name[start..end];
+            if word.eq_ignore_ascii_case("STRING") {
+                output.push_str("TEXT");
+            } else {
+                output.push_str(word);
+            }
+        } else {
+            output.push(ch);
+        }
+    }
+    output
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

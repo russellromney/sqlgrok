@@ -405,6 +405,7 @@ impl Parser {
                 | TokenType::Left
                 | TokenType::Right
                 | TokenType::Replace
+                | TokenType::All
                 | TokenType::Any
                 | TokenType::Insert
                 | TokenType::Like
@@ -511,6 +512,10 @@ impl Parser {
         let comments = self.take_comments();
         let mut stmt = match self.peek_type() {
             TokenType::With => self.parse_with_statement(),
+            TokenType::Pivot => self.parse_raw_statement(),
+            TokenType::Select if self.starts_raw_set_operation_shape() => {
+                self.parse_raw_statement()
+            }
             TokenType::Select => {
                 let select = self.parse_select_body(vec![])?;
                 self.maybe_parse_set_operation(Statement::Select(select))
@@ -551,8 +556,12 @@ impl Parser {
             TokenType::Insert if self.peek_n_type(1) == &TokenType::Or => {
                 self.parse_raw_statement()
             }
+            TokenType::Insert if self.starts_raw_insert_shape() => self.parse_raw_statement(),
             TokenType::Replace if self.peek_n_type(1) == &TokenType::LParen => {
                 self.parse_expr().map(Statement::Expression)
+            }
+            TokenType::Replace if self.peek_n_type(1) == &TokenType::View => {
+                self.parse_raw_statement()
             }
             TokenType::Insert | TokenType::Replace => self.parse_insert().map(Statement::Insert),
             TokenType::Update => self.parse_update().map(Statement::Update),
@@ -563,6 +572,9 @@ impl Parser {
             TokenType::Alter => self.parse_alter_or_raw(),
             TokenType::Truncate if self.peek_n_type(1) == &TokenType::LParen => {
                 self.parse_expr().map(Statement::Expression)
+            }
+            TokenType::Truncate if self.statement_contains_top_level_keyword("ON") => {
+                self.parse_raw_statement()
             }
             TokenType::Truncate => self.parse_truncate().map(Statement::Truncate),
             TokenType::Begin
@@ -674,6 +686,133 @@ impl Parser {
             comments: vec![],
             sql: self.sql[start..end].trim().to_string(),
         }))
+    }
+
+    fn starts_raw_insert_shape(&self) -> bool {
+        if self.peek_type() != &TokenType::Insert {
+            return false;
+        }
+
+        if self.peek_n_type(1) == &TokenType::First
+            || self.peek_n_type(1) == &TokenType::All
+            || self
+                .tokens
+                .get(self.pos + 1)
+                .is_some_and(|token| token.value.eq_ignore_ascii_case("OVERWRITE"))
+        {
+            return true;
+        }
+
+        let mut pos = self.pos + 1;
+        if self
+            .tokens
+            .get(pos)
+            .is_some_and(|token| token.token_type == TokenType::Into)
+        {
+            pos += 1;
+        }
+
+        if self.tokens.get(pos).is_some_and(|token| {
+            token.value.eq_ignore_ascii_case("FUNCTION")
+                || token.value.eq_ignore_ascii_case("TABLE")
+                    && self
+                        .tokens
+                        .get(pos + 1)
+                        .is_some_and(|next| next.value.eq_ignore_ascii_case("FUNCTION"))
+        }) {
+            return true;
+        }
+
+        let mut depth = 0usize;
+        let mut index = pos;
+        while let Some(token) = self.tokens.get(index) {
+            match token.token_type {
+                TokenType::Semicolon | TokenType::Eof => break,
+                TokenType::LParen | TokenType::LBracket | TokenType::LBrace => depth += 1,
+                TokenType::RParen | TokenType::RBracket | TokenType::RBrace => {
+                    depth = depth.saturating_sub(1);
+                }
+                TokenType::Select | TokenType::Values if depth == 0 => break,
+                TokenType::By | TokenType::Replace if depth == 0 => return true,
+                _ => {}
+            }
+            index += 1;
+        }
+
+        false
+    }
+
+    fn starts_raw_set_operation_shape(&self) -> bool {
+        let mut depth = 0usize;
+        let mut index = self.pos;
+        while let Some(token) = self.tokens.get(index) {
+            match token.token_type {
+                TokenType::Semicolon | TokenType::Eof => break,
+                TokenType::LParen | TokenType::LBracket | TokenType::LBrace => depth += 1,
+                TokenType::RParen | TokenType::RBracket | TokenType::RBrace => {
+                    depth = depth.saturating_sub(1);
+                }
+                TokenType::Union if depth == 0 => {
+                    let mut next = index + 1;
+                    if self.tokens.get(next).is_some_and(|token| {
+                        matches!(token.token_type, TokenType::All | TokenType::Distinct)
+                    }) {
+                        next += 1;
+                    }
+                    return self.tokens.get(next).is_some_and(|token| {
+                        token.token_type == TokenType::By
+                            || token.value.eq_ignore_ascii_case("CORRESPONDING")
+                            || token.value.eq_ignore_ascii_case("STRICT")
+                    });
+                }
+                TokenType::Inner | TokenType::Left | TokenType::Right | TokenType::Full
+                    if depth == 0 =>
+                {
+                    let mut next = index + 1;
+                    if self
+                        .tokens
+                        .get(next)
+                        .is_some_and(|token| token.token_type == TokenType::Outer)
+                    {
+                        next += 1;
+                    }
+                    return self
+                        .tokens
+                        .get(next)
+                        .is_some_and(|next| next.token_type == TokenType::Union);
+                }
+                _ if depth == 0
+                    && token.value.eq_ignore_ascii_case("OUTER")
+                    && self
+                        .tokens
+                        .get(index + 1)
+                        .is_some_and(|next| next.token_type == TokenType::Union) =>
+                {
+                    return true;
+                }
+                _ => {}
+            }
+            index += 1;
+        }
+        false
+    }
+
+    fn statement_contains_top_level_keyword(&self, keyword: &str) -> bool {
+        let mut depth = 0usize;
+        let mut index = self.pos;
+        while let Some(token) = self.tokens.get(index) {
+            match token.token_type {
+                TokenType::Semicolon | TokenType::Eof => break,
+                TokenType::LParen | TokenType::LBracket | TokenType::LBrace => depth += 1,
+                TokenType::RParen | TokenType::RBracket | TokenType::RBrace => {
+                    depth = depth.saturating_sub(1);
+                }
+                _ if depth == 0 && token.value.eq_ignore_ascii_case(keyword) => return true,
+                _ => {}
+            }
+            index += 1;
+        }
+        false
     }
 
     fn parse_comment_statement(&mut self) -> Result<Statement> {
@@ -1567,10 +1706,7 @@ impl Parser {
                 vec![]
             };
             self.expect(TokenType::RParen)?;
-            let (alias, alias_quote_style) = match self.parse_optional_alias()? {
-                Some((name, qs)) => (Some(name), qs),
-                None => (None, QuoteStyle::None),
-            };
+            let (alias, alias_quote_style) = self.parse_table_alias_with_column_list()?;
             return Ok(TableSource::TableFunction {
                 name: table_ref.name,
                 args,
@@ -1798,13 +1934,40 @@ impl Parser {
         if self.match_token(TokenType::LParen) {
             if self.peek_type() != &TokenType::RParen {
                 let _ = self.expect_name()?;
+                self.consume_alias_column_type_tail();
                 while self.match_token(TokenType::Comma) {
                     let _ = self.expect_name()?;
+                    self.consume_alias_column_type_tail();
                 }
             }
             self.expect(TokenType::RParen)?;
         }
         Ok((alias, alias_quote_style))
+    }
+
+    fn consume_alias_column_type_tail(&mut self) {
+        let mut depth = 0usize;
+        while self.peek_type() != &TokenType::Eof {
+            if depth == 0 && matches!(self.peek_type(), TokenType::Comma | TokenType::RParen) {
+                break;
+            }
+            match self.peek_type() {
+                TokenType::LParen | TokenType::LBracket | TokenType::LBrace => {
+                    depth += 1;
+                    self.advance();
+                }
+                TokenType::RParen | TokenType::RBracket | TokenType::RBrace => {
+                    if depth == 0 {
+                        break;
+                    }
+                    depth -= 1;
+                    self.advance();
+                }
+                _ => {
+                    self.advance();
+                }
+            }
+        }
     }
 
     fn consume_mysql_index_hints(&mut self) -> Result<()> {
@@ -1880,6 +2043,18 @@ impl Parser {
         }
         if self.match_token(TokenType::Unpivot) {
             self.expect(TokenType::LParen)?;
+            if self.peek_type() == &TokenType::LParen {
+                self.expect(TokenType::LParen)?;
+                self.consume_balanced_parentheses_after_open();
+                self.expect_keyword("FOR")?;
+                let _ = self.expect_name()?;
+                self.expect(TokenType::In)?;
+                self.expect(TokenType::LParen)?;
+                self.consume_balanced_parentheses_after_open();
+                self.expect(TokenType::RParen)?;
+                let _ = self.parse_optional_alias()?;
+                return Ok(source);
+            }
             let value_column = self.expect_name()?;
             self.expect_keyword("FOR")?;
             let for_column = self.expect_name()?;
@@ -2308,7 +2483,17 @@ impl Parser {
             vec![]
         };
 
-        let source = if self.match_token(TokenType::Values) {
+        let source = if self.match_keyword("FORMAT") {
+            self.expect(TokenType::Values)?;
+            self.expect(TokenType::LParen)?;
+            let row = if self.peek_type() == &TokenType::RParen {
+                vec![]
+            } else {
+                self.parse_expr_list()?
+            };
+            self.expect(TokenType::RParen)?;
+            InsertSource::Values(vec![row])
+        } else if self.match_token(TokenType::Values) {
             let mut rows = Vec::new();
             loop {
                 self.expect(TokenType::LParen)?;
@@ -3229,7 +3414,11 @@ impl Parser {
             }
             TokenType::Float => {
                 self.advance();
-                Ok(DataType::Float)
+                if let Some(precision) = self.parse_single_type_param()? {
+                    Ok(DataType::Unknown(format!("FLOAT({precision})")))
+                } else {
+                    Ok(DataType::Float)
+                }
             }
             TokenType::Double => {
                 self.advance();
@@ -3329,11 +3518,19 @@ impl Parser {
             }
             TokenType::Json => {
                 self.advance();
-                Ok(DataType::Json)
+                if let Some(params) = self.consume_balanced_parentheses_sql() {
+                    Ok(DataType::Unknown(format!("JSON{params}")))
+                } else {
+                    Ok(DataType::Json)
+                }
             }
             TokenType::Jsonb => {
                 self.advance();
-                Ok(DataType::Jsonb)
+                if let Some(params) = self.consume_balanced_parentheses_sql() {
+                    Ok(DataType::Unknown(format!("JSONB{params}")))
+                } else {
+                    Ok(DataType::Jsonb)
+                }
             }
             TokenType::Uuid => {
                 self.advance();
@@ -3374,7 +3571,13 @@ impl Parser {
                         let next = self.advance().value.to_uppercase();
                         Ok(DataType::Unknown(format!("{name} {next}")))
                     }
-                    "STRING" => Ok(DataType::String),
+                    "STRING" => {
+                        if let Some(len) = self.parse_single_type_param()? {
+                            Ok(DataType::Unknown(format!("STRING({len})")))
+                        } else {
+                            Ok(DataType::String)
+                        }
+                    }
                     "INT64" => Ok(DataType::BigInt),
                     "INT32" => Ok(DataType::Int),
                     "BOOL" => Ok(DataType::Boolean),
@@ -3550,6 +3753,38 @@ impl Parser {
             return;
         }
         self.consume_balanced_parentheses_after_open();
+    }
+
+    fn consume_balanced_parentheses_sql(&mut self) -> Option<String> {
+        if self.peek_type() != &TokenType::LParen {
+            return None;
+        }
+
+        let start = self.char_pos_to_byte(self.peek().position);
+        self.advance();
+        let mut depth = 1usize;
+        while depth > 0 && self.peek_type() != &TokenType::Eof {
+            match self.peek_type() {
+                TokenType::LParen => {
+                    depth += 1;
+                    self.advance();
+                }
+                TokenType::RParen => {
+                    depth -= 1;
+                    self.advance();
+                }
+                _ => {
+                    self.advance();
+                }
+            }
+        }
+
+        let end = self
+            .tokens
+            .get(self.pos.saturating_sub(1))
+            .map(|token| self.char_pos_to_byte(token.position + token.value.chars().count()))
+            .unwrap_or(start);
+        Some(self.sql[start..end].to_string())
     }
 
     fn consume_balanced_parentheses_after_open(&mut self) {
