@@ -339,6 +339,14 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             if let Some(having) = &mut sel.having {
                 *having = transform_expr(having.clone(), source, target);
             }
+            if matches!(target, Dialect::Sqlite) {
+                if let Some(from) = &mut sel.from {
+                    strip_sqlite_unpivot_table_source(&mut from.source);
+                }
+                for join in &mut sel.joins {
+                    strip_sqlite_unpivot_table_source(&mut join.table);
+                }
+            }
             if matches!(source, Dialect::Sqlite) && matches!(target, Dialect::Sqlite) {
                 for join in &mut sel.joins {
                     if join.join_type == JoinType::Comma {
@@ -2608,5 +2616,19 @@ fn transform_quotes_in_table_source(source: &mut TableSource, target: Dialect) {
             transform_quotes_in_table_source(source, target);
         }
         TableSource::Unnest { .. } => {}
+    }
+}
+
+fn strip_sqlite_unpivot_table_source(source: &mut TableSource) {
+    match source {
+        TableSource::Unpivot { source: inner, .. } => {
+            let mut replacement = (**inner).clone();
+            strip_sqlite_unpivot_table_source(&mut replacement);
+            *source = replacement;
+        }
+        TableSource::Lateral { source } | TableSource::Pivot { source, .. } => {
+            strip_sqlite_unpivot_table_source(source);
+        }
+        _ => {}
     }
 }

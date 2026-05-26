@@ -759,11 +759,16 @@ impl Parser {
                     }) {
                         next += 1;
                     }
-                    return self.tokens.get(next).is_some_and(|token| {
+                    let starts_raw = self.tokens.get(next).is_some_and(|token| {
                         token.token_type == TokenType::By
                             || token.value.eq_ignore_ascii_case("CORRESPONDING")
                             || token.value.eq_ignore_ascii_case("STRICT")
                     });
+                    if !starts_raw {
+                        index += 1;
+                        continue;
+                    }
+                    return true;
                 }
                 TokenType::Inner | TokenType::Left | TokenType::Right | TokenType::Full
                     if depth == 0 =>
@@ -776,10 +781,15 @@ impl Parser {
                     {
                         next += 1;
                     }
-                    return self
+                    let starts_raw = self
                         .tokens
                         .get(next)
                         .is_some_and(|next| next.token_type == TokenType::Union);
+                    if !starts_raw {
+                        index += 1;
+                        continue;
+                    }
+                    return true;
                 }
                 _ if depth == 0
                     && token.value.eq_ignore_ascii_case("OUTER")

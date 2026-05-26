@@ -4901,6 +4901,10 @@ fn test_forced_suite_parser_burn_down_to_sqlite() {
             "SELECT * FROM Produce",
         ),
         (
+            "SELECT * FROM Produce UNPIVOT(sales FOR quarter IN (Q1, Q2))",
+            "SELECT * FROM Produce",
+        ),
+        (
             "TRUNCATE TABLE t1 ON CLUSTER 'cluster'",
             "TRUNCATE TABLE t1 ON CLUSTER 'cluster'",
         ),

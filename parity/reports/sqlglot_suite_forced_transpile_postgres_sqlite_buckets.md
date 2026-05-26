@@ -8,8 +8,8 @@ Total rows: `15170`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 9263 |
-| `mismatch` | 3456 |
+| `match` | 9264 |
+| `mismatch` | 3455 |
 | `oracle-error` | 1457 |
 | `rust-error` | 855 |
 | `unsupported-harness-shape` | 139 |
@@ -18,8 +18,8 @@ Total rows: `15170`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 9263 |
-| `mismatch` | `postgres` | `sqlite` | 3456 |
+| `match` | `postgres` | `sqlite` | 9264 |
+| `mismatch` | `postgres` | `sqlite` | 3455 |
 | `oracle-error` | `postgres` | `sqlite` | 1457 |
 | `rust-error` | `postgres` | `sqlite` | 855 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 139 |
@@ -29,9 +29,9 @@ Total rows: `15170`
 | Status | Helper | Count |
 | --- | --- | ---: |
 | `match` | `validate_all` | 6540 |
-| `match` | `validate_identity` | 2626 |
+| `match` | `validate_identity` | 2627 |
 | `mismatch` | `validate_all` | 2381 |
-| `mismatch` | `validate_identity` | 999 |
+| `mismatch` | `validate_identity` | 998 |
 | `oracle-error` | `validate_identity` | 949 |
 | `oracle-error` | `validate_all` | 502 |
 | `rust-error` | `validate_identity` | 486 |
@@ -184,12 +184,12 @@ Total rows: `15170`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 890 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 501 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 502 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 362 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 311 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 279 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 227 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 218 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 217 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 200 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 191 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 188 |

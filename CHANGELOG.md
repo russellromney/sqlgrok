@@ -217,6 +217,7 @@ this file records what landed.
 - Preserved MySQL/Postgres/SQLite command families such as `SET`, `ANALYZE`, `GRANT`, `REVOKE`, `CREATE VIRTUAL TABLE`, and unsupported `CREATE`/`ALTER` forms instead of failing at parse time.
 - Added SQLite `INSERT OR ...` identity coverage and fixed raw SQL extraction for non-ASCII source text.
 - Reduced forced-suite parser rust-errors for parameterized `STRING`/`JSON`/`FLOAT` casts, table-function aliases with plain or typed column lists, ClickHouse-style `INSERT ... FORMAT Values`, raw insert variants, raw extended `TRUNCATE`, raw top-level `PIVOT`, complex `UNPIVOT`, and non-standard set-operation modifiers.
+- Matched Python SQLGlot's SQLite-targeted `UNPIVOT` behavior by dropping parsed `UNPIVOT` table-source wrappers.
 
 ### Postgres STRING_AGG Parity
 
