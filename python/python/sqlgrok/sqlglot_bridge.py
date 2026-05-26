@@ -731,6 +731,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--report-output", required=True)
     parser.add_argument("--budget")
     parser.add_argument("--check-budget", action="store_true")
+    parser.add_argument(
+        "--strict-pytest",
+        action="store_true",
+        help="return pytest's non-zero exit code even when the bridge report was written",
+    )
     args, unknown = parser.parse_known_args(argv)
     args.pytest_arg = unknown
 
@@ -744,6 +749,17 @@ def main(argv: list[str] | None = None) -> int:
         if not args.budget:
             raise SystemExit("--check-budget requires --budget")
         check_budget(Path(args.report_output), Path(args.budget))
+
+    if exit_code and not args.strict_pytest:
+        report = Path(args.report_output)
+        if report.exists():
+            print(
+                "sqlgrok bridge ignoring non-zero pytest exit "
+                f"{exit_code} because report was written; pass --strict-pytest to fail",
+                file=sys.stderr,
+            )
+            return 0
+
     return exit_code
 
 

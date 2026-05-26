@@ -168,3 +168,86 @@ def test_bridge_forced_pair_summary_does_not_filter_routes(tmp_path: Path, monke
     assert "Mode: `forced-pair`" in summary
     assert "Requested pair: `mysql` -> `sqlite`" in summary
     assert "Filtered by read/write: `0`" in summary
+
+
+def test_bridge_main_ignores_pytest_failure_when_report_exists(tmp_path: Path, monkeypatch):
+    bridge = sys.modules["sqlgrok.sqlglot_bridge"]
+    report = tmp_path / "bridge.jsonl"
+
+    def fake_run_pytest(args):
+        Path(args.report_output).write_text("", encoding="utf-8")
+        return 1
+
+    monkeypatch.setattr(bridge, "run_pytest", fake_run_pytest)
+
+    assert (
+        bridge.main(
+            [
+                "--sqlglot",
+                ".",
+                "--family",
+                "transpile",
+                "--read",
+                "postgres",
+                "--write",
+                "sqlite",
+                "--report-output",
+                str(report),
+            ]
+        )
+        == 0
+    )
+
+
+def test_bridge_main_preserves_pytest_failure_without_report(tmp_path: Path, monkeypatch):
+    bridge = sys.modules["sqlgrok.sqlglot_bridge"]
+    report = tmp_path / "missing.jsonl"
+    monkeypatch.setattr(bridge, "run_pytest", lambda args: 1)
+
+    assert (
+        bridge.main(
+            [
+                "--sqlglot",
+                ".",
+                "--family",
+                "transpile",
+                "--read",
+                "postgres",
+                "--write",
+                "sqlite",
+                "--report-output",
+                str(report),
+            ]
+        )
+        == 1
+    )
+
+
+def test_bridge_main_strict_pytest_preserves_failure(tmp_path: Path, monkeypatch):
+    bridge = sys.modules["sqlgrok.sqlglot_bridge"]
+    report = tmp_path / "bridge.jsonl"
+
+    def fake_run_pytest(args):
+        Path(args.report_output).write_text("", encoding="utf-8")
+        return 1
+
+    monkeypatch.setattr(bridge, "run_pytest", fake_run_pytest)
+
+    assert (
+        bridge.main(
+            [
+                "--sqlglot",
+                ".",
+                "--family",
+                "transpile",
+                "--read",
+                "postgres",
+                "--write",
+                "sqlite",
+                "--report-output",
+                str(report),
+                "--strict-pytest",
+            ]
+        )
+        == 1
+    )
