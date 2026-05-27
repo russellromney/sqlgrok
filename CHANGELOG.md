@@ -92,6 +92,7 @@ this file records what landed.
 - Reduced the next forced-suite parser buckets with raw carriers for function-local `ORDER BY`/`HAVING`/`LIMIT` tails, SQLite null-treatment dropping in those raw function arguments, `ANY_VALUE` to `MAX`, `LATERAL VIEW` table tails, Snowflake-style `AT`/`CHANGES` table tails, and `DIRECTED JOIN` dropping while preserving explicit `OUTER`; refreshed forced-suite reports now show MySQL/Postgres/SQLite exact matches at `8548`/`9194`/`8803` and rust-errors at `926`/`950`/`927`.
 - Matched SQLGlot forced-suite `BY` parser forms for ClickHouse-style `LIMIT ... BY ...` and create-table `PARTITIONED BY`/`DISTRIBUTED BY`/`LOCATION`/`TBLPROPERTIES` tails; refreshed forced reports now show MySQL/Postgres/SQLite rust-errors down to `797`/`827`/`796`.
 - Reduced the forced-suite `Expected identifier` parser bucket with repeated/shorthand CTEs, string-literal table names, parenthesized `TABLESAMPLE`, create-table `EMPTY`/`WITH (...)`/`TTL` tails, CTAS column rendering, alias-column keywords, and `ALL` function-argument normalization; refreshed forced reports now show MySQL/Postgres/SQLite rust-errors down to `745`/`774`/`756`.
+- Added SQLGlot-shaped parsing for `OFFSET ... ROWS FETCH ...` and SQL Server-style `CROSS`/`OUTER APPLY` lateral joins when targeting SQLite; refreshed forced reports now show MySQL/Postgres/SQLite rust-errors down to `719`/`748`/`730`.
 
 ## 2026-05-20
 

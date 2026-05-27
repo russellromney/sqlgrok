@@ -13,24 +13,24 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8935 |
-| `mismatch` | 3794 |
+| `match` | 8952 |
+| `mismatch` | 3803 |
 | `oracle-error` | 1546 |
-| `rust-error` | 756 |
+| `rust-error` | 730 |
 | `unsupported-harness-shape` | 139 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 6269 |
-| `mismatch` | `validate_all` | 2660 |
-| `match` | `validate_identity` | 2577 |
-| `mismatch` | `validate_identity` | 1052 |
+| `match` | `validate_all` | 6284 |
+| `mismatch` | `validate_all` | 2667 |
+| `match` | `validate_identity` | 2579 |
+| `mismatch` | `validate_identity` | 1054 |
 | `oracle-error` | `validate_identity` | 993 |
 | `oracle-error` | `validate_all` | 544 |
-| `rust-error` | `validate_identity` | 438 |
-| `rust-error` | `validate_all` | 315 |
+| `rust-error` | `validate_identity` | 434 |
+| `rust-error` | `validate_all` | 293 |
 | `unsupported-harness-shape` | `validate_all` | 124 |
 | `match` | `validate` | 89 |
 | `mismatch` | `validate` | 82 |
@@ -54,15 +54,15 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 190 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 177 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 169 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 171 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 128 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 127 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 120 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 112 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 101 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 100 |
-| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 93 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 92 |
+| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 99 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 93 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 90 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 88 |

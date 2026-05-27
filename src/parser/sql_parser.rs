@@ -1085,7 +1085,12 @@ impl Parser {
 
         if select.offset.is_none() && self.match_token(TokenType::Offset) {
             select.offset = Some(self.parse_expr()?);
+            self.consume_optional_offset_rows();
             select.limit_by = self.parse_limit_by()?;
+        }
+
+        if let Some(fetch) = self.parse_fetch_first_clause()? {
+            select.fetch_first = Some(fetch);
         }
 
         self.parse_pipeline_stages(&mut select)?;
@@ -1117,6 +1122,26 @@ impl Parser {
         } else {
             Ok(vec![])
         }
+    }
+
+    fn consume_optional_offset_rows(&mut self) {
+        let _ = self.match_token(TokenType::Rows) || self.match_keyword("ROW");
+    }
+
+    fn parse_fetch_first_clause(&mut self) -> Result<Option<Expr>> {
+        if !self.match_token(TokenType::Fetch) {
+            return Ok(None);
+        }
+
+        let _ = self.match_token(TokenType::First) || self.match_token(TokenType::Next);
+        let count = self.parse_expr()?;
+        let _ = self.match_token(TokenType::Rows) || self.match_keyword("ROW");
+
+        if !self.match_token(TokenType::Only) && self.match_token(TokenType::With) {
+            self.expect_keyword("TIES")?;
+        }
+
+        Ok(Some(count))
     }
 
     fn parse_select_lock(&mut self) -> Option<String> {
@@ -1173,8 +1198,15 @@ impl Parser {
                     select.offset = offset;
                     if self.match_token(TokenType::Offset) {
                         select.offset = Some(self.parse_expr()?);
+                        self.consume_optional_offset_rows();
+                    }
+                    if select.offset.is_some() {
+                        self.consume_optional_offset_rows();
                     }
                     select.limit_by = self.parse_limit_by()?;
+                    if let Some(fetch) = self.parse_fetch_first_clause()? {
+                        select.fetch_first = Some(fetch);
+                    }
                 }
                 TokenType::Distinct => {
                     self.advance();
@@ -1359,25 +1391,15 @@ impl Parser {
 
         let offset = if offset.is_none() && self.match_token(TokenType::Offset) {
             let offset = Some(self.parse_expr()?);
+            self.consume_optional_offset_rows();
             limit_by = self.parse_limit_by()?;
             offset
         } else {
             offset
         };
 
-        // FETCH FIRST|NEXT n ROWS ONLY (Oracle / ANSI SQL:2008)
-        let fetch_first = if self.match_token(TokenType::Fetch) {
-            // consume FIRST or NEXT
-            let _ = self.match_token(TokenType::First) || self.match_token(TokenType::Next);
-            let count = self.parse_expr()?;
-            // consume ROWS or ROW
-            let _ = self.match_keyword("ROWS") || self.match_keyword("ROW");
-            // consume ONLY
-            let _ = self.match_token(TokenType::Only);
-            Some(count)
-        } else {
-            None
-        };
+        // FETCH FIRST|NEXT n ROWS ONLY/WITH TIES (Oracle / ANSI SQL:2008)
+        let fetch_first = self.parse_fetch_first_clause()?;
 
         let lock = self.parse_select_lock();
 
@@ -1646,10 +1668,7 @@ impl Parser {
             ) {
                 let query = self.parse_statement_inner()?;
                 self.expect(TokenType::RParen)?;
-                let (alias, alias_quote_style) = match self.parse_optional_alias()? {
-                    Some((name, qs)) => (Some(name), qs),
-                    None => (None, QuoteStyle::None),
-                };
+                let (alias, alias_quote_style) = self.parse_table_alias_with_column_list()?;
                 return Ok(TableSource::Subquery {
                     query: Box::new(query),
                     alias,
@@ -2267,9 +2286,35 @@ impl Parser {
                 }
                 TokenType::Cross => {
                     self.advance();
+                    if self.match_keyword("APPLY") {
+                        let table = self.parse_table_source()?;
+                        joins.push(JoinClause {
+                            join_type: JoinType::CrossApply,
+                            table: TableSource::Lateral {
+                                source: Box::new(table),
+                            },
+                            on: None,
+                            using: vec![],
+                        });
+                        continue;
+                    }
                     let _ = self.match_keyword("DIRECTED");
                     self.expect(TokenType::Join)?;
                     JoinType::Cross
+                }
+                TokenType::Outer => {
+                    self.advance();
+                    self.expect_keyword("APPLY")?;
+                    let table = self.parse_table_source()?;
+                    joins.push(JoinClause {
+                        join_type: JoinType::OuterApply,
+                        table: TableSource::Lateral {
+                            source: Box::new(table),
+                        },
+                        on: None,
+                        using: vec![],
+                    });
+                    continue;
                 }
                 TokenType::Identifier
                     if self.peek().value.eq_ignore_ascii_case("STRAIGHT_JOIN") =>

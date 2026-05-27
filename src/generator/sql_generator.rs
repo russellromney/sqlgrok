@@ -762,6 +762,10 @@ impl Generator {
             JoinType::Comma => ",",
             JoinType::Natural => "NATURAL JOIN",
             JoinType::Lateral => "LATERAL JOIN",
+            JoinType::CrossApply if self.dialect == Some(Dialect::Sqlite) => "JOIN INNER JOIN",
+            JoinType::CrossApply => "INNER JOIN",
+            JoinType::OuterApply if self.dialect == Some(Dialect::Sqlite) => "JOIN LEFT JOIN",
+            JoinType::OuterApply => "LEFT JOIN",
             JoinType::Straight => "STRAIGHT_JOIN",
         };
         if join.join_type == JoinType::Comma {
@@ -786,6 +790,11 @@ impl Generator {
             }
             self.write_keyword("ON ");
             self.gen_expr(on);
+        } else if self.dialect == Some(Dialect::Sqlite)
+            && matches!(join.join_type, JoinType::CrossApply | JoinType::OuterApply)
+        {
+            self.write(" ");
+            self.write_keyword("ON TRUE");
         }
         if !join.using.is_empty() {
             if self.pretty {

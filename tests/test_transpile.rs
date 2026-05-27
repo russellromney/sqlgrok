@@ -1149,6 +1149,57 @@ fn test_postgres_offset_without_limit_to_sqlite() {
 }
 
 #[test]
+fn test_forced_suite_offset_rows_fetch_to_sqlite() {
+    let sqlite_cases = [
+        (
+            "SELECT x FROM y OFFSET 10 ROWS FETCH FIRST 3 ROWS ONLY",
+            "SELECT x FROM y LIMIT 3 OFFSET 10",
+        ),
+        (
+            "SELECT * FROM t ORDER BY (SELECT NULL) OFFSET 2 ROWS",
+            "SELECT * FROM t ORDER BY (SELECT NULL) OFFSET 2",
+        ),
+        (
+            "SELECT * FROM t ORDER BY (SELECT NULL) OFFSET 5 ROWS FETCH FIRST 10 ROWS ONLY",
+            "SELECT * FROM t ORDER BY (SELECT NULL) LIMIT 10 OFFSET 5",
+        ),
+        (
+            "SELECT * FROM foo ORDER BY bar OFFSET 0 ROWS FETCH NEXT 10 ROWS WITH TIES",
+            "SELECT * FROM foo ORDER BY bar LIMIT 10 OFFSET 0",
+        ),
+    ];
+
+    for (sql, expected) in sqlite_cases {
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
+
+    validate_with_dialect(
+        "SELECT * FROM foo ORDER BY bar OFFSET 0 ROWS FETCH NEXT 10 ROWS WITH TIES",
+        "SELECT * FROM foo ORDER BY bar NULLS LAST LIMIT 10 OFFSET 0",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_forced_suite_apply_to_sqlite() {
+    let cases = [
+        (
+            "SELECT x.a, x.b, t.v, t.y FROM x CROSS APPLY (SELECT v, y FROM t) t(v, y)",
+            "SELECT x.a, x.b, t.v, t.y FROM x JOIN INNER JOIN LATERAL (SELECT v, y FROM t) AS t ON TRUE",
+        ),
+        (
+            "SELECT * FROM x OUTER APPLY (SELECT 1) y",
+            "SELECT * FROM x JOIN LEFT JOIN LATERAL (SELECT 1) AS y ON TRUE",
+        ),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
+    }
+}
+
+#[test]
 fn test_postgres_for_update_to_sqlite() {
     validate_with_dialect(
         "SELECT a FROM t FOR UPDATE",

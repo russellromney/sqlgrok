@@ -158,7 +158,11 @@ fn try_push_into_join(join: &mut JoinClause, pred: &Expr, tables: &HashSet<Strin
     // changes semantics.
     if !matches!(
         join.join_type,
-        JoinType::Inner | JoinType::Cross | JoinType::Comma | JoinType::Straight
+        JoinType::Inner
+            | JoinType::Cross
+            | JoinType::Comma
+            | JoinType::Straight
+            | JoinType::CrossApply
     ) {
         return false;
     }

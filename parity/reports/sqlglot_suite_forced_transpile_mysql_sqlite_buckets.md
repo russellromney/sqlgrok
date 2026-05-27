@@ -8,34 +8,34 @@ Total rows: `15170`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8682 |
-| `mismatch` | 3863 |
+| `match` | 8691 |
+| `mismatch` | 3880 |
 | `oracle-error` | 1741 |
-| `rust-error` | 745 |
+| `rust-error` | 719 |
 | `unsupported-harness-shape` | 139 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 8682 |
-| `mismatch` | `mysql` | `sqlite` | 3863 |
+| `match` | `mysql` | `sqlite` | 8691 |
+| `mismatch` | `mysql` | `sqlite` | 3880 |
 | `oracle-error` | `mysql` | `sqlite` | 1741 |
-| `rust-error` | `mysql` | `sqlite` | 745 |
+| `rust-error` | `mysql` | `sqlite` | 719 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 139 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 6265 |
-| `mismatch` | `validate_all` | 2576 |
-| `match` | `validate_identity` | 2323 |
-| `mismatch` | `validate_identity` | 1211 |
+| `match` | `validate_all` | 6271 |
+| `mismatch` | `validate_all` | 2592 |
+| `match` | `validate_identity` | 2326 |
+| `mismatch` | `validate_identity` | 1212 |
 | `oracle-error` | `validate_identity` | 1135 |
 | `oracle-error` | `validate_all` | 597 |
-| `rust-error` | `validate_identity` | 391 |
-| `rust-error` | `validate_all` | 350 |
+| `rust-error` | `validate_identity` | 387 |
+| `rust-error` | `validate_all` | 328 |
 | `unsupported-harness-shape` | `validate_all` | 124 |
 | `match` | `validate` | 94 |
 | `mismatch` | `validate` | 76 |
@@ -48,12 +48,12 @@ Total rows: `15170`
 
 | Status | Shape | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 670 |
+| `match` | `SELECT` | 671 |
 | `match` | `CAST()` | 464 |
-| `match` | `SELECT operator multiply` | 337 |
+| `match` | `SELECT operator multiply` | 344 |
 | `mismatch` | `CREATE TABLE` | 250 |
 | `match` | `CREATE TABLE` | 201 |
-| `mismatch` | `SELECT` | 190 |
+| `mismatch` | `SELECT` | 196 |
 | `mismatch` | `CREATE` | 182 |
 | `oracle-error` | `SELECT` | 181 |
 | `match` | `TRUNC()` | 162 |
@@ -66,17 +66,17 @@ Total rows: `15170`
 | `match` | `X` | 104 |
 | `oracle-error` | `CAST()` | 96 |
 | `match` | `WITH` | 93 |
-| `mismatch` | `SELECT operator multiply` | 89 |
-| `rust-error` | `SELECT` | 87 |
+| `mismatch` | `SELECT operator multiply` | 87 |
 | `mismatch` | `ALTER TABLE` | 85 |
 | `match` | `ALTER TABLE` | 81 |
+| `rust-error` | `SELECT` | 80 |
 | `match` | `SELECT DATEDIFF()` | 79 |
 | `match` | `SET` | 78 |
 | `match` | `SELECT CAST()` | 73 |
-| `rust-error` | `SELECT operator multiply` | 72 |
 | `match` | `DATE_TRUNC()` | 71 |
 | `match` | `SELECT UNNEST()` | 70 |
 | `match` | `LOG()` | 67 |
+| `rust-error` | `SELECT operator multiply` | 67 |
 | `mismatch` | `WITH` | 65 |
 | `match` | `GRANT` | 62 |
 | `match` | `ANALYZE` | 60 |
@@ -99,7 +99,7 @@ Total rows: `15170`
 | `unsupported-harness-shape` | `SQLGlot expects UnsupportedError` | 121 |
 | `oracle-error` | `oracle parse: Expected TYPE after CAST` | 108 |
 | `oracle-error` | `oracle parse: INTERVAL expression expected but got '1'` | 72 |
-| `rust-error` | `parser: Expected identifier` | 47 |
+| `rust-error` | `parser: Expected identifier` | 49 |
 | `oracle-error` | `oracle parse: The number of provided arguments (2) is greater than the maximum number of supported arguments (1)` | 46 |
 | `oracle-error` | `oracle parse: Expected type` | 39 |
 | `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.SENTINEL, text: SENTINEL, line: 1, col: 1, start: 0, end: 0, comments: []>` | 33 |
@@ -116,7 +116,6 @@ Total rows: `15170`
 | `rust-error` | `parser: Expected RParen, got Union ('UNION')` | 8 |
 | `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.L_BRACE, text: {, line: 1, col: 15, start: 14, end: 14, comments: []>` | 7 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: Into, value: "INTO", line: 1, col: 34, position: 33, quote_char: '\0' }` | 7 |
-| `rust-error` | `ValueError: Unexpected token: Token { token_type: Where, value: "WHERE", line: 1, col: 34, position: 33, quote_char: '\0' }` | 7 |
 | `rust-error` | `parser: Expected RParen, got Dot ('.')` | 7 |
 | `oracle-error` | `KeyError: <class 'sqlglot.expressions.properties.PartitionByListProperty'>` | 6 |
 | `oracle-error` | `oracle parse: Expected AS after CAST` | 6 |
@@ -124,29 +123,30 @@ Total rows: `15170`
 | `oracle-error` | `oracle token: Error tokenizing 'SELECT b'a'` | 6 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: As, value: "AS", line: 1, col: 33, position: 32, quote_char: '\0' }` | 6 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: LBrace, value: "{", line: 1, col: 24, position: 23, quote_char: '\0' }` | 6 |
-| `rust-error` | `ValueError: Unexpected token: Token { token_type: Outer, value: "OUTER", line: 1, col: 24, position: 23, quote_char: '\0' }` | 6 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: Transaction, value: "TRANSACTION", line: 1, col: 7, position: 6, quote_char: '\0' }` | 6 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: Xor, value: "xor", line: 1, col: 8, position: 7, quote_char: '\0' }` | 6 |
-| `rust-error` | `parser: Expected Join, got Identifier ('APPLY')` | 6 |
 | `rust-error` | `parser: Expected LParen, got Unnest ('UNNEST')` | 6 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('ARRAY[1')` | 6 |
-| `rust-error` | `parser: Expected RParen, got LParen ('(')` | 6 |
 | `rust-error` | `parser: Expected RParen, got With ('WITH')` | 6 |
 | `oracle-error` | `oracle parse: Expected ]` | 5 |
+| `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.L_BRACKET, text: [, line: 1, col: 14, start: 13, end: 13, comments: []>` | 5 |
+| `rust-error` | `ValueError: Unexpected token: Token { token_type: As, value: "AS", line: 1, col: 8, position: 7, quote_char: '\0' }` | 5 |
+| `rust-error` | `ValueError: Unexpected token: Token { token_type: Group, value: "group", line: 1, col: 51, position: 50, quote_char: '\0' }` | 5 |
+| `rust-error` | `ValueError: Unexpected token: Token { token_type: Using, value: "USING", line: 1, col: 19, position: 18, quote_char: '\0' }` | 5 |
 
 ## Mismatch Signature Buckets
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 347 |
+| `mismatch` | `missing AS or alias rendering` | 350 |
 | `mismatch` | `DDL/create-table rendering` | 247 |
 | `mismatch` | `case-only rendering difference` | 165 |
-| `mismatch` | `SELECT` | 139 |
+| `mismatch` | `SELECT` | 145 |
 | `mismatch` | `SHOW` | 107 |
 | `mismatch` | `CREATE` | 105 |
 | `mismatch` | `ALTER TABLE` | 76 |
-| `mismatch` | `SELECT operator multiply` | 76 |
 | `mismatch` | `SELECT UNNEST()` | 75 |
+| `mismatch` | `SELECT operator multiply` | 74 |
 | `mismatch` | `missing quoted identifier` | 59 |
 | `mismatch` | `date/time rendering: SELECT DATE_SUB()` | 52 |
 | `mismatch` | `cast/type rendering: CAST()` | 49 |
@@ -186,12 +186,12 @@ Total rows: `15170`
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 815 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 429 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 350 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 301 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 302 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 275 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 222 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 196 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 194 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 185 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 186 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 182 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 161 |
@@ -201,13 +201,13 @@ Total rows: `15170`
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 109 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 100 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 100 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 97 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 95 |
+| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 92 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 88 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
-| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 86 |
 | `oracle-error` | `tests/dialects/test_tsql.py` | `test_option` | 86 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 82 |
 | `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 81 |
@@ -215,9 +215,9 @@ Total rows: `15170`
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 74 |
 | `mismatch` | `tests/dialects/test_presto.py` | `test_presto` | 73 |
-| `rust-error` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 73 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 73 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 72 |
+| `rust-error` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 71 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 68 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 68 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 67 |

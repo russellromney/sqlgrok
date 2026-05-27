@@ -343,6 +343,10 @@ pub enum JoinType {
     Natural,
     /// LATERAL JOIN
     Lateral,
+    /// SQL Server-style CROSS APPLY, generated as an inner lateral join.
+    CrossApply,
+    /// SQL Server-style OUTER APPLY, generated as a left lateral join.
+    OuterApply,
     /// MySQL STRAIGHT_JOIN
     Straight,
 }
