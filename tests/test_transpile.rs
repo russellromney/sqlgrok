@@ -469,25 +469,37 @@ fn test_postgres_json_access_to_sqlite_paths() {
     );
     validate_with_dialect(
         "x #> 'y'",
-        "JSONB_EXTRACT(x, 'y')",
+        "JSON_EXTRACT(x, '$.y')",
         Dialect::Postgres,
         Dialect::Sqlite,
     );
     validate_with_dialect(
         "x #>> 'y'",
-        "JSONB_EXTRACT_SCALAR(x, 'y')",
+        "JSON_EXTRACT(x, '$.y')",
         Dialect::Postgres,
         Dialect::Sqlite,
     );
     validate_with_dialect(
         "'{\"a\":[1,2,3],\"b\":[4,5,6]}'::json#>'{a,2}'",
-        "JSONB_EXTRACT(CAST('{\"a\":[1,2,3],\"b\":[4,5,6]}' AS JSON), '{a,2}')",
+        "JSON_EXTRACT(CAST('{\"a\":[1,2,3],\"b\":[4,5,6]}' AS JSON), '$.a[2]')",
         Dialect::Postgres,
         Dialect::Sqlite,
     );
     validate_with_dialect(
         "'{\"a\":[1,2,3],\"b\":[4,5,6]}'::json#>>'{a,2}'",
-        "JSONB_EXTRACT_SCALAR(CAST('{\"a\":[1,2,3],\"b\":[4,5,6]}' AS JSON), '{a,2}')",
+        "JSON_EXTRACT(CAST('{\"a\":[1,2,3],\"b\":[4,5,6]}' AS JSON), '$.a[2]')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT '{\"a\":{\"b\":7}}'::jsonb #> '{a,b}'",
+        "SELECT JSON_EXTRACT(CAST('{\"a\":{\"b\":7}}' AS JSONB), '$.a.b')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT '{\"a\":{\"b\":7}}'::jsonb #>> '{a,b}'",
+        "SELECT JSON_EXTRACT(CAST('{\"a\":{\"b\":7}}' AS JSONB), '$.a.b')",
         Dialect::Postgres,
         Dialect::Sqlite,
     );
@@ -943,7 +955,18 @@ fn test_postgres_function_maps_to_sqlite() {
     let cases = [
         ("SELECT strpos('hello','l')", "SELECT INSTR('hello', 'l')"),
         ("SELECT chr(65)", "SELECT CHAR(65)"),
-        ("SELECT ascii('A')", "SELECT ASCII('A')"),
+        ("SELECT ascii('A')", "SELECT UNICODE('A')"),
+        ("SELECT left('hello', 3)", "SELECT SUBSTR('hello', 1, 3)"),
+        ("SELECT right('hello', 2)", "SELECT SUBSTR('hello', -2)"),
+        ("SELECT btrim('  hi  ')", "SELECT TRIM('  hi  ')"),
+        (
+            "SELECT btrim('xyhixy', 'xy')",
+            "SELECT TRIM('xyhixy', 'xy')",
+        ),
+        (
+            "SELECT starts_with('hello', 'he')",
+            "SELECT 'hello' LIKE 'he' || '%'",
+        ),
         ("SELECT greatest(2,5,1)", "SELECT MAX(2, 5, 1)"),
         ("SELECT least(2,5,1)", "SELECT MIN(2, 5, 1)"),
         ("SELECT bool_and(x) FROM t", "SELECT MIN(x) FROM t"),
@@ -964,6 +987,41 @@ fn test_postgres_function_maps_to_sqlite() {
     for (sql, expected) in cases {
         validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
     }
+}
+
+#[test]
+fn test_postgres_json_function_maps_to_sqlite() {
+    let cases = [
+        (
+            "SELECT jsonb_build_object('a',1,'b',2)",
+            "SELECT JSON_OBJECT('a', 1, 'b', 2)",
+        ),
+        (
+            "SELECT jsonb_build_array(1,'x',true)",
+            "SELECT JSON_ARRAY(1, 'x', TRUE)",
+        ),
+        (
+            "SELECT jsonb_array_length('[1,2,3,4]')",
+            "SELECT JSON_ARRAY_LENGTH('[1,2,3,4]')",
+        ),
+        (
+            "SELECT jsonb_typeof('[1,2]'::jsonb)",
+            "SELECT CASE JSON_TYPE(CAST('[1,2]' AS JSONB)) WHEN 'integer' THEN 'number' WHEN 'real' THEN 'number' WHEN 'text' THEN 'string' WHEN 'true' THEN 'boolean' WHEN 'false' THEN 'boolean' ELSE JSON_TYPE(CAST('[1,2]' AS JSONB)) END",
+        ),
+    ];
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
+    }
+}
+
+#[test]
+fn test_mysql_ascii_maps_to_sqlite_unicode() {
+    validate_with_dialect(
+        "SELECT ASCII('A')",
+        "SELECT UNICODE('A')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]

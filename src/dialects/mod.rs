@@ -703,6 +703,139 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("ASCII")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return Expr::Function {
+                    name: "UNICODE".to_string(),
+                    args: new_args,
+                    distinct,
+                    filter,
+                    over,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("BTRIM")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && matches!(new_args.len(), 1 | 2)
+            {
+                return Expr::Function {
+                    name: "TRIM".to_string(),
+                    args: new_args,
+                    distinct,
+                    filter,
+                    over,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("STARTS_WITH")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::Like {
+                    expr: Box::new(new_args[0].clone()),
+                    pattern: Box::new(Expr::BinaryOp {
+                        left: Box::new(new_args[1].clone()),
+                        op: BinaryOperator::Concat,
+                        right: Box::new(Expr::StringLiteral("%".to_string())),
+                    }),
+                    negated: false,
+                    escape: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && matches!(
+                    name.to_ascii_uppercase().as_str(),
+                    "JSONB_BUILD_OBJECT" | "JSON_BUILD_OBJECT"
+                )
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+            {
+                return Expr::Function {
+                    name: "JSON_OBJECT".to_string(),
+                    args: new_args,
+                    distinct,
+                    filter,
+                    over,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && matches!(
+                    name.to_ascii_uppercase().as_str(),
+                    "JSONB_BUILD_ARRAY" | "JSON_BUILD_ARRAY"
+                )
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+            {
+                return Expr::Function {
+                    name: "JSON_ARRAY".to_string(),
+                    args: new_args,
+                    distinct,
+                    filter,
+                    over,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && matches!(
+                    name.to_ascii_uppercase().as_str(),
+                    "JSONB_ARRAY_LENGTH" | "JSON_ARRAY_LENGTH"
+                )
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return Expr::Function {
+                    name: "JSON_ARRAY_LENGTH".to_string(),
+                    args: new_args,
+                    distinct,
+                    filter,
+                    over,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && matches!(
+                    name.to_ascii_uppercase().as_str(),
+                    "JSONB_TYPEOF" | "JSON_TYPEOF"
+                )
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return sqlite_postgres_json_typeof(new_args[0].clone());
+            }
+            if matches!(target, Dialect::Sqlite)
+                && matches!(
+                    name.to_ascii_uppercase().as_str(),
+                    "JSONB_EXTRACT" | "JSONB_EXTRACT_SCALAR"
+                )
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::Function {
+                    name: "JSON_EXTRACT".to_string(),
+                    args: vec![
+                        new_args[0].clone(),
+                        postgres_json_brace_path_to_sqlite(new_args[1].clone()),
+                    ],
+                    distinct,
+                    filter,
+                    over,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
                 && matches!(
                     name.to_ascii_uppercase().as_str(),
                     "INT64" | "INTEGER" | "INT"
@@ -1299,6 +1432,34 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                             over,
                         };
                     }
+                    TypedFunction::Left { expr, n } => {
+                        return Expr::Function {
+                            name: "SUBSTR".to_string(),
+                            args: vec![
+                                transform_expr(*expr, source, target),
+                                Expr::Number("1".to_string()),
+                                transform_expr(*n, source, target),
+                            ],
+                            distinct: false,
+                            filter,
+                            over,
+                        };
+                    }
+                    TypedFunction::Right { expr, n } => {
+                        return Expr::Function {
+                            name: "SUBSTR".to_string(),
+                            args: vec![
+                                transform_expr(*expr, source, target),
+                                Expr::UnaryOp {
+                                    op: UnaryOperator::Minus,
+                                    expr: Box::new(transform_expr(*n, source, target)),
+                                },
+                            ],
+                            distinct: false,
+                            filter,
+                            over,
+                        };
+                    }
                     _ => {}
                 }
             }
@@ -1862,6 +2023,25 @@ fn postgres_json_extract_path_arg(path_args: &[Expr]) -> Expr {
     }
 }
 
+fn postgres_json_brace_path_to_sqlite(path: Expr) -> Expr {
+    match path {
+        Expr::StringLiteral(path) if path.starts_with('{') && path.ends_with('}') => {
+            let mut sqlite_path = "$".to_string();
+            let inner = &path[1..path.len() - 1];
+            if inner.is_empty() {
+                return Expr::StringLiteral(sqlite_path);
+            }
+            for segment in inner.split(',') {
+                sqlite_path.push_str(&sqlite_json_path_segment(segment));
+            }
+            Expr::StringLiteral(sqlite_path)
+        }
+        Expr::StringLiteral(key) => Expr::StringLiteral(sqlite_json_key_path(&key)),
+        Expr::Number(index) => Expr::StringLiteral(format!("$[{index}]")),
+        other => other,
+    }
+}
+
 fn sqlite_json_path_segment(segment: &str) -> String {
     if segment.chars().all(|c| c.is_ascii_digit()) {
         format!("[{segment}]")
@@ -1876,6 +2056,45 @@ fn sqlite_json_path_segment(segment: &str) -> String {
         format!(".{segment}")
     } else {
         format!(".\"{}\"", segment.replace('"', "\\\""))
+    }
+}
+
+fn sqlite_postgres_json_typeof(expr: Expr) -> Expr {
+    fn json_type(expr: Expr) -> Expr {
+        Expr::Function {
+            name: "JSON_TYPE".to_string(),
+            args: vec![expr],
+            distinct: false,
+            filter: None,
+            over: None,
+        }
+    }
+
+    Expr::Case {
+        operand: Some(Box::new(json_type(expr.clone()))),
+        when_clauses: vec![
+            (
+                Expr::StringLiteral("integer".to_string()),
+                Expr::StringLiteral("number".to_string()),
+            ),
+            (
+                Expr::StringLiteral("real".to_string()),
+                Expr::StringLiteral("number".to_string()),
+            ),
+            (
+                Expr::StringLiteral("text".to_string()),
+                Expr::StringLiteral("string".to_string()),
+            ),
+            (
+                Expr::StringLiteral("true".to_string()),
+                Expr::StringLiteral("boolean".to_string()),
+            ),
+            (
+                Expr::StringLiteral("false".to_string()),
+                Expr::StringLiteral("boolean".to_string()),
+            ),
+        ],
+        else_clause: Some(Box::new(json_type(expr))),
     }
 }
 
