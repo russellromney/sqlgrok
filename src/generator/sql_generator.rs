@@ -751,6 +751,7 @@ impl Generator {
 
     fn gen_join(&mut self, join: &JoinClause) {
         let join_kw = match join.join_type {
+            JoinType::Join => "JOIN",
             JoinType::Inner => "INNER JOIN",
             JoinType::Left => "LEFT JOIN",
             JoinType::LeftOuter => "LEFT OUTER JOIN",

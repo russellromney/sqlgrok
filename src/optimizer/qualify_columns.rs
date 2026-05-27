@@ -709,7 +709,7 @@ mod tests {
                 "SELECT name, amount FROM users JOIN orders ON users.id = orders.user_id",
                 &schema
             ),
-            "SELECT users.name, orders.amount FROM users INNER JOIN orders ON users.id = orders.user_id"
+            "SELECT users.name, orders.amount FROM users JOIN orders ON users.id = orders.user_id"
         );
     }
 
@@ -724,7 +724,7 @@ mod tests {
         // Ambiguous — stays unqualified
         assert_eq!(
             result,
-            "SELECT id FROM users INNER JOIN orders ON users.id = orders.user_id"
+            "SELECT id FROM users JOIN orders ON users.id = orders.user_id"
         );
     }
 
@@ -770,7 +770,7 @@ mod tests {
         );
         assert_eq!(
             result,
-            "SELECT id, name, email, id, user_id, amount, status FROM users INNER JOIN orders ON users.id = orders.user_id"
+            "SELECT id, name, email, id, user_id, amount, status FROM users JOIN orders ON users.id = orders.user_id"
         );
     }
 
@@ -819,7 +819,7 @@ mod tests {
                 "SELECT name FROM users JOIN orders ON id = user_id",
                 &schema
             ),
-            "SELECT users.name FROM users INNER JOIN orders ON id = orders.user_id"
+            "SELECT users.name FROM users JOIN orders ON id = orders.user_id"
         );
     }
 

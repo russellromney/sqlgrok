@@ -329,6 +329,8 @@ pub struct JoinClause {
 /// The type of JOIN.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum JoinType {
+    /// Bare `JOIN` syntax, semantically an inner join.
+    Join,
     Inner,
     Left,
     LeftOuter,

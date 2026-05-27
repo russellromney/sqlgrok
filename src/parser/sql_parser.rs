@@ -52,6 +52,11 @@ fn data_type_with_format(data_type: DataType, format: &Expr) -> DataType {
     ))
 }
 
+fn data_type_is_json(data_type: &DataType) -> bool {
+    matches!(data_type, DataType::Json | DataType::Jsonb)
+        || matches!(data_type, DataType::Unknown(name) if name.eq_ignore_ascii_case("JSON") || name.eq_ignore_ascii_case("JSONB"))
+}
+
 fn identifier_data_type_name(name: &str) -> bool {
     matches!(
         name.to_ascii_uppercase().as_str(),
@@ -629,6 +634,9 @@ impl Parser {
 
     fn parse_delete_or_raw(&mut self) -> Result<Statement> {
         let saved_pos = self.pos;
+        if self.is_mysql_multi_target_delete(saved_pos) {
+            return self.parse_raw_statement();
+        }
         match self.parse_delete() {
             Ok(stmt) => Ok(Statement::Delete(stmt)),
             Err(_) if self.is_mysql_multi_target_delete(saved_pos) => {
@@ -1212,6 +1220,26 @@ impl Parser {
                     self.advance();
                     select.distinct = true;
                 }
+                TokenType::Identifier if self.peek().value.eq_ignore_ascii_case("AGGREGATE") => {
+                    self.advance();
+                    let mut columns = self.parse_select_items()?;
+                    if self.match_token(TokenType::Group) {
+                        self.expect(TokenType::By)?;
+                        select.group_by = self.parse_group_by_list()?;
+                        columns.extend(select.group_by.iter().cloned().map(|expr| {
+                            SelectItem::Expr {
+                                expr,
+                                alias: None,
+                                alias_quote_style: QuoteStyle::None,
+                            }
+                        }));
+                    }
+                    if self.match_token(TokenType::Order) {
+                        self.expect(TokenType::By)?;
+                        select.order_by = self.parse_order_by_items()?;
+                    }
+                    self.wrap_pipeline_select(select, columns, None);
+                }
                 TokenType::Select => {
                     self.advance();
                     let columns = self.parse_select_items()?;
@@ -1331,7 +1359,22 @@ impl Parser {
             None
         };
 
-        let columns = self.parse_select_items()?;
+        let columns = if self.match_token(TokenType::As) && self.match_token(TokenType::Struct) {
+            let items = self.parse_select_items()?;
+            vec![SelectItem::Expr {
+                expr: Expr::Function {
+                    name: "STRUCT".to_string(),
+                    args: Self::select_items_to_function_args(items),
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                },
+                alias: None,
+                alias_quote_style: QuoteStyle::None,
+            }]
+        } else {
+            self.parse_select_items()?
+        };
 
         let from = if self.match_token(TokenType::From) {
             Some(FromClause {
@@ -1506,6 +1549,25 @@ impl Parser {
         Ok(items)
     }
 
+    fn select_items_to_function_args(items: Vec<SelectItem>) -> Vec<Expr> {
+        items
+            .into_iter()
+            .map(|item| match item {
+                SelectItem::Expr {
+                    expr,
+                    alias: Some(name),
+                    ..
+                } => Expr::Alias {
+                    expr: Box::new(expr),
+                    name,
+                },
+                SelectItem::Expr { expr, .. } => expr,
+                SelectItem::Wildcard => Expr::Wildcard,
+                SelectItem::QualifiedWildcard { table } => Expr::QualifiedWildcard { table },
+            })
+            .collect()
+    }
+
     fn is_select_item_boundary(&self) -> bool {
         matches!(
             self.peek_type(),
@@ -1517,6 +1579,7 @@ impl Parser {
                 | TokenType::Having
                 | TokenType::Qualify
                 | TokenType::Window
+                | TokenType::BitwiseOr
                 | TokenType::RParen
                 | TokenType::Eof
         )
@@ -2243,7 +2306,7 @@ impl Parser {
                 }
                 TokenType::Join => {
                     self.advance();
-                    JoinType::Inner
+                    JoinType::Join
                 }
                 TokenType::Inner => {
                     self.advance();
@@ -2337,12 +2400,18 @@ impl Parser {
             if self.match_token(TokenType::On) {
                 on = Some(self.parse_expr()?);
             } else if self.match_token(TokenType::Using) {
-                self.expect(TokenType::LParen)?;
-                using = vec![self.expect_name()?];
-                while self.match_token(TokenType::Comma) {
-                    using.push(self.expect_name()?);
+                if self.match_token(TokenType::LParen) {
+                    using = vec![self.expect_name()?];
+                    while self.match_token(TokenType::Comma) {
+                        using.push(self.expect_name()?);
+                    }
+                    self.expect(TokenType::RParen)?;
+                } else {
+                    using = vec![self.expect_name()?];
+                    while self.match_token(TokenType::Comma) {
+                        using.push(self.expect_name()?);
+                    }
                 }
-                self.expect(TokenType::RParen)?;
             }
 
             joins.push(JoinClause {
@@ -3443,6 +3512,20 @@ impl Parser {
                 value: self.parse_create_table_parenthesized_option_value(),
             });
         }
+        if self.match_token(TokenType::Partition) {
+            let _ = self.match_token(TokenType::By);
+            return Some(CreateTableOption::Unknown {
+                name: "PARTITION BY".to_string(),
+                value: Some(self.consume_create_table_option_until_next_option()),
+            });
+        }
+        if self.match_keyword("CLUSTER") {
+            let _ = self.match_token(TokenType::By);
+            return Some(CreateTableOption::Unknown {
+                name: "CLUSTER BY".to_string(),
+                value: Some(self.consume_create_table_option_until_next_option()),
+            });
+        }
         if self.match_keyword("DISTRIBUTED") {
             let _ = self.match_token(TokenType::By);
             let mut value = self
@@ -3601,6 +3684,52 @@ impl Parser {
         }
 
         Some(self.advance().value.clone())
+    }
+
+    fn consume_create_table_option_until_next_option(&mut self) -> String {
+        let start = self
+            .tokens
+            .get(self.pos)
+            .map(|token| self.char_pos_to_byte(token.position))
+            .unwrap_or_else(|| self.sql.len());
+        let mut depth = 0usize;
+        while self.peek_type() != &TokenType::Eof {
+            if depth == 0
+                && matches!(
+                    self.peek().value.to_ascii_uppercase().as_str(),
+                    "CLUSTER"
+                        | "PARTITION"
+                        | "PARTITIONED"
+                        | "DISTRIBUTED"
+                        | "LOCATION"
+                        | "TBLPROPERTIES"
+                        | "ENGINE"
+                        | "ORDER"
+                        | "SETTINGS"
+                        | "COMMENT"
+                )
+            {
+                break;
+            }
+            match self.peek_type() {
+                TokenType::LParen | TokenType::LBracket | TokenType::LBrace => depth += 1,
+                TokenType::RParen | TokenType::RBracket | TokenType::RBrace => {
+                    if depth == 0 {
+                        break;
+                    }
+                    depth -= 1;
+                }
+                TokenType::Semicolon if depth == 0 => break,
+                _ => {}
+            }
+            self.advance();
+        }
+        let end = self
+            .tokens
+            .get(self.pos)
+            .map(|token| self.char_pos_to_byte(token.position))
+            .unwrap_or_else(|| self.sql.len());
+        self.sql[start..end].trim().to_string()
     }
 
     fn parse_data_type(&mut self) -> Result<DataType> {
@@ -5413,7 +5542,7 @@ impl Parser {
             }
             TokenType::Timestamp if self.is_timestamp_typed_literal_start() => {
                 let data_type = self.parse_data_type()?;
-                let expr = self.parse_primary()?;
+                let expr = self.parse_typed_literal_value()?;
                 Ok(Expr::Cast {
                     expr: Box::new(expr),
                     data_type,
@@ -5426,7 +5555,10 @@ impl Parser {
                     .is_some_and(Self::is_typed_literal_value_token) =>
             {
                 let data_type = self.parse_data_type()?;
-                let expr = self.parse_primary()?;
+                let expr = self.parse_typed_literal_value()?;
+                if data_type_is_json(&data_type) {
+                    return Ok(expr);
+                }
                 Ok(Expr::Cast {
                     expr: Box::new(expr),
                     data_type,
@@ -5665,6 +5797,47 @@ impl Parser {
                 };
                 self.expect(TokenType::RBracket)?;
                 Ok(Expr::ArrayLiteral(items))
+            }
+
+            // ── Struct literal: {'key': value, ...} ─────────────────
+            TokenType::LBrace => {
+                self.advance();
+                let mut args = Vec::new();
+                if self.peek_type() != &TokenType::RBrace {
+                    loop {
+                        let key = match self.parse_primary()? {
+                            Expr::StringLiteral(key) | Expr::Column { name: key, .. } => key,
+                            other => {
+                                return Err(SqlglotError::ParserError {
+                                    message: format!("Expected struct key, got {other:?}"),
+                                });
+                            }
+                        };
+                        self.expect(TokenType::Colon)?;
+                        let value = self.parse_expr()?;
+                        args.push(Expr::Alias {
+                            expr: Box::new(value),
+                            name: key,
+                        });
+                        if !self.match_token(TokenType::Comma) {
+                            break;
+                        }
+                    }
+                }
+                self.expect(TokenType::RBrace)?;
+                Ok(Expr::Function {
+                    name: "STRUCT".to_string(),
+                    args,
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                })
+            }
+
+            TokenType::Xor if self.peek_n_type(1) == &TokenType::LParen => {
+                self.advance();
+                self.expect(TokenType::LParen)?;
+                self.parse_function_call_after_open("XOR".to_string(), token.position)
             }
 
             // ── Identifier: column ref, function call, or qualified name ─
@@ -5946,6 +6119,11 @@ impl Parser {
         let data_type = self.parse_data_type()?;
         if self.match_keyword("FORMAT") && self.peek_type() != &TokenType::RParen {
             let format = self.parse_primary()?;
+            if self.match_keyword("AT") {
+                self.expect(TokenType::Time)?;
+                self.expect_keyword("ZONE")?;
+                let _ = self.parse_primary()?;
+            }
             if matches!(data_type, DataType::Date | DataType::Timestamp { .. }) {
                 return Ok(Expr::Function {
                     name: if matches!(data_type, DataType::Timestamp { .. }) {
@@ -5969,6 +6147,15 @@ impl Parser {
             expr: Box::new(expr),
             data_type,
         })
+    }
+
+    fn parse_typed_literal_value(&mut self) -> Result<Expr> {
+        if self.peek_type() == &TokenType::Identifier && self.peek().quote_char != '\0' {
+            let value = self.advance().value.clone();
+            Ok(Expr::StringLiteral(value))
+        } else {
+            self.parse_primary()
+        }
     }
 
     fn is_data_type_token(&self) -> bool {
@@ -6007,7 +6194,12 @@ impl Parser {
     fn is_typed_literal_data_type_start(&self) -> bool {
         matches!(
             self.peek_type(),
-            TokenType::Int | TokenType::Integer | TokenType::Varchar | TokenType::Text
+            TokenType::Int
+                | TokenType::Integer
+                | TokenType::Varchar
+                | TokenType::Text
+                | TokenType::Json
+                | TokenType::Jsonb
         ) || matches!(self.peek_type(), TokenType::Identifier)
             && matches!(self.peek().value.to_uppercase().as_str(), "STRING")
     }
@@ -6017,6 +6209,13 @@ impl Parser {
             return false;
         }
         if self.peek_n_type(1) == &TokenType::String {
+            return true;
+        }
+        if self
+            .tokens
+            .get(self.pos + 1)
+            .is_some_and(|next| next.quote_char != '\0')
+        {
             return true;
         }
         let mut pos = self.pos + 1;
@@ -6058,7 +6257,7 @@ impl Parser {
                 | TokenType::False
                 | TokenType::Null
                 | TokenType::Parameter
-        )
+        ) || token.token_type == TokenType::Identifier && token.quote_char != '\0'
     }
 
     fn parse_datetime_field(&mut self) -> Result<DateTimeField> {

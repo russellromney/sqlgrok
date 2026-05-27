@@ -439,7 +439,7 @@ fn test_qc_expand_star_multi_table() {
     );
     assert_eq!(
         result,
-        "SELECT id, name, email, dept_id, id, dept_name FROM users INNER JOIN departments ON users.dept_id = departments.id"
+        "SELECT id, name, email, dept_id, id, dept_name FROM users JOIN departments ON users.dept_id = departments.id"
     );
 }
 
@@ -487,7 +487,7 @@ fn test_qc_qualify_join_unique_columns() {
             "SELECT name, amount FROM users JOIN orders ON users.id = orders.user_id",
             &s
         ),
-        "SELECT users.name, orders.amount FROM users INNER JOIN orders ON users.id = orders.user_id"
+        "SELECT users.name, orders.amount FROM users JOIN orders ON users.id = orders.user_id"
     );
 }
 
@@ -500,7 +500,7 @@ fn test_qc_ambiguous_column_left_unqualified() {
             "SELECT id FROM users JOIN orders ON users.id = orders.user_id",
             &s
         ),
-        "SELECT id FROM users INNER JOIN orders ON users.id = orders.user_id"
+        "SELECT id FROM users JOIN orders ON users.id = orders.user_id"
     );
 }
 
@@ -554,7 +554,7 @@ fn test_qc_three_table_join() {
             "SELECT name, amount, dept_name FROM users JOIN orders ON users.id = orders.user_id JOIN departments ON users.dept_id = departments.id",
             &s
         ),
-        "SELECT users.name, orders.amount, departments.dept_name FROM users INNER JOIN orders ON users.id = orders.user_id INNER JOIN departments ON users.dept_id = departments.id"
+        "SELECT users.name, orders.amount, departments.dept_name FROM users JOIN orders ON users.id = orders.user_id JOIN departments ON users.dept_id = departments.id"
     );
 }
 
@@ -621,7 +621,7 @@ fn test_qc_qualify_join_on_clause() {
     // id is ambiguous, stays unqualified
     assert_eq!(
         qualify_sql("SELECT name FROM users JOIN orders ON id = user_id", &s),
-        "SELECT users.name FROM users INNER JOIN orders ON id = orders.user_id"
+        "SELECT users.name FROM users JOIN orders ON id = orders.user_id"
     );
 }
 

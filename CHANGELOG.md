@@ -93,6 +93,7 @@ this file records what landed.
 - Matched SQLGlot forced-suite `BY` parser forms for ClickHouse-style `LIMIT ... BY ...` and create-table `PARTITIONED BY`/`DISTRIBUTED BY`/`LOCATION`/`TBLPROPERTIES` tails; refreshed forced reports now show MySQL/Postgres/SQLite rust-errors down to `797`/`827`/`796`.
 - Reduced the forced-suite `Expected identifier` parser bucket with repeated/shorthand CTEs, string-literal table names, parenthesized `TABLESAMPLE`, create-table `EMPTY`/`WITH (...)`/`TTL` tails, CTAS column rendering, alias-column keywords, and `ALL` function-argument normalization; refreshed forced reports now show MySQL/Postgres/SQLite rust-errors down to `745`/`774`/`756`.
 - Added SQLGlot-shaped parsing for `OFFSET ... ROWS FETCH ...` and SQL Server-style `CROSS`/`OUTER APPLY` lateral joins when targeting SQLite; refreshed forced reports now show MySQL/Postgres/SQLite rust-errors down to `719`/`748`/`730`.
+- Burned down another forced-suite parser batch covering cast-format `AT TIME ZONE` tails, BigQuery JSON typed literals, struct literals, `SELECT AS STRUCT`, bare `PARTITION BY`/`CLUSTER BY` create-table options, parenthesis-less `JOIN ... USING`, pipeline `AGGREGATE`, `xor(...)`, and bare `JOIN` preservation; refreshed forced reports now show MySQL/Postgres/SQLite rust-errors down to `612`/`652`/`633`.
 
 ## 2026-05-20
 

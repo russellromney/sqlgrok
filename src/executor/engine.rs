@@ -202,7 +202,7 @@ impl<'a> ExecutionContext<'a> {
         let right_rows = self.resolve_table_source(&join.table)?;
 
         match join.join_type {
-            JoinType::Inner | JoinType::Straight | JoinType::CrossApply => {
+            JoinType::Join | JoinType::Inner | JoinType::Straight | JoinType::CrossApply => {
                 self.inner_join(left_rows, &right_rows, &join.on, &join.using)
             }
             JoinType::Left | JoinType::LeftOuter | JoinType::OuterApply => {

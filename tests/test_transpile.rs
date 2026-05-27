@@ -4752,6 +4752,14 @@ fn test_forced_suite_cast_format_and_complex_types_to_sqlite() {
             "SELECT STR_TO_TIME('20201225', '%Y%m%d')",
         ),
         (
+            "SELECT CAST('20201225' AS TIMESTAMP FORMAT 'YYYYMMDD' AT TIME ZONE 'America/New_York')",
+            "SELECT STR_TO_TIME('20201225', '%Y%m%d')",
+        ),
+        (
+            "SELECT INT64(JSON_QUERY(JSON '{\"key\": 2000}', '$.key'))",
+            "SELECT CAST(JSON_QUERY('{\"key\": 2000}', '$.key') AS INTEGER)",
+        ),
+        (
             "SELECT CAST(NULL AS MAP[TEXT => INT])",
             "SELECT CAST(NULL AS MAP<TEXT, INTEGER>)",
         ),
@@ -4816,6 +4824,14 @@ fn test_forced_suite_quantified_like_and_predicate_casts_to_sqlite() {
 fn test_forced_suite_struct_alias_args_and_floor_to_unit_to_sqlite() {
     let cases = [
         ("STRUCT(values AS value)", "STRUCT(values AS value)"),
+        (
+            "SELECT AS STRUCT 1 AS a, 2 AS b",
+            "SELECT STRUCT(1 AS a, 2 AS b)",
+        ),
+        (
+            "INSERT INTO tab VALUES ({'key1': 1, 'key2': 10})",
+            "INSERT INTO tab VALUES (STRUCT(1 AS key1, 10 AS key2))",
+        ),
         (
             "SELECT STRUCT(1, 2, 3), STRUCT(), STRUCT('abc'), STRUCT(1, t.str_col), STRUCT(1 as a, 'abc' AS b), STRUCT(str_col AS abc)",
             "SELECT STRUCT(1, 2, 3), STRUCT(), STRUCT('abc'), STRUCT(1, t.str_col), STRUCT(1 AS a, 'abc' AS b), STRUCT(str_col AS abc)",
@@ -4882,6 +4898,10 @@ fn test_forced_suite_table_source_tails_and_directed_join_to_sqlite() {
             "SELECT * FROM a CROSS JOIN b USING (id)",
         ),
         (
+            "SELECT * FROM foo JOIN bar USING id, name",
+            "SELECT * FROM foo JOIN bar USING (id, name)",
+        ),
+        (
             "SELECT * FROM my_table AT (STATEMENT => $query_id_var)",
             "SELECT * FROM my_table AT (STATEMENT => $query_id_var)",
         ),
@@ -4930,6 +4950,10 @@ fn test_forced_suite_create_table_by_options_to_sqlite() {
             "CREATE TABLE x (w TEXT)",
         ),
         (
+            "CREATE TABLE db.example_table (x int) PARTITION BY x CLUSTER BY x",
+            "CREATE TABLE db.example_table (x INTEGER)",
+        ),
+        (
             "CREATE TABLE test_table (c1 INT, c2 INT) DISTRIBUTED BY RANDOM",
             "CREATE TABLE test_table (c1 INTEGER, c2 INTEGER)",
         ),
@@ -4948,6 +4972,27 @@ fn test_forced_suite_create_table_by_options_to_sqlite() {
     ];
 
     for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
+}
+
+#[test]
+fn test_forced_suite_pipeline_aggregate_and_xor_to_sqlite() {
+    let cases = [
+        (
+            "FROM x |> AGGREGATE SUM(x1) AS s_x1 |> SELECT s_x1",
+            "WITH __tmp1 AS (SELECT SUM(x1) AS s_x1 FROM x), __tmp2 AS (SELECT s_x1 FROM __tmp1) SELECT * FROM __tmp2",
+        ),
+        (
+            "FROM x |> AGGREGATE SUM(x1) AS s_x1 GROUP BY x1 |> SELECT s_x1, x1 AS ss_x1",
+            "WITH __tmp1 AS (SELECT SUM(x1) AS s_x1, x1 FROM x GROUP BY x1), __tmp2 AS (SELECT s_x1, x1 AS ss_x1 FROM __tmp1) SELECT * FROM __tmp2",
+        ),
+        ("SELECT xor(TRUE, FALSE)", "SELECT TRUE XOR FALSE"),
+    ];
+
+    for (sql, expected) in cases {
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
+        validate_with_dialect(sql, expected, Dialect::Mysql, Dialect::Sqlite);
         validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
     }
 }

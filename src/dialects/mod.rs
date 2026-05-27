@@ -703,6 +703,34 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
+                && matches!(
+                    name.to_ascii_uppercase().as_str(),
+                    "INT64" | "INTEGER" | "INT"
+                )
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return Expr::Cast {
+                    expr: Box::new(new_args[0].clone()),
+                    data_type: DataType::Unknown("INTEGER".to_string()),
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("XOR")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::BinaryOp {
+                    left: Box::new(new_args[0].clone()),
+                    op: BinaryOperator::Xor,
+                    right: Box::new(new_args[1].clone()),
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("__SAFE_CAST_DATE_FORMAT")
                 && !distinct
                 && filter.is_none()
