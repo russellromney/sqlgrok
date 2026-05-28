@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10216 |
-| `mismatch` | 2696 |
+| `match` | 10218 |
+| `mismatch` | 2694 |
 | `oracle-error` | 1456 |
 | `rust-error` | 651 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 10216 |
-| `mismatch` | `postgres` | `sqlite` | 2696 |
+| `match` | `postgres` | `sqlite` | 10218 |
+| `mismatch` | `postgres` | `sqlite` | 2694 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
 | `rust-error` | `postgres` | `sqlite` | 651 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -29,10 +29,10 @@ Total rows: `15156`
 | Status | Helper | Count |
 | --- | --- | ---: |
 | `match` | `validate_all` | 7329 |
-| `match` | `validate_identity` | 2785 |
+| `match` | `validate_identity` | 2787 |
 | `mismatch` | `validate_all` | 1694 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 930 |
+| `mismatch` | `validate_identity` | 928 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 395 |
 | `rust-error` | `validate_all` | 253 |
@@ -184,7 +184,7 @@ Total rows: `15156`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 938 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 577 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 578 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 406 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 298 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 245 |
@@ -193,8 +193,8 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 236 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 199 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 162 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 157 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 163 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 156 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 142 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 136 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |

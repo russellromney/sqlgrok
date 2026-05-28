@@ -478,6 +478,16 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 raw.sql = normalize_postgres_recursive_cte_raw(&raw.sql);
                 raw.sql = normalize_postgres_copy_raw(&raw.sql);
             }
+            if is_mysql_family(source)
+                && matches!(target, Dialect::Sqlite)
+                && raw
+                    .sql
+                    .trim_start()
+                    .get(..4)
+                    .is_some_and(|prefix| prefix.eq_ignore_ascii_case("SHOW"))
+            {
+                raw.sql = String::new();
+            }
         }
         _ => {}
     }
@@ -1477,6 +1487,27 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                         transform_format_expr(new_args[1].clone(), source, target),
                     ],
                     distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && is_postgres_family(source)
+                && name.eq_ignore_ascii_case("TO_TIMESTAMP")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::TypedFunction {
+                    func: TypedFunction::StrToTime {
+                        expr: Box::new(new_args[0].clone()),
+                        format: Box::new(transform_format_expr(
+                            new_args[1].clone(),
+                            source,
+                            target,
+                        )),
+                    },
                     filter: None,
                     over: None,
                 };

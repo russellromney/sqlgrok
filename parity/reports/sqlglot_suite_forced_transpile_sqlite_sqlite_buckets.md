@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 9874 |
-| `mismatch` | 2968 |
+| `match` | 9924 |
+| `mismatch` | 2918 |
 | `oracle-error` | 1545 |
 | `rust-error` | 632 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 9874 |
-| `mismatch` | `sqlite` | `sqlite` | 2968 |
+| `match` | `sqlite` | `sqlite` | 9924 |
+| `mismatch` | `sqlite` | `sqlite` | 2918 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
 | `rust-error` | `sqlite` | `sqlite` | 632 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7072 |
-| `match` | `validate_identity` | 2703 |
-| `mismatch` | `validate_all` | 1920 |
+| `match` | `validate_all` | 7110 |
+| `match` | `validate_identity` | 2715 |
+| `mismatch` | `validate_all` | 1882 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 976 |
+| `mismatch` | `validate_identity` | 964 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 387 |
 | `rust-error` | `validate_all` | 242 |
@@ -85,9 +85,9 @@ Total rows: `15156`
 | `match` | `REGEXP_INSTR()` | 56 |
 | `match` | `REVOKE` | 56 |
 | `match` | `SELECT SUM()` | 56 |
+| `match` | `SELECT TO_TIMESTAMP()` | 55 |
 | `oracle-error` | `WITH` | 52 |
 | `match` | `FROM` | 51 |
-| `mismatch` | `ALTER TABLE` | 49 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -148,7 +148,6 @@ Total rows: `15156`
 | `mismatch` | `date/time rendering: DATE_ADD()` | 69 |
 | `mismatch` | `ALTER TABLE` | 43 |
 | `mismatch` | `quote-style difference` | 40 |
-| `mismatch` | `date/time rendering: SELECT TO_TIMESTAMP()` | 39 |
 | `mismatch` | `cast/type rendering: CAST()` | 36 |
 | `mismatch` | `cast/type rendering: SELECT TO_CHAR()` | 32 |
 | `mismatch` | `date/time rendering: SELECT DATEADD()` | 32 |
@@ -178,30 +177,31 @@ Total rows: `15156`
 | `mismatch` | `'FOO'` | 10 |
 | `mismatch` | `ENDSWITH()` | 10 |
 | `mismatch` | `SELECT VAR_POP()` | 10 |
+| `mismatch` | `UPPER()` | 10 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 871 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 571 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 904 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 572 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 361 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 307 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 274 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 272 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 245 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 241 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 227 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 195 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 193 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 230 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 198 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 194 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 145 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 145 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 143 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 144 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 125 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 117 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 114 |
+| `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 101 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 96 |
-| `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 95 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
@@ -210,16 +210,16 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 81 |
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 80 |
-| `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 78 |
+| `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 77 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 72 |
-| `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 71 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 70 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 69 |
 | `match` | `tests/dialects/test_exasol.py` | `test_scalar` | 68 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 67 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 66 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_time` | 66 |
+| `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 66 |
 | `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 62 |
 | `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 61 |
@@ -358,6 +358,18 @@ Total rows: `15156`
   - expected: `SELECT CAST(CAST('2025-06-24 12:34:56' AS TIMESTAMP) AS TEXT)`
   - actual: `SELECT STRFTIME('YYYY-MM-DD HH24:MI:SS', CAST('2025-06-24 12:34:56' AS TIMESTAMP))`
 
+### `mismatch` `date/time rendering: CREATE`
+
+- `tests/dialects/test_postgres.py`:1277 `test_ddl` via `validate_identity`: `CREATE CONSTRAINT TRIGGER my_trigger AFTER INSERT OR DELETE OR UPDATE OF col_a, col_b ON public.my_table DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION DO_STH()`
+  - expected: `CREATE CONSTRAINT TRIGGER my_trigger`
+  - actual: `CREATE CONSTRAINT TRIGGER my_trigger AFTER INSERT OR DELETE OR UPDATE OF col_a, col_b ON public.my_table DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION DO_STH()`
+- `tests/dialects/test_postgres.py`:1921 `test_postgres_create_trigger` via `validate_identity`: `CREATE TRIGGER check_update BEFORE UPDATE ON accounts FOR EACH ROW EXECUTE FUNCTION CHECK_ACCOUNT_UPDATE()`
+  - expected: `CREATE TRIGGER check_update`
+  - actual: `CREATE TRIGGER check_update BEFORE UPDATE ON accounts FOR EACH ROW EXECUTE FUNCTION CHECK_ACCOUNT_UPDATE()`
+- `tests/dialects/test_postgres.py`:1921 `test_postgres_create_trigger` via `validate_identity`: `CREATE TRIGGER audit_changes AFTER INSERT OR UPDATE OR DELETE ON products FOR EACH ROW EXECUTE FUNCTION AUDIT_LOG()`
+  - expected: `CREATE TRIGGER audit_changes`
+  - actual: `CREATE TRIGGER audit_changes AFTER INSERT OR UPDATE OR DELETE ON products FOR EACH ROW EXECUTE FUNCTION AUDIT_LOG()`
+
 ### `mismatch` `date/time rendering: DATE_ADD()`
 
 - `tests/dialects/test_bigquery.py`:1510 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
@@ -405,18 +417,6 @@ Total rows: `15156`
 - `tests/dialects/test_mysql.py`:724 `test_date_format` via `validate_all`: `SELECT DATE_FORMAT('2017-06-15', '%Y')`
   - expected: `SELECT DATE_FORMAT('2017-06-15', '%Y')`
   - actual: `SELECT STRFTIME('%Y', '2017-06-15')`
-
-### `mismatch` `date/time rendering: SELECT TO_TIMESTAMP()`
-
-- `tests/dialects/test_oracle.py`:299 `test_oracle` via `validate_all`: `SELECT TO_TIMESTAMP('2024-12-12 12:12:12.000000', 'YYYY-MM-DD HH24:MI:SS.FF6')`
-  - expected: `SELECT TO_TIMESTAMP('2024-12-12 12:12:12.000000', 'YYYY-MM-DD HH24:MI:SS.FF6')`
-  - actual: `SELECT STR_TO_TIME('2024-12-12 12:12:12.000000', 'YYYY-MM-DD HH24:MI:SS.FF6')`
-- `tests/dialects/test_oracle.py`:299 `test_oracle` via `validate_all`: `SELECT TO_TIMESTAMP('2024-12-12 12:12:12.000000', 'YYYY-MM-DD HH24:MI:SS.FF6')`
-  - expected: `SELECT TO_TIMESTAMP('2024-12-12 12:12:12.000000', 'YYYY-MM-DD HH24:MI:SS.FF6')`
-  - actual: `SELECT STR_TO_TIME('2024-12-12 12:12:12.000000', 'YYYY-MM-DD HH24:MI:SS.FF6')`
-- `tests/dialects/test_oracle.py`:353 `test_oracle` via `validate_identity`: `SELECT TO_TIMESTAMP('05 Dec 2000 10:00 AM', 'DD Mon YYYY HH12:MI AM')`
-  - expected: `SELECT TO_TIMESTAMP('05 Dec 2000 10:00 AM', 'DD Mon YYYY HH12:MI AM')`
-  - actual: `SELECT STR_TO_TIME('05 Dec 2000 10:00 AM', 'DD Mon YYYY HH12:MI AM')`
 
 ### `mismatch` `json rendering: JSON_EXTRACT()`
 

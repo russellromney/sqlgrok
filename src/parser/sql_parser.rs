@@ -6692,8 +6692,9 @@ impl Parser {
             }
             "CURRENT_DATE" => TypedFunction::CurrentDate,
             "CURRENT_TIMESTAMP" | "NOW" | "GETDATE" | "SYSDATE" => TypedFunction::CurrentTimestamp,
-            "STR_TO_TIME" | "STR_TO_DATE" | "TO_TIMESTAMP" | "PARSE_TIMESTAMP"
-            | "PARSE_DATETIME" => {
+            "STR_TO_TIME" | "STR_TO_DATE" | "PARSE_TIMESTAMP" | "PARSE_DATETIME"
+                if args.len() == 2 =>
+            {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
                 let format = it.next()?;
