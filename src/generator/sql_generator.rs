@@ -3416,7 +3416,10 @@ impl Generator {
                 let name = if is_hive_family
                     || matches!(
                         dialect,
-                        Some(Dialect::Presto) | Some(Dialect::Trino) | Some(Dialect::Athena)
+                        Some(Dialect::Presto)
+                            | Some(Dialect::Trino)
+                            | Some(Dialect::Athena)
+                            | Some(Dialect::Sqlite)
                     ) {
                     "APPROX_DISTINCT"
                 } else {

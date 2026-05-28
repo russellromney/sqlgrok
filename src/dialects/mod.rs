@@ -1405,6 +1405,33 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("TO_CHAR")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return Expr::Cast {
+                    expr: Box::new(new_args[0].clone()),
+                    data_type: DataType::Unknown("TEXT".to_string()),
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("TRUNCATE")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::Function {
+                    name: "TRUNC".to_string(),
+                    args: vec![new_args[0].clone()],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("CURRENT_VERSION")
                 && !distinct
                 && filter.is_none()
@@ -1701,10 +1728,20 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                         };
                     }
                     TypedFunction::Mod { left, right } if filter.is_none() && over.is_none() => {
+                        let left = transform_expr(*left, source, target);
+                        let right = transform_expr(*right, source, target);
+                        let needs_paren = |e: &Expr| matches!(e, Expr::BinaryOp { .. });
+                        let wrap = |e: Expr| {
+                            if needs_paren(&e) {
+                                Expr::Nested(Box::new(e))
+                            } else {
+                                e
+                            }
+                        };
                         return Expr::BinaryOp {
-                            left: Box::new(transform_expr(*left, source, target)),
+                            left: Box::new(wrap(left)),
                             op: BinaryOperator::Modulo,
-                            right: Box::new(transform_expr(*right, source, target)),
+                            right: Box::new(wrap(right)),
                         };
                     }
                     TypedFunction::Year { expr } if is_mysql_family(source) => {
