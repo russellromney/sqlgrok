@@ -3076,7 +3076,7 @@ impl Generator {
                 self.write(")");
             }
             TypedFunction::TsOrDsToDate { expr } => {
-                if is_mysql {
+                if is_mysql || matches!(dialect, Some(Dialect::Sqlite)) {
                     self.write_keyword("DATE(");
                     self.gen_expr(expr);
                     self.write(")");
@@ -3242,7 +3242,7 @@ impl Generator {
                 pattern,
                 group_index,
             } => {
-                if is_bigquery || is_hive_family {
+                if is_bigquery || is_hive_family || matches!(dialect, Some(Dialect::Sqlite)) {
                     self.write_keyword("REGEXP_EXTRACT(");
                 } else {
                     self.write_keyword("REGEXP_SUBSTR(");
@@ -3467,7 +3467,10 @@ impl Generator {
                 self.write(")");
             }
             TypedFunction::ArraySize { expr } => {
-                let name = if matches!(dialect, Some(Dialect::Postgres) | Some(Dialect::Redshift)) {
+                let name = if matches!(
+                    dialect,
+                    Some(Dialect::Postgres) | Some(Dialect::Redshift) | Some(Dialect::Sqlite)
+                ) {
                     "ARRAY_LENGTH"
                 } else if is_hive_family {
                     "SIZE"

@@ -6800,7 +6800,7 @@ impl Parser {
                     flags: flags.map(Box::new),
                 }
             }
-            "REGEXP_EXTRACT" | "REGEXP_SUBSTR" => {
+            "REGEXP_EXTRACT" | "REGEXP_SUBSTR" if args.len() <= 3 => {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
                 let pattern = it.next()?;
@@ -6811,7 +6811,7 @@ impl Parser {
                     group_index: group_index.map(Box::new),
                 }
             }
-            "REGEXP_REPLACE" => {
+            "REGEXP_REPLACE" if args.len() <= 4 => {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
                 let pattern = it.next()?;

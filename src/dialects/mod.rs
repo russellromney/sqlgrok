@@ -1360,8 +1360,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("COUNT_IF")
                 && !distinct
-                && filter.is_none()
-                && over.is_none()
                 && new_args.len() == 1
             {
                 return Expr::Function {
@@ -1371,6 +1369,51 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                         true_val: Box::new(Expr::Number("1".to_string())),
                         false_val: Some(Box::new(Expr::Number("0".to_string()))),
                     }],
+                    distinct: false,
+                    filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
+                    over: over.map(|spec| transform_window_spec(spec, source, target)),
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("GENERATE_UUID")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.is_empty()
+            {
+                return Expr::Function {
+                    name: "UUID".to_string(),
+                    args: vec![],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("LAST_DAY_OF_MONTH")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return Expr::Function {
+                    name: "LAST_DAY".to_string(),
+                    args: new_args,
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("CURRENT_VERSION")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.is_empty()
+            {
+                return Expr::Function {
+                    name: "SQLITE_VERSION".to_string(),
+                    args: vec![],
                     distinct: false,
                     filter: None,
                     over: None,
