@@ -955,7 +955,7 @@ fn test_postgres_function_maps_to_sqlite() {
     let cases = [
         ("SELECT strpos('hello','l')", "SELECT INSTR('hello', 'l')"),
         ("SELECT chr(65)", "SELECT CHAR(65)"),
-        ("SELECT ascii('A')", "SELECT UNICODE('A')"),
+        ("SELECT ascii('A')", "SELECT ASCII('A')"),
         ("SELECT left('hello', 3)", "SELECT SUBSTR('hello', 1, 3)"),
         ("SELECT right('hello', 2)", "SELECT SUBSTR('hello', -2)"),
         ("SELECT btrim('  hi  ')", "SELECT TRIM('  hi  ')"),
@@ -1015,10 +1015,10 @@ fn test_postgres_json_function_maps_to_sqlite() {
 }
 
 #[test]
-fn test_mysql_ascii_maps_to_sqlite_unicode() {
+fn test_mysql_ascii_preserved_for_sqlite() {
     validate_with_dialect(
         "SELECT ASCII('A')",
-        "SELECT UNICODE('A')",
+        "SELECT ASCII('A')",
         Dialect::Mysql,
         Dialect::Sqlite,
     );
@@ -5201,10 +5201,38 @@ fn test_cross_source_sqlite_function_rewrites() {
         ("SELECT TIME_STR_TO_TIME(x)", "SELECT x"),
         ("SELECT TIME_STR_TO_TIME(x, 'US/Pacific')", "SELECT x"),
         ("SELECT TIME_TO_TIME_STR(x)", "SELECT CAST(x AS TEXT)"),
+        ("SELECT CHARINDEX(x, y)", "SELECT INSTR(y, x)"),
+        ("SELECT MAX_BY(x, y)", "SELECT ARG_MAX(x, y)"),
+        ("SELECT MIN_BY(x, y)", "SELECT ARG_MIN(x, y)"),
+        ("SELECT POSITION('x' IN y)", "SELECT INSTR(y, 'x')"),
+        ("SELECT ASCII(x)", "SELECT ASCII(x)"),
     ];
     for read in [Dialect::Mysql, Dialect::Postgres, Dialect::Sqlite] {
         for (sql, expected) in cases {
             validate_with_dialect(sql, expected, read, Dialect::Sqlite);
         }
+    }
+}
+
+#[test]
+fn test_year_month_day_to_sqlite_preserved() {
+    // Python sqlglot preserves YEAR(x)/MONTH(x)/DAY(x) for sqlite target,
+    // wrapping the inner expr in DATE() only for mysql-family sources.
+    let postgres_sqlite: &[(&str, &str)] = &[
+        ("SELECT YEAR(x)", "SELECT YEAR(x)"),
+        ("SELECT MONTH(x)", "SELECT MONTH(x)"),
+        ("SELECT DAY(x)", "SELECT DAY(x)"),
+    ];
+    for (sql, expected) in postgres_sqlite {
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Sqlite);
+        validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
+    }
+    let mysql_sqlite: &[(&str, &str)] = &[
+        ("SELECT YEAR(x)", "SELECT YEAR(DATE(x))"),
+        ("SELECT MONTH(x)", "SELECT MONTH(DATE(x))"),
+        ("SELECT DAY(x)", "SELECT DAY(DATE(x))"),
+    ];
+    for (sql, expected) in mysql_sqlite {
+        validate_with_dialect(sql, expected, Dialect::Mysql, Dialect::Sqlite);
     }
 }

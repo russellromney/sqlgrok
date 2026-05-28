@@ -1643,7 +1643,7 @@ fn test_sqlite_identity() {
     let sqls = [
         "SELECT 1",
         "SELECT * FROM t WHERE a LIKE '%test%'",
-        "SELECT typeof(x)",
+        "SELECT TYPEOF(x)",
         "INSERT INTO t VALUES (1, 'a')",
     ];
     for sql in &sqls {

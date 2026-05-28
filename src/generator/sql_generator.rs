@@ -2207,7 +2207,16 @@ impl Generator {
                     self.write(")");
                     return;
                 }
-                self.write(name);
+                let normalized_name = if matches!(self.dialect, Some(Dialect::Sqlite))
+                    && !name.contains('.')
+                    && !name.contains('"')
+                    && !name.contains('`')
+                {
+                    name.to_ascii_uppercase()
+                } else {
+                    name.to_string()
+                };
+                self.write(&normalized_name);
                 self.write("(");
                 if *distinct {
                     self.write_keyword("DISTINCT ");
@@ -3069,7 +3078,7 @@ impl Generator {
                 }
             }
             TypedFunction::Year { expr } => {
-                if is_tsql {
+                if is_tsql || matches!(dialect, Some(Dialect::Sqlite)) {
                     self.write_keyword("YEAR(");
                     self.gen_expr(expr);
                     self.write(")");
@@ -3080,7 +3089,7 @@ impl Generator {
                 }
             }
             TypedFunction::Month { expr } => {
-                if is_tsql {
+                if is_tsql || matches!(dialect, Some(Dialect::Sqlite)) {
                     self.write_keyword("MONTH(");
                     self.gen_expr(expr);
                     self.write(")");
@@ -3091,7 +3100,7 @@ impl Generator {
                 }
             }
             TypedFunction::Day { expr } => {
-                if is_tsql {
+                if is_tsql || matches!(dialect, Some(Dialect::Sqlite)) {
                     self.write_keyword("DAY(");
                     self.gen_expr(expr);
                     self.write(")");

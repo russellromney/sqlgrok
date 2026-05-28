@@ -703,21 +703,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
-                && name.eq_ignore_ascii_case("ASCII")
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-                && new_args.len() == 1
-            {
-                return Expr::Function {
-                    name: "UNICODE".to_string(),
-                    args: new_args,
-                    distinct,
-                    filter,
-                    over,
-                };
-            }
-            if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("BTRIM")
                 && !distinct
                 && filter.is_none()
@@ -915,7 +900,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
-                && (is_postgres_family(source) || is_mysql_family(source))
                 && name.eq_ignore_ascii_case("POSITION")
                 && !distinct
                 && filter.is_none()
@@ -928,6 +912,40 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     distinct,
                     filter,
                     over,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("CHARINDEX")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::Function {
+                    name: "INSTR".to_string(),
+                    args: vec![new_args[1].clone(), new_args[0].clone()],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && matches!(name.to_ascii_uppercase().as_str(), "MAX_BY" | "MIN_BY")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::Function {
+                    name: if name.eq_ignore_ascii_case("MAX_BY") {
+                        "ARG_MAX".to_string()
+                    } else {
+                        "ARG_MIN".to_string()
+                    },
+                    args: new_args,
+                    distinct: false,
+                    filter: None,
+                    over: None,
                 };
             }
             if matches!(target, Dialect::Sqlite)
@@ -1208,16 +1226,14 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("MEDIAN")
                 && !distinct
-                && filter.is_none()
-                && over.is_none()
                 && new_args.len() == 1
             {
                 return Expr::Function {
                     name: "PERCENTILE_CONT".to_string(),
                     args: vec![new_args[0].clone(), Expr::Number("0.5".to_string())],
                     distinct: false,
-                    filter: None,
-                    over: None,
+                    filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
+                    over: over.map(|spec| transform_window_spec(spec, source, target)),
                 };
             }
             if matches!(target, Dialect::Sqlite)
@@ -1525,6 +1541,51 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                             left: Box::new(transform_expr(*left, source, target)),
                             op: BinaryOperator::Modulo,
                             right: Box::new(transform_expr(*right, source, target)),
+                        };
+                    }
+                    TypedFunction::Year { expr } if is_mysql_family(source) => {
+                        return Expr::TypedFunction {
+                            func: TypedFunction::Year {
+                                expr: Box::new(Expr::Function {
+                                    name: "DATE".to_string(),
+                                    args: vec![transform_expr(*expr, source, target)],
+                                    distinct: false,
+                                    filter: None,
+                                    over: None,
+                                }),
+                            },
+                            filter,
+                            over,
+                        };
+                    }
+                    TypedFunction::Month { expr } if is_mysql_family(source) => {
+                        return Expr::TypedFunction {
+                            func: TypedFunction::Month {
+                                expr: Box::new(Expr::Function {
+                                    name: "DATE".to_string(),
+                                    args: vec![transform_expr(*expr, source, target)],
+                                    distinct: false,
+                                    filter: None,
+                                    over: None,
+                                }),
+                            },
+                            filter,
+                            over,
+                        };
+                    }
+                    TypedFunction::Day { expr } if is_mysql_family(source) => {
+                        return Expr::TypedFunction {
+                            func: TypedFunction::Day {
+                                expr: Box::new(Expr::Function {
+                                    name: "DATE".to_string(),
+                                    args: vec![transform_expr(*expr, source, target)],
+                                    distinct: false,
+                                    filter: None,
+                                    over: None,
+                                }),
+                            },
+                            filter,
+                            over,
                         };
                     }
                     _ => {}
