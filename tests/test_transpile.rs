@@ -5189,3 +5189,22 @@ fn test_forced_suite_parser_burn_down_to_sqlite() {
         Dialect::Sqlite,
     );
 }
+
+#[test]
+fn test_cross_source_sqlite_function_rewrites() {
+    let cases: &[(&str, &str)] = &[
+        ("SELECT LEVENSHTEIN(a, b)", "SELECT EDITDIST3(a, b)"),
+        ("SELECT MEDIAN(x)", "SELECT PERCENTILE_CONT(x, 0.5)"),
+        ("SELECT MOD(a, b)", "SELECT a % b"),
+        ("SELECT COUNT_IF(x > 1)", "SELECT SUM(IIF(x > 1, 1, 0))"),
+        ("SELECT STRPOS(x, y)", "SELECT INSTR(x, y)"),
+        ("SELECT TIME_STR_TO_TIME(x)", "SELECT x"),
+        ("SELECT TIME_STR_TO_TIME(x, 'US/Pacific')", "SELECT x"),
+        ("SELECT TIME_TO_TIME_STR(x)", "SELECT CAST(x AS TEXT)"),
+    ];
+    for read in [Dialect::Mysql, Dialect::Postgres, Dialect::Sqlite] {
+        for (sql, expected) in cases {
+            validate_with_dialect(sql, expected, read, Dialect::Sqlite);
+        }
+    }
+}

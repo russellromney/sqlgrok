@@ -2,43 +2,43 @@
 
 Source: `parity/reports/sqlglot_suite_forced_transpile_sqlite_sqlite.jsonl`
 
-Total rows: `15170`
+Total rows: `15156`
 
 ## Status Counts
 
 | Status | Count |
 | --- | ---: |
-| `match` | 9039 |
-| `mismatch` | 3813 |
-| `oracle-error` | 1546 |
-| `rust-error` | 633 |
-| `unsupported-harness-shape` | 139 |
+| `match` | 9128 |
+| `mismatch` | 3714 |
+| `oracle-error` | 1545 |
+| `rust-error` | 632 |
+| `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 9039 |
-| `mismatch` | `sqlite` | `sqlite` | 3813 |
-| `oracle-error` | `sqlite` | `sqlite` | 1546 |
-| `rust-error` | `sqlite` | `sqlite` | 633 |
-| `unsupported-harness-shape` | `sqlite` | `sqlite` | 139 |
+| `match` | `sqlite` | `sqlite` | 9128 |
+| `mismatch` | `sqlite` | `sqlite` | 3714 |
+| `oracle-error` | `sqlite` | `sqlite` | 1545 |
+| `rust-error` | `sqlite` | `sqlite` | 632 |
+| `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 6333 |
-| `mismatch` | `validate_all` | 2669 |
-| `match` | `validate_identity` | 2617 |
-| `mismatch` | `validate_identity` | 1062 |
+| `match` | `validate_all` | 6408 |
+| `match` | `validate_identity` | 2628 |
+| `mismatch` | `validate_all` | 2584 |
+| `mismatch` | `validate_identity` | 1051 |
 | `oracle-error` | `validate_identity` | 993 |
-| `oracle-error` | `validate_all` | 544 |
-| `rust-error` | `validate_identity` | 388 |
+| `oracle-error` | `validate_all` | 543 |
+| `rust-error` | `validate_identity` | 387 |
 | `rust-error` | `validate_all` | 242 |
-| `unsupported-harness-shape` | `validate_all` | 124 |
-| `match` | `validate` | 89 |
-| `mismatch` | `validate` | 82 |
+| `unsupported-harness-shape` | `validate_all` | 122 |
+| `match` | `validate` | 92 |
+| `mismatch` | `validate` | 79 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -48,22 +48,22 @@ Total rows: `15170`
 
 | Status | Shape | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 685 |
+| `match` | `SELECT` | 684 |
 | `match` | `CAST()` | 532 |
-| `match` | `SELECT operator multiply` | 305 |
-| `match` | `CREATE TABLE` | 247 |
-| `mismatch` | `CREATE TABLE` | 244 |
+| `match` | `SELECT operator multiply` | 302 |
+| `mismatch` | `CREATE TABLE` | 247 |
+| `match` | `CREATE TABLE` | 238 |
 | `match` | `SHOW` | 215 |
-| `oracle-error` | `SELECT` | 197 |
-| `mismatch` | `SELECT` | 189 |
+| `oracle-error` | `SELECT` | 195 |
+| `mismatch` | `SELECT` | 188 |
 | `mismatch` | `CREATE` | 179 |
 | `match` | `CREATE` | 165 |
 | `match` | `TRUNC()` | 162 |
 | `oracle-error` | `SELECT operator multiply` | 143 |
-| `mismatch` | `SELECT operator multiply` | 124 |
+| `mismatch` | `SELECT operator multiply` | 127 |
 | `match` | `ALTER TABLE` | 116 |
 | `oracle-error` | `CREATE TABLE` | 113 |
-| `match` | `X` | 107 |
+| `match` | `X` | 103 |
 | `match` | `WITH` | 90 |
 | `mismatch` | `SELECT UNNEST()` | 88 |
 | `match` | `SELECT CAST()` | 83 |
@@ -78,7 +78,7 @@ Total rows: `15170`
 | `mismatch` | `WITH` | 60 |
 | `match` | `A` | 57 |
 | `match` | `SELECT UNNEST()` | 57 |
-| `mismatch` | `TIME_STR_TO_TIME()` | 57 |
+| `match` | `TIME_STR_TO_TIME()` | 57 |
 | `rust-error` | `SELECT` | 57 |
 | `match` | `REGEXP_INSTR()` | 56 |
 | `match` | `REVOKE` | 56 |
@@ -93,10 +93,10 @@ Total rows: `15170`
 
 | Status | Error Bucket | Count |
 | --- | --- | ---: |
-| `oracle-error` | `oracle parse: Invalid expression / Unexpected token` | 752 |
+| `oracle-error` | `oracle parse: Invalid expression / Unexpected token` | 753 |
 | `oracle-error` | `oracle parse: Expecting )` | 472 |
-| `oracle-error` | `oracle parse: Required keyword missing` | 132 |
-| `unsupported-harness-shape` | `SQLGlot expects UnsupportedError` | 121 |
+| `oracle-error` | `oracle parse: Required keyword missing` | 130 |
+| `unsupported-harness-shape` | `SQLGlot expects UnsupportedError` | 119 |
 | `rust-error` | `parser: Expected identifier` | 48 |
 | `oracle-error` | `oracle parse: The number of provided arguments (2) is greater than the maximum number of supported arguments (1)` | 24 |
 | `oracle-error` | `oracle parse: The number of provided arguments (4) is greater than the maximum number of supported arguments (2)` | 19 |
@@ -138,15 +138,14 @@ Total rows: `15170`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 467 |
+| `mismatch` | `missing AS or alias rendering` | 458 |
 | `mismatch` | `missing quoted identifier` | 251 |
-| `mismatch` | `DDL/create-table rendering` | 231 |
-| `mismatch` | `case-only rendering difference` | 227 |
-| `mismatch` | `SELECT` | 119 |
-| `mismatch` | `SELECT operator multiply` | 112 |
+| `mismatch` | `DDL/create-table rendering` | 234 |
+| `mismatch` | `case-only rendering difference` | 233 |
+| `mismatch` | `SELECT` | 120 |
+| `mismatch` | `SELECT operator multiply` | 115 |
 | `mismatch` | `CREATE` | 101 |
 | `mismatch` | `date/time rendering: DATE_ADD()` | 69 |
-| `mismatch` | `date/time rendering: TIME_STR_TO_TIME()` | 57 |
 | `mismatch` | `date/time rendering: SELECT DATE_SUB()` | 49 |
 | `mismatch` | `ALTER TABLE` | 43 |
 | `mismatch` | `cast/type rendering: CAST()` | 43 |
@@ -159,8 +158,6 @@ Total rows: `15170`
 | `mismatch` | `REGEXP_EXTRACT()` | 29 |
 | `mismatch` | `date/time rendering: SELECT DATE_ADD()` | 29 |
 | `mismatch` | `date/time rendering: SELECT DATE_FORMAT()` | 29 |
-| `mismatch` | `LEVENSHTEIN()` | 28 |
-| `mismatch` | `MEDIAN()` | 28 |
 | `mismatch` | `POSITION()` | 27 |
 | `mismatch` | `REGEXP_REPLACE()` | 27 |
 | `mismatch` | `json rendering: JSON_EXTRACT()` | 27 |
@@ -172,56 +169,59 @@ Total rows: `15170`
 | `mismatch` | `cast/type rendering: SELECT EXTRACT()` | 22 |
 | `mismatch` | `SHA256()` | 21 |
 | `mismatch` | `DAY()` | 20 |
-| `mismatch` | `SELECT COUNT_IF()` | 20 |
 | `mismatch` | `date/time rendering: EOMONTH()` | 20 |
-| `mismatch` | `STRPOS()` | 19 |
+| `mismatch` | `ASCII()` | 18 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
 | `mismatch` | `LTRIM()` | 16 |
-| `mismatch` | `MOD()` | 16 |
+| `mismatch` | `RTRIM()` | 16 |
+| `mismatch` | `SELECT MAX_BY()` | 16 |
+| `mismatch` | `date/time rendering: STR_TO_DATE()` | 16 |
+| `mismatch` | `A` | 15 |
+| `mismatch` | `CHARINDEX()` | 15 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 862 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 498 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 334 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 316 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 268 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 235 |
-| `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 224 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 861 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 501 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 339 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 317 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 265 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 228 |
+| `match` | `tests/dialects/test_dialect.py` | `test_operators` | 200 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 193 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 188 |
-| `match` | `tests/dialects/test_dialect.py` | `test_operators` | 177 |
+| `match` | `tests/dialects/test_dialect.py` | `test_time` | 188 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 184 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 172 |
-| `match` | `tests/dialects/test_dialect.py` | `test_time` | 128 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 167 |
+| `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 164 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 127 |
-| `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 118 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 112 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 103 |
-| `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 101 |
+| `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 117 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 116 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 104 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 100 |
-| `match` | `tests/dialects/test_presto.py` | `test_presto` | 100 |
-| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 99 |
+| `match` | `tests/dialects/test_presto.py` | `test_presto` | 96 |
+| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 96 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 88 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 84 |
-| `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 80 |
-| `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 76 |
-| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 75 |
+| `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 82 |
+| `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 80 |
+| `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 78 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
+| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 74 |
 | `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 70 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 70 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 69 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_time` | 68 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 67 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 67 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 66 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_time` | 66 |
+| `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 65 |
 | `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
-| `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 63 |
-| `mismatch` | `tests/dialects/test_oracle.py` | `test_oracle` | 63 |
+| `mismatch` | `tests/dialects/test_presto.py` | `test_presto` | 63 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 62 |
 
 ## Bucket Examples
@@ -243,7 +243,7 @@ Total rows: `15170`
 - `tests/dialects/test_bigquery.py`:104 `test_bigquery` via `validate_identity`: `CREATE SCHEMA x DEFAULT COLLATE 'en'`
   - expected: `CREATE SCHEMA x`
   - actual: `CREATE SCHEMA x DEFAULT COLLATE 'en'`
-- `tests/dialects/test_bigquery.py`:381 `test_bigquery` via `validate_identity`: `CREATE TEMPORARY FUNCTION FOO() RETURNS STRING LANGUAGE js AS 'return "Hello world!"'`
+- `tests/dialects/test_bigquery.py`:380 `test_bigquery` via `validate_identity`: `CREATE TEMPORARY FUNCTION FOO() RETURNS STRING LANGUAGE js AS 'return "Hello world!"'`
   - expected: `CREATE TEMPORARY FUNCTION FOO() AS 'return "Hello world!"'`
   - actual: `CREATE TEMPORARY FUNCTION FOO() RETURNS STRING LANGUAGE js AS 'return "Hello world!"'`
 - `tests/dialects/test_clickhouse.py`:207 `test_clickhouse` via `validate_identity`: `CREATE MATERIALIZED VIEW test_view TO db.table1 (id UInt8) AS SELECT * FROM test_data`
@@ -264,10 +264,10 @@ Total rows: `15170`
 
 ### `mismatch` `REGEXP_EXTRACT()`
 
-- `tests/dialects/test_bigquery.py`:2898 `test_regexp_extract` via `validate_identity`: `REGEXP_EXTRACT(x, '(?<)')`
+- `tests/dialects/test_bigquery.py`:2897 `test_regexp_extract` via `validate_identity`: `REGEXP_EXTRACT(x, '(?<)')`
   - expected: `REGEXP_EXTRACT(x, '(?<)')`
   - actual: `REGEXP_SUBSTR(x, '(?<)')`
-- `tests/dialects/test_bigquery.py`:2899 `test_regexp_extract` via `validate_identity`: `` REGEXP_EXTRACT(`foo`, 'bar: (.+?)', 1, 1) ``
+- `tests/dialects/test_bigquery.py`:2898 `test_regexp_extract` via `validate_identity`: `` REGEXP_EXTRACT(`foo`, 'bar: (.+?)', 1, 1) ``
   - expected: `REGEXP_EXTRACT("foo", 'bar: (.+?)', 1, 1)`
   - actual: `REGEXP_SUBSTR("foo", 'bar: (.+?)', 1)`
 - `tests/dialects/test_hive.py`:900 `test_hive` via `validate_all`: `REGEXP_EXTRACT('abc', '(a)(b)(c)')`
@@ -324,10 +324,10 @@ Total rows: `15170`
 
 ### `mismatch` `cast/type rendering: CAST()`
 
-- `tests/dialects/test_bigquery.py`:224 `test_bigquery` via `validate_identity`: `CAST(x AS BIGNUMERIC)`
+- `tests/dialects/test_bigquery.py`:223 `test_bigquery` via `validate_identity`: `CAST(x AS BIGNUMERIC)`
   - expected: `CAST(x AS BIGDECIMAL)`
   - actual: `CAST(x AS BIGNUMERIC)`
-- `tests/dialects/test_bigquery.py`:1162 `test_bigquery` via `validate_all`: `cast(x as time format 'YYYY.MM.DD HH:MI:SSTZH')`
+- `tests/dialects/test_bigquery.py`:1161 `test_bigquery` via `validate_all`: `cast(x as time format 'YYYY.MM.DD HH:MI:SSTZH')`
   - expected: `STR_TO_TIME(x, 'YYYY.MM.DD HH:MI:SSTZH')`
   - actual: `CAST(x AS TIME)`
 - `tests/dialects/test_clickhouse.py`:29 `test_clickhouse` via `validate_identity`: `CAST(x AS TINYBLOB)`
@@ -336,13 +336,13 @@ Total rows: `15170`
 
 ### `mismatch` `cast/type rendering: SELECT CAST()`
 
-- `tests/dialects/test_bigquery.py`:3844 `test_bignumeric` via `validate_all`: `SELECT CAST(1 AS BIGNUMERIC)`
+- `tests/dialects/test_bigquery.py`:3843 `test_bignumeric` via `validate_all`: `SELECT CAST(1 AS BIGNUMERIC)`
   - expected: `SELECT CAST(1 AS BIGDECIMAL)`
   - actual: `SELECT CAST(1 AS BIGNUMERIC)`
-- `tests/dialects/test_bigquery.py`:3844 `test_bignumeric` via `validate_all`: `SELECT CAST(1 AS BIGNUMERIC)`
+- `tests/dialects/test_bigquery.py`:3843 `test_bignumeric` via `validate_all`: `SELECT CAST(1 AS BIGNUMERIC)`
   - expected: `SELECT CAST(1 AS BIGDECIMAL)`
   - actual: `SELECT CAST(1 AS BIGNUMERIC)`
-- `tests/dialects/test_bigquery.py`:1121 `test_bigquery` via `validate_all`: `SELECT CAST(TIMESTAMP '2008-12-25 00:00:00+00:00' AS STRING FORMAT 'YYYY-MM-DD HH24:MI:SS TZH:TZM' AT TIME ZONE 'Asia/Kolkata') AS date_time_to_string`
+- `tests/dialects/test_bigquery.py`:1120 `test_bigquery` via `validate_all`: `SELECT CAST(TIMESTAMP '2008-12-25 00:00:00+00:00' AS STRING FORMAT 'YYYY-MM-DD HH24:MI:SS TZH:TZM' AT TIME ZONE 'Asia/Kolkata') AS date_time_to_string`
   - expected: `SELECT CAST(CAST('2008-12-25 00:00:00+00:00' AS TIMESTAMP) AS TEXT FORMAT 'YYYY-MM-DD HH24:MI:SS TZH:TZM' AT TIME ZONE 'Asia/Kolkata') AS date_time_to_string`
   - actual: `SELECT CAST(CAST('2008-12-25 00:00:00+00:00' AS TIMESTAMP) AS TEXT FORMAT 'YYYY-MM-DD HH24:MI:SS TZH:TZM') AS date_time_to_string`
 
@@ -360,13 +360,13 @@ Total rows: `15170`
 
 ### `mismatch` `date/time rendering: DATE_ADD()`
 
-- `tests/dialects/test_bigquery.py`:1511 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
+- `tests/dialects/test_bigquery.py`:1510 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
   - expected: `DATE(CURRENT_DATE, 'INTERVAL '-1' DAY')`
   - actual: `DATE_ADD(CURRENT_DATE, INTERVAL -1 DAY)`
-- `tests/dialects/test_bigquery.py`:1511 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
+- `tests/dialects/test_bigquery.py`:1510 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
   - expected: `DATE(CURRENT_DATE, 'INTERVAL '-1' DAY')`
   - actual: `DATE_ADD(CURRENT_DATE, INTERVAL -1 DAY)`
-- `tests/dialects/test_bigquery.py`:1511 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
+- `tests/dialects/test_bigquery.py`:1510 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
   - expected: `DATE(CURRENT_DATE, 'INTERVAL '-1' DAY')`
   - actual: `DATE_ADD(CURRENT_DATE, INTERVAL -1 DAY)`
 
@@ -394,15 +394,27 @@ Total rows: `15170`
   - expected: `SELECT DATE('2020-01-01', '1')`
   - actual: `SELECT DATE_ADD('2020-01-01', 1)`
 
+### `mismatch` `date/time rendering: SELECT DATE_FORMAT()`
+
+- `tests/dialects/test_clickhouse.py`:617 `test_clickhouse` via `validate_all`: `SELECT DATE_FORMAT(NOW(), '%Y-%m-%d')`
+  - expected: `SELECT DATE_FORMAT(NOW(), '%Y-%m-%d')`
+  - actual: `SELECT STRFTIME('%Y-%m-%d', NOW())`
+- `tests/dialects/test_exasol.py`:317 `test_stringFunctions` via `validate_all`: `SELECT DATE_FORMAT('2009-10-04 22:23:00', '%W %M %Y')`
+  - expected: `SELECT DATE_FORMAT('2009-10-04 22:23:00', '%W %M %Y')`
+  - actual: `SELECT STRFTIME('%W %M %Y', '2009-10-04 22:23:00')`
+- `tests/dialects/test_mysql.py`:724 `test_date_format` via `validate_all`: `SELECT DATE_FORMAT('2017-06-15', '%Y')`
+  - expected: `SELECT DATE_FORMAT('2017-06-15', '%Y')`
+  - actual: `SELECT STRFTIME('%Y', '2017-06-15')`
+
 ### `mismatch` `date/time rendering: SELECT DATE_SUB()`
 
-- `tests/dialects/test_bigquery.py`:479 `test_bigquery` via `validate_all`: `SELECT DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)`
+- `tests/dialects/test_bigquery.py`:478 `test_bigquery` via `validate_all`: `SELECT DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)`
   - expected: `SELECT DATE_SUB(CURRENT_DATE, INTERVAL '2' DAY)`
   - actual: `SELECT DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY)`
-- `tests/dialects/test_bigquery.py`:479 `test_bigquery` via `validate_all`: `SELECT DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)`
+- `tests/dialects/test_bigquery.py`:478 `test_bigquery` via `validate_all`: `SELECT DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)`
   - expected: `SELECT DATE_SUB(CURRENT_DATE, INTERVAL '2' DAY)`
   - actual: `SELECT DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY)`
-- `tests/dialects/test_bigquery.py`:486 `test_bigquery` via `validate_all`: `SELECT DATE_SUB(DATE '2008-12-25', INTERVAL 5 DAY)`
+- `tests/dialects/test_bigquery.py`:485 `test_bigquery` via `validate_all`: `SELECT DATE_SUB(DATE '2008-12-25', INTERVAL 5 DAY)`
   - expected: `SELECT DATE_SUB(DATE('2008-12-25'), INTERVAL '5' DAY)`
   - actual: `SELECT DATE_SUB(DATE('2008-12-25'), INTERVAL 5 DAY)`
 
@@ -417,18 +429,6 @@ Total rows: `15170`
 - `tests/test_transpile.py`:811 `test_time` via `validate`: `STR_TO_TIME(x, 'yyyy-MM-dd HH:mm:ss')`
   - expected: `STR_TO_TIME(x, 'yyyy-MM-dd HH:mm:ss')`
   - actual: `TO_TIMESTAMP(x, 'yyyy-MM-dd HH:mm:ss')`
-
-### `mismatch` `date/time rendering: TIME_STR_TO_TIME()`
-
-- `tests/test_transpile.py`:829 `test_time` via `validate`: `TIME_STR_TO_TIME(x)`
-  - expected: `x`
-  - actual: `TIME_STR_TO_TIME(x)`
-- `tests/test_transpile.py`:830 `test_time` via `validate`: `TIME_STR_TO_TIME(x, 'America/Los_Angeles')`
-  - expected: `x`
-  - actual: `TIME_STR_TO_TIME(x, 'America/Los_Angeles')`
-- `tests/dialects/test_dialect.py`:817 `test_time` via `validate_all`: `TIME_STR_TO_TIME('2020-01-01')`
-  - expected: `'2020-01-01'`
-  - actual: `TIME_STR_TO_TIME('2020-01-01')`
 
 ### `mismatch` `missing AS or alias rendering`
 
@@ -588,10 +588,10 @@ Total rows: `15170`
 
 ### `rust-error` `ValueError: Unexpected token: Token { token_type: Dot, value: ".", line: 1, col: 31, position: 30, quote_char: '\0' }`
 
-- `tests/dialects/test_bigquery.py`:2491 `test_rename_table` via `validate_all`: `ALTER TABLE db.t1 RENAME TO db.t2`
+- `tests/dialects/test_bigquery.py`:2490 `test_rename_table` via `validate_all`: `ALTER TABLE db.t1 RENAME TO db.t2`
   - expected: `ALTER TABLE db.t1 RENAME TO db.t2`
   - error: `ValueError: Unexpected token: Token { token_type: Dot, value: ".", line: 1, col: 31, position: 30, quote_char: '\0' }`
-- `tests/dialects/test_bigquery.py`:2491 `test_rename_table` via `validate_all`: `ALTER TABLE db.t1 RENAME TO db.t2`
+- `tests/dialects/test_bigquery.py`:2490 `test_rename_table` via `validate_all`: `ALTER TABLE db.t1 RENAME TO db.t2`
   - expected: `ALTER TABLE db.t1 RENAME TO db.t2`
   - error: `ValueError: Unexpected token: Token { token_type: Dot, value: ".", line: 1, col: 31, position: 30, quote_char: '\0' }`
 - `tests/dialects/test_doris.py`:243 `test_rename_table` via `validate_all`: `ALTER TABLE db.t1 RENAME TO db.t2`
@@ -612,13 +612,13 @@ Total rows: `15170`
 
 ### `rust-error` `parser: Expected RParen, got Dot ('.')`
 
-- `tests/dialects/test_bigquery.py`:1488 `test_bigquery` via `validate_all`: `DELETE FROM db.t1 AS t1 WHERE NOT t1.c IN (SELECT db.t2.c FROM db.t2)`
+- `tests/dialects/test_bigquery.py`:1487 `test_bigquery` via `validate_all`: `DELETE FROM db.t1 AS t1 WHERE NOT t1.c IN (SELECT db.t2.c FROM db.t2)`
   - expected: `DELETE FROM db.t1 AS t1 WHERE NOT t1.c IN (SELECT db.t2.c FROM db.t2)`
   - error: `ValueError: Parser error: Expected RParen, got Dot ('.') at line 1 col 56`
-- `tests/dialects/test_bigquery.py`:1488 `test_bigquery` via `validate_all`: `DELETE FROM db.t1 AS t1 WHERE NOT t1.c IN (SELECT db.t2.c FROM db.t2)`
+- `tests/dialects/test_bigquery.py`:1487 `test_bigquery` via `validate_all`: `DELETE FROM db.t1 AS t1 WHERE NOT t1.c IN (SELECT db.t2.c FROM db.t2)`
   - expected: `DELETE FROM db.t1 AS t1 WHERE NOT t1.c IN (SELECT db.t2.c FROM db.t2)`
   - error: `ValueError: Parser error: Expected RParen, got Dot ('.') at line 1 col 56`
-- `tests/dialects/test_dialect.py`:3090 `test_merge` via `validate_all`: `MERGE INTO foo AS target USING (SELECT a, b FROM tbl) AS src ON src.a = target.a WHEN MATCHED AND target.a <> src.a THEN UPDATE SET target.b = 'FOO' WHEN NOT MATCHED THEN INSERT (target.a, target.b) VALUES (src.a, src.b)`
+- `tests/dialects/test_dialect.py`:3106 `test_merge` via `validate_all`: `MERGE INTO foo AS target USING (SELECT a, b FROM tbl) AS src ON src.a = target.a WHEN MATCHED AND target.a <> src.a THEN UPDATE SET target.b = 'FOO' WHEN NOT MATCHED THEN INSERT (target.a, target.b) VALUES (src.a, src.b)`
   - expected: `MERGE INTO foo AS target USING (SELECT a, b FROM tbl) AS src ON src.a = target.a WHEN MATCHED AND target.a <> src.a THEN UPDATE SET target.b = 'FOO' WHEN NOT MATCHED THEN INSERT (target.a, target.b) VALUES (src.a, src.b)`
   - error: `ValueError: Parser error: Expected RParen, got Dot ('.') at line 3 col 49`
 
@@ -639,20 +639,20 @@ Total rows: `15170`
 - `tests/test_transpile.py`:127 `test_comments` via `validate`: `SELECT c AS /* foo */ (a, b, c) FROM t`
   - expected: `SELECT c AS (a, b, c) /* foo */ FROM t`
   - error: `ValueError: Parser error: Expected identifier, got LParen ('(') at line 1 col 23`
-- `tests/dialects/test_dialect.py`:3972 `test_escaped_identifier_delimiter` via `validate_all`: `SELECT 1 AS [[x]]]`
+- `tests/dialects/test_dialect.py`:3988 `test_escaped_identifier_delimiter` via `validate_all`: `SELECT 1 AS [[x]]]`
   - expected: `SELECT 1 AS "[x]"`
   - error: `ValueError: Parser error: Expected identifier, got LBracket ('[') at line 1 col 13`
-- `tests/dialects/test_dialect.py`:5263 `test_operator` via `validate_identity`: `SELECT 1 OPERATOR(pg_catalog.+) 2`
+- `tests/dialects/test_dialect.py`:5279 `test_operator` via `validate_identity`: `SELECT 1 OPERATOR(pg_catalog.+) 2`
   - expected: `SELECT 1 OPERATOR(pg_catalog.+) 2`
   - error: `ValueError: Parser error: Expected identifier, got Plus ('+') at line 1 col 30`
 
 ### `unsupported-harness-shape` `SQLGlot expects UnsupportedError`
 
-- `tests/dialects/test_bigquery.py`:494 `test_bigquery` via `validate_all`: `EDIT_DISTANCE(col1, col2, max_distance => 3)`
+- `tests/dialects/test_bigquery.py`:493 `test_bigquery` via `validate_all`: `EDIT_DISTANCE(col1, col2, max_distance => 3)`
   - error: `SQLGlot expects UnsupportedError`
-- `tests/dialects/test_bigquery.py`:494 `test_bigquery` via `validate_all`: `EDIT_DISTANCE(col1, col2, max_distance => 3)`
+- `tests/dialects/test_bigquery.py`:493 `test_bigquery` via `validate_all`: `EDIT_DISTANCE(col1, col2, max_distance => 3)`
   - error: `SQLGlot expects UnsupportedError`
-- `tests/dialects/test_bigquery.py`:494 `test_bigquery` via `validate_all`: `EDIT_DISTANCE(col1, col2, max_distance => 3)`
+- `tests/dialects/test_bigquery.py`:493 `test_bigquery` via `validate_all`: `EDIT_DISTANCE(col1, col2, max_distance => 3)`
   - error: `SQLGlot expects UnsupportedError`
 
 ### `unsupported-harness-shape` `identify helper option is not supported yet`

@@ -1170,14 +1170,74 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
-                && is_mysql_family(source)
                 && name.eq_ignore_ascii_case("TIME_STR_TO_TIME")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && !new_args.is_empty()
+            {
+                return new_args[0].clone();
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("TIME_TO_TIME_STR")
                 && !distinct
                 && filter.is_none()
                 && over.is_none()
                 && new_args.len() == 1
             {
-                return new_args[0].clone();
+                return Expr::Cast {
+                    expr: Box::new(new_args[0].clone()),
+                    data_type: DataType::Unknown("TEXT".to_string()),
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("LEVENSHTEIN")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::Function {
+                    name: "EDITDIST3".to_string(),
+                    args: new_args,
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("MEDIAN")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return Expr::Function {
+                    name: "PERCENTILE_CONT".to_string(),
+                    args: vec![new_args[0].clone(), Expr::Number("0.5".to_string())],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("COUNT_IF")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return Expr::Function {
+                    name: "SUM".to_string(),
+                    args: vec![Expr::If {
+                        condition: Box::new(new_args[0].clone()),
+                        true_val: Box::new(Expr::Number("1".to_string())),
+                        false_val: Some(Box::new(Expr::Number("0".to_string()))),
+                    }],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
             }
             if matches!(target, Dialect::Sqlite)
                 && ((is_mysql_family(source) && name.eq_ignore_ascii_case("FROM_UNIXTIME"))
@@ -1458,6 +1518,13 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                             distinct: false,
                             filter,
                             over,
+                        };
+                    }
+                    TypedFunction::Mod { left, right } if filter.is_none() && over.is_none() => {
+                        return Expr::BinaryOp {
+                            left: Box::new(transform_expr(*left, source, target)),
+                            op: BinaryOperator::Modulo,
+                            right: Box::new(transform_expr(*right, source, target)),
                         };
                     }
                     _ => {}
@@ -2433,9 +2500,7 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
 
         // ── STRING_AGG / GROUP_CONCAT ───────────────────────────────────
         "STRING_AGG" if matches!(target, Dialect::Sqlite) => "GROUP_CONCAT".to_string(),
-        "STRPOS" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
-            "INSTR".to_string()
-        }
+        "STRPOS" if matches!(target, Dialect::Sqlite) => "INSTR".to_string(),
         "CHR" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
             "CHAR".to_string()
         }
