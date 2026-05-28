@@ -5215,6 +5215,35 @@ fn test_cross_source_sqlite_function_rewrites() {
 }
 
 #[test]
+fn test_cross_source_sqlite_more_rewrites() {
+    let cases: &[(&str, &str)] = &[
+        ("SELECT TO_NUMBER(x)", "SELECT CAST(x AS REAL)"),
+        ("SELECT TO_NUMBER(x, fmt)", "SELECT CAST(x AS REAL)"),
+        (
+            "SELECT SAFE_DIVIDE(x, y)",
+            "SELECT IIF(y <> 0, CAST(x AS REAL) / y, NULL)",
+        ),
+        (
+            "SELECT SAFE_DIVIDE(x + 1, 2 * y)",
+            "SELECT IIF((2 * y) <> 0, CAST((x + 1) AS REAL) / (2 * y), NULL)",
+        ),
+        ("SELECT BOOLAND_AGG(x)", "SELECT MIN(x)"),
+        ("SELECT BOOLOR_AGG(x)", "SELECT MAX(x)"),
+        ("SELECT BOOLAND(x, y)", "SELECT ((x) AND (y))"),
+        ("SELECT BOOLOR(x, y)", "SELECT ((x) OR (y))"),
+        (
+            "SELECT DATEFROMPARTS(y, m, d)",
+            "SELECT DATE_FROM_PARTS(y, m, d)",
+        ),
+    ];
+    for read in [Dialect::Mysql, Dialect::Postgres, Dialect::Sqlite] {
+        for (sql, expected) in cases {
+            validate_with_dialect(sql, expected, read, Dialect::Sqlite);
+        }
+    }
+}
+
+#[test]
 fn test_year_month_day_to_sqlite_preserved() {
     // Python sqlglot preserves YEAR(x)/MONTH(x)/DAY(x) for sqlite target,
     // wrapping the inner expr in DATE() only for mysql-family sources.

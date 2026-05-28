@@ -3035,6 +3035,8 @@ impl Generator {
                     self.write_keyword("STR_TO_DATE(");
                 } else if is_bigquery {
                     self.write_keyword("PARSE_TIMESTAMP(");
+                } else if matches!(dialect, Some(Dialect::Sqlite)) {
+                    self.write_keyword("STR_TO_TIME(");
                 } else {
                     self.write_keyword("TO_TIMESTAMP(");
                 }

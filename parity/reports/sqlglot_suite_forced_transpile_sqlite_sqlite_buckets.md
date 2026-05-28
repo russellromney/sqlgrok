@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 9476 |
-| `mismatch` | 3366 |
+| `match` | 9547 |
+| `mismatch` | 3295 |
 | `oracle-error` | 1545 |
 | `rust-error` | 632 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 9476 |
-| `mismatch` | `sqlite` | `sqlite` | 3366 |
+| `match` | `sqlite` | `sqlite` | 9547 |
+| `mismatch` | `sqlite` | `sqlite` | 3295 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
 | `rust-error` | `sqlite` | `sqlite` | 632 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -28,17 +28,17 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 6707 |
-| `match` | `validate_identity` | 2677 |
-| `mismatch` | `validate_all` | 2285 |
-| `mismatch` | `validate_identity` | 1002 |
+| `match` | `validate_all` | 6774 |
+| `match` | `validate_identity` | 2675 |
+| `mismatch` | `validate_all` | 2218 |
+| `mismatch` | `validate_identity` | 1004 |
 | `oracle-error` | `validate_identity` | 993 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 387 |
 | `rust-error` | `validate_all` | 242 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `match` | `validate` | 92 |
-| `mismatch` | `validate` | 79 |
+| `match` | `validate` | 98 |
+| `mismatch` | `validate` | 73 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -83,11 +83,11 @@ Total rows: `15156`
 | `match` | `REGEXP_INSTR()` | 56 |
 | `match` | `REVOKE` | 56 |
 | `match` | `SELECT SUM()` | 56 |
-| `match` | `SELECT TO_TIMESTAMP()` | 55 |
 | `mismatch` | `CAST()` | 52 |
 | `oracle-error` | `WITH` | 52 |
 | `match` | `FROM` | 51 |
 | `mismatch` | `ALTER TABLE` | 49 |
+| `mismatch` | `SELECT CAST()` | 49 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -138,7 +138,7 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 458 |
+| `mismatch` | `missing AS or alias rendering` | 401 |
 | `mismatch` | `missing quoted identifier` | 251 |
 | `mismatch` | `DDL/create-table rendering` | 234 |
 | `mismatch` | `SELECT` | 120 |
@@ -151,10 +151,10 @@ Total rows: `15156`
 | `mismatch` | `cast/type rendering: CAST()` | 43 |
 | `mismatch` | `cast/type rendering: SELECT TO_CHAR()` | 41 |
 | `mismatch` | `quote-style difference` | 40 |
+| `mismatch` | `date/time rendering: SELECT TO_TIMESTAMP()` | 39 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 36 |
 | `mismatch` | `date/time rendering: SELECT DATEADD()` | 32 |
 | `mismatch` | `REPLACE()` | 31 |
-| `mismatch` | `date/time rendering: STR_TO_TIME()` | 30 |
 | `mismatch` | `REGEXP_EXTRACT()` | 29 |
 | `mismatch` | `date/time rendering: SELECT DATE_ADD()` | 29 |
 | `mismatch` | `date/time rendering: SELECT DATE_FORMAT()` | 29 |
@@ -183,43 +183,43 @@ Total rows: `15156`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 862 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 501 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 345 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 316 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 265 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 856 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 521 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 347 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 322 |
+| `match` | `tests/dialects/test_dialect.py` | `test_time` | 254 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 245 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 231 |
-| `match` | `tests/dialects/test_dialect.py` | `test_time` | 230 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 229 |
-| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 195 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 194 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 226 |
+| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 196 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 189 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 161 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 159 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 142 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 128 |
-| `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 122 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 120 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 115 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 118 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 108 |
+| `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 98 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 96 |
+| `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 93 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 88 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 84 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 82 |
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
+| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 80 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 79 |
-| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 77 |
+| `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 75 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 71 |
-| `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 70 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 70 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 69 |
-| `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 68 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 67 |
+| `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 67 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 66 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_time` | 66 |
-| `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 65 |
 | `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 62 |
 | `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 61 |
@@ -418,17 +418,17 @@ Total rows: `15156`
   - expected: `SELECT DATE_SUB(DATE('2008-12-25'), INTERVAL '5' DAY)`
   - actual: `SELECT DATE_SUB(DATE('2008-12-25'), INTERVAL 5 DAY)`
 
-### `mismatch` `date/time rendering: STR_TO_TIME()`
+### `mismatch` `date/time rendering: SELECT TO_TIMESTAMP()`
 
-- `tests/test_transpile.py`:791 `test_time` via `validate`: `STR_TO_TIME('x', 'y')`
-  - expected: `STR_TO_TIME('x', 'y')`
-  - actual: `TO_TIMESTAMP('x', 'y')`
-- `tests/test_transpile.py`:806 `test_time` via `validate`: `STR_TO_TIME(x, 'y')`
-  - expected: `STR_TO_TIME(x, 'y')`
-  - actual: `TO_TIMESTAMP(x, 'y')`
-- `tests/test_transpile.py`:811 `test_time` via `validate`: `STR_TO_TIME(x, 'yyyy-MM-dd HH:mm:ss')`
-  - expected: `STR_TO_TIME(x, 'yyyy-MM-dd HH:mm:ss')`
-  - actual: `TO_TIMESTAMP(x, 'yyyy-MM-dd HH:mm:ss')`
+- `tests/dialects/test_oracle.py`:299 `test_oracle` via `validate_all`: `SELECT TO_TIMESTAMP('2024-12-12 12:12:12.000000', 'YYYY-MM-DD HH24:MI:SS.FF6')`
+  - expected: `SELECT TO_TIMESTAMP('2024-12-12 12:12:12.000000', 'YYYY-MM-DD HH24:MI:SS.FF6')`
+  - actual: `SELECT STR_TO_TIME('2024-12-12 12:12:12.000000', 'YYYY-MM-DD HH24:MI:SS.FF6')`
+- `tests/dialects/test_oracle.py`:299 `test_oracle` via `validate_all`: `SELECT TO_TIMESTAMP('2024-12-12 12:12:12.000000', 'YYYY-MM-DD HH24:MI:SS.FF6')`
+  - expected: `SELECT TO_TIMESTAMP('2024-12-12 12:12:12.000000', 'YYYY-MM-DD HH24:MI:SS.FF6')`
+  - actual: `SELECT STR_TO_TIME('2024-12-12 12:12:12.000000', 'YYYY-MM-DD HH24:MI:SS.FF6')`
+- `tests/dialects/test_oracle.py`:353 `test_oracle` via `validate_identity`: `SELECT TO_TIMESTAMP('05 Dec 2000 10:00 AM', 'DD Mon YYYY HH12:MI AM')`
+  - expected: `SELECT TO_TIMESTAMP('05 Dec 2000 10:00 AM', 'DD Mon YYYY HH12:MI AM')`
+  - actual: `SELECT STR_TO_TIME('05 Dec 2000 10:00 AM', 'DD Mon YYYY HH12:MI AM')`
 
 ### `mismatch` `missing AS or alias rendering`
 

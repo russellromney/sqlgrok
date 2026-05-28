@@ -674,7 +674,7 @@ fn test_nvl_to_postgres() {
 fn test_nvl_to_mysql() {
     assert_transpile(
         "SELECT NVL(a, b) FROM t",
-        "SELECT IFNULL(a, b) FROM t",
+        "SELECT COALESCE(a, b) FROM t",
         Dialect::Oracle,
         Dialect::Mysql,
     );
@@ -684,7 +684,7 @@ fn test_nvl_to_mysql() {
 fn test_nvl_to_tsql() {
     assert_transpile(
         "SELECT NVL(a, b) FROM t",
-        "SELECT ISNULL(a, b) FROM t",
+        "SELECT COALESCE(a, b) FROM t",
         Dialect::Oracle,
         Dialect::Tsql,
     );
@@ -692,10 +692,10 @@ fn test_nvl_to_tsql() {
 
 #[test]
 fn test_nvl_to_snowflake() {
-    // Snowflake supports NVL natively
+    // Python SQLGlot rewrites NVL to COALESCE for Snowflake too.
     assert_transpile(
         "SELECT NVL(a, b) FROM t",
-        "SELECT NVL(a, b) FROM t",
+        "SELECT COALESCE(a, b) FROM t",
         Dialect::Oracle,
         Dialect::Snowflake,
     );
@@ -1242,16 +1242,16 @@ fn test_validate_all_nvl_writes() {
         Dialect::Oracle,
         &[
             (Dialect::Oracle, "SELECT NVL(x, y)"),
-            (Dialect::Snowflake, "SELECT NVL(x, y)"),
+            (Dialect::Snowflake, "SELECT COALESCE(x, y)"),
             (Dialect::Postgres, "SELECT COALESCE(x, y)"),
             (Dialect::BigQuery, "SELECT COALESCE(x, y)"),
             (Dialect::DuckDb, "SELECT COALESCE(x, y)"),
             (Dialect::Presto, "SELECT COALESCE(x, y)"),
             (Dialect::Hive, "SELECT COALESCE(x, y)"),
-            (Dialect::Mysql, "SELECT IFNULL(x, y)"),
-            (Dialect::Sqlite, "SELECT IFNULL(x, y)"),
-            (Dialect::Tsql, "SELECT ISNULL(x, y)"),
-            (Dialect::Fabric, "SELECT ISNULL(x, y)"),
+            (Dialect::Mysql, "SELECT COALESCE(x, y)"),
+            (Dialect::Sqlite, "SELECT COALESCE(x, y)"),
+            (Dialect::Tsql, "SELECT COALESCE(x, y)"),
+            (Dialect::Fabric, "SELECT COALESCE(x, y)"),
         ],
     );
 }

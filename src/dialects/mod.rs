@@ -949,6 +949,105 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("TO_NUMBER")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && (new_args.len() == 1 || new_args.len() == 2)
+            {
+                return Expr::Cast {
+                    expr: Box::new(new_args[0].clone()),
+                    data_type: DataType::Unknown("REAL".to_string()),
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("SAFE_DIVIDE")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                let numerator = new_args[0].clone();
+                let denominator = new_args[1].clone();
+                let needs_paren = |e: &Expr| !matches!(e, Expr::Number(_) | Expr::Column { .. });
+                let wrap_paren = |e: Expr| {
+                    if needs_paren(&e) {
+                        Expr::Nested(Box::new(e))
+                    } else {
+                        e
+                    }
+                };
+                let denom_used = wrap_paren(denominator.clone());
+                return Expr::If {
+                    condition: Box::new(Expr::BinaryOp {
+                        left: Box::new(denom_used.clone()),
+                        op: BinaryOperator::Neq,
+                        right: Box::new(Expr::Number("0".to_string())),
+                    }),
+                    true_val: Box::new(Expr::BinaryOp {
+                        left: Box::new(Expr::Cast {
+                            expr: Box::new(wrap_paren(numerator)),
+                            data_type: DataType::Unknown("REAL".to_string()),
+                        }),
+                        op: BinaryOperator::Divide,
+                        right: Box::new(denom_used),
+                    }),
+                    false_val: Some(Box::new(Expr::Null)),
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && matches!(
+                    name.to_ascii_uppercase().as_str(),
+                    "BOOLAND_AGG" | "BOOLOR_AGG"
+                )
+                && !distinct
+                && new_args.len() == 1
+            {
+                return Expr::Function {
+                    name: if name.eq_ignore_ascii_case("BOOLAND_AGG") {
+                        "MIN".to_string()
+                    } else {
+                        "MAX".to_string()
+                    },
+                    args: new_args,
+                    distinct: false,
+                    filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
+                    over: over.map(|spec| transform_window_spec(spec, source, target)),
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && matches!(name.to_ascii_uppercase().as_str(), "BOOLAND" | "BOOLOR")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                let op = if name.eq_ignore_ascii_case("BOOLAND") {
+                    BinaryOperator::And
+                } else {
+                    BinaryOperator::Or
+                };
+                return Expr::Nested(Box::new(Expr::BinaryOp {
+                    left: Box::new(Expr::Nested(Box::new(new_args[0].clone()))),
+                    op,
+                    right: Box::new(Expr::Nested(Box::new(new_args[1].clone()))),
+                }));
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("DATEFROMPARTS")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+            {
+                return Expr::Function {
+                    name: "DATE_FROM_PARTS".to_string(),
+                    args: new_args,
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("LOCATE")
                 && !distinct
                 && filter.is_none()
@@ -2526,12 +2625,8 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
 
         // ── NVL → COALESCE (Oracle to others) ───────────────────────────
         "NVL" => {
-            if matches!(target, Dialect::Oracle | Dialect::Snowflake) {
+            if matches!(target, Dialect::Oracle) {
                 name.to_string()
-            } else if is_mysql_family(target) || matches!(target, Dialect::Sqlite) {
-                "IFNULL".to_string()
-            } else if is_tsql_family(target) {
-                "ISNULL".to_string()
             } else {
                 "COALESCE".to_string()
             }
