@@ -1034,6 +1034,28 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 }));
             }
             if matches!(target, Dialect::Sqlite)
+                && is_postgres_family(source)
+                && matches!(name.to_ascii_uppercase().as_str(), "SHA256" | "SHA512")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                let bits = if name.eq_ignore_ascii_case("SHA256") {
+                    "256"
+                } else {
+                    "512"
+                };
+                return Expr::TypedFunction {
+                    func: TypedFunction::Sha2 {
+                        expr: Box::new(new_args[0].clone()),
+                        bit_length: Box::new(Expr::Number(bits.to_string())),
+                    },
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("DATEFROMPARTS")
                 && !distinct
                 && filter.is_none()
@@ -2872,10 +2894,23 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
         (DataType::Unknown(name), _, Dialect::Sqlite)
             if matches!(
                 name.to_ascii_uppercase().as_str(),
-                "MEDIUMBLOB" | "LONGBLOB"
+                "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB"
             ) =>
         {
             DataType::Blob
+        }
+        (DataType::Unknown(name), _, Dialect::Sqlite)
+            if matches!(
+                name.to_ascii_uppercase().as_str(),
+                "INT8" | "INT16" | "INT32" | "INT64" | "INT128" | "INT256"
+            ) =>
+        {
+            DataType::Unknown("INTEGER".to_string())
+        }
+        (DataType::Unknown(name), _, Dialect::Sqlite)
+            if name.eq_ignore_ascii_case("BIGNUMERIC") =>
+        {
+            DataType::Unknown("BIGDECIMAL".to_string())
         }
         _ => map_data_type(dt, target),
     }

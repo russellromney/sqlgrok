@@ -7186,10 +7186,10 @@ impl Parser {
                     expr: Box::new(it.next()?),
                 }
             }
-            "SHA2" | "SHA256" | "SHA512" => {
+            "SHA2" if args.len() == 2 => {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
-                let bit_length = it.next().unwrap_or(Expr::Number("256".to_string()));
+                let bit_length = it.next()?;
                 TypedFunction::Sha2 {
                     expr: Box::new(expr),
                     bit_length: Box::new(bit_length),

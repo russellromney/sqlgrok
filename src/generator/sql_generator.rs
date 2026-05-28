@@ -2495,7 +2495,15 @@ impl Generator {
             }
             Expr::Interval { value, unit } => {
                 self.write_keyword("INTERVAL ");
-                self.gen_expr(value);
+                if matches!(self.dialect, Some(Dialect::Sqlite))
+                    && let Expr::Number(n) = value.as_ref()
+                {
+                    self.write("'");
+                    self.write(n);
+                    self.write("'");
+                } else {
+                    self.gen_expr(value);
+                }
                 if let Some(unit) = unit {
                     self.write(" ");
                     self.gen_datetime_field(unit);
