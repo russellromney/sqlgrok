@@ -1188,9 +1188,11 @@ fn test_character_varying_casts_to_sqlite() {
 
 #[test]
 fn test_postgres_limit_all_to_sqlite() {
+    // SQLGlot drops LIMIT ALL entirely for SQLite output (SQLite has no
+    // `LIMIT ALL` form; the absence of a LIMIT is equivalent).
     validate_with_dialect(
         "SELECT x FROM t LIMIT ALL",
-        "SELECT x FROM t LIMIT ALL",
+        "SELECT x FROM t",
         Dialect::Postgres,
         Dialect::Sqlite,
     );
@@ -2529,9 +2531,10 @@ fn test_mysql_on_duplicate_key_to_sqlite() {
 
 #[test]
 fn test_mysql_insert_ignore_to_sqlite() {
+    // SQLGlot rewrites INSERT IGNORE to SQLite's INSERT OR IGNORE form.
     validate_with_dialect(
         "INSERT IGNORE INTO t (id, a) VALUES (1, 2)",
-        "INSERT IGNORE INTO t (id, a) VALUES (1, 2)",
+        "INSERT OR IGNORE INTO t (id, a) VALUES (1, 2)",
         Dialect::Mysql,
         Dialect::Sqlite,
     );

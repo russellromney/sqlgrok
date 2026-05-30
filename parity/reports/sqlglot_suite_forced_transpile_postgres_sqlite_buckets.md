@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10447 |
-| `mismatch` | 2508 |
+| `match` | 10467 |
+| `mismatch` | 2488 |
 | `oracle-error` | 1456 |
 | `rust-error` | 608 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 10447 |
-| `mismatch` | `postgres` | `sqlite` | 2508 |
+| `match` | `postgres` | `sqlite` | 10467 |
+| `mismatch` | `postgres` | `sqlite` | 2488 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
 | `rust-error` | `postgres` | `sqlite` | 608 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7501 |
-| `match` | `validate_identity` | 2844 |
-| `mismatch` | `validate_all` | 1531 |
+| `match` | `validate_all` | 7519 |
+| `match` | `validate_identity` | 2846 |
+| `mismatch` | `validate_all` | 1513 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 905 |
+| `mismatch` | `validate_identity` | 903 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 361 |
 | `rust-error` | `validate_all` | 244 |
@@ -49,7 +49,7 @@ Total rows: `15156`
 | Status | Shape | Count |
 | --- | --- | ---: |
 | `match` | `SELECT` | 727 |
-| `match` | `CAST()` | 554 |
+| `match` | `CAST()` | 556 |
 | `match` | `CREATE TABLE` | 342 |
 | `match` | `SELECT operator multiply` | 334 |
 | `match` | `SHOW` | 215 |
@@ -147,7 +147,7 @@ Total rows: `15156`
 | `mismatch` | `date/time rendering: DATE_ADD()` | 69 |
 | `mismatch` | `case-only rendering difference` | 66 |
 | `mismatch` | `ALTER TABLE` | 46 |
-| `mismatch` | `cast/type rendering: CAST()` | 35 |
+| `mismatch` | `cast/type rendering: CAST()` | 33 |
 | `mismatch` | `WITH` | 32 |
 | `mismatch` | `date/time rendering: SELECT DATEADD()` | 32 |
 | `mismatch` | `DECLARE` | 30 |
@@ -157,7 +157,6 @@ Total rows: `15156`
 | `mismatch` | `json rendering: JSON_EXTRACT()` | 27 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 26 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 25 |
-| `mismatch` | `cast/type rendering: SELECT EXTRACT()` | 22 |
 | `mismatch` | `quote-style difference` | 20 |
 | `mismatch` | `SELECT operator index` | 19 |
 | `mismatch` | `cast/type rendering: SELECT TO_CHAR()` | 19 |
@@ -178,19 +177,20 @@ Total rows: `15156`
 | `mismatch` | `COPY` | 10 |
 | `mismatch` | `ENDSWITH()` | 10 |
 | `mismatch` | `SELECT TABLE()` | 10 |
+| `mismatch` | `SELECT VAR_POP()` | 10 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 951 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 969 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 586 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 406 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 307 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 245 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 243 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 236 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 232 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 214 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 206 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 163 |
@@ -214,11 +214,11 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 75 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 71 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 69 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 69 |
 | `match` | `tests/dialects/test_exasol.py` | `test_scalar` | 68 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 68 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_time` | 67 |
-| `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 67 |
 | `match` | `tests/dialects/test_hive.py` | `test_joins_without_on` | 66 |
 | `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 63 |
@@ -358,18 +358,6 @@ Total rows: `15156`
   - expected: `SELECT CAST(date AS TEXT FORMAT 'YYYY') FROM (SELECT DATE('2026-03-24') AS date)`
   - actual: `SELECT CAST(date AS TEXT) FROM (SELECT DATE('2026-03-24') AS date)`
 
-### `mismatch` `cast/type rendering: SELECT EXTRACT()`
-
-- `tests/dialects/test_snowflake.py`:2464 `test_snowflake` via `validate_all`: `SELECT EXTRACT(YEAR FROM CAST('2026-01-06 11:45:00' AS TIMESTAMP_NTZ))`
-  - expected: `SELECT EXTRACT(YEAR FROM CAST('2026-01-06 11:45:00' AS TIMESTAMPNTZ))`
-  - actual: `SELECT EXTRACT(YEAR FROM CAST('2026-01-06 11:45:00' AS TIMESTAMP_NTZ))`
-- `tests/dialects/test_snowflake.py`:2464 `test_snowflake` via `validate_all`: `SELECT EXTRACT(YEAR FROM CAST('2026-01-06 11:45:00' AS TIMESTAMP_NTZ))`
-  - expected: `SELECT EXTRACT(YEAR FROM CAST('2026-01-06 11:45:00' AS TIMESTAMPNTZ))`
-  - actual: `SELECT EXTRACT(YEAR FROM CAST('2026-01-06 11:45:00' AS TIMESTAMP_NTZ))`
-- `tests/dialects/test_snowflake.py`:2471 `test_snowflake` via `validate_all`: `SELECT EXTRACT(QUARTER FROM CAST('2026-01-06 11:45:00' AS TIMESTAMP_NTZ))`
-  - expected: `SELECT EXTRACT(QUARTER FROM CAST('2026-01-06 11:45:00' AS TIMESTAMPNTZ))`
-  - actual: `SELECT EXTRACT(QUARTER FROM CAST('2026-01-06 11:45:00' AS TIMESTAMP_NTZ))`
-
 ### `mismatch` `date/time rendering: CREATE`
 
 - `tests/dialects/test_postgres.py`:1277 `test_ddl` via `validate_identity`: `CREATE CONSTRAINT TRIGGER my_trigger AFTER INSERT OR DELETE OR UPDATE OF col_a, col_b ON public.my_table DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION DO_STH()`
@@ -465,6 +453,18 @@ Total rows: `15156`
 - `tests/dialects/test_bigquery.py`:3819 `test_bignumeric` via `validate_all`: `SELECT BIGDECIMAL '1'`
   - expected: `SELECT CAST('1' AS BIGDECIMAL)`
   - actual: `SELECT BIGDECIMAL`
+
+### `mismatch` `quote-style difference`
+
+- `tests/dialects/test_athena.py`:92 `test_ddl` via `validate_identity`: `` ALTER TABLE `foo` DROP COLUMN `id` ``
+  - expected: `` ALTER TABLE `foo` DROP COLUMN `id` ``
+  - actual: `ALTER TABLE "foo" DROP COLUMN id`
+- `tests/dialects/test_athena.py`:120 `test_ddl_quoting` via `validate_identity`: `DROP VIEW IF EXISTS "foo"."bar"`
+  - expected: `DROP VIEW IF EXISTS "foo"."bar"`
+  - actual: `DROP VIEW IF EXISTS foo."bar"`
+- `tests/dialects/test_athena.py`:161 `test_dml_quoting` via `validate_identity`: `INSERT INTO "foo" ("id") VALUES (1)`
+  - expected: `INSERT INTO "foo" ("id") VALUES (1)`
+  - actual: `INSERT INTO "foo" (id) VALUES (1)`
 
 ### `oracle-error` `oracle parse: Expected table name but got <Token token_type: TokenType.HASH, text: #, line: 1, col: 14, start: 13, end: 13, comments: []>`
 

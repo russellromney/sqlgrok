@@ -1626,22 +1626,35 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     data_type: DataType::Unknown("INTEGER".to_string()),
                 });
             }
+            // JSON_EXTRACT_PATH_TEXT is normalized to `x ->> $.path` for any
+            // source dialect targeting SQLite (SQLGlot does this universally).
+            // JSON_EXTRACT_PATH only collapses to the arrow form when the
+            // source is Postgres-family; other sources keep the function call.
             if matches!(target, Dialect::Sqlite)
-                && is_postgres_family(source)
-                && matches!(
-                    name.to_ascii_uppercase().as_str(),
-                    "JSON_EXTRACT_PATH" | "JSON_EXTRACT_PATH_TEXT"
-                )
+                && name.eq_ignore_ascii_case("JSON_EXTRACT_PATH_TEXT")
                 && !distinct
                 && filter.is_none()
                 && over.is_none()
                 && new_args.len() >= 2
             {
-                let as_text = name.eq_ignore_ascii_case("JSON_EXTRACT_PATH_TEXT");
                 return Expr::JsonAccess {
                     expr: Box::new(new_args[0].clone()),
                     path: Box::new(postgres_json_extract_path_arg(&new_args[1..])),
-                    as_text,
+                    as_text: true,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && is_postgres_family(source)
+                && name.eq_ignore_ascii_case("JSON_EXTRACT_PATH")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() >= 2
+            {
+                return Expr::JsonAccess {
+                    expr: Box::new(new_args[0].clone()),
+                    path: Box::new(postgres_json_extract_path_arg(&new_args[1..])),
+                    as_text: false,
                 };
             }
 
@@ -3089,6 +3102,14 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
             if name.eq_ignore_ascii_case("BIGNUMERIC") =>
         {
             DataType::Unknown("BIGDECIMAL".to_string())
+        }
+        (DataType::Unknown(name), _, Dialect::Sqlite)
+            if matches!(
+                name.to_ascii_uppercase().as_str(),
+                "TIMESTAMP_NTZ" | "TIMESTAMP_LTZ" | "TIMESTAMP_TZ"
+            ) =>
+        {
+            DataType::Unknown(name.replace('_', ""))
         }
         _ => map_data_type(dt, target),
     }
