@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 9787 |
-| `mismatch` | 2917 |
+| `match` | 9828 |
+| `mismatch` | 2876 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7176 |
-| `match` | `validate_identity` | 2514 |
-| `mismatch` | `validate_all` | 1752 |
+| `match` | `validate_all` | 7213 |
+| `match` | `validate_identity` | 2518 |
+| `mismatch` | `validate_all` | 1715 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 1092 |
+| `mismatch` | `validate_identity` | 1088 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 318 |
 | `rust-error` | `validate_all` | 254 |
@@ -63,9 +63,9 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 100 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 99 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
+| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 92 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
-| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `oracle-error` | `tests/dialects/test_tsql.py` | `test_option` | 86 |
 

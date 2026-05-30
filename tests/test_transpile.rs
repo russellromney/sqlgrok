@@ -1198,9 +1198,11 @@ fn test_postgres_limit_all_to_sqlite() {
 
 #[test]
 fn test_postgres_offset_without_limit_to_sqlite() {
+    // SQLite requires LIMIT to appear alongside OFFSET; SQLGlot inserts
+    // a sentinel `LIMIT -1` when only OFFSET is present.
     validate_with_dialect(
         "SELECT x FROM t OFFSET 1",
-        "SELECT x FROM t OFFSET 1",
+        "SELECT x FROM t LIMIT -1 OFFSET 1",
         Dialect::Postgres,
         Dialect::Sqlite,
     );
@@ -1215,7 +1217,7 @@ fn test_forced_suite_offset_rows_fetch_to_sqlite() {
         ),
         (
             "SELECT * FROM t ORDER BY (SELECT NULL) OFFSET 2 ROWS",
-            "SELECT * FROM t ORDER BY (SELECT NULL) OFFSET 2",
+            "SELECT * FROM t ORDER BY (SELECT NULL) LIMIT -1 OFFSET 2",
         ),
         (
             "SELECT * FROM t ORDER BY (SELECT NULL) OFFSET 5 ROWS FETCH FIRST 10 ROWS ONLY",
@@ -1830,9 +1832,11 @@ fn test_mysql_create_table_options_ast() {
 
 #[test]
 fn test_mysql_create_table_column_options_to_sqlite() {
+    // SQLGlot drops AUTO_INCREMENT entirely when it precedes PRIMARY KEY on
+    // the column (INTEGER PRIMARY KEY is already autoincrement in SQLite).
     validate_with_dialect(
         "CREATE TABLE z (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) COLLATE utf8_bin COMMENT 'n') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-        "CREATE TABLE z (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT(255) COLLATE utf8_bin COMMENT 'n')",
+        "CREATE TABLE z (id INTEGER PRIMARY KEY, name TEXT(255) COLLATE utf8_bin COMMENT 'n')",
         Dialect::Mysql,
         Dialect::Sqlite,
     );
@@ -1850,9 +1854,11 @@ fn test_mysql_create_table_primary_key_auto_increment_order_to_sqlite() {
 
 #[test]
 fn test_mysql_create_table_table_primary_key_auto_increment_to_sqlite() {
+    // SQLGlot consolidates the separate table-level PRIMARY KEY (id) into
+    // an inline `AUTOINCREMENT PRIMARY KEY` on the column.
     validate_with_dialect(
         "CREATE TABLE x (id INT NOT NULL AUTO_INCREMENT, PRIMARY KEY (id))",
-        "CREATE TABLE x (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT)",
+        "CREATE TABLE x (id INTEGER NOT NULL AUTOINCREMENT PRIMARY KEY)",
         Dialect::Mysql,
         Dialect::Sqlite,
     );

@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 9787 |
-| `mismatch` | 2917 |
+| `match` | 9828 |
+| `mismatch` | 2876 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 9787 |
-| `mismatch` | `mysql` | `sqlite` | 2917 |
+| `match` | `mysql` | `sqlite` | 9828 |
+| `mismatch` | `mysql` | `sqlite` | 2876 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
 | `rust-error` | `mysql` | `sqlite` | 576 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7176 |
-| `match` | `validate_identity` | 2514 |
-| `mismatch` | `validate_all` | 1752 |
+| `match` | `validate_all` | 7213 |
+| `match` | `validate_identity` | 2518 |
+| `mismatch` | `validate_all` | 1715 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 1092 |
+| `mismatch` | `validate_identity` | 1088 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 318 |
 | `rust-error` | `validate_all` | 254 |
@@ -48,16 +48,16 @@ Total rows: `15156`
 
 | Status | Shape | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 685 |
+| `match` | `SELECT` | 686 |
 | `match` | `CAST()` | 471 |
-| `match` | `SELECT operator multiply` | 346 |
-| `match` | `CREATE TABLE` | 258 |
-| `mismatch` | `CREATE TABLE` | 239 |
-| `mismatch` | `SELECT` | 196 |
-| `match` | `CREATE` | 186 |
+| `match` | `SELECT operator multiply` | 349 |
+| `match` | `CREATE TABLE` | 286 |
+| `mismatch` | `CREATE TABLE` | 211 |
+| `mismatch` | `SELECT` | 195 |
+| `match` | `CREATE` | 193 |
 | `oracle-error` | `SELECT` | 179 |
 | `match` | `TRUNC()` | 164 |
-| `mismatch` | `CREATE` | 156 |
+| `mismatch` | `CREATE` | 149 |
 | `oracle-error` | `CREATE TABLE` | 148 |
 | `oracle-error` | `SELECT operator multiply` | 135 |
 | `match` | `SHOW` | 108 |
@@ -66,9 +66,9 @@ Total rows: `15156`
 | `match` | `X` | 100 |
 | `oracle-error` | `CAST()` | 96 |
 | `match` | `WITH` | 94 |
-| `mismatch` | `SELECT operator multiply` | 88 |
 | `match` | `SELECT CAST()` | 86 |
 | `mismatch` | `ALTER TABLE` | 85 |
+| `mismatch` | `SELECT operator multiply` | 85 |
 | `match` | `ALTER TABLE` | 81 |
 | `match` | `SELECT DATEDIFF()` | 79 |
 | `match` | `SET` | 78 |
@@ -138,14 +138,14 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 285 |
-| `mismatch` | `DDL/create-table rendering` | 213 |
-| `mismatch` | `SELECT` | 145 |
+| `mismatch` | `missing AS or alias rendering` | 266 |
+| `mismatch` | `DDL/create-table rendering` | 197 |
+| `mismatch` | `SELECT` | 144 |
 | `mismatch` | `empty actual output` | 109 |
 | `mismatch` | `CREATE` | 100 |
 | `mismatch` | `ALTER TABLE` | 76 |
 | `mismatch` | `SELECT UNNEST()` | 75 |
-| `mismatch` | `SELECT operator multiply` | 75 |
+| `mismatch` | `SELECT operator multiply` | 72 |
 | `mismatch` | `missing quoted identifier` | 53 |
 | `mismatch` | `date/time rendering: SELECT DATE_SUB()` | 52 |
 | `mismatch` | `cast/type rendering: CAST()` | 42 |
@@ -203,18 +203,18 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 100 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 99 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
+| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 92 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
-| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `oracle-error` | `tests/dialects/test_tsql.py` | `test_option` | 86 |
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
 | `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 80 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 77 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 77 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 76 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
-| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 73 |
+| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 74 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 74 |
 | `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 71 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 69 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 69 |
@@ -258,9 +258,9 @@ Total rows: `15156`
 - `tests/dialects/test_athena.py`:50 `test_ddl` via `validate_identity`: `CREATE EXTERNAL TABLE foo (id INT, val STRING) CLUSTERED BY (id, val) INTO 10 BUCKETS`
   - expected: `CREATE TABLE foo (id INTEGER, val TEXT)`
   - actual: `CREATE EXTERNAL TABLE foo (id INT, val STRING) CLUSTERED BY (id, val) INTO 10 BUCKETS`
-- `tests/dialects/test_athena.py`:70 `test_ddl` via `validate_identity`: `` CREATE OR REPLACE TABLE iceberg_table (`id` BIGINT, `data` STRING, category STRING) PARTITIONED BY (category, BUCKET(16, id)) LOCATION 's3://amzn-s3-demo-bucket/your-folder/' TBLPROPERTIES ('table_type'='ICEBERG', 'write_compression'='snappy') ``
-  - expected: `CREATE OR REPLACE TABLE iceberg_table ("id" INTEGER, "data" TEXT, category TEXT)`
-  - actual: `CREATE TABLE iceberg_table ("id" INTEGER, "data" TEXT, category TEXT)`
+- `tests/dialects/test_athena.py`:152 `test_ddl_quoting` via `validate_identity`: `CREATE TABLE "foo" AS WITH "foo" AS (SELECT "a", "b" FROM "bar") SELECT * FROM "foo"`
+  - expected: `CREATE TABLE "foo" AS WITH "foo" AS (SELECT 'a', 'b' FROM "bar") SELECT * FROM "foo"`
+  - actual: `CREATE TABLE "foo" AS WITH "foo" AS (SELECT "a", "b" FROM "bar") SELECT * FROM "foo"`
 
 ### `mismatch` `REPLACE()`
 

@@ -209,6 +209,34 @@ fn is_create_table_empty_option(option: &CreateTableOption) -> bool {
     matches!(option, CreateTableOption::Unknown { name, value: None } if name.eq_ignore_ascii_case("EMPTY"))
 }
 
+/// Build a `SELECT * FROM <source> LIMIT 0` for the CREATE TABLE ... LIKE
+/// rewrite (Python SQLGlot lowers `LikeProperty` to this shape).
+fn make_select_star_limit_zero(source: TableRef) -> SelectStatement {
+    SelectStatement {
+        comments: vec![],
+        ctes: vec![],
+        distinct: false,
+        distinct_on: vec![],
+        top: None,
+        columns: vec![SelectItem::Wildcard],
+        from: Some(FromClause {
+            source: TableSource::Table(source),
+        }),
+        joins: vec![],
+        where_clause: None,
+        group_by: vec![],
+        having: None,
+        order_by: vec![],
+        limit: Some(Expr::Number("0".to_string())),
+        offset: None,
+        limit_by: vec![],
+        fetch_first: None,
+        qualify: None,
+        window_definitions: vec![],
+        lock: None,
+    }
+}
+
 impl Parser {
     /// Create a new parser from a SQL string.
     pub fn new(sql: &str) -> Result<Self> {
@@ -3133,11 +3161,30 @@ impl Parser {
                 comments: vec![],
                 if_not_exists,
                 temporary,
+                or_replace,
                 table,
                 columns: vec![],
                 constraints: vec![],
                 options: vec![],
                 as_select: Some(Box::new(query)),
+            }));
+        }
+
+        // CREATE TABLE name LIKE source → CREATE TABLE name AS SELECT * FROM
+        // source LIMIT 0 (matches SQLGlot's LikeProperty lowering).
+        if self.match_keyword("LIKE") {
+            let source = self.parse_table_ref_no_alias()?;
+            let query = make_select_star_limit_zero(source);
+            return Ok(Statement::CreateTable(CreateTableStatement {
+                comments: vec![],
+                if_not_exists,
+                temporary,
+                or_replace,
+                table,
+                columns: vec![],
+                constraints: vec![],
+                options: vec![],
+                as_select: Some(Box::new(Statement::Select(query))),
             }));
         }
 
@@ -3192,6 +3239,7 @@ impl Parser {
             comments: vec![],
             if_not_exists,
             temporary,
+            or_replace,
             table,
             columns,
             constraints,
@@ -3399,6 +3447,7 @@ impl Parser {
         let mut primary_key = false;
         let mut unique = false;
         let mut auto_increment = false;
+        let mut auto_increment_from_identity = false;
         let mut auto_increment_before_primary_key = false;
         let mut collation = None;
         let mut comment = None;
@@ -3418,7 +3467,7 @@ impl Parser {
                 default = Some(parsed_default?);
             } else if self.match_token(TokenType::Primary) {
                 self.expect(TokenType::Key)?;
-                if auto_increment {
+                if auto_increment && !auto_increment_from_identity {
                     auto_increment_before_primary_key = true;
                 }
                 primary_key = true;
@@ -3449,6 +3498,7 @@ impl Parser {
                     }
                 }
                 auto_increment = true;
+                auto_increment_from_identity = true;
             } else if self.match_token(TokenType::Collate) {
                 collation = Some(self.expect_name()?);
             } else if self.match_token(TokenType::Comment) {
@@ -3850,7 +3900,11 @@ impl Parser {
             }
             TokenType::Text => {
                 self.advance();
-                Ok(DataType::Text)
+                if let Some(len) = self.parse_single_type_param()? {
+                    Ok(DataType::Unknown(format!("TEXT({len})")))
+                } else {
+                    Ok(DataType::Text)
+                }
             }
             TokenType::Boolean | TokenType::Bool => {
                 self.advance();

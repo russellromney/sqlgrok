@@ -1715,6 +1715,8 @@ pub struct CreateTableStatement {
     pub comments: Vec<String>,
     pub if_not_exists: bool,
     pub temporary: bool,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub or_replace: bool,
     pub table: TableRef,
     pub columns: Vec<ColumnDef>,
     pub constraints: Vec<TableConstraint>,

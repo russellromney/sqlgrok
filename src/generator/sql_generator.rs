@@ -421,10 +421,29 @@ impl Generator {
 
         self.gen_order_by(&sel.order_by);
 
-        if let Some(limit) = &sel.limit {
+        // SQLite has no LIMIT ALL; SQLGlot drops the LIMIT entirely.
+        let is_limit_all = matches!(
+            sel.limit.as_ref(),
+            Some(Expr::Column { name, .. }) if name.eq_ignore_ascii_case("ALL")
+        );
+        let effective_limit = if matches!(self.dialect, Some(Dialect::Sqlite)) && is_limit_all {
+            None
+        } else {
+            sel.limit.as_ref()
+        };
+
+        // SQLite requires LIMIT to appear with OFFSET. SQLGlot emits a
+        // sentinel `LIMIT -1` when OFFSET is present without LIMIT.
+        let needs_sqlite_limit_sentinel = matches!(self.dialect, Some(Dialect::Sqlite))
+            && effective_limit.is_none()
+            && sel.offset.is_some();
+        if let Some(limit) = effective_limit {
             self.sep();
             self.write_keyword("LIMIT ");
             self.gen_expr(limit);
+        } else if needs_sqlite_limit_sentinel {
+            self.sep();
+            self.write_keyword("LIMIT -1");
         }
 
         if let Some(offset) = &sel.offset {
@@ -895,7 +914,11 @@ impl Generator {
         if ins.replace {
             self.write_keyword("REPLACE INTO ");
         } else if ins.ignore {
-            self.write_keyword("INSERT IGNORE INTO ");
+            if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                self.write_keyword("INSERT OR IGNORE INTO ");
+            } else {
+                self.write_keyword("INSERT IGNORE INTO ");
+            }
         } else {
             self.write_keyword("INSERT INTO ");
         }
@@ -1280,6 +1303,9 @@ impl Generator {
 
     fn gen_create_table(&mut self, ct: &CreateTableStatement) {
         self.write_keyword("CREATE ");
+        if ct.or_replace {
+            self.write_keyword("OR REPLACE ");
+        }
         if ct.temporary {
             self.write_keyword("TEMPORARY ");
         }
@@ -1442,14 +1468,40 @@ impl Generator {
             None => {}
         }
 
-        if col.primary_key {
-            self.write(" ");
-            self.write_keyword("PRIMARY KEY");
-        }
-
-        if col.auto_increment {
-            self.write(" ");
-            self.gen_auto_increment_keyword();
+        // SQLite-specific PRIMARY KEY / AUTOINCREMENT ordering, matching
+        // SQLGlot:
+        //   - AUTO_INCREMENT alone (no PK) → drop entirely (SQLite requires
+        //     INTEGER PRIMARY KEY for autoincrement).
+        //   - AUTO_INCREMENT before PRIMARY KEY on the column → drop
+        //     AUTO_INCREMENT (the INTEGER PRIMARY KEY itself is autoinc).
+        //   - AUTO_INCREMENT after PRIMARY KEY on the column → keep
+        //     `PRIMARY KEY AUTOINCREMENT`.
+        //   - AUTO_INCREMENT + separate `PRIMARY KEY (col)` table constraint
+        //     → consolidate as `AUTOINCREMENT PRIMARY KEY` on the column.
+        if matches!(self.dialect, Some(Dialect::Sqlite)) {
+            if col.primary_key_from_table_constraint && col.auto_increment {
+                self.write(" ");
+                self.write_keyword("AUTOINCREMENT");
+                self.write(" ");
+                self.write_keyword("PRIMARY KEY");
+            } else if col.primary_key {
+                if col.auto_increment && !col.auto_increment_before_primary_key {
+                    self.write(" ");
+                    self.write_keyword("PRIMARY KEY AUTOINCREMENT");
+                } else {
+                    self.write(" ");
+                    self.write_keyword("PRIMARY KEY");
+                }
+            }
+        } else {
+            if col.primary_key {
+                self.write(" ");
+                self.write_keyword("PRIMARY KEY");
+            }
+            if col.auto_increment {
+                self.write(" ");
+                self.gen_auto_increment_keyword();
+            }
         }
 
         if let Some(default) = &col.default {
