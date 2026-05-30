@@ -1816,17 +1816,47 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
-            if matches!(target, Dialect::Sqlite)
-                && name.eq_ignore_ascii_case("TO_CHAR")
+            if name.eq_ignore_ascii_case("TO_CHAR")
                 && !distinct
                 && filter.is_none()
                 && over.is_none()
-                && new_args.len() == 1
             {
-                return Expr::Cast {
-                    expr: Box::new(new_args[0].clone()),
-                    data_type: DataType::Unknown("TEXT".to_string()),
-                };
+                // Single-arg TO_CHAR(x) → CAST(x AS TEXT) for sqlite
+                // target, all sources. Other targets keep TO_CHAR.
+                if new_args.len() == 1 && matches!(target, Dialect::Sqlite) {
+                    return Expr::Cast {
+                        expr: Box::new(new_args[0].clone()),
+                        data_type: DataType::Unknown("TEXT".to_string()),
+                    };
+                }
+                // Two-arg TO_CHAR(x, fmt):
+                //   - postgres source: convert to TimeToStr (generator
+                //     picks the right name per target — STRFTIME for
+                //     sqlite, DATE_FORMAT for mysql, TO_CHAR for pg, …).
+                //   - mysql/sqlite source → sqlite target: Python drops
+                //     the format and emits CAST(x AS TEXT).
+                if new_args.len() == 2 {
+                    if is_postgres_family(source) {
+                        return Expr::TypedFunction {
+                            func: TypedFunction::TimeToStr {
+                                expr: Box::new(new_args[0].clone()),
+                                format: Box::new(transform_format_expr(
+                                    new_args[1].clone(),
+                                    source,
+                                    target,
+                                )),
+                            },
+                            filter: None,
+                            over: None,
+                        };
+                    }
+                    if matches!(target, Dialect::Sqlite) {
+                        return Expr::Cast {
+                            expr: Box::new(new_args[0].clone()),
+                            data_type: DataType::Unknown("TEXT".to_string()),
+                        };
+                    }
+                }
             }
             if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("TRUNCATE")

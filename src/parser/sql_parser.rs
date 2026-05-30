@@ -6883,7 +6883,7 @@ impl Parser {
                     format: Box::new(format),
                 }
             }
-            "TIME_TO_STR" | "FORMAT_TIMESTAMP" | "FORMAT_DATETIME" | "TO_CHAR" => {
+            "TIME_TO_STR" | "FORMAT_TIMESTAMP" | "FORMAT_DATETIME" => {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
                 let format = it.next()?;
@@ -6891,6 +6891,13 @@ impl Parser {
                     expr: Box::new(expr),
                     format: Box::new(format),
                 }
+            }
+            // TO_CHAR stays as a generic Expr::Function so transform_expr
+            // can apply source-specific rules (postgres → STRFTIME for
+            // sqlite or DATE_FORMAT for mysql, mysql/sqlite → drop format
+            // and CAST AS TEXT for sqlite, etc.).
+            "TO_CHAR" => {
+                return None;
             }
             "TS_OR_DS_TO_DATE" => {
                 let mut it = args.into_iter();
