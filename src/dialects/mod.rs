@@ -1469,11 +1469,11 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
-                && name.eq_ignore_ascii_case("GENERATE_UUID")
+                && (name.eq_ignore_ascii_case("GENERATE_UUID")
+                    || name.eq_ignore_ascii_case("UUID_STRING"))
                 && !distinct
                 && filter.is_none()
                 && over.is_none()
-                && new_args.is_empty()
             {
                 return Expr::Function {
                     name: "UUID".to_string(),
@@ -1481,6 +1481,33 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     distinct: false,
                     filter: None,
                     over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("ENDSWITH")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::Function {
+                    name: "ENDS_WITH".to_string(),
+                    args: new_args,
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("VAR_POP")
+                && new_args.len() == 1
+            {
+                return Expr::Function {
+                    name: "VARIANCE_POP".to_string(),
+                    args: new_args,
+                    distinct: false,
+                    filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
+                    over: over.map(|spec| transform_window_spec(spec, source, target)),
                 };
             }
             if matches!(target, Dialect::Sqlite)
@@ -1523,6 +1550,21 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     distinct: false,
                     filter: None,
                     over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("CURRENT_TIMESTAMP")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+            {
+                // SQLGlot lowers CURRENT_TIMESTAMP() / CURRENT_TIMESTAMP(n)
+                // to the bare CURRENT_TIMESTAMP column form for SQLite.
+                return Expr::Column {
+                    table: None,
+                    name: "CURRENT_TIMESTAMP".to_string(),
+                    quote_style: QuoteStyle::None,
+                    table_quote_style: QuoteStyle::None,
                 };
             }
             if matches!(target, Dialect::Sqlite)

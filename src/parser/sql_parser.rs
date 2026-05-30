@@ -6797,7 +6797,7 @@ impl Parser {
                 }
             }
             "CURRENT_DATE" => TypedFunction::CurrentDate,
-            "CURRENT_TIMESTAMP" | "NOW" => TypedFunction::CurrentTimestamp,
+            "NOW" => TypedFunction::CurrentTimestamp,
             "STR_TO_TIME" | "STR_TO_DATE" | "PARSE_TIMESTAMP" | "PARSE_DATETIME"
                 if args.len() == 2 =>
             {
