@@ -3424,6 +3424,26 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
         {
             DataType::Unknown("UBIGINT".to_string())
         }
+        (DataType::Unknown(name), _, Dialect::Sqlite)
+            if name.eq_ignore_ascii_case("INT UNSIGNED")
+                || name.eq_ignore_ascii_case("INT SIGNED") =>
+        {
+            if name.to_ascii_uppercase().contains("UNSIGNED") {
+                DataType::Unknown("UINT".to_string())
+            } else {
+                DataType::Unknown("INTEGER".to_string())
+            }
+        }
+        (DataType::Unknown(name), _, Dialect::Sqlite)
+            if name.eq_ignore_ascii_case("BIGINT UNSIGNED")
+                || name.eq_ignore_ascii_case("BIGINT SIGNED") =>
+        {
+            if name.to_ascii_uppercase().contains("UNSIGNED") {
+                DataType::Unknown("UBIGINT".to_string())
+            } else {
+                DataType::Unknown("BIGINT".to_string())
+            }
+        }
         (
             DataType::Timestamp {
                 precision,

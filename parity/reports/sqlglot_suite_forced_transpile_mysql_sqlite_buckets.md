@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10204 |
-| `mismatch` | 2500 |
+| `match` | 10208 |
+| `mismatch` | 2496 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 10204 |
-| `mismatch` | `mysql` | `sqlite` | 2500 |
+| `match` | `mysql` | `sqlite` | 10208 |
+| `mismatch` | `mysql` | `sqlite` | 2496 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
 | `rust-error` | `mysql` | `sqlite` | 576 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7528 |
-| `match` | `validate_identity` | 2576 |
-| `mismatch` | `validate_all` | 1400 |
+| `match` | `validate_all` | 7530 |
+| `match` | `validate_identity` | 2578 |
+| `mismatch` | `validate_all` | 1398 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 1030 |
+| `mismatch` | `validate_identity` | 1028 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 318 |
 | `rust-error` | `validate_all` | 254 |
@@ -51,8 +51,8 @@ Total rows: `15156`
 | `match` | `SELECT` | 694 |
 | `match` | `CAST()` | 475 |
 | `match` | `SELECT operator multiply` | 349 |
-| `match` | `CREATE TABLE` | 298 |
-| `mismatch` | `CREATE TABLE` | 199 |
+| `match` | `CREATE TABLE` | 302 |
+| `mismatch` | `CREATE TABLE` | 195 |
 | `match` | `CREATE` | 193 |
 | `mismatch` | `SELECT` | 187 |
 | `oracle-error` | `SELECT` | 179 |
@@ -139,7 +139,7 @@ Total rows: `15156`
 | Status | Signature | Count |
 | --- | --- | ---: |
 | `mismatch` | `missing AS or alias rendering` | 271 |
-| `mismatch` | `DDL/create-table rendering` | 185 |
+| `mismatch` | `DDL/create-table rendering` | 181 |
 | `mismatch` | `SELECT` | 136 |
 | `mismatch` | `empty actual output` | 109 |
 | `mismatch` | `CREATE` | 100 |
@@ -216,8 +216,8 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 77 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 75 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 74 |
 | `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 70 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 70 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 69 |
 | `match` | `tests/dialects/test_exasol.py` | `test_scalar` | 68 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 67 |

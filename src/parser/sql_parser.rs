@@ -3843,11 +3843,24 @@ impl Parser {
         let type_result = match &token.token_type {
             TokenType::Int | TokenType::Integer => {
                 self.advance();
-                Ok(DataType::Int)
+                // MySQL-style trailing UNSIGNED / SIGNED on integer types.
+                if self.match_keyword("UNSIGNED") {
+                    Ok(DataType::Unknown("INT UNSIGNED".to_string()))
+                } else if self.match_keyword("SIGNED") {
+                    Ok(DataType::Unknown("INT SIGNED".to_string()))
+                } else {
+                    Ok(DataType::Int)
+                }
             }
             TokenType::BigInt => {
                 self.advance();
-                Ok(DataType::BigInt)
+                if self.match_keyword("UNSIGNED") {
+                    Ok(DataType::Unknown("BIGINT UNSIGNED".to_string()))
+                } else if self.match_keyword("SIGNED") {
+                    Ok(DataType::Unknown("BIGINT SIGNED".to_string()))
+                } else {
+                    Ok(DataType::BigInt)
+                }
             }
             TokenType::SmallInt => {
                 self.advance();
