@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10382 |
-| `mismatch` | 2503 |
+| `match` | 10395 |
+| `mismatch` | 2490 |
 | `oracle-error` | 1545 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 10382 |
-| `mismatch` | `sqlite` | `sqlite` | 2503 |
+| `match` | `sqlite` | `sqlite` | 10395 |
+| `mismatch` | `sqlite` | `sqlite` | 2490 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
 | `rust-error` | `sqlite` | `sqlite` | 589 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -28,17 +28,17 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7441 |
-| `match` | `validate_identity` | 2841 |
-| `mismatch` | `validate_all` | 1560 |
+| `match` | `validate_all` | 7451 |
+| `match` | `validate_identity` | 2843 |
+| `mismatch` | `validate_all` | 1550 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 872 |
+| `mismatch` | `validate_identity` | 870 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 353 |
 | `rust-error` | `validate_all` | 233 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `match` | `validate` | 100 |
-| `mismatch` | `validate` | 71 |
+| `match` | `validate` | 101 |
+| `mismatch` | `validate` | 70 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -138,14 +138,14 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 379 |
+| `mismatch` | `missing AS or alias rendering` | 375 |
 | `mismatch` | `missing quoted identifier` | 250 |
 | `mismatch` | `DDL/create-table rendering` | 154 |
 | `mismatch` | `SELECT` | 119 |
 | `mismatch` | `SELECT operator multiply` | 112 |
 | `mismatch` | `CREATE` | 96 |
 | `mismatch` | `date/time rendering: DATE_ADD()` | 69 |
-| `mismatch` | `case-only rendering difference` | 54 |
+| `mismatch` | `case-only rendering difference` | 45 |
 | `mismatch` | `ALTER TABLE` | 43 |
 | `mismatch` | `quote-style difference` | 41 |
 | `mismatch` | `cast/type rendering: SELECT TO_CHAR()` | 32 |
@@ -184,17 +184,17 @@ Total rows: `15156`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 935 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 579 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 585 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 364 |
-| `match` | `tests/dialects/test_dialect.py` | `test_time` | 273 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 260 |
+| `match` | `tests/dialects/test_dialect.py` | `test_time` | 277 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 261 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 246 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 243 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 241 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 209 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 187 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 181 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 148 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 149 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 147 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 144 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
@@ -205,15 +205,15 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 84 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 84 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 83 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 82 |
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 79 |
-| `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 79 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 78 |
-| `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 75 |
+| `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 75 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
+| `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 74 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 71 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 70 |
 | `match` | `tests/dialects/test_exasol.py` | `test_scalar` | 68 |
@@ -312,12 +312,12 @@ Total rows: `15156`
 
 ### `mismatch` `case-only rendering difference`
 
-- `tests/test_transpile.py`:704 `test_extract` via `validate`: `extract(week from current_date + 2)`
-  - expected: `EXTRACT(WEEK FROM CURRENT_DATE + 2)`
-  - actual: `EXTRACT(WEEK FROM current_date + 2)`
 - `tests/test_transpile.py`:672 `test_types` via `validate`: `interval::int`
   - expected: `CAST(interval AS INTEGER)`
   - actual: `CAST(INTERVAL AS INTEGER)`
+- `tests/dialects/test_bigquery.py`:759 `test_bigquery` via `validate_all`: `TIMESTAMPDIFF(month, b, a)`
+  - expected: `TIMESTAMPDIFF(month, b, A)`
+  - actual: `TIMESTAMPDIFF(month, b, a)`
 - `tests/dialects/test_bigquery.py`:759 `test_bigquery` via `validate_all`: `TIMESTAMPDIFF(month, b, a)`
   - expected: `TIMESTAMPDIFF(month, b, A)`
   - actual: `TIMESTAMPDIFF(month, b, a)`

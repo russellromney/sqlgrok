@@ -2105,7 +2105,33 @@ impl Generator {
                     self.write_quoted(t, *table_quote_style);
                     self.write(".");
                 }
-                self.write_quoted(name, *quote_style);
+                // Python SQLGlot uppercases known temporal / role pseudo-columns
+                // (CURRENT_TIME, CURRENT_DATE, CURRENT_TIMESTAMP, CURRENT_USER,
+                // CURRENT_ROLE, CURRENT_SCHEMA) in identifier position so SQLite
+                // output canonicalizes their case.
+                let canonical_constant = matches!(*quote_style, QuoteStyle::None)
+                    && table.is_none()
+                    && matches!(
+                        name.to_ascii_uppercase().as_str(),
+                        "CURRENT_TIME"
+                            | "CURRENT_DATE"
+                            | "CURRENT_TIMESTAMP"
+                            | "CURRENT_USER"
+                            | "CURRENT_ROLE"
+                            | "CURRENT_SCHEMA"
+                            | "CURRENT_CATALOG"
+                            | "CURRENT_PATH"
+                            | "LOCALTIME"
+                            | "LOCALTIMESTAMP"
+                            | "SESSION_USER"
+                            | "SYSTEM_USER"
+                            | "USER"
+                    );
+                if canonical_constant {
+                    self.write(&name.to_ascii_uppercase());
+                } else {
+                    self.write_quoted(name, *quote_style);
+                }
             }
             Expr::Number(n) => self.write(n),
             Expr::HexString(s) => {

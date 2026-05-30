@@ -1328,6 +1328,28 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 return new_args[0].clone();
             }
             if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("TS_OR_DS_TO_DATE_STR")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                // SQLGlot lowers TS_OR_DS_TO_DATE_STR(x) to
+                // SUBSTRING(CAST(x AS TEXT), 1, 10) for SQLite.
+                return Expr::TypedFunction {
+                    func: TypedFunction::Substring {
+                        expr: Box::new(Expr::Cast {
+                            expr: Box::new(new_args[0].clone()),
+                            data_type: DataType::Text,
+                        }),
+                        start: Box::new(Expr::Number("1".to_string())),
+                        length: Some(Box::new(Expr::Number("10".to_string()))),
+                    },
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("TIME_TO_TIME_STR")
                 && !distinct
                 && filter.is_none()
