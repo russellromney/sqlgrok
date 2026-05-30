@@ -1001,6 +1001,36 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
+            // CHARINDEX(needle, haystack, position) and
+            // INSTR(haystack, needle, position[, occurrence]) lower to a
+            // SUBSTRING-and-offset IIF expression for SQLite (which has no
+            // 3-arg INSTR). Drop any occurrence arg per SQLGlot.
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("CHARINDEX")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 3
+            {
+                return sqlite_instr_with_position(
+                    new_args[1].clone(),
+                    new_args[0].clone(),
+                    new_args[2].clone(),
+                );
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("INSTR")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && (new_args.len() == 3 || new_args.len() == 4)
+            {
+                return sqlite_instr_with_position(
+                    new_args[0].clone(),
+                    new_args[1].clone(),
+                    new_args[2].clone(),
+                );
+            }
             if matches!(target, Dialect::Sqlite)
                 && matches!(name.to_ascii_uppercase().as_str(), "MAX_BY" | "MIN_BY")
                 && !distinct
@@ -2120,6 +2150,22 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                             over,
                         };
                     }
+                    // UPPER(HEX(x)) → HEX(x) for SQLite — HEX output is
+                    // already uppercase, so SQLGlot drops the outer UPPER.
+                    TypedFunction::Upper { expr }
+                        if matches!(target, Dialect::Sqlite)
+                            && filter.is_none()
+                            && over.is_none()
+                            && matches!(
+                                expr.as_ref(),
+                                Expr::TypedFunction {
+                                    func: TypedFunction::Hex { .. },
+                                    ..
+                                }
+                            ) =>
+                    {
+                        return transform_expr(*expr, source, target);
+                    }
                     TypedFunction::Mod { left, right } if filter.is_none() && over.is_none() => {
                         let left = transform_expr(*left, source, target);
                         let right = transform_expr(*right, source, target);
@@ -2353,8 +2399,20 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             over,
         } => {
             transform_order_by_items(&mut order_by, source, target);
+            let inner = transform_expr(*expr, source, target);
+            // SQLite GROUP_CONCAT (the lowered form of STRING_AGG) doesn't
+            // support WITHIN GROUP; SQLGlot drops the clause for that
+            // function only. Other functions (PERCENTILE_CONT, LISTAGG,
+            // etc.) keep WITHIN GROUP.
+            if matches!(target, Dialect::Sqlite)
+                && let Expr::Function { name, .. } = &inner
+                && (name.eq_ignore_ascii_case("GROUP_CONCAT")
+                    || name.eq_ignore_ascii_case("STRING_AGG"))
+            {
+                return inner;
+            }
             Expr::WithinGroup {
-                expr: Box::new(transform_expr(*expr, source, target)),
+                expr: Box::new(inner),
                 order_by,
                 filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
                 over: over.map(|spec| transform_window_spec(spec, source, target)),
