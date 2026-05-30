@@ -137,10 +137,11 @@ fn test_substr_mysql_to_postgres() {
 }
 
 #[test]
-fn test_substr_to_sqlite() {
+fn test_substring_to_sqlite() {
+    // Python SQLGlot normalizes SUBSTR/SUBSTRING to SUBSTRING for SQLite output.
     assert_transpile(
         "SELECT SUBSTRING(x, 1, 3) FROM t",
-        "SELECT SUBSTR(x, 1, 3) FROM t",
+        "SELECT SUBSTRING(x, 1, 3) FROM t",
         Dialect::Ansi,
         Dialect::Sqlite,
     );

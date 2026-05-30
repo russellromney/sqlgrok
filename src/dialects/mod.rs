@@ -1457,6 +1457,64 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
+                && matches!(
+                    name.to_ascii_uppercase().as_str(),
+                    "DAYOFMONTH" | "DAYOFYEAR" | "DAYOFWEEK" | "WEEKOFYEAR"
+                )
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                let new_name = match name.to_ascii_uppercase().as_str() {
+                    "DAYOFMONTH" => "DAY_OF_MONTH",
+                    "DAYOFYEAR" => "DAY_OF_YEAR",
+                    "DAYOFWEEK" => "DAY_OF_WEEK",
+                    "WEEKOFYEAR" => "WEEK_OF_YEAR",
+                    _ => unreachable!(),
+                };
+                let arg = if is_mysql_family(source) {
+                    Expr::Function {
+                        name: "DATE".to_string(),
+                        args: vec![new_args[0].clone()],
+                        distinct: false,
+                        filter: None,
+                        over: None,
+                    }
+                } else {
+                    new_args[0].clone()
+                };
+                return Expr::Function {
+                    name: new_name.to_string(),
+                    args: vec![arg],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("WEEK")
+                && is_mysql_family(source)
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return Expr::Function {
+                    name: "WEEK".to_string(),
+                    args: vec![Expr::Function {
+                        name: "DATE".to_string(),
+                        args: vec![new_args[0].clone()],
+                        distinct: false,
+                        filter: None,
+                        over: None,
+                    }],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
                 && ((is_mysql_family(source) && name.eq_ignore_ascii_case("FROM_UNIXTIME"))
                     || (is_postgres_family(source) && name.eq_ignore_ascii_case("TO_TIMESTAMP")))
                 && !distinct

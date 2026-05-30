@@ -6057,6 +6057,16 @@ impl Parser {
             return Ok(expr);
         }
 
+        if name.eq_ignore_ascii_case("TRY_CAST") {
+            let inner = self.parse_cast_function_body()?;
+            self.expect(TokenType::RParen)?;
+            let (expr, data_type) = match inner {
+                Expr::Cast { expr, data_type } => (expr, data_type),
+                other => return Ok(other),
+            };
+            return Ok(Expr::TryCast { expr, data_type });
+        }
+
         let args = if name.eq_ignore_ascii_case("GROUP_CONCAT") {
             self.parse_group_concat_args()?
         } else if name.eq_ignore_ascii_case("JSON_VALUE") {
@@ -6786,7 +6796,7 @@ impl Parser {
                     expr: Box::new(it.next()?),
                 }
             }
-            "DAY" | "DAYOFMONTH" => {
+            "DAY" => {
                 let mut it = args.into_iter();
                 TypedFunction::Day {
                     expr: Box::new(it.next()?),
@@ -7072,7 +7082,7 @@ impl Parser {
             }
 
             // ── JSON ───────────────────────────────────────────────
-            "JSON_EXTRACT" | "JSON_VALUE" if args.len() == 2 => {
+            "JSON_EXTRACT" if args.len() == 2 => {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
                 let path = it.next()?;
@@ -7096,7 +7106,7 @@ impl Parser {
                     expr: Box::new(it.next()?),
                 }
             }
-            "JSON_FORMAT" | "TO_JSON" | "TO_JSON_STRING" => {
+            "JSON_FORMAT" => {
                 let mut it = args.into_iter();
                 TypedFunction::JSONFormat {
                     expr: Box::new(it.next()?),

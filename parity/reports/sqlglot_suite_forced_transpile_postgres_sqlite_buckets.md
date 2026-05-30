@@ -8,34 +8,34 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10333 |
-| `mismatch` | 2621 |
+| `match` | 10408 |
+| `mismatch` | 2547 |
 | `oracle-error` | 1456 |
-| `rust-error` | 609 |
+| `rust-error` | 608 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 10333 |
-| `mismatch` | `postgres` | `sqlite` | 2621 |
+| `match` | `postgres` | `sqlite` | 10408 |
+| `mismatch` | `postgres` | `sqlite` | 2547 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
-| `rust-error` | `postgres` | `sqlite` | 609 |
+| `rust-error` | `postgres` | `sqlite` | 608 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7409 |
-| `match` | `validate_identity` | 2822 |
-| `mismatch` | `validate_all` | 1622 |
+| `match` | `validate_all` | 7463 |
+| `match` | `validate_identity` | 2843 |
+| `mismatch` | `validate_all` | 1569 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 927 |
+| `mismatch` | `validate_identity` | 906 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 361 |
-| `rust-error` | `validate_all` | 245 |
+| `rust-error` | `validate_all` | 244 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 102 |
 | `mismatch` | `validate` | 72 |
@@ -131,8 +131,8 @@ Total rows: `15156`
 | `rust-error` | `parser: Expected RParen, got Day ('DAY')` | 5 |
 | `rust-error` | `parser: Expected RParen, got Group ('GROUP')` | 5 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('device_data')` | 5 |
-| `rust-error` | `parser: Expected RParen, got LParen ('(')` | 5 |
 | `oracle-error` | `oracle parse: Expected ]` | 4 |
+| `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.NUMBER, text: 25, line: 1, col: 24, start: 22, end: 23, comments: []>` | 4 |
 
 ## Mismatch Signature Buckets
 
@@ -145,7 +145,7 @@ Total rows: `15156`
 | `mismatch` | `SELECT operator multiply` | 80 |
 | `mismatch` | `SELECT UNNEST()` | 74 |
 | `mismatch` | `date/time rendering: DATE_ADD()` | 69 |
-| `mismatch` | `case-only rendering difference` | 62 |
+| `mismatch` | `case-only rendering difference` | 66 |
 | `mismatch` | `ALTER TABLE` | 46 |
 | `mismatch` | `cast/type rendering: CAST()` | 35 |
 | `mismatch` | `WITH` | 32 |
@@ -171,42 +171,42 @@ Total rows: `15156`
 | `mismatch` | `cast/type rendering: WITH` | 13 |
 | `mismatch` | `date/time rendering: DATEADD()` | 13 |
 | `mismatch` | `SELECT RLIKE()` | 12 |
-| `mismatch` | `cast/type rendering: POW()` | 12 |
 | `mismatch` | `json rendering: WITH` | 12 |
 | `mismatch` | `SELECT ROUND()` | 11 |
 | `mismatch` | `date/time rendering: DATE_FORMAT()` | 11 |
 | `mismatch` | `'FOO'` | 10 |
 | `mismatch` | `COPY` | 10 |
 | `mismatch` | `ENDSWITH()` | 10 |
+| `mismatch` | `SELECT TABLE()` | 10 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 941 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 579 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 949 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 586 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 406 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 298 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 307 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 245 |
-| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 242 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 242 |
+| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 243 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 236 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 199 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 234 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 206 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 163 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 155 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 148 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 142 |
-| `match` | `tests/dialects/test_hive.py` | `test_hive` | 136 |
+| `match` | `tests/dialects/test_hive.py` | `test_hive` | 137 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 117 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 107 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 106 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 97 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 92 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 90 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 83 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 83 |
 | `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 82 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 80 |
@@ -220,9 +220,9 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_duckdb.py` | `test_time` | 67 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 67 |
 | `match` | `tests/dialects/test_hive.py` | `test_joins_without_on` | 66 |
-| `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 66 |
 | `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 63 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_cast` | 61 |
 
 ## Bucket Examples
 

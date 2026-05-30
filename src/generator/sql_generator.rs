@@ -1681,7 +1681,13 @@ impl Generator {
                     self.write_keyword("ALTER COLUMN ");
                     self.write(name);
                     self.write(" ");
-                    self.write_keyword("TYPE ");
+                    if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                        // Python SQLGlot expands ALTER COLUMN ... TYPE foo to
+                        // ALTER COLUMN ... SET DATA TYPE foo for SQLite output.
+                        self.write_keyword("SET DATA TYPE ");
+                    } else {
+                        self.write_keyword("TYPE ");
+                    }
                     self.gen_data_type(data_type);
                 }
                 AlterTableAction::AddConstraint(constraint) => {
@@ -2499,7 +2505,12 @@ impl Generator {
                 }
             }
             Expr::TryCast { expr, data_type } => {
-                self.write_keyword("TRY_CAST(");
+                // SQLite has no TRY_CAST; fall back to CAST to match SQLGlot.
+                if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                    self.write_keyword("CAST(");
+                } else {
+                    self.write_keyword("TRY_CAST(");
+                }
                 self.gen_expr(expr);
                 self.write(" ");
                 self.write_keyword("AS ");
@@ -3208,16 +3219,20 @@ impl Generator {
                 start,
                 length,
             } => {
-                let name = if is_oracle
+                let name = if matches!(dialect, Some(Dialect::Sqlite)) {
+                    // Python SQLGlot normalizes both SUBSTR and SUBSTRING to
+                    // SUBSTRING for SQLite output.
+                    "SUBSTRING"
+                } else if is_oracle
                     || is_hive_family
                     || is_mysql
                     || matches!(
                         dialect,
-                        Some(Dialect::Sqlite)
-                            | Some(Dialect::Doris)
+                        Some(Dialect::Doris)
                             | Some(Dialect::SingleStore)
                             | Some(Dialect::StarRocks)
-                    ) {
+                    )
+                {
                     "SUBSTR"
                 } else {
                     "SUBSTRING"
@@ -3693,7 +3708,11 @@ impl Generator {
                 self.write(")");
             }
             TypedFunction::Pow { base, exponent } => {
-                let name = if is_tsql || is_oracle { "POWER" } else { "POW" };
+                let name = if is_tsql || is_oracle || matches!(dialect, Some(Dialect::Sqlite)) {
+                    "POWER"
+                } else {
+                    "POW"
+                };
                 self.write_keyword(name);
                 self.write("(");
                 self.gen_expr(base);
