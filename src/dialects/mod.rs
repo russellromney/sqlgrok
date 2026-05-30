@@ -1055,7 +1055,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && !distinct
                 && filter.is_none()
                 && over.is_none()
-                && (new_args.len() == 1 || new_args.len() == 2)
+                && (new_args.len() == 1 || new_args.len() == 2 || new_args.len() == 3)
             {
                 return Expr::Cast {
                     expr: Box::new(new_args[0].clone()),
@@ -1507,7 +1507,9 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
-                && name.eq_ignore_ascii_case("TIME_TO_TIME_STR")
+                && (name.eq_ignore_ascii_case("DATE_TO_DATE_STR")
+                    || name.eq_ignore_ascii_case("TIME_TO_TIME_STR")
+                    || name.eq_ignore_ascii_case("DATE_TO_TIME_STR"))
                 && !distinct
                 && filter.is_none()
                 && over.is_none()
@@ -1515,7 +1517,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             {
                 return Expr::Cast {
                     expr: Box::new(new_args[0].clone()),
-                    data_type: DataType::Unknown("TEXT".to_string()),
+                    data_type: DataType::Text,
                 };
             }
             if matches!(target, Dialect::Sqlite)

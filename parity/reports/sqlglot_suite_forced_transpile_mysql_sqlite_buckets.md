@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10233 |
-| `mismatch` | 2471 |
+| `match` | 10244 |
+| `mismatch` | 2460 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 10233 |
-| `mismatch` | `mysql` | `sqlite` | 2471 |
+| `match` | `mysql` | `sqlite` | 10244 |
+| `mismatch` | `mysql` | `sqlite` | 2460 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
 | `rust-error` | `mysql` | `sqlite` | 576 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7556 |
-| `match` | `validate_identity` | 2576 |
-| `mismatch` | `validate_all` | 1372 |
+| `match` | `validate_all` | 7564 |
+| `match` | `validate_identity` | 2579 |
+| `mismatch` | `validate_all` | 1364 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 1030 |
+| `mismatch` | `validate_identity` | 1027 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 318 |
 | `rust-error` | `validate_all` | 254 |
@@ -138,7 +138,7 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 255 |
+| `mismatch` | `missing AS or alias rendering` | 244 |
 | `mismatch` | `DDL/create-table rendering` | 181 |
 | `mismatch` | `SELECT` | 136 |
 | `mismatch` | `empty actual output` | 109 |
@@ -183,25 +183,25 @@ Total rows: `15156`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 974 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 976 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 557 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 349 |
-| `match` | `tests/dialects/test_dialect.py` | `test_time` | 273 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 350 |
+| `match` | `tests/dialects/test_dialect.py` | `test_time` | 277 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 250 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 247 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 218 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 195 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 194 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 193 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 175 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 160 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 159 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 148 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 135 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 131 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
+| `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 101 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 100 |
-| `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 100 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 98 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 97 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
