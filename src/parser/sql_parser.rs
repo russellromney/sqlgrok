@@ -580,6 +580,7 @@ impl Parser {
                 }
             }
             _ if self.check_keyword("COPY") => self.parse_raw_statement(),
+            _ if self.check_keyword("DECLARE") => self.parse_raw_statement(),
             _ if self.check_keyword("PRAGMA")
                 || self.check_keyword("ATTACH")
                 || self.check_keyword("DETACH") =>

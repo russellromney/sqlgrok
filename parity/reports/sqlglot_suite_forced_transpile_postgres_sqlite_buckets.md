@@ -8,33 +8,33 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10935 |
-| `mismatch` | 2020 |
+| `match` | 10975 |
+| `mismatch` | 1991 |
 | `oracle-error` | 1456 |
-| `rust-error` | 608 |
+| `rust-error` | 597 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 10935 |
-| `mismatch` | `postgres` | `sqlite` | 2020 |
+| `match` | `postgres` | `sqlite` | 10975 |
+| `mismatch` | `postgres` | `sqlite` | 1991 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
-| `rust-error` | `postgres` | `sqlite` | 608 |
+| `rust-error` | `postgres` | `sqlite` | 597 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7929 |
-| `match` | `validate_identity` | 2902 |
-| `mismatch` | `validate_all` | 1103 |
+| `match` | `validate_all` | 7937 |
+| `match` | `validate_identity` | 2934 |
+| `mismatch` | `validate_all` | 1095 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 847 |
+| `mismatch` | `validate_identity` | 826 |
 | `oracle-error` | `validate_all` | 501 |
-| `rust-error` | `validate_identity` | 361 |
+| `rust-error` | `validate_identity` | 350 |
 | `rust-error` | `validate_all` | 244 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 104 |
@@ -124,7 +124,6 @@ Total rows: `15156`
 | `rust-error` | `parser: Expected RParen, got Identifier ('ARRAY[1')` | 6 |
 | `rust-error` | `parser: Expected RParen, got Identifier ('PLAN')` | 6 |
 | `rust-error` | `parser: Expected RParen, got With ('WITH')` | 6 |
-| `rust-error` | `ValueError: Unexpected token: Token { token_type: Comma, value: ",", line: 1, col: 10, position: 9, quote_char: '\0' }` | 5 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: Group, value: "group", line: 1, col: 51, position: 50, quote_char: '\0' }` | 5 |
 | `rust-error` | `ValueError: Unexpected token: Token { token_type: Using, value: "USING", line: 1, col: 19, position: 18, quote_char: '\0' }` | 5 |
 | `rust-error` | `parser: Expected RBracket, got Colon (':')` | 5 |
@@ -133,21 +132,21 @@ Total rows: `15156`
 | `rust-error` | `parser: Expected RParen, got Identifier ('device_data')` | 5 |
 | `oracle-error` | `oracle parse: Expected ]` | 4 |
 | `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.NUMBER, text: 25, line: 1, col: 24, start: 22, end: 23, comments: []>` | 4 |
+| `oracle-error` | `oracle parse: Expected type` | 4 |
 
 ## Mismatch Signature Buckets
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 208 |
+| `mismatch` | `missing AS or alias rendering` | 207 |
 | `mismatch` | `DDL/create-table rendering` | 172 |
 | `mismatch` | `SELECT` | 118 |
 | `mismatch` | `CREATE` | 116 |
 | `mismatch` | `SELECT operator multiply` | 77 |
 | `mismatch` | `SELECT UNNEST()` | 74 |
-| `mismatch` | `case-only rendering difference` | 54 |
+| `mismatch` | `case-only rendering difference` | 58 |
 | `mismatch` | `ALTER TABLE` | 43 |
 | `mismatch` | `WITH` | 32 |
-| `mismatch` | `DECLARE` | 30 |
 | `mismatch` | `date/time rendering: CREATE` | 27 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 26 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 23 |
@@ -178,6 +177,7 @@ Total rows: `15156`
 | `mismatch` | `DESCRIBE` | 7 |
 | `mismatch` | `FROM` | 7 |
 | `mismatch` | `REGEXP_SUBSTR()` | 7 |
+| `mismatch` | `SELECT FLOOR()` | 7 |
 
 ## Source Test Buckets
 
@@ -202,7 +202,7 @@ Total rows: `15156`
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 109 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 107 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 104 |
-| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 102 |
+| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 104 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 90 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
@@ -273,18 +273,6 @@ Total rows: `15156`
 - `tests/dialects/test_athena.py`:50 `test_ddl` via `validate_identity`: `CREATE EXTERNAL TABLE foo (id INT, val STRING) CLUSTERED BY (id, val) INTO 10 BUCKETS`
   - expected: `CREATE TABLE foo (id INTEGER, val TEXT)`
   - actual: `CREATE EXTERNAL TABLE foo (id INT, val STRING) CLUSTERED BY (id, val) INTO 10 BUCKETS`
-
-### `mismatch` `DECLARE`
-
-- `tests/dialects/test_bigquery.py`:3827 `test_bignumeric` via `validate_all`: `DECLARE x BIGNUMERIC(20, 4)`
-  - expected: `DECLARE x BIGNUMERIC(20, 4)`
-  - actual: `DECLARE`
-- `tests/dialects/test_bigquery.py`:3827 `test_bignumeric` via `validate_all`: `DECLARE x BIGNUMERIC(20, 4)`
-  - expected: `DECLARE x BIGNUMERIC(20, 4)`
-  - actual: `DECLARE`
-- `tests/dialects/test_bigquery.py`:3835 `test_bignumeric` via `validate_all`: `DECLARE x BIGNUMERIC(76, 38)`
-  - expected: `DECLARE x BIGNUMERIC(76, 38)`
-  - actual: `DECLARE`
 
 ### `mismatch` `SELECT`
 
@@ -441,6 +429,18 @@ Total rows: `15156`
 - `tests/dialects/test_bigquery.py`:3316 `test_generate_date_array` via `validate_all`: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, DATE_TRUNC(CURRENT_DATE, MONTH), INTERVAL '1' MONTH)) AS mnth`
   - expected: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, TIMESTAMP_TRUNC(MONTH, CURRENT_DATE), INTERVAL '1' MONTH)) AS mnth`
   - actual: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, DATE_TRUNC(CURRENT_DATE, MONTH), INTERVAL '1' MONTH)) AS mnth`
+
+### `mismatch` `date/time rendering: STR_TO_TIME()`
+
+- `tests/test_transpile.py`:811 `test_time` via `validate`: `STR_TO_TIME(x, 'yyyy-MM-dd HH:mm:ss')`
+  - expected: `STR_TO_TIME(x, 'yyyy-MM-dd HH:mm:ss')`
+  - actual: `STR_TO_TIME(x, '%Y-%m-%d HH:%m:%S')`
+- `tests/test_transpile.py`:816 `test_time` via `validate`: `STR_TO_TIME(x, 'yyyy-MM-dd')`
+  - expected: `STR_TO_TIME(x, 'yyyy-MM-dd')`
+  - actual: `STR_TO_TIME(x, '%Y-%m-%d')`
+- `tests/dialects/test_dialect.py`:754 `test_time` via `validate_all`: `STR_TO_TIME(x, '%Y-%m-%dT%H:%M:%S')`
+  - expected: `STR_TO_TIME(x, '%Y-%m-%dT%H:%M:%S')`
+  - actual: `STR_TO_TIME(x, '%Y-%m-%%wT%H:%M:%S')`
 
 ### `mismatch` `missing AS or alias rendering`
 
