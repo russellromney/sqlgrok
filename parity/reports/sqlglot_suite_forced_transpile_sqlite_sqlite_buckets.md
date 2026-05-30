@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10395 |
-| `mismatch` | 2490 |
+| `match` | 10426 |
+| `mismatch` | 2459 |
 | `oracle-error` | 1545 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 10395 |
-| `mismatch` | `sqlite` | `sqlite` | 2490 |
+| `match` | `sqlite` | `sqlite` | 10426 |
+| `mismatch` | `sqlite` | `sqlite` | 2459 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
 | `rust-error` | `sqlite` | `sqlite` | 589 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -28,9 +28,9 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7451 |
+| `match` | `validate_all` | 7482 |
 | `match` | `validate_identity` | 2843 |
-| `mismatch` | `validate_all` | 1550 |
+| `mismatch` | `validate_all` | 1519 |
 | `oracle-error` | `validate_identity` | 993 |
 | `mismatch` | `validate_identity` | 870 |
 | `oracle-error` | `validate_all` | 543 |
@@ -149,7 +149,6 @@ Total rows: `15156`
 | `mismatch` | `ALTER TABLE` | 43 |
 | `mismatch` | `quote-style difference` | 41 |
 | `mismatch` | `cast/type rendering: SELECT TO_CHAR()` | 32 |
-| `mismatch` | `REPLACE()` | 31 |
 | `mismatch` | `date/time rendering: SELECT DATE_ADD()` | 29 |
 | `mismatch` | `json rendering: JSON_EXTRACT()` | 27 |
 | `mismatch` | `WITH` | 25 |
@@ -178,6 +177,7 @@ Total rows: `15156`
 | `mismatch` | `SELECT POSEXPLODE()` | 9 |
 | `mismatch` | `SELECT SPACE()` | 9 |
 | `mismatch` | `cast/type rendering: DATE_ADD()` | 9 |
+| `mismatch` | `date/time rendering: DATE_FROM_UNIX_DATE()` | 9 |
 
 ## Source Test Buckets
 
@@ -226,6 +226,18 @@ Total rows: `15156`
 
 ## Bucket Examples
 
+### `mismatch` `A`
+
+- `tests/test_transpile.py`:683 `test_not_range` via `validate`: `a NOT IN (1, 2)`
+  - expected: `NOT a IN (1, 2)`
+  - actual: `a NOT IN (1, 2)`
+- `tests/test_transpile.py`:684 `test_not_range` via `validate`: `a IS NOT NULL`
+  - expected: `NOT a IS NULL`
+  - actual: `a IS NOT NULL`
+- `tests/dialects/test_duckdb.py`:1346 `test_duckdb` via `validate_identity`: `a ~~~ b`
+  - expected: `a GLOB b`
+  - actual: `a LIKE ~b`
+
 ### `mismatch` `ALTER TABLE`
 
 - `tests/test_transpile.py`:750 `test_alter` via `validate`: `ALTER TABLE integers ALTER i TYPE VARCHAR`
@@ -261,18 +273,6 @@ Total rows: `15156`
 - `tests/dialects/test_athena.py`:50 `test_ddl` via `validate_identity`: `CREATE EXTERNAL TABLE foo (id INT, val STRING) CLUSTERED BY (id, val) INTO 10 BUCKETS`
   - expected: `CREATE TABLE foo (id INTEGER, val TEXT)`
   - actual: `CREATE EXTERNAL TABLE foo (id INT, val STRING) CLUSTERED BY (id, val) INTO 10 BUCKETS`
-
-### `mismatch` `REPLACE()`
-
-- `tests/dialects/test_presto.py`:160 `test_replace` via `validate_all`: `REPLACE(subject, pattern)`
-  - expected: `REPLACE (subject, pattern)`
-  - actual: `REPLACE(subject, pattern)`
-- `tests/dialects/test_presto.py`:160 `test_replace` via `validate_all`: `REPLACE(subject, pattern)`
-  - expected: `REPLACE (subject, pattern)`
-  - actual: `REPLACE(subject, pattern)`
-- `tests/dialects/test_presto.py`:160 `test_replace` via `validate_all`: `REPLACE(subject, pattern)`
-  - expected: `REPLACE (subject, pattern)`
-  - actual: `REPLACE(subject, pattern)`
 
 ### `mismatch` `SELECT`
 

@@ -2331,19 +2331,36 @@ fn test_range_and_replace_expression_to_sqlite() {
             dialect,
             Dialect::Sqlite,
         );
+    }
+    // SQLGlot's MySQL / SQLite parsers can't parse statement-level REPLACE
+    // and fall back to the Command parser, which re-renders with a space
+    // before the open paren. Postgres preserves the original form.
+    for dialect in [Dialect::Mysql, Dialect::Sqlite] {
         validate_with_dialect(
             "REPLACE(subject, pattern)",
-            "REPLACE(subject, pattern)",
+            "REPLACE (subject, pattern)",
             dialect,
             Dialect::Sqlite,
         );
         validate_with_dialect(
             "REPLACE(subject, pattern, replacement)",
-            "REPLACE(subject, pattern, replacement)",
+            "REPLACE (subject, pattern, replacement)",
             dialect,
             Dialect::Sqlite,
         );
     }
+    validate_with_dialect(
+        "REPLACE(subject, pattern)",
+        "REPLACE(subject, pattern)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "REPLACE(subject, pattern, replacement)",
+        "REPLACE(subject, pattern, replacement)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

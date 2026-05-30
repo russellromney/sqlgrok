@@ -404,6 +404,20 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
         }
         Statement::Expression(expr) => {
             *expr = transform_expr(expr.clone(), source, target);
+            // Statement-level REPLACE(...) is unsupported syntax in SQLGlot's
+            // MySQL / SQLite parsers, so Python falls back to the Command
+            // parser and re-renders with a space before the open paren. We
+            // mirror that for non-postgres sources targeting SQLite to keep
+            // parity. Postgres sources keep their REPLACE() form unchanged.
+            if matches!(target, Dialect::Sqlite)
+                && !is_postgres_family(source)
+                && let Some(text) = replace_statement_to_command_form(expr)
+            {
+                *statement = Statement::Raw(RawStatement {
+                    comments: vec![],
+                    sql: text,
+                });
+            }
         }
         // DDL: map data types in CREATE TABLE column definitions
         Statement::CreateTable(ct) => {
@@ -490,6 +504,54 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             }
         }
         _ => {}
+    }
+}
+
+fn replace_statement_to_command_form(expr: &Expr) -> Option<String> {
+    match expr {
+        Expr::Function { name, args, .. } if name.eq_ignore_ascii_case("REPLACE") => {
+            let mut buf = String::from("REPLACE (");
+            for (i, arg) in args.iter().enumerate() {
+                if i > 0 {
+                    buf.push_str(", ");
+                }
+                render_expr_short(arg, &mut buf);
+            }
+            buf.push(')');
+            Some(buf)
+        }
+        Expr::TypedFunction {
+            func: TypedFunction::Replace { expr, from, to },
+            ..
+        } => {
+            let mut buf = String::from("REPLACE (");
+            render_expr_short(expr, &mut buf);
+            buf.push_str(", ");
+            render_expr_short(from, &mut buf);
+            buf.push_str(", ");
+            render_expr_short(to, &mut buf);
+            buf.push(')');
+            Some(buf)
+        }
+        _ => None,
+    }
+}
+
+fn render_expr_short(expr: &Expr, out: &mut String) {
+    match expr {
+        Expr::Column { name, .. } => out.push_str(name),
+        Expr::StringLiteral(s) => {
+            out.push('\'');
+            out.push_str(&s.replace('\'', "''"));
+            out.push('\'');
+        }
+        Expr::Number(n) => out.push_str(n),
+        _ => {
+            // Fallback: best-effort literal preservation. Anything more
+            // complex than a simple identifier / literal would have been
+            // parsed differently anyway.
+            out.push_str(&format!("{expr:?}"));
+        }
     }
 }
 
