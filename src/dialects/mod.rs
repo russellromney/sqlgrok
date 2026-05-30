@@ -1912,6 +1912,10 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             // source dialect targeting SQLite (SQLGlot does this universally).
             // JSON_EXTRACT_PATH only collapses to the arrow form when the
             // source is Postgres-family; other sources keep the function call.
+            // SQLGlot only joins ALL path args when the source is Postgres-
+            // family; other sources use only the first path arg (the
+            // intermediate keys are dropped because non-Postgres parsers
+            // can't make sense of multi-arg JSON_EXTRACT_PATH_TEXT).
             if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("JSON_EXTRACT_PATH_TEXT")
                 && !distinct
@@ -1919,9 +1923,14 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && over.is_none()
                 && new_args.len() >= 2
             {
+                let path = if is_postgres_family(source) {
+                    postgres_json_extract_path_arg(&new_args[1..])
+                } else {
+                    sqlite_json_path_for_first_arg(&new_args[1])
+                };
                 return Expr::JsonAccess {
                     expr: Box::new(new_args[0].clone()),
-                    path: Box::new(postgres_json_extract_path_arg(&new_args[1..])),
+                    path: Box::new(path),
                     as_text: true,
                 };
             }
@@ -2715,6 +2724,23 @@ fn sqlite_json_key_path(key: &str) -> String {
         format!("$.{key}")
     } else {
         format!("$.\"{}\"", key.replace('"', "\\\""))
+    }
+}
+
+/// For non-Postgres source JSON_EXTRACT_PATH_TEXT(x, ...), use only the
+/// first path arg and prefix with `$.` if not already prefixed.
+/// SQLGlot's non-Postgres parsers can't natively make sense of multi-arg
+/// JSON_EXTRACT_PATH_TEXT and only consume the first segment.
+fn sqlite_json_path_for_first_arg(arg: &Expr) -> Expr {
+    match arg {
+        Expr::StringLiteral(s) => {
+            if s.starts_with("$") {
+                Expr::StringLiteral(s.clone())
+            } else {
+                Expr::StringLiteral(format!("$.{s}"))
+            }
+        }
+        other => other.clone(),
     }
 }
 
