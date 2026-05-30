@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11051 |
-| `mismatch` | 1915 |
+| `match` | 11065 |
+| `mismatch` | 1901 |
 | `oracle-error` | 1456 |
 | `rust-error` | 597 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8000 |
-| `match` | `validate_identity` | 2947 |
-| `mismatch` | `validate_all` | 1032 |
+| `match` | `validate_all` | 8013 |
+| `match` | `validate_identity` | 2948 |
+| `mismatch` | `validate_all` | 1019 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 813 |
+| `mismatch` | `validate_identity` | 812 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 350 |
 | `rust-error` | `validate_all` | 244 |
@@ -43,7 +43,7 @@ Filtered by read/write: `0`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1016 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1025 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 612 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 418 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 317 |
@@ -51,9 +51,9 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 246 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 244 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 220 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 174 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 172 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 167 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 158 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 157 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 142 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |

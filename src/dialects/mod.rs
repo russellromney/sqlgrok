@@ -382,6 +382,16 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                     normalize_postgres_sqlite_raw_table_source(&mut join.table);
                 }
             }
+            // Recurse into table sources to transform inner Expr nodes
+            // (e.g. UNNEST(ARRAY_LITERAL) or UNNEST(GENERATE_DATE_ARRAY(
+            // DATE 'x', INTERVAL 1 WEEK))) — these would otherwise miss
+            // the per-expression rewrites.
+            if let Some(from) = &mut sel.from {
+                transform_exprs_in_table_source(&mut from.source, source, target);
+            }
+            for join in &mut sel.joins {
+                transform_exprs_in_table_source(&mut join.table, source, target);
+            }
             if let Some(rewritten) = rewrite_postgres_distinct_on(sel, source, target) {
                 *sel = rewritten;
             }
@@ -509,19 +519,75 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 raw.sql = normalize_postgres_recursive_cte_raw(&raw.sql);
                 raw.sql = normalize_postgres_copy_raw(&raw.sql);
             }
-            if is_mysql_family(source)
-                && matches!(target, Dialect::Sqlite)
-                && raw
-                    .sql
-                    .trim_start()
-                    .get(..4)
-                    .is_some_and(|prefix| prefix.eq_ignore_ascii_case("SHOW"))
-            {
-                raw.sql = String::new();
+            // Python SQLGlot drops SHOW statements that the mysql parser
+            // recognizes (TABLES, DATABASES, INDEX, COLUMNS, CREATE *,
+            // VARIABLES, etc.) but preserves unrecognized SHOW forms
+            // (USERS, AGGREGATES, ...) as raw Command passthroughs.
+            if is_mysql_family(source) && matches!(target, Dialect::Sqlite) {
+                let trimmed = raw.sql.trim_start();
+                if trimmed.get(..4).is_some_and(|p| p.eq_ignore_ascii_case("SHOW"))
+                    && mysql_show_is_recognized(trimmed)
+                {
+                    raw.sql = String::new();
+                }
             }
         }
         _ => {}
     }
+}
+
+/// Returns true if a SHOW statement is one of the forms the mysql
+/// parser in Python SQLGlot recognizes (and therefore drops when
+/// transpiling to sqlite). Unrecognized SHOWs fall back to Command and
+/// are passed through verbatim.
+fn mysql_show_is_recognized(trimmed: &str) -> bool {
+    // Skip past "SHOW".
+    let rest = trimmed[4..].trim_start();
+    // Strip leading FULL/EXTENDED/ALL/GLOBAL/SESSION/etc.
+    let upper = rest.to_ascii_uppercase();
+    let first_word = upper.split_whitespace().next().unwrap_or("");
+    matches!(
+        first_word,
+        "TABLES"
+            | "DATABASES"
+            | "SCHEMAS"
+            | "COLUMNS"
+            | "FIELDS"
+            | "INDEX"
+            | "INDEXES"
+            | "INDICES"
+            | "KEYS"
+            | "VARIABLES"
+            | "STATUS"
+            | "PROCESSLIST"
+            | "GRANTS"
+            | "PRIVILEGES"
+            | "ENGINE"
+            | "ENGINES"
+            | "EVENTS"
+            | "FUNCTION"
+            | "PROCEDURE"
+            | "TRIGGER"
+            | "TRIGGERS"
+            | "WARNINGS"
+            | "ERRORS"
+            | "PLUGINS"
+            | "CHARACTER"
+            | "COLLATION"
+            | "OPEN"
+            | "MASTER"
+            | "SLAVE"
+            | "REPLICA"
+            | "BINARY"
+            | "BINLOG"
+            | "RELAYLOG"
+            | "CREATE"
+            | "FULL"
+            | "EXTENDED"
+            | "GLOBAL"
+            | "SESSION"
+            | "LOCAL"
+    )
 }
 
 fn replace_statement_to_command_form(expr: &Expr) -> Option<String> {
@@ -3833,6 +3899,36 @@ fn transform_quotes_in_select(sel: &mut SelectStatement, target: Dialect) {
         transform_quotes_in_table_source(&mut join.table, target);
         if let Some(on) = &mut join.on {
             *on = transform_quotes(on.clone(), target);
+        }
+    }
+}
+
+fn transform_exprs_in_table_source(ts: &mut TableSource, source: Dialect, target: Dialect) {
+    match ts {
+        TableSource::Table(_) | TableSource::Raw { .. } => {}
+        TableSource::Subquery { query, .. } => {
+            transform_statement(query, source, target);
+        }
+        TableSource::TableFunction { args, .. } => {
+            for arg in args {
+                *arg = transform_expr(arg.clone(), source, target);
+            }
+        }
+        TableSource::Values { rows, .. } => {
+            for row in rows {
+                for v in row {
+                    *v = transform_expr(v.clone(), source, target);
+                }
+            }
+        }
+        TableSource::Lateral { source: inner } => {
+            transform_exprs_in_table_source(inner, source, target);
+        }
+        TableSource::Pivot { source: inner, .. } | TableSource::Unpivot { source: inner, .. } => {
+            transform_exprs_in_table_source(inner, source, target);
+        }
+        TableSource::Unnest { expr, .. } => {
+            *expr = Box::new(transform_expr(*expr.clone(), source, target));
         }
     }
 }
