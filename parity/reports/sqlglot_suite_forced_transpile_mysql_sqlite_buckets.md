@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10208 |
-| `mismatch` | 2496 |
+| `match` | 10228 |
+| `mismatch` | 2476 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 10208 |
-| `mismatch` | `mysql` | `sqlite` | 2496 |
+| `match` | `mysql` | `sqlite` | 10228 |
+| `mismatch` | `mysql` | `sqlite` | 2476 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
 | `rust-error` | `mysql` | `sqlite` | 576 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -28,17 +28,17 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7530 |
-| `match` | `validate_identity` | 2578 |
-| `mismatch` | `validate_all` | 1398 |
+| `match` | `validate_all` | 7551 |
+| `match` | `validate_identity` | 2576 |
+| `mismatch` | `validate_all` | 1377 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 1028 |
+| `mismatch` | `validate_identity` | 1030 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 318 |
 | `rust-error` | `validate_all` | 254 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `match` | `validate` | 100 |
-| `mismatch` | `validate` | 70 |
+| `match` | `validate` | 101 |
+| `mismatch` | `validate` | 69 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -67,9 +67,9 @@ Total rows: `15156`
 | `oracle-error` | `CAST()` | 96 |
 | `match` | `WITH` | 94 |
 | `match` | `SELECT CAST()` | 89 |
-| `mismatch` | `ALTER TABLE` | 85 |
 | `mismatch` | `SELECT operator multiply` | 85 |
-| `match` | `ALTER TABLE` | 81 |
+| `match` | `ALTER TABLE` | 84 |
+| `mismatch` | `ALTER TABLE` | 82 |
 | `match` | `SELECT DATEDIFF()` | 79 |
 | `match` | `SET` | 78 |
 | `match` | `DATE_TRUNC()` | 77 |
@@ -138,13 +138,13 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 271 |
+| `mismatch` | `missing AS or alias rendering` | 264 |
 | `mismatch` | `DDL/create-table rendering` | 181 |
 | `mismatch` | `SELECT` | 136 |
 | `mismatch` | `empty actual output` | 109 |
 | `mismatch` | `CREATE` | 100 |
-| `mismatch` | `ALTER TABLE` | 76 |
 | `mismatch` | `SELECT UNNEST()` | 75 |
+| `mismatch` | `ALTER TABLE` | 73 |
 | `mismatch` | `SELECT operator multiply` | 72 |
 | `mismatch` | `missing quoted identifier` | 53 |
 | `mismatch` | `date/time rendering: SELECT DATE_SUB()` | 52 |
@@ -183,15 +183,15 @@ Total rows: `15156`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 964 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 974 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 557 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 349 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 273 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 250 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 247 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 217 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 205 |
-| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 193 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 195 |
+| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 194 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 175 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 160 |
@@ -210,14 +210,14 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `oracle-error` | `tests/dialects/test_tsql.py` | `test_option` | 86 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 82 |
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
-| `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 80 |
 | `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 80 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 77 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 75 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
-| `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 70 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 70 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 71 |
+| `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 69 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 69 |
 | `match` | `tests/dialects/test_exasol.py` | `test_scalar` | 68 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 67 |
@@ -240,15 +240,15 @@ Total rows: `15156`
 
 ### `mismatch` `ALTER TABLE`
 
-- `tests/test_transpile.py`:750 `test_alter` via `validate`: `ALTER TABLE integers ALTER i TYPE VARCHAR`
-  - expected: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT`
-  - actual: `ALTER TABLE integers ALTER i TYPE VARCHAR`
 - `tests/test_transpile.py`:754 `test_alter` via `validate`: `ALTER TABLE integers ALTER i TYPE VARCHAR COLLATE foo USING bar`
   - expected: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT COLLATE foo USING bar`
-  - actual: `ALTER TABLE integers ALTER i TYPE VARCHAR COLLATE foo USING bar`
+  - actual: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT COLLATE foo`
 - `tests/dialects/test_hive.py`:178 `test_ddl` via `validate_identity`: `ALTER TABLE x PARTITION(y = z) ADD COLUMN a VARCHAR(10)`
   - expected: `ALTER TABLE x PARTITION(y = z) ADD COLUMN a TEXT(10)`
   - actual: `ALTER TABLE x PARTITION(y = z) ADD COLUMN a VARCHAR(10)`
+- `tests/dialects/test_hive.py`:179 `test_ddl` via `validate_identity`: `ALTER TABLE x CHANGE a a VARCHAR(10)`
+  - expected: `ALTER TABLE x CHANGE COLUMN a a TEXT(10)`
+  - actual: `ALTER TABLE x CHANGE a a VARCHAR(10)`
 
 ### `mismatch` `CREATE`
 

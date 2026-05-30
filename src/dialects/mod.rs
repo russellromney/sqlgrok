@@ -1593,6 +1593,42 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
+            // CONVERT_TIMEZONE rewrites for SQLite to match SQLGlot:
+            //   - 2-arg: CONVERT_TIMEZONE(zone, x) → x AT TIME ZONE zone
+            //   - 3-arg: CONVERT_TIMEZONE(src, tgt, x) →
+            //       CAST(x AS TIMESTAMPNTZ) AT TIME ZONE src AT TIME ZONE tgt
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("CONVERT_TIMEZONE")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+            {
+                if new_args.len() == 2 {
+                    return Expr::BinaryOp {
+                        left: Box::new(new_args[1].clone()),
+                        op: BinaryOperator::AtTimeZone,
+                        right: Box::new(new_args[0].clone()),
+                    };
+                }
+                if new_args.len() == 3 {
+                    let cast = match &new_args[2] {
+                        Expr::StringLiteral(_) => Expr::Cast {
+                            expr: Box::new(new_args[2].clone()),
+                            data_type: DataType::Unknown("TIMESTAMPNTZ".to_string()),
+                        },
+                        other => other.clone(),
+                    };
+                    return Expr::BinaryOp {
+                        left: Box::new(Expr::BinaryOp {
+                            left: Box::new(cast),
+                            op: BinaryOperator::AtTimeZone,
+                            right: Box::new(new_args[0].clone()),
+                        }),
+                        op: BinaryOperator::AtTimeZone,
+                        right: Box::new(new_args[1].clone()),
+                    };
+                }
+            }
             if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("VAR_POP")
                 && new_args.len() == 1

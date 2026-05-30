@@ -4399,6 +4399,23 @@ impl Parser {
             let if_exists = self.parse_if_exists()?;
             let name = self.expect_name()?;
             Ok(AlterTableAction::DropColumn { name, if_exists })
+        } else if self.match_token(TokenType::Alter) {
+            // ALTER [COLUMN] name [SET DATA TYPE | TYPE] dtype [COLLATE x]
+            // [USING y]. SQLite generator emits SET DATA TYPE.
+            let _ = self.match_keyword("COLUMN");
+            let name = self.expect_name()?;
+            let _ = self.match_keyword("SET");
+            let _ = self.match_keyword("DATA");
+            let _ = self.match_keyword("TYPE");
+            let data_type = self.parse_data_type()?;
+            // Consume any trailing COLLATE / USING tail so we don't bail.
+            while !matches!(
+                self.peek_type(),
+                TokenType::Comma | TokenType::Semicolon | TokenType::Eof
+            ) {
+                self.advance();
+            }
+            Ok(AlterTableAction::AlterColumnType { name, data_type })
         } else if self.match_keyword("RENAME") {
             if self.match_keyword("COLUMN") {
                 let old_name = self.expect_name()?;

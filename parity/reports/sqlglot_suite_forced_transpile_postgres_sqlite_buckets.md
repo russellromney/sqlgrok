@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10852 |
-| `mismatch` | 2103 |
+| `match` | 10872 |
+| `mismatch` | 2083 |
 | `oracle-error` | 1456 |
 | `rust-error` | 608 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 10852 |
-| `mismatch` | `postgres` | `sqlite` | 2103 |
+| `match` | `postgres` | `sqlite` | 10872 |
+| `mismatch` | `postgres` | `sqlite` | 2083 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
 | `rust-error` | `postgres` | `sqlite` | 608 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -28,17 +28,17 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7856 |
-| `match` | `validate_identity` | 2893 |
-| `mismatch` | `validate_all` | 1176 |
+| `match` | `validate_all` | 7877 |
+| `match` | `validate_identity` | 2891 |
+| `mismatch` | `validate_all` | 1155 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 856 |
+| `mismatch` | `validate_identity` | 858 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 361 |
 | `rust-error` | `validate_all` | 244 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `match` | `validate` | 103 |
-| `mismatch` | `validate` | 71 |
+| `match` | `validate` | 104 |
+| `mismatch` | `validate` | 70 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 6 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -60,7 +60,7 @@ Total rows: `15156`
 | `match` | `TRUNC()` | 164 |
 | `oracle-error` | `SELECT operator multiply` | 150 |
 | `mismatch` | `SELECT` | 133 |
-| `match` | `ALTER TABLE` | 115 |
+| `match` | `ALTER TABLE` | 118 |
 | `mismatch` | `SELECT UNNEST()` | 113 |
 | `match` | `X` | 109 |
 | `oracle-error` | `CREATE TABLE` | 106 |
@@ -87,7 +87,7 @@ Total rows: `15156`
 | `match` | `INSERT` | 54 |
 | `rust-error` | `SELECT` | 53 |
 | `match` | `FROM` | 50 |
-| `mismatch` | `ALTER TABLE` | 50 |
+| `match` | `SELECT TO_TIMESTAMP()` | 48 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -138,14 +138,14 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 234 |
+| `mismatch` | `missing AS or alias rendering` | 227 |
 | `mismatch` | `DDL/create-table rendering` | 172 |
 | `mismatch` | `SELECT` | 118 |
 | `mismatch` | `CREATE` | 116 |
 | `mismatch` | `SELECT operator multiply` | 77 |
 | `mismatch` | `SELECT UNNEST()` | 74 |
 | `mismatch` | `case-only rendering difference` | 53 |
-| `mismatch` | `ALTER TABLE` | 46 |
+| `mismatch` | `ALTER TABLE` | 43 |
 | `mismatch` | `WITH` | 32 |
 | `mismatch` | `DECLARE` | 30 |
 | `mismatch` | `date/time rendering: DATE_ADD()` | 28 |
@@ -183,16 +183,16 @@ Total rows: `15156`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1002 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1012 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 605 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 413 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 313 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 298 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 246 |
-| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 243 |
+| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 244 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 211 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 181 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 171 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 168 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 142 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 138 |
@@ -209,15 +209,15 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 83 |
 | `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 82 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 81 |
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
-| `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 79 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 76 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 71 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 69 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_time` | 68 |
 | `match` | `tests/dialects/test_exasol.py` | `test_scalar` | 68 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 68 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_time` | 67 |
 | `match` | `tests/dialects/test_hive.py` | `test_joins_without_on` | 66 |
 | `match` | `tests/dialects/test_presto.py` | `test_time` | 66 |
 | `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
@@ -240,15 +240,15 @@ Total rows: `15156`
 
 ### `mismatch` `ALTER TABLE`
 
-- `tests/test_transpile.py`:750 `test_alter` via `validate`: `ALTER TABLE integers ALTER i TYPE VARCHAR`
-  - expected: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT`
-  - actual: `ALTER TABLE integers ALTER i TYPE VARCHAR`
 - `tests/test_transpile.py`:754 `test_alter` via `validate`: `ALTER TABLE integers ALTER i TYPE VARCHAR COLLATE foo USING bar`
   - expected: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT COLLATE foo USING bar`
-  - actual: `ALTER TABLE integers ALTER i TYPE VARCHAR COLLATE foo USING bar`
+  - actual: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT COLLATE foo`
 - `tests/dialects/test_athena.py`:88 `test_ddl` via `validate_identity`: `` ALTER TABLE `foo`.`bar` ADD COLUMN `end_ts` BIGINT ``
   - expected: `` ALTER TABLE `foo`.`bar` ADD COLUMN `end_ts` BIGINT ``
   - actual: `ALTER TABLE foo."bar" ADD COLUMN "end_ts" INTEGER`
+- `tests/dialects/test_hive.py`:213 `test_ddl` via `validate_identity`: `ALTER TABLE X ADD COLUMNS (y INT, z STRING)`
+  - expected: `ALTER TABLE X ADD COLUMNS (y INTEGER, z TEXT)`
+  - actual: `ALTER TABLE X ADD COLUMNS (y INT, z STRING)`
 
 ### `mismatch` `CREATE`
 

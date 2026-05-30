@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10852 |
-| `mismatch` | 2103 |
+| `match` | 10872 |
+| `mismatch` | 2083 |
 | `oracle-error` | 1456 |
 | `rust-error` | 608 |
 | `unsupported-harness-shape` | 137 |
@@ -23,17 +23,17 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7856 |
-| `match` | `validate_identity` | 2893 |
-| `mismatch` | `validate_all` | 1176 |
+| `match` | `validate_all` | 7877 |
+| `match` | `validate_identity` | 2891 |
+| `mismatch` | `validate_all` | 1155 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 856 |
+| `mismatch` | `validate_identity` | 858 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 361 |
 | `rust-error` | `validate_all` | 244 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `match` | `validate` | 103 |
-| `mismatch` | `validate` | 71 |
+| `match` | `validate` | 104 |
+| `mismatch` | `validate` | 70 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 6 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -43,16 +43,16 @@ Filtered by read/write: `0`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1002 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1012 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 605 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 413 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 313 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 298 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 246 |
-| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 243 |
+| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 244 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 211 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 181 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 171 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 168 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 142 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 138 |
@@ -101,16 +101,6 @@ Filtered by read/write: `0`
 - actual: ``
 - error: `ParseError: Expected table name but got <Token token_type: TokenType.SENTINEL, text: SENTINEL, line: 1, col: 1, start: 0, end: 0, comments: []>. Line 1, Col: 13.\n  SELECT x [4mjoin[0m`
 
-### `mismatch` `tests/test_transpile.py:750`
-
-- test: `test_alter`
-- helper: `validate`
-- read/write: `postgres` -> `sqlite`
-- sql: `ALTER TABLE integers ALTER i TYPE VARCHAR`
-- expected: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT`
-- actual: `ALTER TABLE integers ALTER i TYPE VARCHAR`
-- error: ``
-
 ### `mismatch` `tests/test_transpile.py:754`
 
 - test: `test_alter`
@@ -118,7 +108,7 @@ Filtered by read/write: `0`
 - read/write: `postgres` -> `sqlite`
 - sql: `ALTER TABLE integers ALTER i TYPE VARCHAR COLLATE foo USING bar`
 - expected: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT COLLATE foo USING bar`
-- actual: `ALTER TABLE integers ALTER i TYPE VARCHAR COLLATE foo USING bar`
+- actual: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT COLLATE foo`
 - error: ``
 
 ### `mismatch` `tests/test_transpile.py:645`
@@ -169,5 +159,15 @@ Filtered by read/write: `0`
 - sql: `select /* asfd /* asdf */ asdf */ 1`
 - expected: `/* asfd / * asdf * / asdf */ SELECT 1`
 - actual: `SELECT 1`
+- error: ``
+
+### `mismatch` `tests/test_transpile.py:123`
+
+- test: `test_comments`
+- helper: `validate`
+- read/write: `postgres` -> `sqlite`
+- sql: `SELECT c /* foo */ AS alias`
+- expected: `SELECT c AS alias /* foo */`
+- actual: `SELECT c AS alias`
 - error: ``
 
