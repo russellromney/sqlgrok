@@ -1390,6 +1390,71 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 return new_args[0].clone();
             }
             if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("DATE_STR_TO_DATE")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                // SQLGlot lowers DATE_STR_TO_DATE(x) to the bare expression
+                // for SQLite (the value is already a date string).
+                return new_args[0].clone();
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("DATE_TRUNC")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                // SQLGlot uppercase-and-string-quotes the first arg of
+                // DATE_TRUNC when it isn't already a string literal.
+                let first = match &new_args[0] {
+                    Expr::Column {
+                        name: col, table, ..
+                    } if table.is_none() => Expr::StringLiteral(col.to_ascii_uppercase()),
+                    Expr::StringLiteral(s) => Expr::StringLiteral(s.to_ascii_uppercase()),
+                    other => other.clone(),
+                };
+                return Expr::Function {
+                    name: "DATE_TRUNC".to_string(),
+                    args: vec![first, new_args[1].clone()],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("DATE_FROM_UNIX_DATE")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                // SQLGlot lowers DATE_FROM_UNIX_DATE(n) to
+                // DATE(DATE('1970-01-01'), '<n> DAY').
+                let payload = match &new_args[0] {
+                    Expr::Number(n) => format!("{n} DAY"),
+                    other => format!("{other:?} DAY"),
+                };
+                return Expr::Function {
+                    name: "DATE".to_string(),
+                    args: vec![
+                        Expr::Function {
+                            name: "DATE".to_string(),
+                            args: vec![Expr::StringLiteral("1970-01-01".to_string())],
+                            distinct: false,
+                            filter: None,
+                            over: None,
+                        },
+                        Expr::StringLiteral(payload),
+                    ],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("TS_OR_DS_TO_DATE_STR")
                 && !distinct
                 && filter.is_none()

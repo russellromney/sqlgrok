@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10090 |
-| `mismatch` | 2614 |
+| `match` | 10115 |
+| `mismatch` | 2589 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7420 |
-| `match` | `validate_identity` | 2570 |
-| `mismatch` | `validate_all` | 1508 |
+| `match` | `validate_all` | 7442 |
+| `match` | `validate_identity` | 2573 |
+| `mismatch` | `validate_all` | 1486 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 1036 |
+| `mismatch` | `validate_identity` | 1033 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 318 |
 | `rust-error` | `validate_all` | 254 |
@@ -44,7 +44,7 @@ Filtered by read/write: `0`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 964 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 545 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 547 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 348 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 266 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 243 |
@@ -52,7 +52,7 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 217 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 205 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 193 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 187 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 185 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 161 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 148 |

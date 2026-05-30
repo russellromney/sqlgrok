@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10090 |
-| `mismatch` | 2614 |
+| `match` | 10115 |
+| `mismatch` | 2589 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 10090 |
-| `mismatch` | `mysql` | `sqlite` | 2614 |
+| `match` | `mysql` | `sqlite` | 10115 |
+| `mismatch` | `mysql` | `sqlite` | 2589 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
 | `rust-error` | `mysql` | `sqlite` | 576 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7420 |
-| `match` | `validate_identity` | 2570 |
-| `mismatch` | `validate_all` | 1508 |
+| `match` | `validate_all` | 7442 |
+| `match` | `validate_identity` | 2573 |
+| `mismatch` | `validate_all` | 1486 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 1036 |
+| `mismatch` | `validate_identity` | 1033 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 318 |
 | `rust-error` | `validate_all` | 254 |
@@ -72,7 +72,7 @@ Total rows: `15156`
 | `match` | `ALTER TABLE` | 81 |
 | `match` | `SELECT DATEDIFF()` | 79 |
 | `match` | `SET` | 78 |
-| `match` | `DATE_TRUNC()` | 73 |
+| `match` | `DATE_TRUNC()` | 77 |
 | `match` | `SELECT UNNEST()` | 70 |
 | `match` | `LOG()` | 67 |
 | `mismatch` | `WITH` | 66 |
@@ -163,7 +163,6 @@ Total rows: `15156`
 | `mismatch` | `X` | 20 |
 | `mismatch` | `case-only rendering difference` | 20 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
-| `mismatch` | `date/time rendering: SELECT DATE_TRUNC()` | 14 |
 | `mismatch` | `cast/type rendering: WITH` | 13 |
 | `mismatch` | `ARRAY_CONCAT()` | 12 |
 | `mismatch` | `json rendering: SELECT JSON_VALUE()` | 12 |
@@ -177,14 +176,15 @@ Total rows: `15156`
 | `mismatch` | `COPY` | 9 |
 | `mismatch` | `SELECT ARRAY_FLATTEN()` | 9 |
 | `mismatch` | `cast/type rendering: SELECT operator cast` | 9 |
-| `mismatch` | `date/time rendering: DATE_FROM_UNIX_DATE()` | 9 |
+| `mismatch` | `date/time rendering: SELECT DATE_ADD()` | 9 |
+| `mismatch` | `--` | 8 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 964 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 545 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 547 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 348 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 266 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 243 |
@@ -192,7 +192,7 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 217 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 205 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 193 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 187 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 185 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 161 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 148 |
@@ -210,8 +210,8 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `oracle-error` | `tests/dialects/test_tsql.py` | `test_option` | 86 |
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 80 |
 | `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 80 |
-| `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 79 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 77 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 75 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |

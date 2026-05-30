@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10750 |
-| `mismatch` | 2205 |
+| `match` | 10785 |
+| `mismatch` | 2170 |
 | `oracle-error` | 1456 |
 | `rust-error` | 608 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7758 |
-| `match` | `validate_identity` | 2889 |
-| `mismatch` | `validate_all` | 1274 |
+| `match` | `validate_all` | 7791 |
+| `match` | `validate_identity` | 2891 |
+| `mismatch` | `validate_all` | 1241 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 860 |
+| `mismatch` | `validate_identity` | 858 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 361 |
 | `rust-error` | `validate_all` | 244 |
@@ -46,14 +46,14 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1002 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 595 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 413 |
+| `match` | `tests/dialects/test_dialect.py` | `test_time` | 313 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 298 |
-| `match` | `tests/dialects/test_dialect.py` | `test_time` | 292 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 243 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 236 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 211 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 181 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 167 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 168 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 142 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 139 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 138 |
