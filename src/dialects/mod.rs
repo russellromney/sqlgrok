@@ -807,6 +807,10 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
+                && !matches!(
+                    source,
+                    Dialect::Mysql | Dialect::Postgres | Dialect::Sqlite
+                )
                 && name.eq_ignore_ascii_case("STARTS_WITH")
                 && !distinct
                 && filter.is_none()
@@ -889,6 +893,10 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 return sqlite_postgres_json_typeof(new_args[0].clone());
             }
             if matches!(target, Dialect::Sqlite)
+                && !matches!(
+                    source,
+                    Dialect::Mysql | Dialect::Postgres | Dialect::Sqlite
+                )
                 && matches!(
                     name.to_ascii_uppercase().as_str(),
                     "JSONB_EXTRACT" | "JSONB_EXTRACT_SCALAR"
@@ -2199,7 +2207,9 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                             over,
                         };
                     }
-                    TypedFunction::Left { expr, n } => {
+                    TypedFunction::Left { expr, n }
+                        if !matches!(target, Dialect::Sqlite) =>
+                    {
                         return Expr::Function {
                             name: "SUBSTR".to_string(),
                             args: vec![
@@ -2212,7 +2222,9 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                             over,
                         };
                     }
-                    TypedFunction::Right { expr, n } => {
+                    TypedFunction::Right { expr, n }
+                        if !matches!(target, Dialect::Sqlite) =>
+                    {
                         return Expr::Function {
                             name: "SUBSTR".to_string(),
                             args: vec![

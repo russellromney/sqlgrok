@@ -1839,6 +1839,7 @@ pub enum AlterTableAction {
     DropColumn { name: String, if_exists: bool },
     RenameColumn { old_name: String, new_name: String },
     AlterColumnType { name: String, data_type: DataType },
+    AlterColumnRaw { name: String, tail: String },
     AddConstraint(TableConstraint),
     DropConstraint { name: String },
     RenameTable { new_name: String },

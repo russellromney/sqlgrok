@@ -9,7 +9,16 @@ use crate::dialects::Dialect;
 #[must_use]
 pub fn generate(statement: &Statement, dialect: Dialect) -> String {
     let mut generator = Generator::with_dialect(dialect);
-    generator.generate(statement)
+    let s = generator.generate(statement);
+    // Python SQLGlot strips() the final generator output. Mirror it so
+    // forms like `SELECT e'\n'` (sqlite/mysql target render bare value
+    // without quotes) match exactly.
+    let trimmed = s.trim_matches(|c: char| c == ' ' || c == '\t' || c == '\n' || c == '\r');
+    if trimmed.len() == s.len() {
+        s
+    } else {
+        trimmed.to_string()
+    }
 }
 
 /// Generate a pretty-printed SQL string from a [`Statement`] AST.

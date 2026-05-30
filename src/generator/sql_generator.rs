@@ -531,15 +531,8 @@ impl Generator {
         }
     }
 
-    fn select_item_renders_empty(&self, item: &SelectItem) -> bool {
-        matches!(
-            item,
-            SelectItem::Expr {
-                expr: Expr::EscapedStringLiteral(_),
-                alias: None,
-                ..
-            } if matches!(self.dialect, Some(Dialect::Sqlite))
-        )
+    fn select_item_renders_empty(&self, _item: &SelectItem) -> bool {
+        false
     }
 
     fn gen_table_source(&mut self, source: &TableSource) {
@@ -1742,6 +1735,14 @@ impl Generator {
                     }
                     self.gen_data_type(data_type);
                 }
+                AlterTableAction::AlterColumnRaw { name, tail } => {
+                    self.write_keyword("ALTER COLUMN ");
+                    self.write(name);
+                    if !tail.is_empty() {
+                        self.write(" ");
+                        self.write(tail);
+                    }
+                }
                 AlterTableAction::AddConstraint(constraint) => {
                     self.write_keyword("ADD ");
                     self.gen_table_constraint(constraint);
@@ -2153,9 +2154,8 @@ impl Generator {
                 self.write("'");
             }
             Expr::EscapedStringLiteral(s) => {
-                if matches!(self.dialect, Some(Dialect::Sqlite)) {
-                    // Python SQLGlot models Postgres E'...' as ByteString and, for
-                    // SQLite, emits an unsupported empty bytestring fallback.
+                if matches!(self.dialect, Some(Dialect::Sqlite) | Some(Dialect::Mysql)) {
+                    self.write(s);
                 } else {
                     self.write("e'");
                     self.write(&escape_postgres_escaped_string(s));

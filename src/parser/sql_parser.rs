@@ -4402,21 +4402,50 @@ impl Parser {
             Ok(AlterTableAction::DropColumn { name, if_exists })
         } else if self.match_token(TokenType::Alter) {
             // ALTER [COLUMN] name [SET DATA TYPE | TYPE] dtype [COLLATE x]
-            // [USING y]. SQLite generator emits SET DATA TYPE.
+            // [USING y], or attribute-modifying forms (SET NOT NULL, SET
+            // DEFAULT, SET INVISIBLE, DROP NOT NULL, DROP DEFAULT, ...).
             let _ = self.match_keyword("COLUMN");
             let name = self.expect_name()?;
-            let _ = self.match_keyword("SET");
-            let _ = self.match_keyword("DATA");
-            let _ = self.match_keyword("TYPE");
-            let data_type = self.parse_data_type()?;
-            // Consume any trailing COLLATE / USING tail so we don't bail.
-            while !matches!(
-                self.peek_type(),
-                TokenType::Comma | TokenType::Semicolon | TokenType::Eof
-            ) {
-                self.advance();
+            // Look ahead to decide: is this a type change or an attribute
+            // modifier? Save raw text up to the next comma/semi/eof.
+            let start_pos = self.pos;
+            let v0 = self.peek().value.to_uppercase();
+            let v1 = self.tokens
+                .get(self.pos + 1)
+                .map(|t| t.value.to_uppercase())
+                .unwrap_or_default();
+            let v2 = self.tokens
+                .get(self.pos + 2)
+                .map(|t| t.value.to_uppercase())
+                .unwrap_or_default();
+            let is_type_change =
+                v0 == "TYPE" || (v0 == "SET" && v1 == "DATA" && v2 == "TYPE");
+            if is_type_change {
+                let _ = self.match_keyword("SET");
+                let _ = self.match_keyword("DATA");
+                let _ = self.match_keyword("TYPE");
+                let data_type = self.parse_data_type()?;
+                while !matches!(
+                    self.peek_type(),
+                    TokenType::Comma | TokenType::Semicolon | TokenType::Eof
+                ) {
+                    self.advance();
+                }
+                Ok(AlterTableAction::AlterColumnType { name, data_type })
+            } else {
+                // Collect the raw text of the tail.
+                let mut tail_tokens: Vec<String> = Vec::new();
+                while !matches!(
+                    self.peek_type(),
+                    TokenType::Comma | TokenType::Semicolon | TokenType::Eof
+                ) {
+                    tail_tokens.push(self.peek().value.clone());
+                    self.advance();
+                }
+                let _ = start_pos;
+                let tail = tail_tokens.join(" ");
+                Ok(AlterTableAction::AlterColumnRaw { name, tail })
             }
-            Ok(AlterTableAction::AlterColumnType { name, data_type })
         } else if self.match_keyword("RENAME") {
             if self.match_keyword("COLUMN") {
                 let old_name = self.expect_name()?;
@@ -6941,7 +6970,7 @@ impl Parser {
                     expr: Box::new(it.next()?),
                 }
             }
-            "REGEXP_LIKE" | "RLIKE" => {
+            "REGEXP_LIKE" => {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
                 let pattern = it.next()?;
@@ -6952,7 +6981,7 @@ impl Parser {
                     flags: flags.map(Box::new),
                 }
             }
-            "REGEXP_EXTRACT" | "REGEXP_SUBSTR" if args.len() <= 3 => {
+            "REGEXP_EXTRACT" if args.len() <= 3 => {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
                 let pattern = it.next()?;
@@ -7099,7 +7128,7 @@ impl Parser {
                     expr: Box::new(it.next()?),
                 }
             }
-            "ARRAY_AGG" | "LIST" | "COLLECT_LIST" => {
+            "ARRAY_AGG" | "LIST" => {
                 let mut it = args.into_iter();
                 TypedFunction::ArrayAgg {
                     expr: Box::new(it.next()?),
@@ -7107,6 +7136,9 @@ impl Parser {
                 }
             }
             "APPROX_DISTINCT" | "APPROX_COUNT_DISTINCT" => {
+                if args.len() > 1 {
+                    return None;
+                }
                 let mut it = args.into_iter();
                 TypedFunction::ApproxDistinct {
                     expr: Box::new(it.next()?),
@@ -7136,7 +7168,7 @@ impl Parser {
                     element: Box::new(element),
                 }
             }
-            "ARRAY_SIZE" | "ARRAY_LENGTH" | "CARDINALITY" => {
+            "ARRAY_SIZE" | "ARRAY_LENGTH" => {
                 let mut it = args.into_iter();
                 TypedFunction::ArraySize {
                     expr: Box::new(it.next()?),
