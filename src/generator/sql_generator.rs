@@ -2128,7 +2128,15 @@ impl Generator {
                             | "USER"
                     );
                 if canonical_constant {
-                    self.write(&name.to_ascii_uppercase());
+                    let upper = name.to_ascii_uppercase();
+                    // SQLGlot writes CURRENT_USER with parens for SQLite
+                    // output (the function form). The other pseudo-columns
+                    // stay bare.
+                    if matches!(self.dialect, Some(Dialect::Sqlite)) && upper == "CURRENT_USER" {
+                        self.write("CURRENT_USER()");
+                    } else {
+                        self.write(&upper);
+                    }
                 } else {
                     self.write_quoted(name, *quote_style);
                 }

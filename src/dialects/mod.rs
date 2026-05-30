@@ -355,6 +355,23 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                     if join.join_type == JoinType::Comma {
                         join.join_type = JoinType::Cross;
                     }
+                    // SQLite parser synthesizes `ON TRUE` for outer/inner
+                    // joins that don't carry an ON / USING clause.
+                    if join.on.is_none()
+                        && join.using.is_empty()
+                        && matches!(
+                            join.join_type,
+                            JoinType::Inner
+                                | JoinType::Left
+                                | JoinType::LeftOuter
+                                | JoinType::Right
+                                | JoinType::RightOuter
+                                | JoinType::Full
+                                | JoinType::FullOuter
+                        )
+                    {
+                        join.on = Some(Expr::Boolean(true));
+                    }
                 }
             }
             if is_postgres_family(source) && matches!(target, Dialect::Sqlite) {
