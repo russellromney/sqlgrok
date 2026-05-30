@@ -3142,6 +3142,60 @@ fn transform_typed_function(
                 expr: Box::new(transform_expr(*expr, source, target)),
             }
         }
+        // Mysql DATE_SUB / DATE_ADD with an INTERVAL second arg unboxes
+        // to the 3-arg form (value, value_str, unit) for sqlite output,
+        // matching Python SQLGlot.
+        TypedFunction::DateSub {
+            expr,
+            interval,
+            unit,
+        } if is_mysql_family(source)
+            && matches!(target, Dialect::Sqlite)
+            && matches!(interval.as_ref(), Expr::Interval { .. }) =>
+        {
+            let (value, ivl_unit) = match *interval {
+                Expr::Interval { value, unit: u } => (*value, u),
+                _ => unreachable!(),
+            };
+            let unit = unit.or(ivl_unit);
+            // Python SQLGlot renders the numeric value as a string literal
+            // in the 3-arg DATE_SUB form ("DATE_SUB(x, '1', WEEK)").
+            let interval_arg = match value {
+                Expr::Number(n) => Expr::StringLiteral(n),
+                other => transform_expr(other, source, target),
+            };
+            TypedFunction::DateSub {
+                expr: Box::new(transform_expr(*expr, source, target)),
+                interval: Box::new(interval_arg),
+                unit,
+            }
+        }
+        TypedFunction::DateAdd {
+            expr,
+            interval,
+            unit,
+        } if is_mysql_family(source)
+            && matches!(target, Dialect::Sqlite)
+            && matches!(interval.as_ref(), Expr::Interval { .. }) =>
+        {
+            let (value, ivl_unit) = match *interval {
+                Expr::Interval { value, unit: u } => (*value, u),
+                _ => unreachable!(),
+            };
+            let unit = unit.or(ivl_unit);
+            // Strip string-literal quotes off the interval value so the
+            // generator's DATE_ADD→DATE(x, 'N UNIT') payload doesn't end
+            // up with nested quotes like 'INTERVAL '3' DAY' → ''3' DAY'.
+            let value = match value {
+                Expr::StringLiteral(s) => Expr::Number(s),
+                other => other,
+            };
+            TypedFunction::DateAdd {
+                expr: Box::new(transform_expr(*expr, source, target)),
+                interval: Box::new(transform_expr(value, source, target)),
+                unit,
+            }
+        }
         // For all other typed functions, just transform child expressions
         other => other.transform_children(&|e| transform_expr(e, source, target)),
     }
