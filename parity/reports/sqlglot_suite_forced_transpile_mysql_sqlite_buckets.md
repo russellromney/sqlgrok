@@ -138,7 +138,7 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 262 |
+| `mismatch` | `missing AS or alias rendering` | 271 |
 | `mismatch` | `DDL/create-table rendering` | 185 |
 | `mismatch` | `SELECT` | 136 |
 | `mismatch` | `empty actual output` | 109 |
@@ -374,13 +374,13 @@ Total rows: `15156`
 
 - `tests/dialects/test_bigquery.py`:1510 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
   - expected: `DATE(CURRENT_DATE, '-1 DAY')`
-  - actual: `DATE_ADD(CURRENT_DATE, INTERVAL -1 DAY)`
+  - actual: `DATE(CURRENT_DATE, 'INTERVAL UnaryOp { op: Minus, expr: Number("1") } DAY')`
 - `tests/dialects/test_bigquery.py`:1510 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
   - expected: `DATE(CURRENT_DATE, '-1 DAY')`
-  - actual: `DATE_ADD(CURRENT_DATE, INTERVAL -1 DAY)`
+  - actual: `DATE(CURRENT_DATE, 'INTERVAL UnaryOp { op: Minus, expr: Number("1") } DAY')`
 - `tests/dialects/test_bigquery.py`:1510 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
   - expected: `DATE(CURRENT_DATE, '-1 DAY')`
-  - actual: `DATE_ADD(CURRENT_DATE, INTERVAL -1 DAY)`
+  - actual: `DATE(CURRENT_DATE, 'INTERVAL UnaryOp { op: Minus, expr: Number("1") } DAY')`
 
 ### `mismatch` `date/time rendering: SELECT DATE_SUB()`
 

@@ -2907,26 +2907,8 @@ impl Generator {
     }
 
     fn gen_datetime_field(&mut self, field: &DateTimeField) {
-        let name = match field {
-            DateTimeField::Year => "YEAR",
-            DateTimeField::Quarter => "QUARTER",
-            DateTimeField::Month => "MONTH",
-            DateTimeField::Week => "WEEK",
-            DateTimeField::Day => "DAY",
-            DateTimeField::DayOfWeek => "DOW",
-            DateTimeField::DayOfYear => "DOY",
-            DateTimeField::Hour => "HOUR",
-            DateTimeField::Minute => "MINUTE",
-            DateTimeField::Second => "SECOND",
-            DateTimeField::Millisecond => "MILLISECOND",
-            DateTimeField::Microsecond => "MICROSECOND",
-            DateTimeField::Nanosecond => "NANOSECOND",
-            DateTimeField::Epoch => "EPOCH",
-            DateTimeField::Timezone => "TIMEZONE",
-            DateTimeField::TimezoneHour => "TIMEZONE_HOUR",
-            DateTimeField::TimezoneMinute => "TIMEZONE_MINUTE",
-        };
-        self.write(name);
+        let name = datetime_field_keyword(field);
+        self.write(&name);
     }
 
     /// Generate SQL for a typed function expression.
@@ -2979,6 +2961,44 @@ impl Generator {
                     } else {
                         self.write_keyword("DAY");
                     }
+                    self.write(")");
+                } else if matches!(dialect, Some(Dialect::Sqlite)) {
+                    // SQLGlot lowers DATE_ADD(x, n [, unit]) to
+                    // DATE(x, '<n> <unit>') for SQLite, with the second
+                    // arg as a string literal.
+                    self.write_keyword("DATE(");
+                    self.gen_expr(expr);
+                    self.write(", ");
+                    let mut payload = String::new();
+                    match interval.as_ref() {
+                        Expr::Number(n) => payload.push_str(n),
+                        Expr::Interval {
+                            value,
+                            unit: interval_unit,
+                        } => {
+                            payload.push_str("INTERVAL ");
+                            match value.as_ref() {
+                                Expr::Number(n) => {
+                                    payload.push('\'');
+                                    payload.push_str(n);
+                                    payload.push('\'');
+                                }
+                                other => payload.push_str(&format!("{other:?}")),
+                            }
+                            if let Some(u) = interval_unit {
+                                payload.push(' ');
+                                payload.push_str(&datetime_field_keyword(u));
+                            }
+                        }
+                        other => payload.push_str(&format!("{other:?}")),
+                    }
+                    if let Some(u) = unit {
+                        payload.push(' ');
+                        payload.push_str(&datetime_field_keyword(u));
+                    }
+                    self.write("'");
+                    self.write(&payload);
+                    self.write("'");
                     self.write(")");
                 } else {
                     self.write_keyword("DATE_ADD(");
@@ -3921,6 +3941,29 @@ fn pretty_raw_sql(sql: &str) -> String {
     }
 
     normalized.join("\n")
+}
+
+fn datetime_field_keyword(field: &DateTimeField) -> String {
+    let name = match field {
+        DateTimeField::Year => "YEAR",
+        DateTimeField::Quarter => "QUARTER",
+        DateTimeField::Month => "MONTH",
+        DateTimeField::Week => "WEEK",
+        DateTimeField::Day => "DAY",
+        DateTimeField::DayOfWeek => "DOW",
+        DateTimeField::DayOfYear => "DOY",
+        DateTimeField::Hour => "HOUR",
+        DateTimeField::Minute => "MINUTE",
+        DateTimeField::Second => "SECOND",
+        DateTimeField::Millisecond => "MILLISECOND",
+        DateTimeField::Microsecond => "MICROSECOND",
+        DateTimeField::Nanosecond => "NANOSECOND",
+        DateTimeField::Epoch => "EPOCH",
+        DateTimeField::Timezone => "TIMEZONE",
+        DateTimeField::TimezoneHour => "TIMEZONE_HOUR",
+        DateTimeField::TimezoneMinute => "TIMEZONE_MINUTE",
+    };
+    name.to_string()
 }
 
 /// Split an interval string like `"1 DAY"` into ("1", "DAY"). Returns None
