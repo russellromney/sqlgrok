@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10511 |
-| `mismatch` | 2374 |
+| `match` | 10547 |
+| `mismatch` | 2338 |
 | `oracle-error` | 1545 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 10511 |
-| `mismatch` | `sqlite` | `sqlite` | 2374 |
+| `match` | `sqlite` | `sqlite` | 10547 |
+| `mismatch` | `sqlite` | `sqlite` | 2338 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
 | `rust-error` | `sqlite` | `sqlite` | 589 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7537 |
-| `match` | `validate_identity` | 2871 |
-| `mismatch` | `validate_all` | 1464 |
+| `match` | `validate_all` | 7570 |
+| `match` | `validate_identity` | 2874 |
+| `mismatch` | `validate_all` | 1431 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 842 |
+| `mismatch` | `validate_identity` | 839 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 353 |
 | `rust-error` | `validate_all` | 233 |
@@ -166,34 +166,34 @@ Total rows: `15156`
 | `mismatch` | `json rendering: SELECT JSON_EXTRACT_PATH_TEXT()` | 11 |
 | `mismatch` | `'FOO'` | 10 |
 | `mismatch` | `UPPER()` | 10 |
-| `mismatch` | `cast/type rendering: SELECT TIME_SLICE()` | 10 |
 | `mismatch` | `--` | 9 |
 | `mismatch` | `COPY` | 9 |
 | `mismatch` | `PIVOT` | 9 |
 | `mismatch` | `SELECT POSEXPLODE()` | 9 |
-| `mismatch` | `SELECT SPACE()` | 9 |
 | `mismatch` | `cast/type rendering: DATE_ADD()` | 9 |
 | `mismatch` | `date/time rendering: DATE_FROM_UNIX_DATE()` | 9 |
 | `mismatch` | `date/time rendering: DATE_TRUNC()` | 9 |
 | `mismatch` | `SELECT COUNT()` | 8 |
 | `mismatch` | `STRING_AGG()` | 8 |
-| `mismatch` | `TS_OR_DS_ADD()` | 8 |
+| `mismatch` | `CHARINDEX()` | 7 |
+| `mismatch` | `DESCRIBE` | 7 |
+| `mismatch` | `INSERT` | 7 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 959 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 592 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 976 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 595 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 367 |
-| `match` | `tests/dialects/test_dialect.py` | `test_time` | 277 |
+| `match` | `tests/dialects/test_dialect.py` | `test_time` | 287 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 269 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 247 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 241 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 219 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 209 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 174 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 202 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 171 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 150 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 147 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 141 |
@@ -210,7 +210,6 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 79 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 78 |
-| `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 75 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 75 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 73 |
@@ -222,6 +221,7 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 66 |
 | `match` | `tests/dialects/test_presto.py` | `test_time` | 66 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 65 |
+| `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 65 |
 | `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
 
 ## Bucket Examples

@@ -1511,6 +1511,51 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("SPACE")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return Expr::Function {
+                    name: "REPEAT".to_string(),
+                    args: vec![Expr::StringLiteral(" ".to_string()), new_args[0].clone()],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            // TIME_SLICE / TS_OR_DS_ADD take a string-literal unit ('DAY',
+            // 'HOUR', etc.) that SQLGlot unquotes into a bare keyword
+            // when targeting SQLite.
+            if matches!(target, Dialect::Sqlite)
+                && (name.eq_ignore_ascii_case("TIME_SLICE")
+                    || name.eq_ignore_ascii_case("TS_OR_DS_ADD"))
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && (new_args.len() == 3 || new_args.len() == 4)
+            {
+                let mut rewritten = new_args.clone();
+                if let Some(Expr::StringLiteral(unit)) = rewritten.get(2)
+                    && is_recognized_interval_unit(unit)
+                {
+                    rewritten[2] = Expr::Column {
+                        table: None,
+                        name: unit.to_ascii_uppercase(),
+                        quote_style: QuoteStyle::None,
+                        table_quote_style: QuoteStyle::None,
+                    };
+                }
+                return Expr::Function {
+                    name,
+                    args: rewritten,
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("LAST_DAY_OF_MONTH")
                 && !distinct
                 && filter.is_none()
@@ -2783,6 +2828,34 @@ fn mysql_sqlite_str_to_time_name(format: &Expr) -> &'static str {
         Expr::StringLiteral(format) if mysql_format_contains_time(format) => "STR_TO_TIME",
         _ => "STR_TO_DATE",
     }
+}
+
+fn is_recognized_interval_unit(unit: &str) -> bool {
+    matches!(
+        unit.to_ascii_uppercase().as_str(),
+        "YEAR"
+            | "YEARS"
+            | "QUARTER"
+            | "QUARTERS"
+            | "MONTH"
+            | "MONTHS"
+            | "WEEK"
+            | "WEEKS"
+            | "DAY"
+            | "DAYS"
+            | "HOUR"
+            | "HOURS"
+            | "MINUTE"
+            | "MINUTES"
+            | "SECOND"
+            | "SECONDS"
+            | "MILLISECOND"
+            | "MILLISECONDS"
+            | "MICROSECOND"
+            | "MICROSECONDS"
+            | "NANOSECOND"
+            | "NANOSECONDS"
+    )
 }
 
 fn mysql_format_contains_time(format: &str) -> bool {
