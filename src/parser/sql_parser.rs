@@ -6803,7 +6803,7 @@ impl Parser {
                     format: Box::new(format),
                 }
             }
-            "TIME_TO_STR" | "DATE_FORMAT" | "FORMAT_TIMESTAMP" | "FORMAT_DATETIME" | "TO_CHAR" => {
+            "TIME_TO_STR" | "FORMAT_TIMESTAMP" | "FORMAT_DATETIME" | "TO_CHAR" => {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
                 let format = it.next()?;

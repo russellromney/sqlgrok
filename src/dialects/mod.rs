@@ -1514,6 +1514,32 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
+            // DATE_FORMAT in MySQL/Hive/Spark/Databricks is the native format
+            // function and needs dialect-specific lowering (STRFTIME for
+            // SQLite, TO_CHAR for Postgres, FORMAT_TIMESTAMP for BigQuery,
+            // etc.). For Postgres/SQLite sources, DATE_FORMAT stays as a
+            // plain function call so identity round-trips match SQLGlot
+            // (those sources don't have DATE_FORMAT as a native function).
+            if (is_mysql_family(source) || is_hive_family(source))
+                && name.eq_ignore_ascii_case("DATE_FORMAT")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                return Expr::TypedFunction {
+                    func: TypedFunction::TimeToStr {
+                        expr: Box::new(new_args[0].clone()),
+                        format: Box::new(transform_format_expr(
+                            new_args[1].clone(),
+                            source,
+                            target,
+                        )),
+                    },
+                    filter: None,
+                    over: None,
+                };
+            }
             if matches!(target, Dialect::Sqlite)
                 && ((is_mysql_family(source) && name.eq_ignore_ascii_case("FROM_UNIXTIME"))
                     || (is_postgres_family(source) && name.eq_ignore_ascii_case("TO_TIMESTAMP")))
