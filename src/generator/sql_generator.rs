@@ -2998,14 +2998,27 @@ impl Generator {
                                     payload.push_str(n);
                                     payload.push('\'');
                                 }
-                                other => payload.push_str(&format!("{other:?}")),
+                                Expr::UnaryOp {
+                                    op: UnaryOperator::Minus,
+                                    expr: inner,
+                                } => {
+                                    if let Expr::Number(n) = inner.as_ref() {
+                                        payload.push('\'');
+                                        payload.push('-');
+                                        payload.push_str(n);
+                                        payload.push('\'');
+                                    } else {
+                                        payload.push_str(&render_expr_to_sql(inner));
+                                    }
+                                }
+                                other => payload.push_str(&render_expr_to_sql(other)),
                             }
                             if let Some(u) = interval_unit {
                                 payload.push(' ');
                                 payload.push_str(&datetime_field_keyword(u));
                             }
                         }
-                        other => payload.push_str(&format!("{other:?}")),
+                        other => payload.push_str(&render_expr_to_sql(other)),
                     }
                     if let Some(u) = unit {
                         payload.push(' ');
@@ -3982,6 +3995,65 @@ fn normalize_sqlite_json_path(path: &str) -> String {
         s.truncate(s.len() - 2);
     }
     s
+}
+
+/// Render an expression to a SQL-ish string for embedding inside string
+/// payloads (e.g. SQLite's DATE_ADD lowering to DATE(x, 'INTERVAL ...')).
+fn render_expr_to_sql(expr: &Expr) -> String {
+    match expr {
+        Expr::Number(n) => n.clone(),
+        Expr::StringLiteral(s) => format!("'{}'", s.replace('\'', "''")),
+        Expr::Column { table, name, .. } => match table {
+            Some(t) => format!("{t}.{name}"),
+            None => name.to_ascii_uppercase(),
+        },
+        Expr::UnaryOp { op, expr } => {
+            let inner = render_expr_to_sql(expr);
+            match op {
+                UnaryOperator::Minus => format!("-{inner}"),
+                UnaryOperator::Plus => format!("+{inner}"),
+                UnaryOperator::Not => format!("NOT {inner}"),
+                UnaryOperator::BitwiseNot => format!("~{inner}"),
+                _ => format!("{op:?} {inner}"),
+            }
+        }
+        Expr::BinaryOp { left, op, right } => {
+            let op_str = match op {
+                BinaryOperator::Plus => "+",
+                BinaryOperator::Minus => "-",
+                BinaryOperator::Multiply => "*",
+                BinaryOperator::Divide => "/",
+                BinaryOperator::Modulo => "%",
+                _ => " ",
+            };
+            format!(
+                "{} {} {}",
+                render_expr_to_sql(left),
+                op_str,
+                render_expr_to_sql(right)
+            )
+        }
+        Expr::Nested(inner) => format!("({})", render_expr_to_sql(inner)),
+        Expr::Function {
+            name,
+            args,
+            distinct,
+            ..
+        } => {
+            let args_str = args
+                .iter()
+                .map(render_expr_to_sql)
+                .collect::<Vec<_>>()
+                .join(", ");
+            let distinct_str = if *distinct { "DISTINCT " } else { "" };
+            format!("{name}({distinct_str}{args_str})")
+        }
+        Expr::Cast { expr, data_type } => {
+            let dt = format!("{data_type:?}").to_ascii_uppercase();
+            format!("CAST({} AS {})", render_expr_to_sql(expr), dt)
+        }
+        other => format!("{other:?}"),
+    }
 }
 
 fn datetime_field_keyword(field: &DateTimeField) -> String {

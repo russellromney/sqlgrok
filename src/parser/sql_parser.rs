@@ -6756,15 +6756,31 @@ impl Parser {
         let tf = match upper.as_str() {
             // ── Date/Time ──────────────────────────────────────────
             "DATE_ADD" | "TIMESTAMPADD" => {
-                let mut it = args.into_iter();
-                let first = it.next()?;
-                let second = it.next()?;
-                let third = it.next();
-                let unit = third.as_ref().and_then(Self::expr_to_datetime_field);
-                TypedFunction::DateAdd {
-                    expr: Box::new(first),
-                    interval: Box::new(second),
-                    unit,
+                if args.len() == 3 {
+                    let unit = Self::expr_to_datetime_field(&args[2]);
+                    if unit.is_none() {
+                        // Third arg isn't a recognized DateTimeField — keep
+                        // the call as a generic Expr::Function so we don't
+                        // lose information when rendering.
+                        return None;
+                    }
+                    let mut it = args.into_iter();
+                    let first = it.next()?;
+                    let second = it.next()?;
+                    TypedFunction::DateAdd {
+                        expr: Box::new(first),
+                        interval: Box::new(second),
+                        unit,
+                    }
+                } else {
+                    let mut it = args.into_iter();
+                    let first = it.next()?;
+                    let second = it.next()?;
+                    TypedFunction::DateAdd {
+                        expr: Box::new(first),
+                        interval: Box::new(second),
+                        unit: None,
+                    }
                 }
             }
             "DATE_DIFF" | "DATEDIFF" => {

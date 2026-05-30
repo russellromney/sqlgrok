@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10872 |
-| `mismatch` | 2083 |
+| `match` | 10924 |
+| `mismatch` | 2031 |
 | `oracle-error` | 1456 |
 | `rust-error` | 608 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 10872 |
-| `mismatch` | `postgres` | `sqlite` | 2083 |
+| `match` | `postgres` | `sqlite` | 10924 |
+| `mismatch` | `postgres` | `sqlite` | 2031 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
 | `rust-error` | `postgres` | `sqlite` | 608 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7877 |
-| `match` | `validate_identity` | 2891 |
-| `mismatch` | `validate_all` | 1155 |
+| `match` | `validate_all` | 7921 |
+| `match` | `validate_identity` | 2899 |
+| `mismatch` | `validate_all` | 1111 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 858 |
+| `mismatch` | `validate_identity` | 850 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 361 |
 | `rust-error` | `validate_all` | 244 |
@@ -69,6 +69,7 @@ Total rows: `15156`
 | `mismatch` | `SELECT operator multiply` | 89 |
 | `match` | `SELECT DATEDIFF()` | 83 |
 | `match` | `SET` | 78 |
+| `match` | `DATE_ADD()` | 74 |
 | `match` | `DATE_TRUNC()` | 73 |
 | `match` | `LOG()` | 67 |
 | `match` | `GRANT` | 65 |
@@ -87,7 +88,6 @@ Total rows: `15156`
 | `match` | `INSERT` | 54 |
 | `rust-error` | `SELECT` | 53 |
 | `match` | `FROM` | 50 |
-| `match` | `SELECT TO_TIMESTAMP()` | 48 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -138,17 +138,16 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 227 |
+| `mismatch` | `missing AS or alias rendering` | 219 |
 | `mismatch` | `DDL/create-table rendering` | 172 |
 | `mismatch` | `SELECT` | 118 |
 | `mismatch` | `CREATE` | 116 |
 | `mismatch` | `SELECT operator multiply` | 77 |
 | `mismatch` | `SELECT UNNEST()` | 74 |
-| `mismatch` | `case-only rendering difference` | 53 |
+| `mismatch` | `case-only rendering difference` | 54 |
 | `mismatch` | `ALTER TABLE` | 43 |
 | `mismatch` | `WITH` | 32 |
 | `mismatch` | `DECLARE` | 30 |
-| `mismatch` | `date/time rendering: DATE_ADD()` | 28 |
 | `mismatch` | `date/time rendering: CREATE` | 27 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 26 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 23 |
@@ -158,7 +157,6 @@ Total rows: `15156`
 | `mismatch` | `cast/type rendering: SELECT TO_CHAR()` | 19 |
 | `mismatch` | `A` | 18 |
 | `mismatch` | `SELECT ARRAY_AGG()` | 18 |
-| `mismatch` | `date/time rendering: SELECT DATE_ADD()` | 18 |
 | `mismatch` | `date/time rendering: SELECT DATE_TRUNC()` | 17 |
 | `mismatch` | `date/time rendering: STR_TO_TIME()` | 17 |
 | `mismatch` | `SELECT LAST_VALUE()` | 16 |
@@ -178,51 +176,53 @@ Total rows: `15156`
 | `mismatch` | `SELECT COUNT()` | 8 |
 | `mismatch` | `ARRAY_AGG()` | 7 |
 | `mismatch` | `DESCRIBE` | 7 |
+| `mismatch` | `FROM` | 7 |
+| `mismatch` | `REGEXP_SUBSTR()` | 7 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1012 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 605 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 612 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 413 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 313 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 298 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 300 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 246 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 244 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 211 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 216 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 172 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 171 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 168 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 142 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 138 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 129 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 122 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 119 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 110 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 107 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 102 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 101 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 92 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 90 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 84 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 83 |
 | `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 82 |
-| `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 81 |
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 76 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
+| `match` | `tests/dialects/test_presto.py` | `test_time` | 74 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 71 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 69 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_time` | 68 |
 | `match` | `tests/dialects/test_exasol.py` | `test_scalar` | 68 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 68 |
 | `match` | `tests/dialects/test_hive.py` | `test_joins_without_on` | 66 |
-| `match` | `tests/dialects/test_presto.py` | `test_time` | 66 |
 | `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 63 |
-| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 62 |
+| `match` | `tests/dialects/test_mysql.py` | `test_identity` | 63 |
 
 ## Bucket Examples
 
@@ -418,17 +418,17 @@ Total rows: `15156`
   - expected: `CREATE TRIGGER check_update`
   - actual: `CREATE TRIGGER check_update BEFORE UPDATE ON accounts FOR EACH ROW EXECUTE FUNCTION CHECK_ACCOUNT_UPDATE()`
 
-### `mismatch` `date/time rendering: DATE_ADD()`
+### `mismatch` `date/time rendering: SELECT DATE_TRUNC()`
 
-- `tests/dialects/test_bigquery.py`:1510 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
-  - expected: `DATE(CURRENT_DATE, 'INTERVAL '-1' DAY')`
-  - actual: `DATE(CURRENT_DATE, 'INTERVAL UnaryOp { op: Minus, expr: Number("1") } DAY')`
-- `tests/dialects/test_bigquery.py`:1510 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
-  - expected: `DATE(CURRENT_DATE, 'INTERVAL '-1' DAY')`
-  - actual: `DATE(CURRENT_DATE, 'INTERVAL UnaryOp { op: Minus, expr: Number("1") } DAY')`
-- `tests/dialects/test_bigquery.py`:1510 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
-  - expected: `DATE(CURRENT_DATE, 'INTERVAL '-1' DAY')`
-  - actual: `DATE(CURRENT_DATE, 'INTERVAL UnaryOp { op: Minus, expr: Number("1") } DAY')`
+- `tests/dialects/test_bigquery.py`:3406 `test_week` via `validate_all`: `SELECT DATE_TRUNC(date, WEEK(MONDAY))`
+  - expected: `SELECT TIMESTAMP_TRUNC(WEEK(MONDAY), DATE)`
+  - actual: `SELECT DATE_TRUNC('DATE', WEEK(MONDAY))`
+- `tests/dialects/test_bigquery.py`:3406 `test_week` via `validate_all`: `SELECT DATE_TRUNC(date, WEEK(MONDAY))`
+  - expected: `SELECT TIMESTAMP_TRUNC(WEEK(MONDAY), DATE)`
+  - actual: `SELECT DATE_TRUNC('DATE', WEEK(MONDAY))`
+- `tests/dialects/test_bigquery.py`:3406 `test_week` via `validate_all`: `SELECT DATE_TRUNC(date, WEEK(TUESDAY))`
+  - expected: `SELECT TIMESTAMP_TRUNC(WEEK(TUESDAY), DATE)`
+  - actual: `SELECT DATE_TRUNC('DATE', WEEK(TUESDAY))`
 
 ### `mismatch` `date/time rendering: SELECT UNNEST()`
 

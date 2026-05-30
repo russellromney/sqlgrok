@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10228 |
-| `mismatch` | 2476 |
+| `match` | 10233 |
+| `mismatch` | 2471 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 10228 |
-| `mismatch` | `mysql` | `sqlite` | 2476 |
+| `match` | `mysql` | `sqlite` | 10233 |
+| `mismatch` | `mysql` | `sqlite` | 2471 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
 | `rust-error` | `mysql` | `sqlite` | 576 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -28,9 +28,9 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7551 |
+| `match` | `validate_all` | 7556 |
 | `match` | `validate_identity` | 2576 |
-| `mismatch` | `validate_all` | 1377 |
+| `mismatch` | `validate_all` | 1372 |
 | `oracle-error` | `validate_identity` | 1135 |
 | `mismatch` | `validate_identity` | 1030 |
 | `oracle-error` | `validate_all` | 595 |
@@ -138,7 +138,7 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 264 |
+| `mismatch` | `missing AS or alias rendering` | 255 |
 | `mismatch` | `DDL/create-table rendering` | 181 |
 | `mismatch` | `SELECT` | 136 |
 | `mismatch` | `empty actual output` | 109 |
@@ -189,7 +189,7 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 273 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 250 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 247 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 217 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 218 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 195 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 194 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 175 |
@@ -210,7 +210,7 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `oracle-error` | `tests/dialects/test_tsql.py` | `test_option` | 86 |
-| `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 82 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 85 |
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
 | `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 80 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 77 |
@@ -386,13 +386,13 @@ Total rows: `15156`
 
 - `tests/dialects/test_bigquery.py`:1510 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
   - expected: `DATE(CURRENT_DATE, '-1 DAY')`
-  - actual: `DATE(CURRENT_DATE, 'INTERVAL UnaryOp { op: Minus, expr: Number("1") } DAY')`
+  - actual: `DATE(CURRENT_DATE, 'INTERVAL '-1' DAY')`
 - `tests/dialects/test_bigquery.py`:1510 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
   - expected: `DATE(CURRENT_DATE, '-1 DAY')`
-  - actual: `DATE(CURRENT_DATE, 'INTERVAL UnaryOp { op: Minus, expr: Number("1") } DAY')`
+  - actual: `DATE(CURRENT_DATE, 'INTERVAL '-1' DAY')`
 - `tests/dialects/test_bigquery.py`:1510 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
   - expected: `DATE(CURRENT_DATE, '-1 DAY')`
-  - actual: `DATE(CURRENT_DATE, 'INTERVAL UnaryOp { op: Minus, expr: Number("1") } DAY')`
+  - actual: `DATE(CURRENT_DATE, 'INTERVAL '-1' DAY')`
 
 ### `mismatch` `date/time rendering: SELECT DATE_SUB()`
 

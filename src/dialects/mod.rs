@@ -1593,6 +1593,28 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
+            // SQLite-targeted DATE_ADD(a, n, c) where the third arg is NOT a
+            // recognized DateTimeField is lowered to DATE(a, '<n> <c>'). The
+            // generic-Function path is the parser's escape hatch (see
+            // try_typed_function) when the 3rd arg isn't a unit keyword.
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("DATE_ADD")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 3
+            {
+                let mut payload = render_for_date_add_payload(&new_args[1]);
+                payload.push(' ');
+                payload.push_str(&render_for_date_add_payload(&new_args[2]));
+                return Expr::Function {
+                    name: "DATE".to_string(),
+                    args: vec![new_args[0].clone(), Expr::StringLiteral(payload)],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
             // CONVERT_TIMEZONE rewrites for SQLite to match SQLGlot:
             //   - 2-arg: CONVERT_TIMEZONE(zone, x) → x AT TIME ZONE zone
             //   - 3-arg: CONVERT_TIMEZONE(src, tgt, x) →
@@ -3032,6 +3054,18 @@ fn mysql_sqlite_str_to_time_name(format: &Expr) -> &'static str {
     match format {
         Expr::StringLiteral(format) if mysql_format_contains_time(format) => "STR_TO_TIME",
         _ => "STR_TO_DATE",
+    }
+}
+
+/// Render an Expr to a string suitable for embedding inside SQLite's
+/// DATE() payload (`DATE(x, '<n> <unit>')`). Strings are stripped of
+/// quotes, columns are uppercased, numbers passed through.
+fn render_for_date_add_payload(expr: &Expr) -> String {
+    match expr {
+        Expr::StringLiteral(s) => s.clone(),
+        Expr::Number(n) => n.clone(),
+        Expr::Column { name, .. } => name.to_ascii_uppercase(),
+        other => format!("{other:?}"),
     }
 }
 
