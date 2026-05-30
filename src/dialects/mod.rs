@@ -2455,7 +2455,23 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 .into_iter()
                 .map(|item| transform_expr(item, source, target))
                 .collect();
-            if is_postgres_family(source) && matches!(target, Dialect::Sqlite) {
+            if matches!(target, Dialect::Sqlite) && matches!(source, Dialect::Sqlite) {
+                // Python SQLGlot represents [1, 2, 3] for sqlite as a
+                // double-quoted identifier with the rendered body.
+                let body = items
+                    .iter()
+                    .map(crate::generator::Generator::expr_to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                Expr::Column {
+                    table: None,
+                    name: body,
+                    quote_style: crate::ast::QuoteStyle::DoubleQuote,
+                    table_quote_style: crate::ast::QuoteStyle::None,
+                }
+            } else if (is_postgres_family(source) || is_mysql_family(source))
+                && matches!(target, Dialect::Sqlite)
+            {
                 Expr::Function {
                     name: "ARRAY".to_string(),
                     args: items,

@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10878 |
-| `mismatch` | 2007 |
+| `match` | 10943 |
+| `mismatch` | 1942 |
 | `oracle-error` | 1545 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 10878 |
-| `mismatch` | `sqlite` | `sqlite` | 2007 |
+| `match` | `sqlite` | `sqlite` | 10943 |
+| `mismatch` | `sqlite` | `sqlite` | 1942 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
 | `rust-error` | `sqlite` | `sqlite` | 589 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7874 |
-| `match` | `validate_identity` | 2900 |
-| `mismatch` | `validate_all` | 1127 |
+| `match` | `validate_all` | 7935 |
+| `match` | `validate_identity` | 2904 |
+| `mismatch` | `validate_all` | 1066 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 813 |
+| `mismatch` | `validate_identity` | 809 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 353 |
 | `rust-error` | `validate_all` | 233 |
@@ -60,9 +60,9 @@ Total rows: `15156`
 | `match` | `TRUNC()` | 164 |
 | `mismatch` | `CREATE` | 148 |
 | `oracle-error` | `SELECT operator multiply` | 143 |
-| `match` | `ALTER TABLE` | 119 |
+| `match` | `ALTER TABLE` | 115 |
 | `oracle-error` | `CREATE TABLE` | 113 |
-| `match` | `X` | 103 |
+| `match` | `X` | 107 |
 | `match` | `SELECT CAST()` | 101 |
 | `match` | `WITH` | 91 |
 | `mismatch` | `SELECT UNNEST()` | 85 |
@@ -138,14 +138,14 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 358 |
+| `mismatch` | `missing AS or alias rendering` | 360 |
 | `mismatch` | `missing quoted identifier` | 250 |
 | `mismatch` | `DDL/create-table rendering` | 150 |
 | `mismatch` | `SELECT` | 104 |
 | `mismatch` | `CREATE` | 96 |
 | `mismatch` | `SELECT operator multiply` | 70 |
 | `mismatch` | `case-only rendering difference` | 46 |
-| `mismatch` | `ALTER TABLE` | 40 |
+| `mismatch` | `ALTER TABLE` | 44 |
 | `mismatch` | `quote-style difference` | 40 |
 | `mismatch` | `cast/type rendering: SELECT TO_CHAR()` | 32 |
 | `mismatch` | `WITH` | 25 |
@@ -155,9 +155,8 @@ Total rows: `15156`
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
 | `mismatch` | `A` | 15 |
 | `mismatch` | `X` | 13 |
-| `mismatch` | `SELECT UNNEST()` | 12 |
 | `mismatch` | `json rendering: WITH` | 12 |
-| `mismatch` | `SELECT RLIKE()` | 11 |
+| `mismatch` | `SELECT UNNEST()` | 11 |
 | `mismatch` | `'FOO'` | 10 |
 | `mismatch` | `--` | 9 |
 | `mismatch` | `COPY` | 9 |
@@ -166,42 +165,43 @@ Total rows: `15156`
 | `mismatch` | `SELECT COUNT()` | 8 |
 | `mismatch` | `DESCRIBE` | 7 |
 | `mismatch` | `INSERT` | 7 |
-| `mismatch` | `REGEXP_SUBSTR()` | 7 |
 | `mismatch` | `SELECT FLOOR()` | 7 |
-| `mismatch` | `SELECT REGEXP_SUBSTR()` | 7 |
-| `mismatch` | `json rendering: X` | 7 |
 | `mismatch` | `whitespace-only difference` | 7 |
 | `mismatch` | `'\\\\A'` | 6 |
-| `mismatch` | `CARDINALITY()` | 6 |
 | `mismatch` | `DELETE` | 6 |
 | `mismatch` | `FROM` | 6 |
 | `mismatch` | `POSITION()` | 6 |
-| `mismatch` | `SELECT APPROX_DISTINCT()` | 6 |
 | `mismatch` | `SELECT CEIL()` | 6 |
+| `mismatch` | `SELECT MIN_BY()` | 6 |
+| `mismatch` | `STRPOS()` | 6 |
+| `mismatch` | `STR_POSITION()` | 6 |
+| `mismatch` | `date/time rendering: SELECT DATETRUNC()` | 6 |
+| `mismatch` | `date/time rendering: WITH` | 6 |
+| `mismatch` | `'\\'` | 5 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1000 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1008 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 614 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 376 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 377 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 344 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 276 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 284 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 251 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 248 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 217 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 178 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 226 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 170 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 155 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 152 |
-| `match` | `tests/dialects/test_hive.py` | `test_hive` | 147 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 132 |
-| `match` | `tests/dialects/test_presto.py` | `test_presto` | 130 |
+| `match` | `tests/dialects/test_hive.py` | `test_hive` | 151 |
+| `match` | `tests/dialects/test_presto.py` | `test_presto` | 141 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 131 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 109 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 108 |
-| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 104 |
+| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 105 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 99 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
@@ -217,14 +217,26 @@ Total rows: `15156`
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 70 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_time` | 68 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 68 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 68 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 66 |
 | `match` | `tests/dialects/test_hive.py` | `test_joins_without_on` | 66 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 66 |
 | `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 66 |
 | `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_regexp_functions` | 62 |
 
 ## Bucket Examples
+
+### `mismatch` `'FOO'`
+
+- `tests/dialects/test_snowflake.py`:2065 `test_snowflake` via `validate_all`: `'foo' REGEXP 'bar'`
+  - expected: `REGEXP_LIKE('foo', 'bar')`
+  - actual: `'foo'`
+- `tests/dialects/test_snowflake.py`:2065 `test_snowflake` via `validate_all`: `'foo' REGEXP 'bar'`
+  - expected: `REGEXP_LIKE('foo', 'bar')`
+  - actual: `'foo'`
+- `tests/dialects/test_snowflake.py`:2065 `test_snowflake` via `validate_all`: `'foo' REGEXP 'bar'`
+  - expected: `REGEXP_LIKE('foo', 'bar')`
+  - actual: `'foo'`
 
 ### `mismatch` `A`
 
@@ -286,23 +298,11 @@ Total rows: `15156`
   - expected: `SELECT CASE WHEN a THEN b ELSE c END /* test */`
   - actual: `SELECT CASE WHEN a THEN b ELSE c END`
 
-### `mismatch` `SELECT RLIKE()`
-
-- `tests/dialects/test_snowflake.py`:2049 `test_snowflake` via `validate_all`: `SELECT RLIKE(a, b)`
-  - expected: `SELECT RLIKE(a, b)`
-  - actual: `SELECT REGEXP_LIKE(a, b)`
-- `tests/dialects/test_snowflake.py`:2049 `test_snowflake` via `validate_all`: `SELECT RLIKE(a, b)`
-  - expected: `SELECT RLIKE(a, b)`
-  - actual: `SELECT REGEXP_LIKE(a, b)`
-- `tests/dialects/test_snowflake.py`:2049 `test_snowflake` via `validate_all`: `SELECT RLIKE(a, b)`
-  - expected: `SELECT RLIKE(a, b)`
-  - actual: `SELECT REGEXP_LIKE(a, b)`
-
 ### `mismatch` `SELECT UNNEST()`
 
-- `tests/dialects/test_bigquery.py`:1322 `test_bigquery` via `validate_all`: `SELECT * FROM UNNEST(ARRAY('7', '14')) AS (x)`
-  - expected: `SELECT * FROM UNNEST(ARRAY('7', '14')) AS _t0`
-  - actual: `SELECT * FROM UNNEST(ARRAY('7', '14')) AS`
+- `tests/dialects/test_bigquery.py`:3290 `test_unnest_with_offset` via `validate_all`: `SELECT * FROM tbl CROSS JOIN UNNEST(col) AS ref WITH OFFSET`
+  - expected: `SELECT * FROM tbl CROSS JOIN UNNEST(col) WITH ORDINALITY AS ref`
+  - actual: `SELECT * FROM tbl CROSS JOIN UNNEST(col) AS ref WITH OFFSET`
 - `tests/dialects/test_bigquery.py`:3290 `test_unnest_with_offset` via `validate_all`: `SELECT * FROM tbl CROSS JOIN UNNEST(col) AS ref WITH OFFSET`
   - expected: `SELECT * FROM tbl CROSS JOIN UNNEST(col) WITH ORDINALITY AS ref`
   - actual: `SELECT * FROM tbl CROSS JOIN UNNEST(col) AS ref WITH OFFSET`

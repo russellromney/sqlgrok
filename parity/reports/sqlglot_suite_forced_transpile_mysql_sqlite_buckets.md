@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10256 |
-| `mismatch` | 2448 |
+| `match` | 10317 |
+| `mismatch` | 2387 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 10256 |
-| `mismatch` | `mysql` | `sqlite` | 2448 |
+| `match` | `mysql` | `sqlite` | 10317 |
+| `mismatch` | `mysql` | `sqlite` | 2387 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
 | `rust-error` | `mysql` | `sqlite` | 576 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7574 |
-| `match` | `validate_identity` | 2581 |
-| `mismatch` | `validate_all` | 1354 |
+| `match` | `validate_all` | 7631 |
+| `match` | `validate_identity` | 2585 |
+| `mismatch` | `validate_all` | 1297 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 1025 |
+| `mismatch` | `validate_identity` | 1021 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 318 |
 | `rust-error` | `validate_all` | 254 |
@@ -63,13 +63,13 @@ Total rows: `15156`
 | `match` | `SHOW` | 108 |
 | `mismatch` | `SELECT UNNEST()` | 105 |
 | `mismatch` | `SHOW` | 105 |
-| `match` | `X` | 100 |
+| `match` | `X` | 104 |
 | `oracle-error` | `CAST()` | 96 |
 | `match` | `WITH` | 94 |
 | `match` | `SELECT CAST()` | 89 |
+| `mismatch` | `ALTER TABLE` | 86 |
 | `mismatch` | `SELECT operator multiply` | 85 |
-| `match` | `ALTER TABLE` | 84 |
-| `mismatch` | `ALTER TABLE` | 82 |
+| `match` | `ALTER TABLE` | 80 |
 | `match` | `SELECT DATEDIFF()` | 79 |
 | `match` | `SET` | 78 |
 | `match` | `DATE_TRUNC()` | 77 |
@@ -138,13 +138,13 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 244 |
+| `mismatch` | `missing AS or alias rendering` | 246 |
 | `mismatch` | `DDL/create-table rendering` | 181 |
 | `mismatch` | `SELECT` | 129 |
-| `mismatch` | `empty actual output` | 109 |
+| `mismatch` | `empty actual output` | 108 |
 | `mismatch` | `CREATE` | 100 |
-| `mismatch` | `SELECT UNNEST()` | 75 |
-| `mismatch` | `ALTER TABLE` | 73 |
+| `mismatch` | `ALTER TABLE` | 77 |
+| `mismatch` | `SELECT UNNEST()` | 74 |
 | `mismatch` | `SELECT operator multiply` | 72 |
 | `mismatch` | `missing quoted identifier` | 53 |
 | `mismatch` | `date/time rendering: SELECT DATE_SUB()` | 52 |
@@ -167,7 +167,6 @@ Total rows: `15156`
 | `mismatch` | `json rendering: SELECT JSON_VALUE()` | 12 |
 | `mismatch` | `json rendering: WITH` | 12 |
 | `mismatch` | `FORMAT()` | 11 |
-| `mismatch` | `SELECT RLIKE()` | 11 |
 | `mismatch` | `'FOO'` | 10 |
 | `mismatch` | `SELECT TABLE()` | 10 |
 | `mismatch` | `COPY` | 9 |
@@ -178,47 +177,48 @@ Total rows: `15156`
 | `mismatch` | `ARRAY_COMPACT()` | 8 |
 | `mismatch` | `ARRAY_INSERT()` | 8 |
 | `mismatch` | `DS` | 8 |
+| `mismatch` | `PIVOT` | 8 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 976 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 984 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 557 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 350 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 351 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 277 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 256 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 250 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 248 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 218 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 227 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 194 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 193 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 185 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 175 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 159 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 158 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 148 |
-| `match` | `tests/dialects/test_hive.py` | `test_hive` | 135 |
-| `match` | `tests/dialects/test_presto.py` | `test_presto` | 135 |
+| `match` | `tests/dialects/test_presto.py` | `test_presto` | 146 |
+| `match` | `tests/dialects/test_hive.py` | `test_hive` | 139 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 101 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 100 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 98 |
-| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 97 |
+| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 98 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `oracle-error` | `tests/dialects/test_tsql.py` | `test_option` | 86 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 85 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 81 |
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
 | `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 80 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 77 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 75 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
 | `match` | `tests/dialects/test_exasol.py` | `test_scalar` | 73 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 71 |
 | `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 69 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 69 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 69 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 67 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 66 |
@@ -300,9 +300,9 @@ Total rows: `15156`
 
 ### `mismatch` `SELECT UNNEST()`
 
-- `tests/dialects/test_bigquery.py`:1322 `test_bigquery` via `validate_all`: `SELECT * FROM UNNEST(ARRAY('7', '14')) AS (x)`
-  - expected: `SELECT * FROM UNNEST(ARRAY('7', '14')) AS _t0`
-  - actual: `SELECT * FROM UNNEST(ARRAY('7', '14')) AS`
+- `tests/dialects/test_bigquery.py`:1322 `test_bigquery` via `validate_all`: `SELECT * FROM UNNEST(['7', '14']) AS x`
+  - expected: `SELECT * FROM UNNEST(ARRAY('7', '14')) AS x`
+  - actual: `SELECT * FROM UNNEST(['7', '14']) AS x`
 - `tests/dialects/test_bigquery.py`:1322 `test_bigquery` via `validate_all`: `SELECT * FROM UNNEST(['7', '14']) AS x`
   - expected: `SELECT * FROM UNNEST(ARRAY('7', '14')) AS x`
   - actual: `SELECT * FROM UNNEST(['7', '14']) AS x`
@@ -423,11 +423,11 @@ Total rows: `15156`
 - `tests/dialects/test_duckdb.py`:2498 `test_show_tables` via `validate_identity`: `SHOW ALL TABLES`
   - expected: `SHOW ALL TABLES`
   - actual: ``
-- `tests/dialects/test_postgres.py`:642 `test_postgres` via `validate_all`: `e'x'`
-  - expected: `e AS "x"`
-  - actual: ``
 - `tests/dialects/test_singlestore.py`:889 `test_show` via `validate_identity`: `SHOW AGGREGATES FROM db1`
   - expected: `SHOW AGGREGATES FROM db1`
+  - actual: ``
+- `tests/dialects/test_singlestore.py`:890 `test_show` via `validate_identity`: `SHOW AGGREGATES LIKE 'multiply%'`
+  - expected: `SHOW AGGREGATES LIKE 'multiply%'`
   - actual: ``
 
 ### `mismatch` `missing AS or alias rendering`
