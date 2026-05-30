@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10490 |
-| `mismatch` | 2395 |
+| `match` | 10511 |
+| `mismatch` | 2374 |
 | `oracle-error` | 1545 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 10490 |
-| `mismatch` | `sqlite` | `sqlite` | 2395 |
+| `match` | `sqlite` | `sqlite` | 10511 |
+| `mismatch` | `sqlite` | `sqlite` | 2374 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
 | `rust-error` | `sqlite` | `sqlite` | 589 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -28,17 +28,17 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7528 |
-| `match` | `validate_identity` | 2861 |
-| `mismatch` | `validate_all` | 1473 |
+| `match` | `validate_all` | 7537 |
+| `match` | `validate_identity` | 2871 |
+| `mismatch` | `validate_all` | 1464 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 852 |
+| `mismatch` | `validate_identity` | 842 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 353 |
 | `rust-error` | `validate_all` | 233 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `match` | `validate` | 101 |
-| `mismatch` | `validate` | 70 |
+| `match` | `validate` | 103 |
+| `mismatch` | `validate` | 68 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -48,14 +48,14 @@ Total rows: `15156`
 
 | Status | Shape | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 685 |
+| `match` | `SELECT` | 693 |
 | `match` | `CAST()` | 558 |
 | `match` | `CREATE TABLE` | 356 |
 | `match` | `SELECT operator multiply` | 305 |
 | `match` | `SHOW` | 215 |
 | `match` | `CREATE` | 195 |
 | `oracle-error` | `SELECT` | 195 |
-| `mismatch` | `SELECT` | 187 |
+| `mismatch` | `SELECT` | 179 |
 | `mismatch` | `CREATE TABLE` | 176 |
 | `match` | `TRUNC()` | 164 |
 | `mismatch` | `CREATE` | 148 |
@@ -64,7 +64,7 @@ Total rows: `15156`
 | `match` | `ALTER TABLE` | 116 |
 | `oracle-error` | `CREATE TABLE` | 113 |
 | `match` | `X` | 103 |
-| `match` | `SELECT CAST()` | 100 |
+| `match` | `SELECT CAST()` | 101 |
 | `match` | `WITH` | 91 |
 | `mismatch` | `SELECT UNNEST()` | 88 |
 | `match` | `SELECT DATEDIFF()` | 83 |
@@ -141,8 +141,8 @@ Total rows: `15156`
 | `mismatch` | `missing AS or alias rendering` | 375 |
 | `mismatch` | `missing quoted identifier` | 250 |
 | `mismatch` | `DDL/create-table rendering` | 154 |
-| `mismatch` | `SELECT` | 119 |
 | `mismatch` | `SELECT operator multiply` | 112 |
+| `mismatch` | `SELECT` | 111 |
 | `mismatch` | `CREATE` | 96 |
 | `mismatch` | `date/time rendering: DATE_ADD()` | 69 |
 | `mismatch` | `case-only rendering difference` | 45 |
@@ -183,22 +183,22 @@ Total rows: `15156`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 958 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 959 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 592 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 367 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 277 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 261 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 269 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 247 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 241 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 220 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 219 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 209 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 174 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 150 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 147 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 141 |
+| `match` | `tests/dialects/test_presto.py` | `test_presto` | 126 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
-| `match` | `tests/dialects/test_presto.py` | `test_presto` | 125 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 106 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 100 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 96 |
@@ -207,18 +207,18 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 84 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 83 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 83 |
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 79 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 78 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 75 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 75 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 73 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 71 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 70 |
 | `match` | `tests/dialects/test_exasol.py` | `test_scalar` | 68 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_time` | 67 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 66 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_time` | 66 |
 | `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 66 |
 | `match` | `tests/dialects/test_presto.py` | `test_time` | 66 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 65 |

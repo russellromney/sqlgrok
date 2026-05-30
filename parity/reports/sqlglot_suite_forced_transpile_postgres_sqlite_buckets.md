@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10661 |
-| `mismatch` | 2294 |
+| `match` | 10662 |
+| `mismatch` | 2293 |
 | `oracle-error` | 1456 |
 | `rust-error` | 608 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 10661 |
-| `mismatch` | `postgres` | `sqlite` | 2294 |
+| `match` | `postgres` | `sqlite` | 10662 |
+| `mismatch` | `postgres` | `sqlite` | 2293 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
 | `rust-error` | `postgres` | `sqlite` | 608 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -29,10 +29,10 @@ Total rows: `15156`
 | Status | Helper | Count |
 | --- | --- | ---: |
 | `match` | `validate_all` | 7677 |
-| `match` | `validate_identity` | 2881 |
+| `match` | `validate_identity` | 2882 |
 | `mismatch` | `validate_all` | 1355 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 868 |
+| `mismatch` | `validate_identity` | 867 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 361 |
 | `rust-error` | `validate_all` | 244 |
@@ -186,7 +186,7 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 985 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 592 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 410 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 297 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 298 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 250 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 243 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 236 |
@@ -203,7 +203,7 @@ Total rows: `15156`
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 102 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 101 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 94 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 93 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 92 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |

@@ -2611,12 +2611,27 @@ impl Generator {
                     self.write("'");
                     self.write(n);
                     self.write("'");
+                    if let Some(unit) = unit {
+                        self.write(" ");
+                        self.gen_datetime_field(unit);
+                    }
+                } else if matches!(self.dialect, Some(Dialect::Sqlite))
+                    && unit.is_none()
+                    && let Expr::StringLiteral(s) = value.as_ref()
+                    && let Some((num, rest)) = split_interval_string(s)
+                {
+                    // SQLGlot normalizes INTERVAL '<n> <unit>' to
+                    // INTERVAL '<n>' <unit> for SQLite output.
+                    self.write("'");
+                    self.write(num);
+                    self.write("' ");
+                    self.write_keyword(&rest.to_ascii_uppercase());
                 } else {
                     self.gen_expr(value);
-                }
-                if let Some(unit) = unit {
-                    self.write(" ");
-                    self.gen_datetime_field(unit);
+                    if let Some(unit) = unit {
+                        self.write(" ");
+                        self.gen_datetime_field(unit);
+                    }
                 }
             }
             Expr::ArrayLiteral(items) => {
@@ -3906,6 +3921,71 @@ fn pretty_raw_sql(sql: &str) -> String {
     }
 
     normalized.join("\n")
+}
+
+/// Split an interval string like `"1 DAY"` into ("1", "DAY"). Returns None
+/// if the string isn't shaped as `<number> <recognized-unit>` (we only split
+/// when the unit is a known DateTimeField keyword to avoid mangling complex
+/// Postgres interval strings like `"1 01:00"`).
+fn split_interval_string(s: &str) -> Option<(&str, &str)> {
+    let s = s.trim();
+    let mut split = s.splitn(2, |c: char| c.is_ascii_whitespace());
+    let num = split.next()?;
+    let rest = split.next()?.trim();
+    if num.is_empty() || rest.is_empty() {
+        return None;
+    }
+    // Number must be a (possibly signed) integer or decimal.
+    let mut iter = num.chars().peekable();
+    if matches!(iter.peek(), Some('+') | Some('-')) {
+        iter.next();
+    }
+    let mut saw_digit = false;
+    let mut saw_dot = false;
+    for ch in iter {
+        if ch.is_ascii_digit() {
+            saw_digit = true;
+        } else if ch == '.' && !saw_dot {
+            saw_dot = true;
+        } else {
+            return None;
+        }
+    }
+    if !saw_digit {
+        return None;
+    }
+    // Rest must be a recognized interval unit (Postgres compound forms like
+    // "1 01:00" stay intact because "01:00" isn't a valid unit name).
+    let upper = rest.to_ascii_uppercase();
+    let is_unit = matches!(
+        upper.as_str(),
+        "YEAR"
+            | "YEARS"
+            | "QUARTER"
+            | "QUARTERS"
+            | "MONTH"
+            | "MONTHS"
+            | "WEEK"
+            | "WEEKS"
+            | "DAY"
+            | "DAYS"
+            | "HOUR"
+            | "HOURS"
+            | "MINUTE"
+            | "MINUTES"
+            | "SECOND"
+            | "SECONDS"
+            | "MILLISECOND"
+            | "MILLISECONDS"
+            | "MICROSECOND"
+            | "MICROSECONDS"
+            | "NANOSECOND"
+            | "NANOSECONDS"
+    );
+    if !is_unit {
+        return None;
+    }
+    Some((num, rest))
 }
 
 fn raw_starts_with_keyword(value: &str, keyword: &str) -> bool {
