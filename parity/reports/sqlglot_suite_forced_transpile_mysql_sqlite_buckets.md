@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10115 |
-| `mismatch` | 2589 |
+| `match` | 10151 |
+| `mismatch` | 2553 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 10115 |
-| `mismatch` | `mysql` | `sqlite` | 2589 |
+| `match` | `mysql` | `sqlite` | 10151 |
+| `mismatch` | `mysql` | `sqlite` | 2553 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
 | `rust-error` | `mysql` | `sqlite` | 576 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7442 |
-| `match` | `validate_identity` | 2573 |
-| `mismatch` | `validate_all` | 1486 |
+| `match` | `validate_all` | 7477 |
+| `match` | `validate_identity` | 2574 |
+| `mismatch` | `validate_all` | 1451 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 1033 |
+| `mismatch` | `validate_identity` | 1032 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 318 |
 | `rust-error` | `validate_all` | 254 |
@@ -76,6 +76,7 @@ Total rows: `15156`
 | `match` | `SELECT UNNEST()` | 70 |
 | `match` | `LOG()` | 67 |
 | `mismatch` | `WITH` | 66 |
+| `match` | `JSON_EXTRACT()` | 64 |
 | `rust-error` | `SELECT` | 64 |
 | `rust-error` | `SELECT operator multiply` | 64 |
 | `match` | `GRANT` | 62 |
@@ -87,7 +88,6 @@ Total rows: `15156`
 | `match` | `REGEXP_INSTR()` | 56 |
 | `match` | `REVOKE` | 56 |
 | `match` | `SELECT TO_TIMESTAMP()` | 55 |
-| `oracle-error` | `DATE_ADD()` | 54 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -156,7 +156,6 @@ Total rows: `15156`
 | `mismatch` | `SELECT FORMAT()` | 27 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 27 |
 | `mismatch` | `date/time rendering: DATE_ADD()` | 27 |
-| `mismatch` | `json rendering: JSON_EXTRACT()` | 27 |
 | `mismatch` | `A` | 25 |
 | `mismatch` | `date/time rendering: CREATE` | 23 |
 | `mismatch` | `SELECT operator index` | 21 |
@@ -178,6 +177,7 @@ Total rows: `15156`
 | `mismatch` | `cast/type rendering: SELECT operator cast` | 9 |
 | `mismatch` | `date/time rendering: SELECT DATE_ADD()` | 9 |
 | `mismatch` | `--` | 8 |
+| `mismatch` | `ARRAY_COMPACT()` | 8 |
 
 ## Source Test Buckets
 
@@ -186,7 +186,7 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 964 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 547 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 348 |
-| `match` | `tests/dialects/test_dialect.py` | `test_time` | 266 |
+| `match` | `tests/dialects/test_dialect.py` | `test_time` | 273 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 243 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 240 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 217 |
@@ -201,6 +201,7 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 100 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 100 |
+| `match` | `tests/dialects/test_dialect.py` | `test_json` | 97 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 94 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 93 |
@@ -216,7 +217,6 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 75 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
 | `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 74 |
-| `match` | `tests/dialects/test_dialect.py` | `test_json` | 70 |
 | `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 70 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 69 |
 | `match` | `tests/dialects/test_exasol.py` | `test_scalar` | 68 |
@@ -370,6 +370,18 @@ Total rows: `15156`
   - expected: `SELECT CAST(CAST('2025-06-24 12:34:56' AS TIMESTAMPTZ) AS TEXT)`
   - actual: `SELECT STRFTIME('YYYY-MM-DD HH24:MI:SS', CAST('2025-06-24 12:34:56' AS TIMESTAMPTZ))`
 
+### `mismatch` `date/time rendering: CREATE`
+
+- `tests/dialects/test_postgres.py`:1277 `test_ddl` via `validate_identity`: `CREATE CONSTRAINT TRIGGER my_trigger AFTER INSERT OR DELETE OR UPDATE OF col_a, col_b ON public.my_table DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION DO_STH()`
+  - expected: `CREATE CONSTRAINT TRIGGER my_trigger`
+  - actual: `CREATE CONSTRAINT TRIGGER my_trigger AFTER INSERT OR DELETE OR UPDATE OF col_a, col_b ON public.my_table DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION DO_STH()`
+- `tests/dialects/test_postgres.py`:1921 `test_postgres_create_trigger` via `validate_identity`: `CREATE TRIGGER check_update BEFORE UPDATE ON accounts FOR EACH ROW EXECUTE FUNCTION CHECK_ACCOUNT_UPDATE()`
+  - expected: `CREATE TRIGGER check_update`
+  - actual: `CREATE TRIGGER check_update BEFORE UPDATE ON accounts FOR EACH ROW EXECUTE FUNCTION CHECK_ACCOUNT_UPDATE()`
+- `tests/dialects/test_postgres.py`:1921 `test_postgres_create_trigger` via `validate_identity`: `CREATE TRIGGER audit_changes AFTER INSERT OR UPDATE OR DELETE ON products FOR EACH ROW EXECUTE FUNCTION AUDIT_LOG()`
+  - expected: `CREATE TRIGGER audit_changes`
+  - actual: `CREATE TRIGGER audit_changes AFTER INSERT OR UPDATE OR DELETE ON products FOR EACH ROW EXECUTE FUNCTION AUDIT_LOG()`
+
 ### `mismatch` `date/time rendering: DATE_ADD()`
 
 - `tests/dialects/test_bigquery.py`:1510 `test_bigquery` via `validate_all`: `DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)`
@@ -417,18 +429,6 @@ Total rows: `15156`
 - `tests/dialects/test_singlestore.py`:889 `test_show` via `validate_identity`: `SHOW AGGREGATES FROM db1`
   - expected: `SHOW AGGREGATES FROM db1`
   - actual: ``
-
-### `mismatch` `json rendering: JSON_EXTRACT()`
-
-- `tests/dialects/test_dialect.py`:1819 `test_json` via `validate_all`: `JSON_EXTRACT(x, '$["a b"]')`
-  - expected: `x -> '$."a b"'`
-  - actual: `x -> '$["a b"]'`
-- `tests/dialects/test_dialect.py`:1819 `test_json` via `validate_all`: `JSON_EXTRACT(x, '$["a b"]')`
-  - expected: `x -> '$."a b"'`
-  - actual: `x -> '$["a b"]'`
-- `tests/dialects/test_dialect.py`:1819 `test_json` via `validate_all`: `JSON_EXTRACT(x, '$["a b"]')`
-  - expected: `x -> '$."a b"'`
-  - actual: `x -> '$["a b"]'`
 
 ### `mismatch` `missing AS or alias rendering`
 

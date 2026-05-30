@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10653 |
-| `mismatch` | 2232 |
+| `match` | 10680 |
+| `mismatch` | 2205 |
 | `oracle-error` | 1545 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -23,9 +23,9 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7666 |
+| `match` | `validate_all` | 7693 |
 | `match` | `validate_identity` | 2884 |
-| `mismatch` | `validate_all` | 1335 |
+| `mismatch` | `validate_all` | 1308 |
 | `oracle-error` | `validate_identity` | 993 |
 | `mismatch` | `validate_identity` | 829 |
 | `oracle-error` | `validate_all` | 543 |
@@ -61,13 +61,13 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 106 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 100 |
+| `match` | `tests/dialects/test_dialect.py` | `test_json` | 98 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 96 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 84 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 83 |
-| `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
 
 ## Examples
 

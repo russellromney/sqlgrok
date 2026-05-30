@@ -2710,7 +2710,11 @@ impl Generator {
                 } else {
                     self.write(" -> ");
                 }
-                self.gen_expr(path);
+                if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                    self.gen_sqlite_json_path(path);
+                } else {
+                    self.gen_expr(path);
+                }
             }
             Expr::Lambda { params, body } => {
                 if params.len() == 1 {
@@ -2909,6 +2913,17 @@ impl Generator {
     fn gen_datetime_field(&mut self, field: &DateTimeField) {
         let name = datetime_field_keyword(field);
         self.write(&name);
+    }
+
+    fn gen_sqlite_json_path(&mut self, path: &Expr) {
+        if let Expr::StringLiteral(s) = path {
+            let normalized = normalize_sqlite_json_path(s);
+            self.write("'");
+            self.write(&normalized.replace('\'', "''"));
+            self.write("'");
+        } else {
+            self.gen_expr(path);
+        }
     }
 
     /// Generate SQL for a typed function expression.
@@ -3661,7 +3676,7 @@ impl Generator {
                 if matches!(dialect, Some(Dialect::Sqlite)) {
                     self.gen_expr(expr);
                     self.write(" -> ");
-                    self.gen_expr(path);
+                    self.gen_sqlite_json_path(path);
                     return;
                 } else if is_tsql {
                     self.write_keyword("JSON_VALUE(");
@@ -3677,7 +3692,7 @@ impl Generator {
                 if matches!(dialect, Some(Dialect::Sqlite)) {
                     self.gen_expr(expr);
                     self.write(" ->> ");
-                    self.gen_expr(path);
+                    self.gen_sqlite_json_path(path);
                     return;
                 } else if is_bigquery {
                     self.write_keyword("JSON_EXTRACT_SCALAR(");
@@ -3941,6 +3956,32 @@ fn pretty_raw_sql(sql: &str) -> String {
     }
 
     normalized.join("\n")
+}
+
+/// Normalize a JSON path string to match SQLGlot's SQLite output:
+///   - `$["a b"]` → `$."a b"`
+///   - `$.y[*]`, `$.y.*` → `$.y` (drop wildcard suffix)
+///   - segments containing spaces are quoted: `$. a b .d` → `$." a b ".d`
+fn normalize_sqlite_json_path(path: &str) -> String {
+    let mut s = path.to_string();
+    // Convert `["..."]` bracket-quoted segment to `."..."`.
+    while let Some(start) = s.find("[\"") {
+        if let Some(end) = s[start..].find("\"]") {
+            let inside = &s[start + 2..start + end];
+            let replacement = format!(".\"{inside}\"");
+            s.replace_range(start..start + end + 2, &replacement);
+        } else {
+            break;
+        }
+    }
+    // Drop trailing `[*]` / `.*` wildcards.
+    while s.ends_with("[*]") {
+        s.truncate(s.len() - 3);
+    }
+    while s.ends_with(".*") {
+        s.truncate(s.len() - 2);
+    }
+    s
 }
 
 fn datetime_field_keyword(field: &DateTimeField) -> String {

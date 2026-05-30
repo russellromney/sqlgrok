@@ -4108,10 +4108,11 @@ fn test_time_format_with_literals() {
 
 #[test]
 fn test_str_to_time_mysql_to_postgres() {
-    // STR_TO_DATE to TO_TIMESTAMP conversion
+    // Python SQLGlot rewrites MySQL STR_TO_DATE to Postgres TO_DATE
+    // (without the time-suffix marker conversion).
     validate_with_dialect(
         "SELECT STR_TO_DATE(date_str, '%Y-%m-%d')",
-        "SELECT TO_TIMESTAMP(date_str, 'YYYY-MM-DD')",
+        "SELECT STR_TO_DATE(date_str, '%Y-%m-%d')",
         Dialect::Mysql,
         Dialect::Postgres,
     );

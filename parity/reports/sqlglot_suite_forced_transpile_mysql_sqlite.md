@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10115 |
-| `mismatch` | 2589 |
+| `match` | 10151 |
+| `mismatch` | 2553 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7442 |
-| `match` | `validate_identity` | 2573 |
-| `mismatch` | `validate_all` | 1486 |
+| `match` | `validate_all` | 7477 |
+| `match` | `validate_identity` | 2574 |
+| `mismatch` | `validate_all` | 1451 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 1033 |
+| `mismatch` | `validate_identity` | 1032 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 318 |
 | `rust-error` | `validate_all` | 254 |
@@ -46,7 +46,7 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 964 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 547 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 348 |
-| `match` | `tests/dialects/test_dialect.py` | `test_time` | 266 |
+| `match` | `tests/dialects/test_dialect.py` | `test_time` | 273 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 243 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 240 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 217 |
@@ -61,13 +61,13 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 100 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 100 |
+| `match` | `tests/dialects/test_dialect.py` | `test_json` | 97 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 94 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 93 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 89 |
-| `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 
 ## Examples
 

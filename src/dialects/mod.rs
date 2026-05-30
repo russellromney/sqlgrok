@@ -1750,6 +1750,26 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
+            // mysql STR_TO_DATE(x, fmt) needs format conversion and (when
+            // the format contains time markers) renaming to STR_TO_TIME for
+            // SQLite output. Other source dialects preserve STR_TO_DATE.
+            if matches!(target, Dialect::Sqlite)
+                && is_mysql_family(source)
+                && name.eq_ignore_ascii_case("STR_TO_DATE")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 2
+            {
+                let transformed_format = transform_format_expr(new_args[1].clone(), source, target);
+                return Expr::Function {
+                    name: mysql_sqlite_str_to_time_name(&transformed_format).to_string(),
+                    args: vec![new_args[0].clone(), transformed_format],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
             // DATE_FORMAT in MySQL/Hive/Spark/Databricks is the native format
             // function and needs dialect-specific lowering (STRFTIME for
             // SQLite, TO_CHAR for Postgres, FORMAT_TIMESTAMP for BigQuery,
