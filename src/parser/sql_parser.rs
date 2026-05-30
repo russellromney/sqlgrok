@@ -6719,36 +6719,16 @@ impl Parser {
         let upper = name.to_uppercase();
         let tf = match upper.as_str() {
             // ── Date/Time ──────────────────────────────────────────
-            "DATE_ADD" | "DATEADD" | "TIMESTAMPADD" => {
+            "DATE_ADD" | "TIMESTAMPADD" => {
                 let mut it = args.into_iter();
                 let first = it.next()?;
                 let second = it.next()?;
                 let third = it.next();
-                // Handle DATEADD(unit, interval, expr) — TSQL/Snowflake arg order
-                if upper == "DATEADD" {
-                    if let Some(third_arg) = third {
-                        // 3-arg: DATEADD(unit, interval, expr)
-                        let unit = Self::expr_to_datetime_field(&first);
-                        TypedFunction::DateAdd {
-                            expr: Box::new(third_arg),
-                            interval: Box::new(second),
-                            unit,
-                        }
-                    } else {
-                        TypedFunction::DateAdd {
-                            expr: Box::new(first),
-                            interval: Box::new(second),
-                            unit: None,
-                        }
-                    }
-                } else {
-                    // DATE_ADD(expr, interval [, unit])
-                    let unit = third.as_ref().and_then(Self::expr_to_datetime_field);
-                    TypedFunction::DateAdd {
-                        expr: Box::new(first),
-                        interval: Box::new(second),
-                        unit,
-                    }
+                let unit = third.as_ref().and_then(Self::expr_to_datetime_field);
+                TypedFunction::DateAdd {
+                    expr: Box::new(first),
+                    interval: Box::new(second),
+                    unit,
                 }
             }
             "DATE_DIFF" | "DATEDIFF" => {
