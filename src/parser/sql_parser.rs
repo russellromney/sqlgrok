@@ -4065,8 +4065,14 @@ impl Parser {
                     "GEOMETRY" => Ok(DataType::Geometry),
                     "SUPER" => Ok(DataType::Super),
                     _ => {
-                        self.consume_balanced_parentheses();
-                        Ok(DataType::Unknown(name))
+                        // Preserve the original case for unrecognized type
+                        // names (UDTs, dialect-specific types) so SQLGlot
+                        // round-trips them verbatim.
+                        if let Some(params) = self.consume_balanced_parentheses_sql() {
+                            Ok(DataType::Unknown(format!("{raw_name}{params}")))
+                        } else {
+                            Ok(DataType::Unknown(raw_name))
+                        }
                     }
                 }
             }
@@ -7211,7 +7217,7 @@ impl Parser {
                     expr: Box::new(it.next()?),
                 }
             }
-            "ROUND" => {
+            "ROUND" if args.len() <= 2 => {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
                 let decimals = it.next();
