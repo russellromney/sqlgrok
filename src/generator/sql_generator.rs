@@ -1299,6 +1299,11 @@ impl Generator {
             return;
         }
 
+        if ct.columns.is_empty() && ct.constraints.is_empty() && ct.as_select.is_none() {
+            self.gen_create_table_options(&ct.options);
+            return;
+        }
+
         self.write(" (");
 
         if self.pretty {
@@ -1347,6 +1352,22 @@ impl Generator {
         let Some(dialect) = self.dialect else {
             return;
         };
+        if matches!(dialect, Dialect::Sqlite) {
+            // SQLite drops most dialect-specific create-table options to match
+            // SQLGlot. The exception is USING <name>, which SQLGlot preserves
+            // (e.g. `CREATE TABLE x USING ICEBERG`).
+            for option in options {
+                if let CreateTableOption::Unknown { name, value } = option
+                    && name.eq_ignore_ascii_case("USING")
+                    && let Some(value) = value
+                {
+                    self.write(" ");
+                    self.write_keyword("USING ");
+                    self.write(value);
+                }
+            }
+            return;
+        }
         if !matches!(
             dialect,
             Dialect::Mysql | Dialect::Doris | Dialect::SingleStore | Dialect::StarRocks

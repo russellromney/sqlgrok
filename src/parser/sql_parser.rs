@@ -94,6 +94,7 @@ fn identifier_data_type_name(name: &str) -> bool {
             | "NULL"
             | "NUMERIC"
             | "NVARCHAR"
+            | "NVARCHAR2"
             | "OBJECT"
             | "REAL"
             | "REGCLASS"
@@ -112,6 +113,7 @@ fn identifier_data_type_name(name: &str) -> bool {
             | "UUID"
             | "VARBINARY"
             | "VARCHAR"
+            | "VARCHAR2"
             | "VARIANT"
             | "XML"
     )
@@ -3083,6 +3085,26 @@ impl Parser {
 
         let temporary = self.match_token(TokenType::Temporary) || self.match_token(TokenType::Temp);
 
+        // Drop dialect-specific table modifiers (Snowflake, Teradata, BigQuery,
+        // Iceberg, Hive, Athena, etc.) that SQLGlot strips when rendering to
+        // most targets: VOLATILE / TRANSIENT / EXTERNAL / GLOBAL / LOCAL /
+        // SET / MULTISET (the Hive EXTERNAL variant is also handled here).
+        loop {
+            if self.match_keyword("VOLATILE")
+                || self.match_keyword("TRANSIENT")
+                || self.match_keyword("EXTERNAL")
+                || self.match_keyword("GLOBAL")
+                || self.match_keyword("LOCAL")
+                || self.match_keyword("SET")
+                || self.match_keyword("MULTISET")
+                || self.match_keyword("ICEBERG")
+                || self.match_keyword("DYNAMIC")
+            {
+                continue;
+            }
+            break;
+        }
+
         let unique = self.match_token(TokenType::Unique);
         if unique || self.peek().token_type == TokenType::Index {
             return self.parse_create_index(unique).map(Statement::CreateIndex);
@@ -3119,31 +3141,31 @@ impl Parser {
             }));
         }
 
-        self.expect(TokenType::LParen)?;
-
         let mut columns = Vec::new();
         let mut constraints = Vec::new();
 
-        loop {
-            // Check for table-level constraints
-            if matches!(
-                self.peek_type(),
-                TokenType::Primary
-                    | TokenType::Unique
-                    | TokenType::Foreign
-                    | TokenType::Check
-                    | TokenType::Constraint
-            ) {
-                constraints.push(self.parse_table_constraint()?);
-            } else if self.peek_type() != &TokenType::RParen {
-                columns.push(self.parse_column_def()?);
-            }
+        if self.match_token(TokenType::LParen) {
+            loop {
+                // Check for table-level constraints
+                if matches!(
+                    self.peek_type(),
+                    TokenType::Primary
+                        | TokenType::Unique
+                        | TokenType::Foreign
+                        | TokenType::Check
+                        | TokenType::Constraint
+                ) {
+                    constraints.push(self.parse_table_constraint()?);
+                } else if self.peek_type() != &TokenType::RParen {
+                    columns.push(self.parse_column_def()?);
+                }
 
-            if !self.match_token(TokenType::Comma) {
-                break;
+                if !self.match_token(TokenType::Comma) {
+                    break;
+                }
             }
+            self.expect(TokenType::RParen)?;
         }
-        self.expect(TokenType::RParen)?;
         let mut options = self.parse_create_table_options();
         let as_select = if self.match_token(TokenType::As) {
             Some(Box::new(self.parse_statement_inner()?))
@@ -3152,6 +3174,18 @@ impl Parser {
         };
         if as_select.is_some() && options.iter().any(is_create_table_empty_option) {
             options.retain(|option| !is_create_table_empty_option(option));
+        }
+
+        // If there is unconsumed trailing input (e.g. CLUSTERED BY ..., NO
+        // FALLBACK ..., BACKUP NO AS SELECT ...), fall back to raw so we
+        // don't silently drop dialect-specific tails.
+        if !matches!(self.peek_type(), TokenType::Eof | TokenType::Semicolon) {
+            return Err(SqlglotError::ParserError {
+                message: format!(
+                    "Unrecognized CREATE TABLE tail starting at token {:?}",
+                    self.peek().value
+                ),
+            });
         }
 
         Ok(Statement::CreateTable(CreateTableStatement {
@@ -3550,6 +3584,28 @@ impl Parser {
                 value: self.parse_create_table_option_value(),
             });
         }
+        if self.match_keyword("STORED") {
+            let _ = self.match_token(TokenType::As);
+            let mut value = self.parse_create_table_option_value().unwrap_or_default();
+            if self.match_keyword("INPUTFORMAT") {
+                let inf = self.parse_create_table_option_value().unwrap_or_default();
+                value = format!("{value} INPUTFORMAT {inf}");
+                if self.match_keyword("OUTPUTFORMAT") {
+                    let outf = self.parse_create_table_option_value().unwrap_or_default();
+                    value = format!("{value} OUTPUTFORMAT {outf}");
+                }
+            }
+            return Some(CreateTableOption::Unknown {
+                name: "STORED AS".to_string(),
+                value: (!value.is_empty()).then_some(value),
+            });
+        }
+        if self.match_keyword("USING") {
+            return Some(CreateTableOption::Unknown {
+                name: "USING".to_string(),
+                value: self.parse_create_table_option_value(),
+            });
+        }
         if self.match_keyword("TBLPROPERTIES") {
             return Some(CreateTableOption::Unknown {
                 name: "TBLPROPERTIES".to_string(),
@@ -3928,7 +3984,7 @@ impl Parser {
                         let len = self.parse_single_type_param()?;
                         Ok(DataType::Varbinary(len))
                     }
-                    "NVARCHAR" | "NCHAR" => {
+                    "NVARCHAR" | "NCHAR" | "VARCHAR2" | "NVARCHAR2" => {
                         let len = self.parse_single_type_param()?;
                         Ok(DataType::Varchar(len))
                     }
@@ -6691,7 +6747,7 @@ impl Parser {
                 }
             }
             "CURRENT_DATE" => TypedFunction::CurrentDate,
-            "CURRENT_TIMESTAMP" | "NOW" | "GETDATE" | "SYSDATE" => TypedFunction::CurrentTimestamp,
+            "CURRENT_TIMESTAMP" | "NOW" => TypedFunction::CurrentTimestamp,
             "STR_TO_TIME" | "STR_TO_DATE" | "PARSE_TIMESTAMP" | "PARSE_DATETIME"
                 if args.len() == 2 =>
             {

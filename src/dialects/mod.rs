@@ -2692,10 +2692,19 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
             }
         }
         "GETDATE" => {
-            if is_tsql_family(target) {
+            if matches!(target, Dialect::Sqlite) {
+                if is_tsql_family(source) {
+                    // SQLGlot converts T-SQL GETDATE() to CURRENT_TIMESTAMP
+                    // when targeting SQLite, but preserves it for every
+                    // other source dialect.
+                    "CURRENT_TIMESTAMP".to_string()
+                } else {
+                    name.to_string()
+                }
+            } else if is_tsql_family(target) {
                 name.to_string()
             } else if is_postgres_family(target)
-                || matches!(target, Dialect::Mysql | Dialect::DuckDb | Dialect::Sqlite)
+                || matches!(target, Dialect::Mysql | Dialect::DuckDb)
             {
                 "NOW".to_string()
             } else {

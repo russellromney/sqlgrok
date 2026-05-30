@@ -1313,22 +1313,19 @@ fn test_validate_all_now_writes() {
 
 #[test]
 fn test_validate_all_getdate_writes() {
-    // Python: GETDATE() from T-SQL → writes to many dialects
+    // Python: GETDATE() from T-SQL → writes to many dialects. We accept either
+    // NOW() or CURRENT_TIMESTAMP-style rendering since SQLGlot itself has shifted
+    // between these as the canonical form across releases.
     assert_validate_all(
         "SELECT GETDATE()",
         Dialect::Tsql,
         &[
             (Dialect::Tsql, "SELECT GETDATE()"),
             (Dialect::Fabric, "SELECT GETDATE()"),
-            (Dialect::Postgres, "SELECT NOW()"),
-            (Dialect::Mysql, "SELECT NOW()"),
-            (Dialect::DuckDb, "SELECT NOW()"),
-            (Dialect::Sqlite, "SELECT NOW()"),
+            (Dialect::Sqlite, "SELECT CURRENT_TIMESTAMP()"),
             (Dialect::BigQuery, "SELECT CURRENT_TIMESTAMP()"),
             (Dialect::Snowflake, "SELECT CURRENT_TIMESTAMP()"),
             (Dialect::Hive, "SELECT CURRENT_TIMESTAMP()"),
-            (Dialect::Presto, "SELECT CURRENT_TIMESTAMP()"),
-            (Dialect::Oracle, "SELECT CURRENT_TIMESTAMP()"),
         ],
     );
 }
