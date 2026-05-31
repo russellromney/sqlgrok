@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11168 |
-| `mismatch` | 1717 |
+| `match` | 11185 |
+| `mismatch` | 1700 |
 | `oracle-error` | 1545 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 11168 |
-| `mismatch` | `sqlite` | `sqlite` | 1717 |
+| `match` | `sqlite` | `sqlite` | 11185 |
+| `mismatch` | `sqlite` | `sqlite` | 1700 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
 | `rust-error` | `sqlite` | `sqlite` | 589 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -28,10 +28,10 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8095 |
+| `match` | `validate_all` | 8112 |
 | `match` | `validate_identity` | 2969 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_all` | 906 |
+| `mismatch` | `validate_all` | 889 |
 | `mismatch` | `validate_identity` | 744 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 353 |
@@ -62,9 +62,9 @@ Total rows: `15156`
 | `oracle-error` | `SELECT operator multiply` | 143 |
 | `match` | `ALTER TABLE` | 118 |
 | `oracle-error` | `CREATE TABLE` | 113 |
+| `match` | `WITH` | 108 |
 | `match` | `X` | 107 |
 | `match` | `SELECT CAST()` | 102 |
-| `match` | `WITH` | 91 |
 | `match` | `SELECT DATEDIFF()` | 83 |
 | `mismatch` | `SELECT UNNEST()` | 82 |
 | `mismatch` | `SELECT operator multiply` | 82 |
@@ -77,7 +77,6 @@ Total rows: `15156`
 | `match` | `GRANT` | 62 |
 | `rust-error` | `SELECT operator multiply` | 61 |
 | `match` | `ANALYZE` | 60 |
-| `mismatch` | `WITH` | 59 |
 | `match` | `SELECT SUM()` | 58 |
 | `match` | `A` | 57 |
 | `match` | `REGEXP_REPLACE()` | 57 |
@@ -88,6 +87,7 @@ Total rows: `15156`
 | `match` | `REVOKE` | 56 |
 | `match` | `SELECT TO_TIMESTAMP()` | 55 |
 | `oracle-error` | `WITH` | 52 |
+| `match` | `FROM` | 51 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -142,19 +142,18 @@ Total rows: `15156`
 | `mismatch` | `DDL/create-table rendering` | 150 |
 | `mismatch` | `SELECT` | 104 |
 | `mismatch` | `CREATE` | 96 |
-| `mismatch` | `missing quoted identifier` | 88 |
+| `mismatch` | `missing quoted identifier` | 87 |
 | `mismatch` | `SELECT operator multiply` | 70 |
-| `mismatch` | `case-only rendering difference` | 46 |
+| `mismatch` | `case-only rendering difference` | 48 |
 | `mismatch` | `ALTER TABLE` | 41 |
 | `mismatch` | `quote-style difference` | 40 |
-| `mismatch` | `WITH` | 25 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 24 |
 | `mismatch` | `date/time rendering: CREATE` | 24 |
+| `mismatch` | `WITH` | 23 |
 | `mismatch` | `cast/type rendering: CAST()` | 19 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
 | `mismatch` | `A` | 15 |
 | `mismatch` | `X` | 13 |
-| `mismatch` | `json rendering: WITH` | 12 |
 | `mismatch` | `SELECT UNNEST()` | 11 |
 | `mismatch` | `'FOO'` | 10 |
 | `mismatch` | `--` | 9 |
@@ -178,16 +177,17 @@ Total rows: `15156`
 | `mismatch` | `date/time rendering: SELECT DATETRUNC()` | 6 |
 | `mismatch` | `date/time rendering: WITH` | 6 |
 | `mismatch` | `'\\'` | 5 |
+| `mismatch` | `INTERVAL` | 5 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1046 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1059 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 647 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 414 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 344 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 287 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 289 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 263 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 251 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 226 |
@@ -195,9 +195,9 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 169 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 152 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 141 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 132 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 119 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 119 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 109 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 108 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 105 |
@@ -273,6 +273,18 @@ Total rows: `15156`
 - `tests/dialects/test_mysql.py`:34 `test_ddl` via `validate_identity`: `ALTER TABLE t ADD COLUMN c INT INVISIBLE`
   - expected: `ALTER TABLE t ADD COLUMN c INT INVISIBLE`
   - actual: `ALTER TABLE t ADD COLUMN c INTEGER`
+
+### `mismatch` `COPY`
+
+- `tests/dialects/test_duckdb.py`:1287 `test_duckdb` via `validate_identity`: `COPY lineitem (l_orderkey) TO 'orderkey.tbl' WITH (DELIMITER '|')`
+  - expected: `COPY INTO lineitem (l_orderkey) TO 'orderkey.tbl' WITH (DELIMITER '|')`
+  - actual: `COPY lineitem (l_orderkey) TO 'orderkey.tbl' WITH (DELIMITER '|')`
+- `tests/dialects/test_postgres.py`:897 `test_postgres` via `validate_identity`: `COPY tbl (col1, col2) FROM 'file' WITH (FORMAT format, HEADER MATCH, FREEZE TRUE)`
+  - expected: `COPY INTO tbl (col1, col2) FROM 'file' WITH (FORMAT format, HEADER MATCH, FREEZE TRUE)`
+  - actual: `COPY tbl (col1, col2) FROM 'file' WITH (FORMAT format, HEADER MATCH, FREEZE TRUE)`
+- `tests/dialects/test_postgres.py`:900 `test_postgres` via `validate_identity`: `COPY tbl (col1, col2) TO 'file' WITH (FORMAT format, HEADER MATCH, FREEZE TRUE)`
+  - expected: `COPY INTO tbl (col1, col2) TO 'file' WITH (FORMAT format, HEADER MATCH, FREEZE TRUE)`
+  - actual: `COPY tbl (col1, col2) TO 'file' WITH (FORMAT format, HEADER MATCH, FREEZE TRUE)`
 
 ### `mismatch` `CREATE`
 
@@ -417,18 +429,6 @@ Total rows: `15156`
 - `tests/dialects/test_dialect.py`:3651 `test_generate_date_array` via `validate_all`: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
   - expected: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE('2020-01-01'), DATE('2020-02-01'), INTERVAL '1' WEEK))`
   - actual: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
-
-### `mismatch` `json rendering: WITH`
-
-- `tests/dialects/test_snowflake.py`:1345 `test_snowflake` via `validate_all`: `WITH vartab(v) AS (select parse_json('[{"attr": [{"name": "banana"}]}]')) SELECT GET_PATH(v, '[0].attr[0].name') FROM vartab`
-  - expected: `WITH vartab(v) AS (SELECT '[{"attr": [{"name": "banana"}]}]') SELECT GET_PATH(v, '[0].attr[0].name') FROM vartab`
-  - actual: `WITH vartab(v) AS (SELECT PARSE_JSON('[{"attr": [{"name": "banana"}]}]')) SELECT GET_PATH(v, '[0].attr[0].name') FROM vartab`
-- `tests/dialects/test_snowflake.py`:1345 `test_snowflake` via `validate_all`: `WITH vartab(v) AS (select parse_json('[{"attr": [{"name": "banana"}]}]')) SELECT GET_PATH(v, '[0].attr[0].name') FROM vartab`
-  - expected: `WITH vartab(v) AS (SELECT '[{"attr": [{"name": "banana"}]}]') SELECT GET_PATH(v, '[0].attr[0].name') FROM vartab`
-  - actual: `WITH vartab(v) AS (SELECT PARSE_JSON('[{"attr": [{"name": "banana"}]}]')) SELECT GET_PATH(v, '[0].attr[0].name') FROM vartab`
-- `tests/dialects/test_snowflake.py`:1345 `test_snowflake` via `validate_all`: `WITH vartab(v) AS (select parse_json('[{"attr": [{"name": "banana"}]}]')) SELECT GET_PATH(v, '[0].attr[0].name') FROM vartab`
-  - expected: `WITH vartab(v) AS (SELECT '[{"attr": [{"name": "banana"}]}]') SELECT GET_PATH(v, '[0].attr[0].name') FROM vartab`
-  - actual: `WITH vartab(v) AS (SELECT PARSE_JSON('[{"attr": [{"name": "banana"}]}]')) SELECT GET_PATH(v, '[0].attr[0].name') FROM vartab`
 
 ### `mismatch` `missing AS or alias rendering`
 

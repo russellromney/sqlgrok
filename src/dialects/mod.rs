@@ -560,6 +560,7 @@ fn mysql_show_is_recognized(trimmed: &str) -> bool {
     matches!(
         first_word,
         "TABLES"
+            | "TABLE"
             | "DATABASES"
             | "SCHEMAS"
             | "COLUMNS"
@@ -584,7 +585,10 @@ fn mysql_show_is_recognized(trimmed: &str) -> bool {
             | "ERRORS"
             | "PLUGINS"
             | "CHARACTER"
+            | "CHARSET"
             | "COLLATION"
+            | "PROFILE"
+            | "PROFILES"
             | "OPEN"
             | "MASTER"
             | "SLAVE"

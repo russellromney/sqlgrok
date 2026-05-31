@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10912 |
-| `mismatch` | 1803 |
+| `match` | 10933 |
+| `mismatch` | 1782 |
 | `oracle-error` | 1739 |
 | `rust-error` | 565 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 10912 |
-| `mismatch` | `mysql` | `sqlite` | 1803 |
+| `match` | `mysql` | `sqlite` | 10933 |
+| `mismatch` | `mysql` | `sqlite` | 1782 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
 | `rust-error` | `mysql` | `sqlite` | 565 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8026 |
-| `match` | `validate_identity` | 2779 |
+| `match` | `validate_all` | 8046 |
+| `match` | `validate_identity` | 2780 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_all` | 909 |
-| `mismatch` | `validate_identity` | 831 |
+| `mismatch` | `validate_all` | 889 |
+| `mismatch` | `validate_identity` | 830 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 314 |
 | `rust-error` | `validate_all` | 247 |
@@ -61,10 +61,10 @@ Total rows: `15156`
 | `mismatch` | `CREATE` | 149 |
 | `oracle-error` | `CREATE TABLE` | 148 |
 | `oracle-error` | `SELECT operator multiply` | 135 |
+| `match` | `WITH` | 115 |
 | `match` | `X` | 104 |
 | `oracle-error` | `CAST()` | 96 |
 | `mismatch` | `SELECT UNNEST()` | 95 |
-| `match` | `WITH` | 94 |
 | `match` | `SELECT CAST()` | 92 |
 | `mismatch` | `SELECT operator multiply` | 85 |
 | `match` | `ALTER TABLE` | 83 |
@@ -74,7 +74,6 @@ Total rows: `15156`
 | `match` | `SET` | 78 |
 | `match` | `DATE_TRUNC()` | 77 |
 | `match` | `LOG()` | 67 |
-| `mismatch` | `WITH` | 66 |
 | `match` | `JSON_EXTRACT()` | 64 |
 | `match` | `GRANT` | 62 |
 | `rust-error` | `SELECT operator multiply` | 61 |
@@ -88,6 +87,7 @@ Total rows: `15156`
 | `match` | `REVOKE` | 56 |
 | `match` | `SELECT TO_TIMESTAMP()` | 55 |
 | `oracle-error` | `DATE_ADD()` | 54 |
+| `match` | `INSERT` | 53 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -145,23 +145,22 @@ Total rows: `15156`
 | `mismatch` | `ALTER TABLE` | 74 |
 | `mismatch` | `SELECT operator multiply` | 72 |
 | `mismatch` | `SELECT UNNEST()` | 64 |
-| `mismatch` | `quote-style difference` | 37 |
-| `mismatch` | `WITH` | 33 |
+| `mismatch` | `quote-style difference` | 38 |
 | `mismatch` | `A` | 25 |
+| `mismatch` | `WITH` | 25 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 24 |
 | `mismatch` | `date/time rendering: CREATE` | 23 |
+| `mismatch` | `case-only rendering difference` | 22 |
 | `mismatch` | `cast/type rendering: CAST()` | 21 |
 | `mismatch` | `missing quoted identifier` | 21 |
 | `mismatch` | `X` | 20 |
-| `mismatch` | `case-only rendering difference` | 20 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
 | `mismatch` | `SHOW` | 13 |
-| `mismatch` | `cast/type rendering: WITH` | 13 |
 | `mismatch` | `json rendering: SELECT JSON_VALUE()` | 12 |
-| `mismatch` | `json rendering: WITH` | 12 |
 | `mismatch` | `date/time rendering: DATE_ADD()` | 11 |
 | `mismatch` | `'FOO'` | 10 |
 | `mismatch` | `COPY` | 9 |
+| `mismatch` | `cast/type rendering: WITH` | 9 |
 | `mismatch` | `--` | 8 |
 | `mismatch` | `DS` | 8 |
 | `mismatch` | `PIVOT` | 8 |
@@ -178,16 +177,17 @@ Total rows: `15156`
 | `mismatch` | `INSERT` | 6 |
 | `mismatch` | `POSITION()` | 6 |
 | `mismatch` | `SELECT CEIL()` | 6 |
+| `mismatch` | `SELECT MIN_BY()` | 6 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1030 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1043 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 608 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 407 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 408 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 301 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 273 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 280 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 252 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 250 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 228 |
@@ -195,10 +195,10 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 168 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 157 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 150 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 139 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 128 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 127 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 105 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 126 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 104 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 102 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 101 |
@@ -382,18 +382,6 @@ Total rows: `15156`
   - expected: `SELECT CAST(date AS TEXT FORMAT 'YYYY') FROM (SELECT DATE('2026-03-24') AS date)`
   - actual: `SELECT CAST(date AS TEXT) FROM (SELECT DATE('2026-03-24') AS date)`
 
-### `mismatch` `cast/type rendering: WITH`
-
-- `tests/dialects/test_bigquery.py`:2060 `test_bigquery` via `validate_all`: `WITH sample AS (SELECT * FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
-  - expected: `WITH sample AS (SELECT * FROM UNNEST(ARRAY(CAST('2024-03-15 14:35:46' AS TIMESTAMPTZ), CAST('2024-03-16 01:12:03' AS TIMESTAMPTZ))) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
-  - actual: `WITH sample AS (SELECT * FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
-- `tests/dialects/test_bigquery.py`:2060 `test_bigquery` via `validate_all`: `WITH sample AS (SELECT * FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
-  - expected: `WITH sample AS (SELECT * FROM UNNEST(ARRAY(CAST('2024-03-15 14:35:46' AS TIMESTAMPTZ), CAST('2024-03-16 01:12:03' AS TIMESTAMPTZ))) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
-  - actual: `WITH sample AS (SELECT * FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
-- `tests/dialects/test_bigquery.py`:2067 `test_bigquery` via `validate_all`: `WITH sample AS (SELECT ts FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY) AS truncated_ts FROM sample`
-  - expected: `WITH sample AS (SELECT ts FROM UNNEST(ARRAY(CAST('2024-03-15 14:35:46' AS TIMESTAMPTZ), CAST('2024-03-16 01:12:03' AS TIMESTAMPTZ))) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY) AS truncated_ts FROM sample`
-  - actual: `WITH sample AS (SELECT ts FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY) AS truncated_ts FROM sample`
-
 ### `mismatch` `date/time rendering: CREATE`
 
 - `tests/dialects/test_postgres.py`:1277 `test_ddl` via `validate_identity`: `CREATE CONSTRAINT TRIGGER my_trigger AFTER INSERT OR DELETE OR UPDATE OF col_a, col_b ON public.my_table DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION DO_STH()`
@@ -405,6 +393,18 @@ Total rows: `15156`
 - `tests/dialects/test_postgres.py`:1921 `test_postgres_create_trigger` via `validate_identity`: `CREATE TRIGGER audit_changes AFTER INSERT OR UPDATE OR DELETE ON products FOR EACH ROW EXECUTE FUNCTION AUDIT_LOG()`
   - expected: `CREATE TRIGGER audit_changes`
   - actual: `CREATE TRIGGER audit_changes AFTER INSERT OR UPDATE OR DELETE ON products FOR EACH ROW EXECUTE FUNCTION AUDIT_LOG()`
+
+### `mismatch` `date/time rendering: DATE_ADD()`
+
+- `tests/dialects/test_mysql.py`:1690 `test_valid_interval_units` via `validate_identity`: `DATE_ADD(base_date, INTERVAL day_interval SECOND_MICROSECOND)`
+  - expected: `DATE(base_date, 'day_interval SECOND_MICROSECOND')`
+  - actual: `DATE(base_date, 'DAY_INTERVAL')`
+- `tests/dialects/test_mysql.py`:1690 `test_valid_interval_units` via `validate_identity`: `DATE_ADD(base_date, INTERVAL day_interval MINUTE_MICROSECOND)`
+  - expected: `DATE(base_date, 'day_interval MINUTE_MICROSECOND')`
+  - actual: `DATE(base_date, 'DAY_INTERVAL')`
+- `tests/dialects/test_mysql.py`:1690 `test_valid_interval_units` via `validate_identity`: `DATE_ADD(base_date, INTERVAL day_interval MINUTE_SECOND)`
+  - expected: `DATE(base_date, 'day_interval MINUTE_SECOND')`
+  - actual: `DATE(base_date, 'DAY_INTERVAL')`
 
 ### `mismatch` `date/time rendering: SELECT UNNEST()`
 
