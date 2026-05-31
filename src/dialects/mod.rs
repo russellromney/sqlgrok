@@ -321,6 +321,12 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             // Transform identifier quoting for the target dialect
             transform_quotes_in_select(sel, target);
 
+            // Recurse into CTE bodies so inner SELECTs see the same
+            // transforms (DATE 'x' → DATE('x'), ARRAY[…] → ARRAY(…), etc.).
+            for cte in &mut sel.ctes {
+                transform_statement(&mut cte.query, source, target);
+            }
+
             for item in &mut sel.columns {
                 if let SelectItem::Expr { expr, .. } = item {
                     *expr = transform_expr(expr.clone(), source, target);

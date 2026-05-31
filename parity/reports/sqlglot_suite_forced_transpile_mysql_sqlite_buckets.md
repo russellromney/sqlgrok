@@ -8,34 +8,34 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10869 |
-| `mismatch` | 1835 |
+| `match` | 10912 |
+| `mismatch` | 1803 |
 | `oracle-error` | 1739 |
-| `rust-error` | 576 |
+| `rust-error` | 565 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 10869 |
-| `mismatch` | `mysql` | `sqlite` | 1835 |
+| `match` | `mysql` | `sqlite` | 10912 |
+| `mismatch` | `mysql` | `sqlite` | 1803 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
-| `rust-error` | `mysql` | `sqlite` | 576 |
+| `rust-error` | `mysql` | `sqlite` | 565 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7992 |
-| `match` | `validate_identity` | 2770 |
+| `match` | `validate_all` | 8026 |
+| `match` | `validate_identity` | 2779 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_all` | 936 |
-| `mismatch` | `validate_identity` | 836 |
+| `mismatch` | `validate_all` | 909 |
+| `mismatch` | `validate_identity` | 831 |
 | `oracle-error` | `validate_all` | 595 |
-| `rust-error` | `validate_identity` | 318 |
-| `rust-error` | `validate_all` | 254 |
+| `rust-error` | `validate_identity` | 314 |
+| `rust-error` | `validate_all` | 247 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 107 |
 | `mismatch` | `validate` | 63 |
@@ -48,15 +48,15 @@ Total rows: `15156`
 
 | Status | Shape | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 701 |
+| `match` | `SELECT` | 711 |
 | `match` | `CAST()` | 489 |
-| `match` | `SELECT operator multiply` | 349 |
-| `match` | `CREATE TABLE` | 302 |
+| `match` | `SELECT operator multiply` | 352 |
+| `match` | `CREATE TABLE` | 305 |
 | `match` | `SHOW` | 195 |
-| `mismatch` | `CREATE TABLE` | 195 |
 | `match` | `CREATE` | 193 |
-| `mismatch` | `SELECT` | 180 |
+| `mismatch` | `CREATE TABLE` | 192 |
 | `oracle-error` | `SELECT` | 179 |
+| `mismatch` | `SELECT` | 176 |
 | `match` | `TRUNC()` | 164 |
 | `mismatch` | `CREATE` | 149 |
 | `oracle-error` | `CREATE TABLE` | 148 |
@@ -76,12 +76,12 @@ Total rows: `15156`
 | `match` | `LOG()` | 67 |
 | `mismatch` | `WITH` | 66 |
 | `match` | `JSON_EXTRACT()` | 64 |
-| `rust-error` | `SELECT` | 64 |
-| `rust-error` | `SELECT operator multiply` | 64 |
 | `match` | `GRANT` | 62 |
+| `rust-error` | `SELECT operator multiply` | 61 |
 | `match` | `ANALYZE` | 60 |
 | `oracle-error` | `SELECT OPTION()` | 60 |
 | `match` | `A` | 58 |
+| `rust-error` | `SELECT` | 58 |
 | `match` | `REGEXP_REPLACE()` | 57 |
 | `match` | `TIME_STR_TO_TIME()` | 57 |
 | `match` | `REGEXP_INSTR()` | 56 |
@@ -99,8 +99,8 @@ Total rows: `15156`
 | `unsupported-harness-shape` | `SQLGlot expects UnsupportedError` | 119 |
 | `oracle-error` | `oracle parse: Expected TYPE after CAST` | 108 |
 | `oracle-error` | `oracle parse: INTERVAL expression expected but got '1'` | 72 |
-| `rust-error` | `parser: Expected identifier` | 49 |
 | `oracle-error` | `oracle parse: The number of provided arguments (2) is greater than the maximum number of supported arguments (1)` | 46 |
+| `rust-error` | `parser: Expected identifier` | 44 |
 | `oracle-error` | `oracle parse: Expected type` | 39 |
 | `oracle-error` | `oracle parse: Expected table name but got <Token token_type: TokenType.SENTINEL, text: SENTINEL, line: 1, col: 1, start: 0, end: 0, comments: []>` | 33 |
 | `oracle-error` | `oracle parse: The number of provided arguments (4) is greater than the maximum number of supported arguments (2)` | 19 |
@@ -145,13 +145,13 @@ Total rows: `15156`
 | `mismatch` | `ALTER TABLE` | 74 |
 | `mismatch` | `SELECT operator multiply` | 72 |
 | `mismatch` | `SELECT UNNEST()` | 64 |
-| `mismatch` | `missing quoted identifier` | 53 |
 | `mismatch` | `quote-style difference` | 37 |
 | `mismatch` | `WITH` | 33 |
 | `mismatch` | `A` | 25 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 24 |
 | `mismatch` | `date/time rendering: CREATE` | 23 |
 | `mismatch` | `cast/type rendering: CAST()` | 21 |
+| `mismatch` | `missing quoted identifier` | 21 |
 | `mismatch` | `X` | 20 |
 | `mismatch` | `case-only rendering difference` | 20 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
@@ -184,21 +184,21 @@ Total rows: `15156`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1030 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 605 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 401 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 608 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 407 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 301 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 273 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 252 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 250 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 228 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 166 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 168 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 157 |
-| `match` | `tests/dialects/test_hive.py` | `test_hive` | 141 |
+| `match` | `tests/dialects/test_hive.py` | `test_hive` | 150 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 139 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 128 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 127 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 108 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 105 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 102 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 101 |
@@ -216,8 +216,8 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 76 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
 | `match` | `tests/dialects/test_exasol.py` | `test_scalar` | 73 |
-| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 69 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 69 |
+| `mismatch` | `tests/dialects/test_mysql.py` | `test_ddl` | 68 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 67 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 66 |
 | `match` | `tests/dialects/test_hive.py` | `test_joins_without_on` | 66 |
@@ -447,12 +447,12 @@ Total rows: `15156`
 - `tests/dialects/test_athena.py`:62 `test_ddl` via `validate_identity`: `` CREATE EXTERNAL TABLE `my_table` (`a7` ARRAY<DATE>) ROW FORMAT SERDE 'a' STORED AS INPUTFORMAT 'b' OUTPUTFORMAT 'c' LOCATION 'd' TBLPROPERTIES ('e'='f') ``
   - expected: `CREATE TABLE "my_table" ("a7" ARRAY<DATE>)`
   - actual: `` CREATE EXTERNAL TABLE `my_table` (`a7` ARRAY<DATE>) ROW FORMAT SERDE 'a' STORED AS INPUTFORMAT 'b' OUTPUTFORMAT 'c' LOCATION 'd' TBLPROPERTIES ('e'='f') ``
-- `tests/dialects/test_clickhouse.py`:681 `test_clickhouse` via `validate_identity`: `SELECT 1_2_3_4_5`
-  - expected: `SELECT "1_2_3_4_5"`
-  - actual: `SELECT 1 AS _2_3_4_5`
-- `tests/dialects/test_clickhouse.py`:682 `test_clickhouse` via `validate_identity`: `SELECT 1_b`
-  - expected: `SELECT "1_b"`
-  - actual: `SELECT 1 AS _b`
+- `tests/dialects/test_databricks.py`:76 `test_databricks` via `validate_identity`: `` COPY INTO target FROM `s3://link` FILEFORMAT = AVRO VALIDATE = ALL FILES = ('file1', 'file2') FORMAT_OPTIONS ('opt1'='true', 'opt2'='test') COPY_OPTIONS ('mergeSchema'='true') ``
+  - expected: `COPY INTO target FROM "s3://link" WITH (FILEFORMAT AVRO, VALIDATE ALL, FILES ('file1', 'file2'), FORMAT_OPTIONS (opt1='true', opt2='test'), COPY_OPTIONS (mergeSchema='true'))`
+  - actual: `` COPY INTO target FROM `s3://link` FILEFORMAT = AVRO VALIDATE = ALL FILES = ('file1', 'file2') FORMAT_OPTIONS ('opt1'='true', 'opt2'='test') COPY_OPTIONS ('mergeSchema'='true') ``
+- `tests/dialects/test_drill.py`:8 `test_drill` via `validate_identity`: `` SELECT * FROM table(dfs.`test_data.xlsx`(type => 'excel', sheetName => 'secondSheet')) ``
+  - expected: `SELECT * FROM TABLE(dfs."test_data.xlsx"(type => 'excel', sheetName => 'secondSheet'))`
+  - actual: `SELECT * FROM table(dfs.test_data.xlsx(type => 'excel', sheetName => 'secondSheet'))`
 
 ### `mismatch` `quote-style difference`
 
@@ -636,12 +636,12 @@ Total rows: `15156`
 - `tests/test_transpile.py`:127 `test_comments` via `validate`: `SELECT c AS /* foo */ (a, b, c) FROM t`
   - expected: `SELECT c AS (a, b, c) /* foo */ FROM t`
   - error: `ValueError: Parser error: Expected identifier, got LParen ('(') at line 1 col 23`
-- `tests/dialects/test_bigquery.py`:188 `test_bigquery` via `validate_identity`: `SELECT * FROM foo.bar.25_`
-  - expected: `SELECT * FROM foo.bar."25_"`
-  - error: `ValueError: Parser error: Expected identifier, got Number ('25') at line 1 col 23`
-- `tests/dialects/test_bigquery.py`:189 `test_bigquery` via `validate_identity`: `SELECT * FROM foo.bar.25x a`
-  - expected: `SELECT * FROM foo.bar."25x" AS a`
-  - error: `ValueError: Parser error: Expected identifier, got Number ('25') at line 1 col 23`
+- `tests/dialects/test_dialect.py`:5279 `test_operator` via `validate_identity`: `SELECT 1 OPERATOR(pg_catalog.+) 2`
+  - expected: `SELECT 1 OPERATOR(pg_catalog.+) 2`
+  - error: `ValueError: Parser error: Expected identifier, got Plus ('+') at line 1 col 30`
+- `tests/dialects/test_dialect.py`:3568 `test_truncate` via `validate_identity`: `TRUNCATE TABLE IF EXISTS db.schema.test`
+  - expected: `TRUNCATE TABLE IF EXISTS db.schema.test`
+  - error: `ValueError: Parser error: Expected identifier, got If ('IF') at line 1 col 16`
 
 ### `unsupported-harness-shape` `SQLGlot expects UnsupportedError`
 
