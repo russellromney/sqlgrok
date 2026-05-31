@@ -1662,6 +1662,16 @@ impl Parser {
         if self.is_name_token() {
             let token = self.peek().clone();
             let peeked_upper = token.value.to_uppercase();
+            // Don't consume SEMI/ANTI as an alias if the next token is
+            // JOIN — they're join keywords.
+            if matches!(peeked_upper.as_str(), "SEMI" | "ANTI")
+                && self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|t| matches!(t.token_type, TokenType::Join))
+            {
+                return Ok(None);
+            }
             if token.quote_char != '\0'
                 || !matches!(
                     peeked_upper.as_str(),
@@ -2431,6 +2441,16 @@ impl Parser {
                     self.advance();
                     self.expect(TokenType::Join)?;
                     JoinType::Natural
+                }
+                TokenType::Identifier if self.peek().value.eq_ignore_ascii_case("SEMI") => {
+                    self.advance();
+                    self.expect(TokenType::Join)?;
+                    JoinType::Semi
+                }
+                TokenType::Identifier if self.peek().value.eq_ignore_ascii_case("ANTI") => {
+                    self.advance();
+                    self.expect(TokenType::Join)?;
+                    JoinType::Anti
                 }
                 _ => break,
             };

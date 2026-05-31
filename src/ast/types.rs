@@ -351,6 +351,12 @@ pub enum JoinType {
     OuterApply,
     /// MySQL STRAIGHT_JOIN
     Straight,
+    /// SEMI JOIN — keep left rows matched in right. Lowered to
+    /// `WHERE EXISTS (...)` during dialect transformation.
+    Semi,
+    /// ANTI JOIN — keep left rows NOT matched in right. Lowered to
+    /// `WHERE NOT EXISTS (...)` during dialect transformation.
+    Anti,
 }
 
 /// An ORDER BY item.

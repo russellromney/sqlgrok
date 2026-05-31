@@ -403,6 +403,8 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             for wd in &mut sel.window_definitions {
                 wd.spec = transform_window_spec(wd.spec.clone(), source, target);
             }
+            // Rewrite SEMI/ANTI JOIN → WHERE EXISTS/NOT EXISTS subquery.
+            rewrite_semi_anti_joins(sel);
             if let Some(rewritten) = rewrite_postgres_distinct_on(sel, source, target) {
                 *sel = rewritten;
             }
@@ -2789,6 +2791,61 @@ fn transform_order_by_items(items: &mut [OrderByItem], source: Dialect, target: 
             item.nulls_first = Some(!item.ascending);
         }
     }
+}
+
+/// Rewrite `SEMI JOIN` / `ANTI JOIN` clauses to `WHERE EXISTS (...)`
+/// / `WHERE NOT EXISTS (...)` subqueries (Python SQLGlot's IR form).
+fn rewrite_semi_anti_joins(sel: &mut SelectStatement) {
+    let mut new_joins = Vec::with_capacity(sel.joins.len());
+    for join in std::mem::take(&mut sel.joins) {
+        let negated = match join.join_type {
+            JoinType::Semi => false,
+            JoinType::Anti => true,
+            _ => {
+                new_joins.push(join);
+                continue;
+            }
+        };
+        // Build subquery: SELECT 1 FROM <table> [WHERE on]
+        let subquery_select = SelectStatement {
+            comments: vec![],
+            ctes: vec![],
+            distinct: false,
+            distinct_on: vec![],
+            top: None,
+            columns: vec![SelectItem::Expr {
+                expr: Expr::Number("1".to_string()),
+                alias: None,
+                alias_quote_style: QuoteStyle::None,
+            }],
+            from: Some(FromClause { source: join.table }),
+            joins: vec![],
+            where_clause: join.on,
+            group_by: vec![],
+            having: None,
+            order_by: vec![],
+            limit: None,
+            offset: None,
+            limit_by: vec![],
+            fetch_first: None,
+            qualify: None,
+            window_definitions: vec![],
+            lock: None,
+        };
+        let exists_expr = Expr::Exists {
+            subquery: Box::new(Statement::Select(subquery_select)),
+            negated,
+        };
+        sel.where_clause = Some(match sel.where_clause.take() {
+            Some(existing) => Expr::BinaryOp {
+                left: Box::new(existing),
+                op: BinaryOperator::And,
+                right: Box::new(exists_expr),
+            },
+            None => exists_expr,
+        });
+    }
+    sel.joins = new_joins;
 }
 
 fn rewrite_postgres_distinct_on(

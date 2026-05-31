@@ -780,6 +780,8 @@ impl Generator {
             JoinType::OuterApply if self.dialect == Some(Dialect::Sqlite) => "JOIN LEFT JOIN",
             JoinType::OuterApply => "LEFT JOIN",
             JoinType::Straight => "STRAIGHT_JOIN",
+            JoinType::Semi => "SEMI JOIN",
+            JoinType::Anti => "ANTI JOIN",
         };
         if join.join_type == JoinType::Comma {
             self.write(",");
@@ -2563,7 +2565,7 @@ impl Generator {
                 if *negated {
                     self.write_keyword("NOT ");
                 }
-                self.write_keyword("EXISTS (");
+                self.write_keyword("EXISTS(");
                 self.gen_statement(subquery);
                 self.write(")");
             }

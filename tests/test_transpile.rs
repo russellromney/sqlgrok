@@ -1319,7 +1319,7 @@ fn test_identity_subqueries() {
         "SELECT a FROM (SELECT a FROM test) AS x",
         "SELECT * FROM (SELECT 1 AS x) AS sub",
         "SELECT a FROM test WHERE a IN (SELECT b FROM z)",
-        "SELECT a FROM test WHERE EXISTS (SELECT 1)",
+        "SELECT a FROM test WHERE EXISTS(SELECT 1)",
         "SELECT * FROM t WHERE id IN (SELECT id FROM t2)",
     ];
     for sql in &cases {
@@ -1387,8 +1387,8 @@ fn test_identity_in_subquery() {
 
 #[test]
 fn test_identity_exists() {
-    validate_identity("SELECT * FROM t WHERE EXISTS (SELECT 1 FROM t2)");
-    validate_identity("SELECT * FROM t WHERE NOT EXISTS (SELECT 1 FROM t2)");
+    validate_identity("SELECT * FROM t WHERE EXISTS(SELECT 1 FROM t2)");
+    validate_identity("SELECT * FROM t WHERE NOT EXISTS(SELECT 1 FROM t2)");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

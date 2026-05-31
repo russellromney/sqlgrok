@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11120 |
-| `mismatch` | 1846 |
+| `match` | 11169 |
+| `mismatch` | 1797 |
 | `oracle-error` | 1456 |
 | `rust-error` | 597 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8064 |
-| `match` | `validate_identity` | 2950 |
-| `mismatch` | `validate_all` | 968 |
+| `match` | `validate_all` | 8110 |
+| `match` | `validate_identity` | 2953 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 810 |
+| `mismatch` | `validate_all` | 922 |
+| `mismatch` | `validate_identity` | 807 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 350 |
 | `rust-error` | `validate_all` | 244 |
@@ -45,12 +45,12 @@ Filtered by read/write: `0`
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1038 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 625 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 419 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 460 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 332 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 321 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 246 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 245 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 220 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 221 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 174 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 157 |
@@ -60,14 +60,14 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 120 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 109 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 107 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 104 |
-| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 104 |
+| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 105 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 84 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 83 |
+| `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 82 |
 
 ## Examples
 
