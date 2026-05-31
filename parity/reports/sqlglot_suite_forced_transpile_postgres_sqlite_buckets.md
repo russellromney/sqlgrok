@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11082 |
-| `mismatch` | 1884 |
+| `match` | 11095 |
+| `mismatch` | 1871 |
 | `oracle-error` | 1456 |
 | `rust-error` | 597 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 11082 |
-| `mismatch` | `postgres` | `sqlite` | 1884 |
+| `match` | `postgres` | `sqlite` | 11095 |
+| `mismatch` | `postgres` | `sqlite` | 1871 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
 | `rust-error` | `postgres` | `sqlite` | 597 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -28,9 +28,9 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8028 |
+| `match` | `validate_all` | 8041 |
 | `match` | `validate_identity` | 2948 |
-| `mismatch` | `validate_all` | 1004 |
+| `mismatch` | `validate_all` | 991 |
 | `oracle-error` | `validate_identity` | 949 |
 | `mismatch` | `validate_identity` | 812 |
 | `oracle-error` | `validate_all` | 501 |
@@ -157,7 +157,6 @@ Total rows: `15156`
 | `mismatch` | `SELECT ARRAY_AGG()` | 18 |
 | `mismatch` | `SELECT operator index` | 18 |
 | `mismatch` | `date/time rendering: SELECT DATE_TRUNC()` | 17 |
-| `mismatch` | `SELECT LAST_VALUE()` | 16 |
 | `mismatch` | `date/time rendering: TIME_TO_STR()` | 14 |
 | `mismatch` | `cast/type rendering: WITH` | 13 |
 | `mismatch` | `SELECT RLIKE()` | 12 |
@@ -178,13 +177,14 @@ Total rows: `15156`
 | `mismatch` | `SELECT TO_ARRAY()` | 7 |
 | `mismatch` | `'\\\\A'` | 6 |
 | `mismatch` | `POSITION()` | 6 |
+| `mismatch` | `SELECT CEIL()` | 6 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1025 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 612 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 625 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 418 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 332 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 314 |
@@ -197,8 +197,8 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 157 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 142 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 122 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 120 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 109 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 107 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 105 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 104 |
@@ -297,18 +297,6 @@ Total rows: `15156`
 - `tests/dialects/test_bigquery.py`:3219 `test_array_agg` via `validate_all`: `SELECT ARRAY_AGG(DISTINCT x ORDER BY x)`
   - expected: `SELECT ARRAY_AGG(DISTINCT x ORDER BY x NULLS LAST)`
   - actual: `SELECT ARRAY_AGG(DISTINCT x ORDER BY x)`
-
-### `mismatch` `SELECT LAST_VALUE()`
-
-- `tests/dialects/test_bigquery.py`:272 `test_bigquery` via `validate_identity`: `SELECT item, purchases, LAST_VALUE(item) OVER (item_window ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING) AS most_popular FROM Produce WINDOW item_window AS (ORDER BY purchases)`
-  - expected: `SELECT item, purchases, LAST_VALUE(item) OVER (item_window ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING) AS most_popular FROM Produce WINDOW item_window AS (ORDER BY purchases NULLS LAST)`
-  - actual: `SELECT item, purchases, LAST_VALUE(item) OVER (item_window ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING) AS most_popular FROM Produce WINDOW item_window AS (ORDER BY purchases)`
-- `tests/dialects/test_bigquery.py`:425 `test_bigquery` via `validate_all`: `SELECT purchases, LAST_VALUE(item) OVER item_window AS most_popular FROM Produce WINDOW item_window AS (PARTITION BY purchases ORDER BY purchases ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING)`
-  - expected: `SELECT purchases, LAST_VALUE(item) OVER item_window AS most_popular FROM Produce WINDOW item_window AS (PARTITION BY purchases ORDER BY purchases NULLS LAST ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING)`
-  - actual: `SELECT purchases, LAST_VALUE(item) OVER item_window AS most_popular FROM Produce WINDOW item_window AS (PARTITION BY purchases ORDER BY purchases ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING)`
-- `tests/dialects/test_bigquery.py`:425 `test_bigquery` via `validate_all`: `SELECT purchases, LAST_VALUE(item) OVER item_window AS most_popular FROM Produce WINDOW item_window AS (PARTITION BY purchases ORDER BY purchases ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING)`
-  - expected: `SELECT purchases, LAST_VALUE(item) OVER item_window AS most_popular FROM Produce WINDOW item_window AS (PARTITION BY purchases ORDER BY purchases NULLS LAST ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING)`
-  - actual: `SELECT purchases, LAST_VALUE(item) OVER item_window AS most_popular FROM Produce WINDOW item_window AS (PARTITION BY purchases ORDER BY purchases ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING)`
 
 ### `mismatch` `SELECT UNNEST()`
 
@@ -441,6 +429,18 @@ Total rows: `15156`
 - `tests/dialects/test_bigquery.py`:3316 `test_generate_date_array` via `validate_all`: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, DATE_TRUNC(CURRENT_DATE, MONTH), INTERVAL '1' MONTH)) AS mnth`
   - expected: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, TIMESTAMP_TRUNC(MONTH, CURRENT_DATE), INTERVAL '1' MONTH)) AS mnth`
   - actual: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, DATE_TRUNC(CURRENT_DATE, MONTH), INTERVAL '1' MONTH)) AS mnth`
+
+### `mismatch` `date/time rendering: TIME_TO_STR()`
+
+- `tests/dialects/test_dialect.py`:906 `test_time` via `validate_all`: `TIME_TO_STR(x, '%Y-%m-%d')`
+  - expected: `STRFTIME('%Y-%m-%d', x)`
+  - actual: `STRFTIME('%Y-%m-%%w', x)`
+- `tests/dialects/test_dialect.py`:906 `test_time` via `validate_all`: `TIME_TO_STR(x, '%Y-%m-%d')`
+  - expected: `STRFTIME('%Y-%m-%d', x)`
+  - actual: `STRFTIME('%Y-%m-%%w', x)`
+- `tests/dialects/test_dialect.py`:906 `test_time` via `validate_all`: `TIME_TO_STR(x, '%Y-%m-%d')`
+  - expected: `STRFTIME('%Y-%m-%d', x)`
+  - actual: `STRFTIME('%Y-%m-%%w', x)`
 
 ### `mismatch` `missing AS or alias rendering`
 

@@ -4420,7 +4420,32 @@ impl Parser {
                 .unwrap_or_default();
             let is_type_change =
                 v0 == "TYPE" || (v0 == "SET" && v1 == "DATA" && v2 == "TYPE");
-            if is_type_change {
+            // Some dialects (postgres, sqlite, duckdb) accept the bare
+            // form `ALTER COLUMN name <data_type>`. Try to parse a data
+            // type tentatively; if it succeeds and the following token
+            // is a type-change tail (USING/COLLATE/comma/semi/eof),
+            // treat it as a type change.
+            let bare_type_change = if !is_type_change {
+                let saved = self.pos;
+                let probe = self.parse_data_type().ok();
+                let tail_ok = matches!(
+                    self.peek_type(),
+                    TokenType::Comma | TokenType::Semicolon | TokenType::Eof
+                ) || matches!(
+                    self.peek().value.to_uppercase().as_str(),
+                    "USING" | "COLLATE"
+                );
+                if probe.is_some() && tail_ok {
+                    self.pos = saved;
+                    true
+                } else {
+                    self.pos = saved;
+                    false
+                }
+            } else {
+                false
+            };
+            if is_type_change || bare_type_change {
                 let _ = self.match_keyword("SET");
                 let _ = self.match_keyword("DATA");
                 let _ = self.match_keyword("TYPE");

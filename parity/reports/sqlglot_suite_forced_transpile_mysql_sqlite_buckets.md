@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10828 |
-| `mismatch` | 1876 |
+| `match` | 10866 |
+| `mismatch` | 1838 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 10828 |
-| `mismatch` | `mysql` | `sqlite` | 1876 |
+| `match` | `mysql` | `sqlite` | 10866 |
+| `mismatch` | `mysql` | `sqlite` | 1838 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
 | `rust-error` | `mysql` | `sqlite` | 576 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7957 |
-| `match` | `validate_identity` | 2764 |
+| `match` | `validate_all` | 7989 |
+| `match` | `validate_identity` | 2770 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_all` | 971 |
-| `mismatch` | `validate_identity` | 842 |
+| `mismatch` | `validate_all` | 939 |
+| `mismatch` | `validate_identity` | 836 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 318 |
 | `rust-error` | `validate_all` | 254 |
@@ -148,7 +148,6 @@ Total rows: `15156`
 | `mismatch` | `missing quoted identifier` | 53 |
 | `mismatch` | `quote-style difference` | 37 |
 | `mismatch` | `WITH` | 33 |
-| `mismatch` | `SELECT FORMAT()` | 27 |
 | `mismatch` | `A` | 25 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 24 |
 | `mismatch` | `date/time rendering: CREATE` | 23 |
@@ -160,7 +159,6 @@ Total rows: `15156`
 | `mismatch` | `cast/type rendering: WITH` | 13 |
 | `mismatch` | `json rendering: SELECT JSON_VALUE()` | 12 |
 | `mismatch` | `json rendering: WITH` | 12 |
-| `mismatch` | `FORMAT()` | 11 |
 | `mismatch` | `date/time rendering: DATE_ADD()` | 11 |
 | `mismatch` | `'FOO'` | 10 |
 | `mismatch` | `COPY` | 9 |
@@ -178,6 +176,8 @@ Total rows: `15156`
 | `mismatch` | `DELETE` | 6 |
 | `mismatch` | `FROM` | 6 |
 | `mismatch` | `INSERT` | 6 |
+| `mismatch` | `POSITION()` | 6 |
+| `mismatch` | `SELECT CEIL()` | 6 |
 
 ## Source Test Buckets
 
@@ -185,7 +185,7 @@ Total rows: `15156`
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1030 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 605 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 400 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 401 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 301 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 273 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 252 |
@@ -198,7 +198,7 @@ Total rows: `15156`
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 139 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 128 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 127 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 109 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 108 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 102 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 101 |
@@ -285,18 +285,6 @@ Total rows: `15156`
 - `tests/test_transpile.py`:155 `test_comments` via `validate`: `SELECT CASE /* test */ WHEN a THEN b ELSE c END`
   - expected: `SELECT CASE WHEN a THEN b ELSE c END /* test */`
   - actual: `SELECT CASE WHEN a THEN b ELSE c END`
-
-### `mismatch` `SELECT FORMAT()`
-
-- `tests/dialects/test_mysql.py`:1605 `test_number_format` via `validate_all`: `SELECT FORMAT(12332.123456, 4)`
-  - expected: `SELECT NUMBER_TO_STR(12332.123456, 4)`
-  - actual: `SELECT FORMAT(12332.123456, 4)`
-- `tests/dialects/test_mysql.py`:1605 `test_number_format` via `validate_all`: `SELECT FORMAT(12332.123456, 4)`
-  - expected: `SELECT NUMBER_TO_STR(12332.123456, 4)`
-  - actual: `SELECT FORMAT(12332.123456, 4)`
-- `tests/dialects/test_mysql.py`:1612 `test_number_format` via `validate_all`: `SELECT FORMAT(12332.1, 4)`
-  - expected: `SELECT NUMBER_TO_STR(12332.1, 4)`
-  - actual: `SELECT FORMAT(12332.1, 4)`
 
 ### `mismatch` `SELECT UNNEST()`
 
@@ -429,6 +417,18 @@ Total rows: `15156`
 - `tests/dialects/test_dialect.py`:3651 `test_generate_date_array` via `validate_all`: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
   - expected: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE('2020-01-01'), DATE('2020-02-01'), INTERVAL '1' WEEK))`
   - actual: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
+
+### `mismatch` `json rendering: SELECT JSON_VALUE()`
+
+- `tests/dialects/test_exasol.py`:890 `test_json` via `validate_identity`: `SELECT JSON_VALUE('{"d":"a"}', '$.d' NULL ON ERROR) AS x`
+  - expected: `SELECT JSON_VALUE('{"d":"a"}', '$.d' NULL ON ERROR) AS x`
+  - actual: `SELECT JSON_VALUE('{"d":"a"}', '$.d') AS x`
+- `tests/dialects/test_exasol.py`:891 `test_json` via `validate_all`: `SELECT JSON_VALUE('{"d":"a"}', '$.d' NULL ON ERROR) AS x`
+  - expected: `SELECT JSON_VALUE('{"d":"a"}', '$.d' NULL ON ERROR) AS x`
+  - actual: `SELECT JSON_VALUE('{"d":"a"}', '$.d') AS x`
+- `tests/dialects/test_exasol.py`:891 `test_json` via `validate_all`: `SELECT JSON_VALUE('{"d":"a"}', '$.d' NULL ON ERROR) AS x`
+  - expected: `SELECT JSON_VALUE('{"d":"a"}', '$.d' NULL ON ERROR) AS x`
+  - actual: `SELECT JSON_VALUE('{"d":"a"}', '$.d') AS x`
 
 ### `mismatch` `missing AS or alias rendering`
 
