@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10797 |
-| `mismatch` | 1907 |
+| `match` | 10828 |
+| `mismatch` | 1876 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 10797 |
-| `mismatch` | `mysql` | `sqlite` | 1907 |
+| `match` | `mysql` | `sqlite` | 10828 |
+| `mismatch` | `mysql` | `sqlite` | 1876 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
 | `rust-error` | `mysql` | `sqlite` | 576 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -28,17 +28,17 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7933 |
-| `match` | `validate_identity` | 2763 |
+| `match` | `validate_all` | 7957 |
+| `match` | `validate_identity` | 2764 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_all` | 995 |
-| `mismatch` | `validate_identity` | 843 |
+| `mismatch` | `validate_all` | 971 |
+| `mismatch` | `validate_identity` | 842 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 318 |
 | `rust-error` | `validate_all` | 254 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `match` | `validate` | 101 |
-| `mismatch` | `validate` | 69 |
+| `match` | `validate` | 107 |
+| `mismatch` | `validate` | 63 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -148,7 +148,6 @@ Total rows: `15156`
 | `mismatch` | `missing quoted identifier` | 53 |
 | `mismatch` | `quote-style difference` | 37 |
 | `mismatch` | `WITH` | 33 |
-| `mismatch` | `date/time rendering: STR_TO_TIME()` | 30 |
 | `mismatch` | `SELECT FORMAT()` | 27 |
 | `mismatch` | `A` | 25 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 24 |
@@ -178,6 +177,7 @@ Total rows: `15156`
 | `mismatch` | `cast/type rendering: SELECT operator cast` | 7 |
 | `mismatch` | `DELETE` | 6 |
 | `mismatch` | `FROM` | 6 |
+| `mismatch` | `INSERT` | 6 |
 
 ## Source Test Buckets
 
@@ -186,9 +186,9 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1030 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 605 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 400 |
-| `match` | `tests/dialects/test_dialect.py` | `test_time` | 277 |
+| `match` | `tests/dialects/test_dialect.py` | `test_time` | 301 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 273 |
-| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 251 |
+| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 252 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 250 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 228 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
@@ -394,6 +394,18 @@ Total rows: `15156`
   - expected: `SELECT CAST(date AS TEXT FORMAT 'YYYY') FROM (SELECT DATE('2026-03-24') AS date)`
   - actual: `SELECT CAST(date AS TEXT) FROM (SELECT DATE('2026-03-24') AS date)`
 
+### `mismatch` `cast/type rendering: WITH`
+
+- `tests/dialects/test_bigquery.py`:2060 `test_bigquery` via `validate_all`: `WITH sample AS (SELECT * FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+  - expected: `WITH sample AS (SELECT * FROM UNNEST(ARRAY(CAST('2024-03-15 14:35:46' AS TIMESTAMPTZ), CAST('2024-03-16 01:12:03' AS TIMESTAMPTZ))) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+  - actual: `WITH sample AS (SELECT * FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+- `tests/dialects/test_bigquery.py`:2060 `test_bigquery` via `validate_all`: `WITH sample AS (SELECT * FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+  - expected: `WITH sample AS (SELECT * FROM UNNEST(ARRAY(CAST('2024-03-15 14:35:46' AS TIMESTAMPTZ), CAST('2024-03-16 01:12:03' AS TIMESTAMPTZ))) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+  - actual: `WITH sample AS (SELECT * FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+- `tests/dialects/test_bigquery.py`:2067 `test_bigquery` via `validate_all`: `WITH sample AS (SELECT ts FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY) AS truncated_ts FROM sample`
+  - expected: `WITH sample AS (SELECT ts FROM UNNEST(ARRAY(CAST('2024-03-15 14:35:46' AS TIMESTAMPTZ), CAST('2024-03-16 01:12:03' AS TIMESTAMPTZ))) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY) AS truncated_ts FROM sample`
+  - actual: `WITH sample AS (SELECT ts FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY) AS truncated_ts FROM sample`
+
 ### `mismatch` `date/time rendering: CREATE`
 
 - `tests/dialects/test_postgres.py`:1277 `test_ddl` via `validate_identity`: `CREATE CONSTRAINT TRIGGER my_trigger AFTER INSERT OR DELETE OR UPDATE OF col_a, col_b ON public.my_table DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION DO_STH()`
@@ -417,18 +429,6 @@ Total rows: `15156`
 - `tests/dialects/test_dialect.py`:3651 `test_generate_date_array` via `validate_all`: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
   - expected: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE('2020-01-01'), DATE('2020-02-01'), INTERVAL '1' WEEK))`
   - actual: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
-
-### `mismatch` `date/time rendering: STR_TO_TIME()`
-
-- `tests/test_transpile.py`:791 `test_time` via `validate`: `STR_TO_TIME('x', 'y')`
-  - expected: `STR_TO_TIME('x', 'y')`
-  - actual: `STR_TO_DATE('x', 'y')`
-- `tests/test_transpile.py`:806 `test_time` via `validate`: `STR_TO_TIME(x, 'y')`
-  - expected: `STR_TO_TIME(x, 'y')`
-  - actual: `STR_TO_DATE(x, 'y')`
-- `tests/test_transpile.py`:811 `test_time` via `validate`: `STR_TO_TIME(x, 'yyyy-MM-dd HH:mm:ss')`
-  - expected: `STR_TO_TIME(x, 'yyyy-MM-dd HH:mm:ss')`
-  - actual: `STR_TO_DATE(x, 'yyyy-MM-dd HH:mm:ss')`
 
 ### `mismatch` `missing AS or alias rendering`
 

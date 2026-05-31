@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10828 |
-| `mismatch` | 1876 |
+| `match` | 10866 |
+| `mismatch` | 1838 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7957 |
-| `match` | `validate_identity` | 2764 |
+| `match` | `validate_all` | 7989 |
+| `match` | `validate_identity` | 2770 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_all` | 971 |
-| `mismatch` | `validate_identity` | 842 |
+| `mismatch` | `validate_all` | 939 |
+| `mismatch` | `validate_identity` | 836 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 318 |
 | `rust-error` | `validate_all` | 254 |
@@ -45,7 +45,7 @@ Filtered by read/write: `0`
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1030 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 605 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 400 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 401 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 301 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 273 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 252 |
@@ -58,7 +58,7 @@ Filtered by read/write: `0`
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 139 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 128 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 127 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 109 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 108 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 102 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 101 |

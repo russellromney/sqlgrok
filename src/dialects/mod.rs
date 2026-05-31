@@ -392,6 +392,11 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             for join in &mut sel.joins {
                 transform_exprs_in_table_source(&mut join.table, source, target);
             }
+            // Named WINDOW definitions' ORDER BY also needs NULLS
+            // direction propagation for postgres source → sqlite.
+            for wd in &mut sel.window_definitions {
+                wd.spec = transform_window_spec(wd.spec.clone(), source, target);
+            }
             if let Some(rewritten) = rewrite_postgres_distinct_on(sel, source, target) {
                 *sel = rewritten;
             }
@@ -1857,6 +1862,25 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                         };
                     }
                 }
+            }
+            // Mysql FORMAT(value, fmt[, locale]) is the NUMBER_TO_STR
+            // function in Python SQLGlot's IR; rewrite the name for
+            // sqlite (and other) targets.
+            if is_mysql_family(source)
+                && matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("FORMAT")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() >= 2
+            {
+                return Expr::Function {
+                    name: "NUMBER_TO_STR".to_string(),
+                    args: new_args,
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
             }
             if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("TRUNCATE")
