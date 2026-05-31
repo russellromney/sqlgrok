@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10866 |
-| `mismatch` | 1838 |
+| `match` | 10869 |
+| `mismatch` | 1835 |
 | `oracle-error` | 1739 |
 | `rust-error` | 576 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 10866 |
-| `mismatch` | `mysql` | `sqlite` | 1838 |
+| `match` | `mysql` | `sqlite` | 10869 |
+| `mismatch` | `mysql` | `sqlite` | 1835 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
 | `rust-error` | `mysql` | `sqlite` | 576 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
@@ -28,10 +28,10 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 7989 |
+| `match` | `validate_all` | 7992 |
 | `match` | `validate_identity` | 2770 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_all` | 939 |
+| `mismatch` | `validate_all` | 936 |
 | `mismatch` | `validate_identity` | 836 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 318 |
@@ -66,9 +66,9 @@ Total rows: `15156`
 | `mismatch` | `SELECT UNNEST()` | 95 |
 | `match` | `WITH` | 94 |
 | `match` | `SELECT CAST()` | 92 |
-| `mismatch` | `ALTER TABLE` | 86 |
 | `mismatch` | `SELECT operator multiply` | 85 |
-| `match` | `ALTER TABLE` | 80 |
+| `match` | `ALTER TABLE` | 83 |
+| `mismatch` | `ALTER TABLE` | 83 |
 | `match` | `SELECT UNNEST()` | 80 |
 | `match` | `SELECT DATEDIFF()` | 79 |
 | `match` | `SET` | 78 |
@@ -142,7 +142,7 @@ Total rows: `15156`
 | `mismatch` | `DDL/create-table rendering` | 181 |
 | `mismatch` | `SELECT` | 129 |
 | `mismatch` | `CREATE` | 100 |
-| `mismatch` | `ALTER TABLE` | 77 |
+| `mismatch` | `ALTER TABLE` | 74 |
 | `mismatch` | `SELECT operator multiply` | 72 |
 | `mismatch` | `SELECT UNNEST()` | 64 |
 | `mismatch` | `missing quoted identifier` | 53 |

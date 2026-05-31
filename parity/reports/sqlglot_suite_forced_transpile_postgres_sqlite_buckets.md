@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11095 |
-| `mismatch` | 1871 |
+| `match` | 11098 |
+| `mismatch` | 1868 |
 | `oracle-error` | 1456 |
 | `rust-error` | 597 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 11095 |
-| `mismatch` | `postgres` | `sqlite` | 1871 |
+| `match` | `postgres` | `sqlite` | 11098 |
+| `mismatch` | `postgres` | `sqlite` | 1868 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
 | `rust-error` | `postgres` | `sqlite` | 597 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -28,9 +28,9 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8041 |
+| `match` | `validate_all` | 8044 |
 | `match` | `validate_identity` | 2948 |
-| `mismatch` | `validate_all` | 991 |
+| `mismatch` | `validate_all` | 988 |
 | `oracle-error` | `validate_identity` | 949 |
 | `mismatch` | `validate_identity` | 812 |
 | `oracle-error` | `validate_all` | 501 |
@@ -60,7 +60,7 @@ Total rows: `15156`
 | `match` | `TRUNC()` | 164 |
 | `oracle-error` | `SELECT operator multiply` | 150 |
 | `mismatch` | `SELECT` | 120 |
-| `match` | `ALTER TABLE` | 114 |
+| `match` | `ALTER TABLE` | 117 |
 | `match` | `X` | 113 |
 | `mismatch` | `SELECT UNNEST()` | 113 |
 | `oracle-error` | `CREATE TABLE` | 106 |
@@ -87,7 +87,7 @@ Total rows: `15156`
 | `match` | `SELECT UNNEST()` | 56 |
 | `match` | `INSERT` | 54 |
 | `rust-error` | `SELECT` | 53 |
-| `mismatch` | `ALTER TABLE` | 51 |
+| `match` | `FROM` | 50 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -145,7 +145,7 @@ Total rows: `15156`
 | `mismatch` | `SELECT operator multiply` | 77 |
 | `mismatch` | `SELECT UNNEST()` | 73 |
 | `mismatch` | `case-only rendering difference` | 58 |
-| `mismatch` | `ALTER TABLE` | 47 |
+| `mismatch` | `ALTER TABLE` | 44 |
 | `mismatch` | `WITH` | 32 |
 | `mismatch` | `date/time rendering: CREATE` | 27 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 26 |

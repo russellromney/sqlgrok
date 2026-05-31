@@ -21,6 +21,10 @@ pub struct Tokenizer {
     /// Whether MySQL/Postgres bit literals such as `0b1011` and `b'1011'`
     /// should be tokenized as numeric values.
     bit_literals_as_numbers: bool,
+    /// MySQL allows a digit-letter sequence with no whitespace (e.g.
+    /// `1d`, `2.0bd`) to be a single quoted identifier rather than a
+    /// number followed by an alias.
+    digit_letter_is_identifier: bool,
 }
 
 impl Tokenizer {
@@ -35,6 +39,7 @@ impl Tokenizer {
             preserve_comments: false,
             hash_comments: true,
             bit_literals_as_numbers: false,
+            digit_letter_is_identifier: false,
         }
     }
 
@@ -49,6 +54,7 @@ impl Tokenizer {
             preserve_comments: true,
             hash_comments: true,
             bit_literals_as_numbers: false,
+            digit_letter_is_identifier: false,
         }
     }
 
@@ -63,6 +69,7 @@ impl Tokenizer {
             preserve_comments,
             hash_comments,
             bit_literals_as_numbers: false,
+            digit_letter_is_identifier: false,
         }
     }
 
@@ -70,6 +77,13 @@ impl Tokenizer {
     #[must_use]
     pub fn with_bit_literals_as_numbers(mut self, enabled: bool) -> Self {
         self.bit_literals_as_numbers = enabled;
+        self
+    }
+
+    /// Enable or disable the mysql-style "digit-letter is identifier" rule.
+    #[must_use]
+    pub fn with_digit_letter_is_identifier(mut self, enabled: bool) -> Self {
+        self.digit_letter_is_identifier = enabled;
         self
     }
 
@@ -763,6 +777,22 @@ impl Tokenizer {
             while self.peek().is_some_and(|c| c.is_ascii_digit()) {
                 value.push(self.advance().unwrap());
             }
+        }
+
+        // MySQL: digit-letter sequence with no whitespace becomes a
+        // single quoted identifier ("1d", "1.0bd", "100ns", etc.).
+        if self.digit_letter_is_identifier
+            && self
+                .peek()
+                .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+        {
+            while self
+                .peek()
+                .is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
+            {
+                value.push(self.advance().unwrap());
+            }
+            return Ok(self.make_quoted_identifier(value, start, start_line, start_col));
         }
 
         Ok(self.make_token(TokenType::Number, value, start, start_line, start_col))

@@ -24,6 +24,16 @@ fn dialect_normalizes_bit_literals(dialect: Dialect) -> bool {
     matches!(dialect, Dialect::Mysql | Dialect::Postgres)
 }
 
+fn dialect_digit_letter_is_identifier(dialect: Dialect) -> bool {
+    matches!(
+        dialect,
+        Dialect::Mysql
+            | Dialect::SingleStore
+            | Dialect::Doris
+            | Dialect::StarRocks
+    )
+}
+
 fn is_identifier_like(value: &str) -> bool {
     let mut chars = value.chars();
     let Some(first) = chars.next() else {
@@ -286,7 +296,8 @@ impl Parser {
             preserve_comments,
             dialect_supports_hash_comments(dialect),
         )
-        .with_bit_literals_as_numbers(dialect_normalizes_bit_literals(dialect));
+        .with_bit_literals_as_numbers(dialect_normalizes_bit_literals(dialect))
+        .with_digit_letter_is_identifier(dialect_digit_letter_is_identifier(dialect));
         let tokens = tokenizer.tokenize()?;
         Ok(Self {
             tokens,
