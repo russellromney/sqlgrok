@@ -3202,6 +3202,22 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 table_quote_style: new_tqs,
             }
         }
+        Expr::Exists { mut subquery, negated } => {
+            transform_statement(&mut subquery, source, target);
+            Expr::Exists { subquery, negated }
+        }
+        Expr::Subquery(mut stmt) => {
+            transform_statement(&mut stmt, source, target);
+            Expr::Subquery(stmt)
+        }
+        Expr::InSubquery { expr, mut subquery, negated } => {
+            transform_statement(&mut subquery, source, target);
+            Expr::InSubquery {
+                expr: Box::new(transform_expr(*expr, source, target)),
+                subquery,
+                negated,
+            }
+        }
         // Everything else stays the same
         other => other,
     }
