@@ -2258,6 +2258,58 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
+            // COUNTIF(x) → SUM(IIF(x, 1, 0)) for sqlite target, any source.
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("COUNTIF")
+                && !distinct
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                let iif = Expr::Function {
+                    name: "IIF".to_string(),
+                    args: vec![
+                        new_args[0].clone(),
+                        Expr::Number("1".to_string()),
+                        Expr::Number("0".to_string()),
+                    ],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+                return Expr::TypedFunction {
+                    func: TypedFunction::Sum {
+                        expr: Box::new(iif),
+                        distinct: false,
+                    },
+                    filter,
+                    over: None,
+                };
+            }
+            // TO_ARRAY(literal-array) → ARRAY(...) unwrap. For
+            // mysql/postgres sources, Python unwraps array literals to
+            // bare ARRAY(...). The non-literal form is left untouched
+            // here since the IIF-wrapped fallback Python emits is
+            // dialect-specific and rarely matched by sqlgrok's pipeline.
+            if (is_mysql_family(source) || is_postgres_family(source))
+                && matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("TO_ARRAY")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                if let Expr::Function { name: inner_name, args: inner_args, .. } = &new_args[0] {
+                    if inner_name.eq_ignore_ascii_case("ARRAY") {
+                        return Expr::Function {
+                            name: "ARRAY".to_string(),
+                            args: inner_args.clone(),
+                            distinct: false,
+                            filter: None,
+                            over: None,
+                        };
+                    }
+                }
+            }
             // TIMESTAMP_DIFF(a, b, unit) → TIMESTAMPDIFF(a, b, UNIT)
             // and TIMESTAMP_SUB / TIMESTAMP_ADD keep their names but
             // uppercase the trailing unit arg. Python normalizes the

@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11360 |
-| `mismatch` | 1606 |
+| `match` | 11368 |
+| `mismatch` | 1598 |
 | `oracle-error` | 1456 |
 | `rust-error` | 597 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8266 |
+| `match` | `validate_all` | 8274 |
 | `match` | `validate_identity` | 2987 |
 | `oracle-error` | `validate_identity` | 949 |
 | `mismatch` | `validate_identity` | 773 |
-| `mismatch` | `validate_all` | 766 |
+| `mismatch` | `validate_all` | 758 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 350 |
 | `rust-error` | `validate_all` | 244 |
@@ -43,8 +43,8 @@ Filtered by read/write: `0`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1038 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 654 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1042 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 658 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 475 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 332 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 322 |
@@ -54,8 +54,8 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 189 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 168 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 145 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 142 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 141 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 121 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 108 |
@@ -67,7 +67,7 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 85 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 83 |
 | `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 82 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 80 |
+| `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
 
 ## Examples
 
