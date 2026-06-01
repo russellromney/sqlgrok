@@ -1825,6 +1825,11 @@ pub struct ColumnDef {
     pub auto_increment_before_primary_key: bool,
     #[serde(default)]
     pub primary_key_from_table_constraint: bool,
+    /// Whether the column's auto_increment came from a postgres-style
+    /// `GENERATED ... AS IDENTITY` clause (which implies NOT NULL, so
+    /// sqlite output drops an explicit NOT NULL).
+    #[serde(default)]
+    pub auto_increment_from_identity: bool,
     pub collation: Option<String>,
     pub comment: Option<String>,
 }

@@ -3560,6 +3560,7 @@ impl Parser {
             auto_increment,
             auto_increment_before_primary_key,
             primary_key_from_table_constraint: false,
+            auto_increment_from_identity,
             collation,
             comment,
         })
