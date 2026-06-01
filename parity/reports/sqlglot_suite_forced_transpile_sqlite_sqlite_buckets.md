@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11247 |
-| `mismatch` | 1640 |
+| `match` | 11258 |
+| `mismatch` | 1629 |
 | `oracle-error` | 1545 |
 | `rust-error` | 587 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 11247 |
-| `mismatch` | `sqlite` | `sqlite` | 1640 |
+| `match` | `sqlite` | `sqlite` | 11258 |
+| `mismatch` | `sqlite` | `sqlite` | 1629 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
 | `rust-error` | `sqlite` | `sqlite` | 587 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8167 |
-| `match` | `validate_identity` | 2976 |
+| `match` | `validate_all` | 8177 |
+| `match` | `validate_identity` | 2977 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_all` | 834 |
-| `mismatch` | `validate_identity` | 739 |
+| `mismatch` | `validate_all` | 824 |
+| `mismatch` | `validate_identity` | 738 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 351 |
 | `rust-error` | `validate_all` | 233 |
@@ -62,17 +62,17 @@ Total rows: `15156`
 | `oracle-error` | `SELECT operator multiply` | 143 |
 | `match` | `ALTER TABLE` | 118 |
 | `oracle-error` | `CREATE TABLE` | 113 |
-| `match` | `WITH` | 108 |
+| `match` | `WITH` | 109 |
 | `match` | `X` | 107 |
 | `match` | `SELECT CAST()` | 102 |
 | `match` | `SELECT DATEDIFF()` | 83 |
-| `mismatch` | `SELECT UNNEST()` | 82 |
 | `match` | `SET` | 78 |
 | `match` | `DATE_TRUNC()` | 77 |
 | `match` | `DATE_ADD()` | 74 |
+| `match` | `SELECT UNNEST()` | 73 |
+| `mismatch` | `SELECT UNNEST()` | 72 |
 | `match` | `LOG()` | 67 |
 | `match` | `JSON_EXTRACT()` | 64 |
-| `match` | `SELECT UNNEST()` | 63 |
 | `match` | `GRANT` | 62 |
 | `rust-error` | `SELECT operator multiply` | 61 |
 | `match` | `ANALYZE` | 60 |
@@ -149,12 +149,11 @@ Total rows: `15156`
 | `mismatch` | `SELECT operator multiply` | 29 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 24 |
 | `mismatch` | `date/time rendering: CREATE` | 24 |
-| `mismatch` | `WITH` | 23 |
+| `mismatch` | `WITH` | 22 |
 | `mismatch` | `cast/type rendering: CAST()` | 19 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
 | `mismatch` | `A` | 15 |
 | `mismatch` | `X` | 13 |
-| `mismatch` | `SELECT UNNEST()` | 11 |
 | `mismatch` | `'FOO'` | 10 |
 | `mismatch` | `--` | 9 |
 | `mismatch` | `COPY` | 9 |
@@ -178,6 +177,7 @@ Total rows: `15156`
 | `mismatch` | `INTERVAL` | 5 |
 | `mismatch` | `SELECT INSERT()` | 5 |
 | `mismatch` | `SELECT LEADING()` | 5 |
+| `mismatch` | `SELECT operator json` | 5 |
 
 ## Source Test Buckets
 
@@ -310,6 +310,18 @@ Total rows: `15156`
   - expected: `CREATE TABLE foo (id INTEGER, val TEXT)`
   - actual: `CREATE EXTERNAL TABLE foo (id INT, val STRING) CLUSTERED BY (id, val) INTO 10 BUCKETS`
 
+### `mismatch` `PIVOT`
+
+- `tests/dialects/test_duckdb.py`:27 `test_duckdb` via `validate_identity`: `PIVOT duckdb_functions() ON schema_name USING AVG(LENGTH(function_name))::INTEGER GROUP BY schema_name`
+  - expected: ``
+  - actual: `PIVOT duckdb_functions() ON schema_name USING AVG(LENGTH(function_name))::INTEGER GROUP BY schema_name`
+- `tests/dialects/test_duckdb.py`:675 `test_duckdb` via `validate_identity`: `PIVOT Cities ON Year IN (2000, 2010) USING SUM(Population) GROUP BY Country`
+  - expected: ``
+  - actual: `PIVOT Cities ON Year IN (2000, 2010) USING SUM(Population) GROUP BY Country`
+- `tests/dialects/test_duckdb.py`:678 `test_duckdb` via `validate_identity`: `PIVOT Cities ON Year USING SUM(Population) AS total, MAX(Population) AS max GROUP BY Country`
+  - expected: ``
+  - actual: `PIVOT Cities ON Year USING SUM(Population) AS total, MAX(Population) AS max GROUP BY Country`
+
 ### `mismatch` `SELECT`
 
 - `tests/test_transpile.py`:123 `test_comments` via `validate`: `SELECT c /* foo */ AS alias`
@@ -321,18 +333,6 @@ Total rows: `15156`
 - `tests/test_transpile.py`:155 `test_comments` via `validate`: `SELECT CASE /* test */ WHEN a THEN b ELSE c END`
   - expected: `SELECT CASE WHEN a THEN b ELSE c END /* test */`
   - actual: `SELECT CASE WHEN a THEN b ELSE c END`
-
-### `mismatch` `SELECT UNNEST()`
-
-- `tests/dialects/test_bigquery.py`:3290 `test_unnest_with_offset` via `validate_all`: `SELECT * FROM tbl CROSS JOIN UNNEST(col) AS ref WITH OFFSET`
-  - expected: `SELECT * FROM tbl CROSS JOIN UNNEST(col) WITH ORDINALITY AS ref`
-  - actual: `SELECT * FROM tbl CROSS JOIN UNNEST(col) AS ref WITH OFFSET`
-- `tests/dialects/test_bigquery.py`:3290 `test_unnest_with_offset` via `validate_all`: `SELECT * FROM tbl CROSS JOIN UNNEST(col) AS ref WITH OFFSET`
-  - expected: `SELECT * FROM tbl CROSS JOIN UNNEST(col) WITH ORDINALITY AS ref`
-  - actual: `SELECT * FROM tbl CROSS JOIN UNNEST(col) AS ref WITH OFFSET`
-- `tests/dialects/test_bigquery.py`:3290 `test_unnest_with_offset` via `validate_all`: `SELECT * FROM tbl CROSS JOIN UNNEST(col) AS ref WITH OFFSET`
-  - expected: `SELECT * FROM tbl CROSS JOIN UNNEST(col) WITH ORDINALITY AS ref`
-  - actual: `SELECT * FROM tbl CROSS JOIN UNNEST(col) AS ref WITH OFFSET`
 
 ### `mismatch` `SELECT operator multiply`
 

@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11177 |
-| `mismatch` | 1789 |
+| `match` | 11187 |
+| `mismatch` | 1779 |
 | `oracle-error` | 1456 |
 | `rust-error` | 597 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 11177 |
-| `mismatch` | `postgres` | `sqlite` | 1789 |
+| `match` | `postgres` | `sqlite` | 11187 |
+| `mismatch` | `postgres` | `sqlite` | 1779 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
 | `rust-error` | `postgres` | `sqlite` | 597 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -28,10 +28,10 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8116 |
+| `match` | `validate_all` | 8126 |
 | `match` | `validate_identity` | 2955 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_all` | 916 |
+| `mismatch` | `validate_all` | 906 |
 | `mismatch` | `validate_identity` | 805 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 350 |
@@ -63,14 +63,15 @@ Total rows: `15156`
 | `match` | `ALTER TABLE` | 117 |
 | `match` | `WITH` | 116 |
 | `match` | `X` | 113 |
-| `mismatch` | `SELECT UNNEST()` | 113 |
 | `oracle-error` | `CREATE TABLE` | 106 |
+| `mismatch` | `SELECT UNNEST()` | 103 |
 | `match` | `SELECT CAST()` | 98 |
 | `match` | `SELECT DATEDIFF()` | 83 |
 | `match` | `SET` | 78 |
 | `match` | `DATE_ADD()` | 74 |
 | `match` | `DATE_TRUNC()` | 73 |
 | `match` | `LOG()` | 67 |
+| `match` | `SELECT UNNEST()` | 66 |
 | `match` | `GRANT` | 65 |
 | `match` | `JSON_EXTRACT()` | 64 |
 | `match` | `A` | 60 |
@@ -82,7 +83,6 @@ Total rows: `15156`
 | `match` | `SELECT SUM()` | 57 |
 | `match` | `TIME_STR_TO_TIME()` | 57 |
 | `match` | `REGEXP_INSTR()` | 56 |
-| `match` | `SELECT UNNEST()` | 56 |
 | `match` | `INSERT` | 54 |
 | `rust-error` | `SELECT` | 53 |
 | `match` | `FROM` | 51 |
@@ -142,7 +142,7 @@ Total rows: `15156`
 | `mismatch` | `DDL/create-table rendering` | 172 |
 | `mismatch` | `CREATE` | 116 |
 | `mismatch` | `SELECT` | 105 |
-| `mismatch` | `SELECT UNNEST()` | 73 |
+| `mismatch` | `SELECT UNNEST()` | 63 |
 | `mismatch` | `case-only rendering difference` | 62 |
 | `mismatch` | `ALTER TABLE` | 44 |
 | `mismatch` | `SELECT operator multiply` | 36 |

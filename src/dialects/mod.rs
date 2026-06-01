@@ -1979,6 +1979,41 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
+            // Mysql VERSION() → SQLITE_VERSION() for sqlite target.
+            if is_mysql_family(source)
+                && matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("VERSION")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.is_empty()
+            {
+                return Expr::Function {
+                    name: "SQLITE_VERSION".to_string(),
+                    args: vec![],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
+            // Mysql INSERT(s, pos, len, repl) → STUFF(...) for sqlite
+            // target (Python SQLGlot's IR name for the same function).
+            if is_mysql_family(source)
+                && matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("INSERT")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 4
+            {
+                return Expr::Function {
+                    name: "STUFF".to_string(),
+                    args: new_args,
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
             if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("TRUNCATE")
                 && !distinct
