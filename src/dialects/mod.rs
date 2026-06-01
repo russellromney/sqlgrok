@@ -399,6 +399,17 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                     normalize_sqlite_unnest_with_offset_in_table_source(&mut join.table);
                 }
             }
+            // For sqlite source, `UNNEST([…])` inside a Raw table source
+            // becomes `UNNEST("…")` (Python's array-literal-to-quoted
+            // -string fallback applied inside UNNEST).
+            if matches!(target, Dialect::Sqlite) && matches!(source, Dialect::Sqlite) {
+                if let Some(from) = &mut sel.from {
+                    rewrite_unnest_array_literal_in_table_source(&mut from.source, source);
+                }
+                for join in &mut sel.joins {
+                    rewrite_unnest_array_literal_in_table_source(&mut join.table, source);
+                }
+            }
             // Recurse into table sources to transform inner Expr nodes
             // (e.g. UNNEST(ARRAY_LITERAL) or UNNEST(GENERATE_DATE_ARRAY(
             // DATE 'x', INTERVAL 1 WEEK))) — these would otherwise miss
@@ -757,6 +768,53 @@ fn normalize_sqlite_unnest_with_offset_in_table_source(source: &mut TableSource)
         }
         _ => {}
     }
+}
+
+fn rewrite_unnest_array_literal_in_table_source(source: &mut TableSource, src_dialect: Dialect) {
+    match source {
+        TableSource::Raw { sql, .. } => {
+            if matches!(src_dialect, Dialect::Sqlite) {
+                if let Some(r) = rewrite_unnest_array_literal_sqlite(sql) {
+                    *sql = r;
+                }
+            }
+        }
+        TableSource::Lateral { source } => {
+            rewrite_unnest_array_literal_in_table_source(source, src_dialect);
+        }
+        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
+            rewrite_unnest_array_literal_in_table_source(source, src_dialect);
+        }
+        _ => {}
+    }
+}
+
+/// For sqlite source → sqlite target, `UNNEST([1, 2, 3])` becomes
+/// `UNNEST("1, 2, 3")` (Python's array-literal-to-quoted-string
+/// fallback applied inside UNNEST). Only the outermost `[…]`
+/// immediately inside the UNNEST( … ) is converted.
+fn rewrite_unnest_array_literal_sqlite(sql: &str) -> Option<String> {
+    let upper = sql.to_ascii_uppercase();
+    let unnest_pos = upper.find("UNNEST(")?;
+    let lparen_abs = unnest_pos + "UNNEST".len();
+    // Find the next non-whitespace char after `(`.
+    let after_lparen = lparen_abs + 1;
+    let body_start = sql[after_lparen..]
+        .find(|c: char| !c.is_whitespace())
+        .map(|o| after_lparen + o)?;
+    if !sql[body_start..].starts_with('[') {
+        return None;
+    }
+    // Find matching `]` (no nesting for arrays in this form).
+    let close_bracket = sql[body_start + 1..].find(']').map(|o| body_start + 1 + o)?;
+    let inside = &sql[body_start + 1..close_bracket];
+    let mut out = String::with_capacity(sql.len());
+    out.push_str(&sql[..body_start]);
+    out.push('"');
+    out.push_str(inside);
+    out.push('"');
+    out.push_str(&sql[close_bracket + 1..]);
+    Some(out)
 }
 
 /// Rewrites BigQuery `UNNEST(expr) [AS alias] WITH OFFSET [AS pos]` into

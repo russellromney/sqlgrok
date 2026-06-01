@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11293 |
-| `mismatch` | 1673 |
+| `match` | 11325 |
+| `mismatch` | 1641 |
 | `oracle-error` | 1456 |
 | `rust-error` | 597 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 11293 |
-| `mismatch` | `postgres` | `sqlite` | 1673 |
+| `match` | `postgres` | `sqlite` | 11325 |
+| `mismatch` | `postgres` | `sqlite` | 1641 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
 | `rust-error` | `postgres` | `sqlite` | 597 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8209 |
-| `match` | `validate_identity` | 2977 |
+| `match` | `validate_all` | 8236 |
+| `match` | `validate_identity` | 2982 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_all` | 823 |
-| `mismatch` | `validate_identity` | 783 |
+| `mismatch` | `validate_all` | 796 |
+| `mismatch` | `validate_identity` | 778 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 350 |
 | `rust-error` | `validate_all` | 244 |
@@ -153,7 +153,6 @@ Total rows: `15156`
 | `mismatch` | `cast/type rendering: CAST()` | 21 |
 | `mismatch` | `cast/type rendering: SELECT TO_CHAR()` | 19 |
 | `mismatch` | `A` | 18 |
-| `mismatch` | `SELECT ARRAY_AGG()` | 18 |
 | `mismatch` | `WITH` | 15 |
 | `mismatch` | `date/time rendering: TIME_TO_STR()` | 14 |
 | `mismatch` | `SELECT RLIKE()` | 12 |
@@ -165,7 +164,6 @@ Total rows: `15156`
 | `mismatch` | `cast/type rendering: WITH` | 9 |
 | `mismatch` | `CONCAT_WS()` | 8 |
 | `mismatch` | `RESET` | 8 |
-| `mismatch` | `ARRAY_AGG()` | 7 |
 | `mismatch` | `DESCRIBE` | 7 |
 | `mismatch` | `SELECT COUNT()` | 7 |
 | `mismatch` | `SELECT FLOOR()` | 7 |
@@ -178,14 +176,16 @@ Total rows: `15156`
 | `mismatch` | `SELECT TVFTEST()` | 6 |
 | `mismatch` | `STRPOS()` | 6 |
 | `mismatch` | `STR_POSITION()` | 6 |
+| `mismatch` | `X` | 6 |
+| `mismatch` | `date/time rendering: SELECT DATETRUNC()` | 6 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1037 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 629 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 474 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 638 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 475 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 332 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 322 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 251 |
@@ -193,15 +193,15 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 233 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 180 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
-| `match` | `tests/dialects/test_presto.py` | `test_presto` | 164 |
+| `match` | `tests/dialects/test_presto.py` | `test_presto` | 168 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 146 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 142 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 121 |
+| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 108 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 107 |
-| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 105 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 105 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 96 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
@@ -262,6 +262,18 @@ Total rows: `15156`
   - expected: `ALTER TABLE X ADD COLUMNS (y INTEGER, z TEXT)`
   - actual: `ALTER TABLE X ADD COLUMNS (y INT, z STRING)`
 
+### `mismatch` `COPY`
+
+- `tests/dialects/test_duckdb.py`:1287 `test_duckdb` via `validate_identity`: `COPY lineitem (l_orderkey) TO 'orderkey.tbl' WITH (DELIMITER '|')`
+  - expected: `COPY INTO lineitem (l_orderkey) TO 'orderkey.tbl' WITH (DELIMITER '|')`
+  - actual: `COPY lineitem (l_orderkey) TO 'orderkey.tbl' WITH (DELIMITER '|')`
+- `tests/dialects/test_postgres.py`:897 `test_postgres` via `validate_identity`: `COPY tbl (col1, col2) FROM 'file' WITH (FORMAT format, HEADER MATCH, FREEZE TRUE)`
+  - expected: `COPY INTO tbl (col1, col2) FROM 'file' WITH (FORMAT format, HEADER MATCH, FREEZE TRUE)`
+  - actual: `COPY tbl (col1, col2) FROM 'file' WITH (FORMAT format, HEADER MATCH, FREEZE TRUE)`
+- `tests/dialects/test_postgres.py`:900 `test_postgres` via `validate_identity`: `COPY tbl (col1, col2) TO 'file' WITH (FORMAT format, HEADER MATCH, FREEZE TRUE)`
+  - expected: `COPY INTO tbl (col1, col2) TO 'file' WITH (FORMAT format, HEADER MATCH, FREEZE TRUE)`
+  - actual: `COPY tbl (col1, col2) TO 'file' WITH (FORMAT format, HEADER MATCH, FREEZE TRUE)`
+
 ### `mismatch` `CREATE`
 
 - `tests/dialects/test_bigquery.py`:104 `test_bigquery` via `validate_identity`: `CREATE SCHEMA x DEFAULT COLLATE 'en'`
@@ -297,18 +309,6 @@ Total rows: `15156`
 - `tests/test_transpile.py`:119 `test_comments` via `validate`: `select /* asfd /* asdf */ asdf */ 1`
   - expected: `/* asfd / * asdf * / asdf */ SELECT 1`
   - actual: `SELECT 1`
-
-### `mismatch` `SELECT ARRAY_AGG()`
-
-- `tests/dialects/test_bigquery.py`:3219 `test_array_agg` via `validate_all`: `SELECT ARRAY_AGG(x ORDER BY x)`
-  - expected: `SELECT ARRAY_AGG(x ORDER BY x NULLS LAST)`
-  - actual: `SELECT ARRAY_AGG(x ORDER BY x)`
-- `tests/dialects/test_bigquery.py`:3219 `test_array_agg` via `validate_all`: `SELECT ARRAY_AGG(x ORDER BY x)`
-  - expected: `SELECT ARRAY_AGG(x ORDER BY x NULLS LAST)`
-  - actual: `SELECT ARRAY_AGG(x ORDER BY x)`
-- `tests/dialects/test_bigquery.py`:3219 `test_array_agg` via `validate_all`: `SELECT ARRAY_AGG(DISTINCT x ORDER BY x)`
-  - expected: `SELECT ARRAY_AGG(DISTINCT x ORDER BY x NULLS LAST)`
-  - actual: `SELECT ARRAY_AGG(DISTINCT x ORDER BY x)`
 
 ### `mismatch` `SELECT RLIKE()`
 
