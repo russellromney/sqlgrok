@@ -4003,12 +4003,15 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
         }),
         (
             DataType::Timestamp {
-                precision: None,
+                precision,
                 with_tz: false,
             },
             s,
             Dialect::Sqlite,
-        ) if is_mysql_family(s) => DataType::Unknown("TIMESTAMPTZ".to_string()),
+        ) if is_mysql_family(s) => DataType::Unknown(match precision {
+            Some(p) => format!("TIMESTAMPTZ({p})"),
+            None => "TIMESTAMPTZ".to_string(),
+        }),
         (DataType::Unknown(name), _, Dialect::Sqlite)
             if name.to_ascii_uppercase().starts_with("STRING FORMAT ") =>
         {
