@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11250 |
-| `mismatch` | 1716 |
+| `match` | 11253 |
+| `mismatch` | 1713 |
 | `oracle-error` | 1456 |
 | `rust-error` | 597 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 11250 |
-| `mismatch` | `postgres` | `sqlite` | 1716 |
+| `match` | `postgres` | `sqlite` | 11253 |
+| `mismatch` | `postgres` | `sqlite` | 1713 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
 | `rust-error` | `postgres` | `sqlite` | 597 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -29,10 +29,10 @@ Total rows: `15156`
 | Status | Helper | Count |
 | --- | --- | ---: |
 | `match` | `validate_all` | 8171 |
-| `match` | `validate_identity` | 2972 |
+| `match` | `validate_identity` | 2975 |
 | `oracle-error` | `validate_identity` | 949 |
 | `mismatch` | `validate_all` | 861 |
-| `mismatch` | `validate_identity` | 788 |
+| `mismatch` | `validate_identity` | 785 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 350 |
 | `rust-error` | `validate_all` | 244 |
@@ -143,7 +143,7 @@ Total rows: `15156`
 | `mismatch` | `CREATE` | 116 |
 | `mismatch` | `SELECT` | 102 |
 | `mismatch` | `SELECT UNNEST()` | 63 |
-| `mismatch` | `case-only rendering difference` | 62 |
+| `mismatch` | `case-only rendering difference` | 59 |
 | `mismatch` | `ALTER TABLE` | 44 |
 | `mismatch` | `SELECT operator multiply` | 35 |
 | `mismatch` | `date/time rendering: CREATE` | 27 |
@@ -191,7 +191,7 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 251 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 246 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 223 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 178 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 180 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 164 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 151 |

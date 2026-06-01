@@ -2044,6 +2044,34 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
+            // IS_ASCII(x) → (NOT x GLOB CAST(x'2a5b5e012d7f5d2a' AS TEXT))
+            // The hex blob is the GLOB pattern `*[^\x01-\x7f]*` (any
+            // non-ASCII char anywhere). Python SQLGlot uses this form
+            // for sqlite output.
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("IS_ASCII")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                let glob_pattern = Expr::Cast {
+                    expr: Box::new(Expr::HexString(
+                        "2a5b5e012d7f5d2a".to_string(),
+                    )),
+                    data_type: DataType::Unknown("TEXT".to_string()),
+                };
+                let glob_op = Expr::BinaryOp {
+                    left: Box::new(new_args[0].clone()),
+                    op: BinaryOperator::Glob,
+                    right: Box::new(glob_pattern),
+                };
+                let not_glob = Expr::UnaryOp {
+                    op: UnaryOperator::Not,
+                    expr: Box::new(glob_op),
+                };
+                return Expr::Tuple(vec![not_glob]);
+            }
             // STRING(x) → CAST(x AS TEXT) for sqlite target, any source.
             if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("STRING")

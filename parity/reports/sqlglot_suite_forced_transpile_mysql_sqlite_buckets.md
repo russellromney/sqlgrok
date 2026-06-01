@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11052 |
-| `mismatch` | 1663 |
+| `match` | 11063 |
+| `mismatch` | 1652 |
 | `oracle-error` | 1739 |
 | `rust-error` | 565 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 11052 |
+| `match` | `mysql` | `sqlite` | 11063 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
-| `mismatch` | `mysql` | `sqlite` | 1663 |
+| `mismatch` | `mysql` | `sqlite` | 1652 |
 | `rust-error` | `mysql` | `sqlite` | 565 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8133 |
-| `match` | `validate_identity` | 2812 |
+| `match` | `validate_all` | 8142 |
+| `match` | `validate_identity` | 2814 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_all` | 802 |
-| `mismatch` | `validate_identity` | 798 |
+| `mismatch` | `validate_identity` | 796 |
+| `mismatch` | `validate_all` | 793 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 314 |
 | `rust-error` | `validate_all` | 247 |
@@ -138,35 +138,35 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 206 |
+| `mismatch` | `missing AS or alias rendering` | 197 |
 | `mismatch` | `DDL/create-table rendering` | 179 |
 | `mismatch` | `SELECT` | 126 |
 | `mismatch` | `CREATE` | 100 |
 | `mismatch` | `ALTER TABLE` | 74 |
 | `mismatch` | `SELECT UNNEST()` | 54 |
-| `mismatch` | `quote-style difference` | 38 |
+| `mismatch` | `quote-style difference` | 39 |
 | `mismatch` | `SELECT operator multiply` | 30 |
 | `mismatch` | `A` | 25 |
 | `mismatch` | `WITH` | 25 |
-| `mismatch` | `case-only rendering difference` | 24 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 24 |
 | `mismatch` | `date/time rendering: CREATE` | 23 |
+| `mismatch` | `case-only rendering difference` | 22 |
 | `mismatch` | `cast/type rendering: CAST()` | 21 |
-| `mismatch` | `missing quoted identifier` | 21 |
 | `mismatch` | `X` | 20 |
+| `mismatch` | `missing quoted identifier` | 20 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
 | `mismatch` | `json rendering: SELECT JSON_VALUE()` | 12 |
 | `mismatch` | `date/time rendering: DATE_ADD()` | 11 |
 | `mismatch` | `'FOO'` | 10 |
 | `mismatch` | `COPY` | 9 |
 | `mismatch` | `cast/type rendering: WITH` | 9 |
+| `mismatch` | `whitespace-only difference` | 9 |
 | `mismatch` | `--` | 8 |
 | `mismatch` | `DS` | 8 |
 | `mismatch` | `PIVOT` | 8 |
 | `mismatch` | `SELECT COUNT()` | 8 |
 | `mismatch` | `U&'HELLO` | 8 |
 | `mismatch` | `empty actual output` | 8 |
-| `mismatch` | `whitespace-only difference` | 8 |
 | `mismatch` | `DESCRIBE` | 7 |
 | `mismatch` | `SELECT FLOOR()` | 7 |
 | `mismatch` | `SELECT TO_ARRAY()` | 7 |
@@ -188,11 +188,11 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 453 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 301 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 281 |
-| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 252 |
+| `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 261 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 250 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 231 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 173 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 172 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 164 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 150 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 128 |
@@ -450,9 +450,9 @@ Total rows: `15156`
 - `tests/dialects/test_databricks.py`:76 `test_databricks` via `validate_identity`: `` COPY INTO target FROM `s3://link` FILEFORMAT = AVRO VALIDATE = ALL FILES = ('file1', 'file2') FORMAT_OPTIONS ('opt1'='true', 'opt2'='test') COPY_OPTIONS ('mergeSchema'='true') ``
   - expected: `COPY INTO target FROM "s3://link" WITH (FILEFORMAT AVRO, VALIDATE ALL, FILES ('file1', 'file2'), FORMAT_OPTIONS (opt1='true', opt2='test'), COPY_OPTIONS (mergeSchema='true'))`
   - actual: `` COPY INTO target FROM `s3://link` FILEFORMAT = AVRO VALIDATE = ALL FILES = ('file1', 'file2') FORMAT_OPTIONS ('opt1'='true', 'opt2'='test') COPY_OPTIONS ('mergeSchema'='true') ``
-- `tests/dialects/test_drill.py`:8 `test_drill` via `validate_identity`: `` SELECT * FROM table(dfs.`test_data.xlsx`(type => 'excel', sheetName => 'secondSheet')) ``
-  - expected: `SELECT * FROM TABLE(dfs."test_data.xlsx"(type => 'excel', sheetName => 'secondSheet'))`
-  - actual: `SELECT * FROM table(dfs.test_data.xlsx(type => 'excel', sheetName => 'secondSheet'))`
+- `tests/dialects/test_hive.py`:219 `test_ddl` via `validate_identity`: `` CREATE EXTERNAL TABLE `my_table` (`a7` ARRAY<DATE>) ROW FORMAT SERDE 'a' STORED AS INPUTFORMAT 'b' OUTPUTFORMAT 'c' LOCATION 'd' TBLPROPERTIES ('e'='f') ``
+  - expected: `CREATE TABLE "my_table" ("a7" ARRAY<DATE>)`
+  - actual: `` CREATE EXTERNAL TABLE `my_table` (`a7` ARRAY<DATE>) ROW FORMAT SERDE 'a' STORED AS INPUTFORMAT 'b' OUTPUTFORMAT 'c' LOCATION 'd' TBLPROPERTIES ('e'='f') ``
 
 ### `mismatch` `quote-style difference`
 

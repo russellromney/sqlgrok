@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11310 |
-| `mismatch` | 1577 |
+| `match` | 11318 |
+| `mismatch` | 1569 |
 | `oracle-error` | 1545 |
 | `rust-error` | 587 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 11310 |
-| `mismatch` | `sqlite` | `sqlite` | 1577 |
+| `match` | `sqlite` | `sqlite` | 11318 |
+| `mismatch` | `sqlite` | `sqlite` | 1569 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
 | `rust-error` | `sqlite` | `sqlite` | 587 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8211 |
-| `match` | `validate_identity` | 2995 |
+| `match` | `validate_all` | 8217 |
+| `match` | `validate_identity` | 2997 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_all` | 790 |
-| `mismatch` | `validate_identity` | 720 |
+| `mismatch` | `validate_all` | 784 |
+| `mismatch` | `validate_identity` | 718 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 351 |
 | `rust-error` | `validate_all` | 233 |
@@ -142,10 +142,10 @@ Total rows: `15156`
 | `mismatch` | `DDL/create-table rendering` | 149 |
 | `mismatch` | `SELECT` | 97 |
 | `mismatch` | `CREATE` | 96 |
-| `mismatch` | `missing quoted identifier` | 84 |
-| `mismatch` | `case-only rendering difference` | 50 |
+| `mismatch` | `missing quoted identifier` | 83 |
+| `mismatch` | `case-only rendering difference` | 42 |
 | `mismatch` | `ALTER TABLE` | 41 |
-| `mismatch` | `quote-style difference` | 40 |
+| `mismatch` | `quote-style difference` | 41 |
 | `mismatch` | `SELECT operator multiply` | 28 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 24 |
 | `mismatch` | `date/time rendering: CREATE` | 24 |
@@ -160,11 +160,11 @@ Total rows: `15156`
 | `mismatch` | `PIVOT` | 9 |
 | `mismatch` | `SELECT POSEXPLODE()` | 9 |
 | `mismatch` | `SELECT COUNT()` | 8 |
+| `mismatch` | `whitespace-only difference` | 8 |
 | `mismatch` | `DESCRIBE` | 7 |
 | `mismatch` | `INSERT` | 7 |
 | `mismatch` | `SELECT FLOOR()` | 7 |
 | `mismatch` | `SELECT TO_ARRAY()` | 7 |
-| `mismatch` | `whitespace-only difference` | 7 |
 | `mismatch` | `FROM` | 6 |
 | `mismatch` | `POSITION()` | 6 |
 | `mismatch` | `SELECT CEIL()` | 6 |
@@ -177,7 +177,7 @@ Total rows: `15156`
 | `mismatch` | `SELECT LEADING()` | 5 |
 | `mismatch` | `SELECT operator json` | 5 |
 | `mismatch` | `SELECT operator json-text` | 5 |
-| `mismatch` | `cast/type rendering: SELECT` | 5 |
+| `mismatch` | `date/time rendering: DATE_TRUNC()` | 5 |
 
 ## Source Test Buckets
 
@@ -191,8 +191,8 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 263 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 251 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 232 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 173 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 172 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 152 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 148 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
