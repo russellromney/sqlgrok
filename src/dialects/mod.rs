@@ -2258,6 +2258,35 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
+            // TIMESTAMP_DIFF(a, b, unit) → TIMESTAMPDIFF(a, b, UNIT)
+            // and TIMESTAMP_SUB / TIMESTAMP_ADD keep their names but
+            // uppercase the trailing unit arg. Python normalizes the
+            // underscore-name form to the compact one.
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("TIMESTAMP_DIFF")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 3
+            {
+                let mut args = new_args.clone();
+                if let Expr::Column { table: None, name: ref n, .. } = args[2] {
+                    let upper = n.to_ascii_uppercase();
+                    args[2] = Expr::Column {
+                        table: None,
+                        name: upper,
+                        quote_style: QuoteStyle::None,
+                        table_quote_style: QuoteStyle::None,
+                    };
+                }
+                return Expr::Function {
+                    name: "TIMESTAMPDIFF".to_string(),
+                    args,
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
             // IS_ASCII(x) → (NOT x GLOB CAST(x'2a5b5e012d7f5d2a' AS TEXT))
             // The hex blob is the GLOB pattern `*[^\x01-\x7f]*` (any
             // non-ASCII char anywhere). Python SQLGlot uses this form

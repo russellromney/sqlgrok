@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11352 |
-| `mismatch` | 1614 |
+| `match` | 11360 |
+| `mismatch` | 1606 |
 | `oracle-error` | 1456 |
 | `rust-error` | 597 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8258 |
+| `match` | `validate_all` | 8266 |
 | `match` | `validate_identity` | 2987 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_all` | 774 |
 | `mismatch` | `validate_identity` | 773 |
+| `mismatch` | `validate_all` | 766 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 350 |
 | `rust-error` | `validate_all` | 244 |
@@ -44,7 +44,7 @@ Filtered by read/write: `0`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1038 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 646 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 654 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 475 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 332 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 322 |
@@ -63,11 +63,11 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 88 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 85 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 83 |
 | `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 82 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 80 |
 
 ## Examples
 
