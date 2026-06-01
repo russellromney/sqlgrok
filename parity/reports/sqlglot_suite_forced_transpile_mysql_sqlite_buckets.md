@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11151 |
-| `mismatch` | 1565 |
+| `match` | 11195 |
+| `mismatch` | 1521 |
 | `oracle-error` | 1739 |
 | `rust-error` | 564 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 11151 |
+| `match` | `mysql` | `sqlite` | 11195 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
-| `mismatch` | `mysql` | `sqlite` | 1565 |
+| `mismatch` | `mysql` | `sqlite` | 1521 |
 | `rust-error` | `mysql` | `sqlite` | 564 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
@@ -28,17 +28,17 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8227 |
-| `match` | `validate_identity` | 2817 |
+| `match` | `validate_all` | 8267 |
+| `match` | `validate_identity` | 2820 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 793 |
-| `mismatch` | `validate_all` | 709 |
+| `mismatch` | `validate_identity` | 790 |
+| `mismatch` | `validate_all` | 669 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 314 |
 | `rust-error` | `validate_all` | 246 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `match` | `validate` | 107 |
-| `mismatch` | `validate` | 63 |
+| `match` | `validate` | 108 |
+| `mismatch` | `validate` | 62 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -48,7 +48,7 @@ Total rows: `15156`
 
 | Status | Shape | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 725 |
+| `match` | `SELECT` | 756 |
 | `match` | `CAST()` | 490 |
 | `match` | `SELECT operator multiply` | 390 |
 | `match` | `CREATE TABLE` | 307 |
@@ -57,13 +57,13 @@ Total rows: `15156`
 | `mismatch` | `CREATE TABLE` | 190 |
 | `oracle-error` | `SELECT` | 179 |
 | `match` | `TRUNC()` | 164 |
-| `mismatch` | `SELECT` | 162 |
 | `mismatch` | `CREATE` | 149 |
 | `oracle-error` | `CREATE TABLE` | 148 |
 | `oracle-error` | `SELECT operator multiply` | 135 |
+| `mismatch` | `SELECT` | 131 |
 | `match` | `WITH` | 125 |
 | `match` | `X` | 104 |
-| `match` | `SELECT CAST()` | 99 |
+| `match` | `SELECT CAST()` | 100 |
 | `match` | `SELECT UNNEST()` | 96 |
 | `oracle-error` | `CAST()` | 96 |
 | `match` | `ALTER TABLE` | 84 |
@@ -138,10 +138,10 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 190 |
+| `mismatch` | `missing AS or alias rendering` | 182 |
 | `mismatch` | `DDL/create-table rendering` | 179 |
-| `mismatch` | `SELECT` | 115 |
 | `mismatch` | `CREATE` | 100 |
+| `mismatch` | `SELECT` | 84 |
 | `mismatch` | `ALTER TABLE` | 74 |
 | `mismatch` | `SELECT UNNEST()` | 54 |
 | `mismatch` | `quote-style difference` | 35 |
@@ -151,8 +151,8 @@ Total rows: `15156`
 | `mismatch` | `case-only rendering difference` | 20 |
 | `mismatch` | `cast/type rendering: CAST()` | 20 |
 | `mismatch` | `missing quoted identifier` | 20 |
-| `mismatch` | `cast/type rendering: SELECT CAST()` | 17 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
+| `mismatch` | `cast/type rendering: SELECT CAST()` | 16 |
 | `mismatch` | `A` | 15 |
 | `mismatch` | `WITH` | 15 |
 | `mismatch` | `json rendering: SELECT JSON_VALUE()` | 12 |
@@ -190,17 +190,17 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 281 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 261 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 250 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 240 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 241 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 181 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
-| `match` | `tests/dialects/test_presto.py` | `test_presto` | 164 |
+| `match` | `tests/dialects/test_presto.py` | `test_presto` | 165 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 150 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 128 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 102 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 102 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 101 |
-| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 99 |
+| `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 100 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 98 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 97 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |

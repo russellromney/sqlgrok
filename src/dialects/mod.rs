@@ -4493,6 +4493,23 @@ fn strip_nullable_wrapper(name: &str, upper: &str) -> Option<String> {
 }
 
 fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> DataType {
+    // Common type aliases that always map to the canonical sqlite-
+    // target name regardless of source.
+    if let DataType::Unknown(name) = &dt {
+        if matches!(target, Dialect::Sqlite) {
+            let upper = name.to_ascii_uppercase();
+            let mapped = match upper.as_str() {
+                "NUMBER" | "FLOAT4" => Some("REAL".to_string()),
+                "INT4" | "INT1" | "MEDIUMINT" => Some("INTEGER".to_string()),
+                "HUGEINT" => Some("INT128".to_string()),
+                "UHUGEINT" => Some("UINT128".to_string()),
+                _ => None,
+            };
+            if let Some(m) = mapped {
+                return DataType::Unknown(m);
+            }
+        }
+    }
     // ClickHouse-style `Nullable(T)` wrappers: strip for sqlite output
     // and recurse on the inner type (matching Python SQLGlot, which
     // models nullability separately).
