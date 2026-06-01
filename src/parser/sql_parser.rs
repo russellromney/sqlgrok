@@ -7174,6 +7174,11 @@ impl Parser {
 
             // ── Aggregate ──────────────────────────────────────────
             "COUNT" => {
+                if args.len() > 1 {
+                    // COUNT(DISTINCT a, b, …) — keep as generic
+                    // Function so all the args are preserved.
+                    return None;
+                }
                 let mut it = args.into_iter();
                 let expr = it.next().unwrap_or(Expr::Wildcard);
                 TypedFunction::Count {
