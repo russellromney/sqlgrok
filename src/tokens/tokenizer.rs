@@ -202,7 +202,10 @@ impl Tokenizer {
                 // an identifier (starts with a letter or underscore, no commas inside).
                 let mut looks_like_ident = false;
                 if let Some(first_inner) = self.peek()
-                    && (first_inner.is_ascii_alphabetic() || first_inner == '_')
+                    && (first_inner.is_ascii_alphabetic()
+                        || first_inner == '_'
+                        || first_inner == '#'
+                        || first_inner == '@')
                 {
                     let mut scan = self.pos;
                     while scan < self.input.len() {

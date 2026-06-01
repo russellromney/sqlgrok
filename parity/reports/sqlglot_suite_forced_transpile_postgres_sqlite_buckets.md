@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11120 |
-| `mismatch` | 1846 |
+| `match` | 11169 |
+| `mismatch` | 1797 |
 | `oracle-error` | 1456 |
 | `rust-error` | 597 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 11120 |
-| `mismatch` | `postgres` | `sqlite` | 1846 |
+| `match` | `postgres` | `sqlite` | 11169 |
+| `mismatch` | `postgres` | `sqlite` | 1797 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
 | `rust-error` | `postgres` | `sqlite` | 597 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8064 |
-| `match` | `validate_identity` | 2950 |
-| `mismatch` | `validate_all` | 968 |
+| `match` | `validate_all` | 8110 |
+| `match` | `validate_identity` | 2953 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 810 |
+| `mismatch` | `validate_all` | 922 |
+| `mismatch` | `validate_identity` | 807 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 350 |
 | `rust-error` | `validate_all` | 244 |
@@ -50,8 +50,8 @@ Total rows: `15156`
 | --- | --- | ---: |
 | `match` | `SELECT` | 740 |
 | `match` | `CAST()` | 571 |
+| `match` | `SELECT operator multiply` | 375 |
 | `match` | `CREATE TABLE` | 366 |
-| `match` | `SELECT operator multiply` | 334 |
 | `match` | `SHOW` | 215 |
 | `oracle-error` | `SELECT` | 211 |
 | `match` | `CREATE` | 189 |
@@ -66,7 +66,6 @@ Total rows: `15156`
 | `mismatch` | `SELECT UNNEST()` | 113 |
 | `oracle-error` | `CREATE TABLE` | 106 |
 | `match` | `SELECT CAST()` | 98 |
-| `mismatch` | `SELECT operator multiply` | 89 |
 | `match` | `SELECT DATEDIFF()` | 83 |
 | `match` | `SET` | 78 |
 | `match` | `DATE_ADD()` | 74 |
@@ -88,6 +87,7 @@ Total rows: `15156`
 | `rust-error` | `SELECT` | 53 |
 | `match` | `FROM` | 51 |
 | `match` | `SELECT TO_TIMESTAMP()` | 48 |
+| `mismatch` | `ALTER TABLE` | 48 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -142,10 +142,10 @@ Total rows: `15156`
 | `mismatch` | `DDL/create-table rendering` | 172 |
 | `mismatch` | `CREATE` | 116 |
 | `mismatch` | `SELECT` | 105 |
-| `mismatch` | `SELECT operator multiply` | 77 |
 | `mismatch` | `SELECT UNNEST()` | 73 |
-| `mismatch` | `case-only rendering difference` | 60 |
+| `mismatch` | `case-only rendering difference` | 62 |
 | `mismatch` | `ALTER TABLE` | 44 |
+| `mismatch` | `SELECT operator multiply` | 36 |
 | `mismatch` | `date/time rendering: CREATE` | 27 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 26 |
 | `mismatch` | `WITH` | 25 |
@@ -185,12 +185,12 @@ Total rows: `15156`
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1038 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 625 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 419 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 460 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 332 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 321 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 246 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 245 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 220 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 221 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 174 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 157 |
@@ -200,8 +200,7 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 120 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 109 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 107 |
-| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 104 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 104 |
+| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 105 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
@@ -223,6 +222,7 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 63 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 63 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 63 |
 
 ## Bucket Examples
 

@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10933 |
-| `mismatch` | 1782 |
+| `match` | 10993 |
+| `mismatch` | 1722 |
 | `oracle-error` | 1739 |
 | `rust-error` | 565 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 10933 |
-| `mismatch` | `mysql` | `sqlite` | 1782 |
+| `match` | `mysql` | `sqlite` | 10993 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
+| `mismatch` | `mysql` | `sqlite` | 1722 |
 | `rust-error` | `mysql` | `sqlite` | 565 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8046 |
-| `match` | `validate_identity` | 2780 |
+| `match` | `validate_all` | 8092 |
+| `match` | `validate_identity` | 2794 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_all` | 889 |
-| `mismatch` | `validate_identity` | 830 |
+| `mismatch` | `validate_all` | 843 |
+| `mismatch` | `validate_identity` | 816 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 314 |
 | `rust-error` | `validate_all` | 247 |
@@ -50,9 +50,9 @@ Total rows: `15156`
 | --- | --- | ---: |
 | `match` | `SELECT` | 711 |
 | `match` | `CAST()` | 489 |
-| `match` | `SELECT operator multiply` | 352 |
+| `match` | `SELECT operator multiply` | 393 |
 | `match` | `CREATE TABLE` | 305 |
-| `match` | `SHOW` | 195 |
+| `match` | `SHOW` | 206 |
 | `match` | `CREATE` | 193 |
 | `mismatch` | `CREATE TABLE` | 192 |
 | `oracle-error` | `SELECT` | 179 |
@@ -66,7 +66,6 @@ Total rows: `15156`
 | `oracle-error` | `CAST()` | 96 |
 | `mismatch` | `SELECT UNNEST()` | 95 |
 | `match` | `SELECT CAST()` | 92 |
-| `mismatch` | `SELECT operator multiply` | 85 |
 | `match` | `ALTER TABLE` | 83 |
 | `mismatch` | `ALTER TABLE` | 83 |
 | `match` | `SELECT UNNEST()` | 80 |
@@ -88,6 +87,7 @@ Total rows: `15156`
 | `match` | `SELECT TO_TIMESTAMP()` | 55 |
 | `oracle-error` | `DATE_ADD()` | 54 |
 | `match` | `INSERT` | 53 |
+| `match` | `SELECT DATE_SUB()` | 52 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -143,19 +143,18 @@ Total rows: `15156`
 | `mismatch` | `SELECT` | 129 |
 | `mismatch` | `CREATE` | 100 |
 | `mismatch` | `ALTER TABLE` | 74 |
-| `mismatch` | `SELECT operator multiply` | 72 |
 | `mismatch` | `SELECT UNNEST()` | 64 |
 | `mismatch` | `quote-style difference` | 38 |
+| `mismatch` | `SELECT operator multiply` | 31 |
 | `mismatch` | `A` | 25 |
 | `mismatch` | `WITH` | 25 |
+| `mismatch` | `case-only rendering difference` | 24 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 24 |
 | `mismatch` | `date/time rendering: CREATE` | 23 |
-| `mismatch` | `case-only rendering difference` | 22 |
 | `mismatch` | `cast/type rendering: CAST()` | 21 |
 | `mismatch` | `missing quoted identifier` | 21 |
 | `mismatch` | `X` | 20 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
-| `mismatch` | `SHOW` | 13 |
 | `mismatch` | `json rendering: SELECT JSON_VALUE()` | 12 |
 | `mismatch` | `date/time rendering: DATE_ADD()` | 11 |
 | `mismatch` | `'FOO'` | 10 |
@@ -172,12 +171,13 @@ Total rows: `15156`
 | `mismatch` | `SELECT FLOOR()` | 7 |
 | `mismatch` | `SELECT TO_ARRAY()` | 7 |
 | `mismatch` | `cast/type rendering: SELECT operator cast` | 7 |
-| `mismatch` | `DELETE` | 6 |
 | `mismatch` | `FROM` | 6 |
 | `mismatch` | `INSERT` | 6 |
 | `mismatch` | `POSITION()` | 6 |
 | `mismatch` | `SELECT CEIL()` | 6 |
 | `mismatch` | `SELECT MIN_BY()` | 6 |
+| `mismatch` | `SELECT TVFTEST()` | 6 |
+| `mismatch` | `STRPOS()` | 6 |
 
 ## Source Test Buckets
 
@@ -185,12 +185,12 @@ Total rows: `15156`
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1043 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 608 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 408 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 449 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 301 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 280 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 252 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 250 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 228 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 229 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 168 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 157 |
@@ -198,10 +198,9 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 128 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 127 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 126 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 104 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 102 |
-| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 101 |
+| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 102 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 98 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 98 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
@@ -223,8 +222,21 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_hive.py` | `test_joins_without_on` | 66 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_time` | 65 |
 | `match` | `tests/dialects/test_presto.py` | `test_time` | 65 |
+| `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
 
 ## Bucket Examples
+
+### `mismatch` `'FOO'`
+
+- `tests/dialects/test_snowflake.py`:2065 `test_snowflake` via `validate_all`: `'foo' REGEXP 'bar'`
+  - expected: `REGEXP_LIKE('foo', 'bar')`
+  - actual: `'foo'`
+- `tests/dialects/test_snowflake.py`:2065 `test_snowflake` via `validate_all`: `'foo' REGEXP 'bar'`
+  - expected: `REGEXP_LIKE('foo', 'bar')`
+  - actual: `'foo'`
+- `tests/dialects/test_snowflake.py`:2065 `test_snowflake` via `validate_all`: `'foo' REGEXP 'bar'`
+  - expected: `REGEXP_LIKE('foo', 'bar')`
+  - actual: `'foo'`
 
 ### `mismatch` `A`
 
@@ -310,18 +322,6 @@ Total rows: `15156`
   - expected: `SELECT * FROM a /* comments */ INNER JOIN b`
   - actual: `SELECT * FROM a INNER JOIN b`
 
-### `mismatch` `SHOW`
-
-- `tests/dialects/test_mysql.py`:1369 `test_show_db_like_or_where_sql` via `validate_identity`: `SHOW TABLE STATUS`
-  - expected: ``
-  - actual: `SHOW TABLE STATUS`
-- `tests/dialects/test_mysql.py`:1373 `test_show_db_like_or_where_sql` via `validate_identity`: `SHOW TABLE STATUS FROM db_name`
-  - expected: ``
-  - actual: `SHOW TABLE STATUS FROM db_name`
-- `tests/dialects/test_mysql.py`:1377 `test_show_db_like_or_where_sql` via `validate_identity`: `SHOW TABLE STATUS LIKE '%foo%'`
-  - expected: ``
-  - actual: `SHOW TABLE STATUS LIKE '%foo%'`
-
 ### `mismatch` `WITH`
 
 - `tests/test_transpile.py`:544 `test_comments` via `validate`: `with x as ( SELECT * /* NOTE: LEFT JOIN because blah blah blah */ FROM a ) select * from x`
@@ -351,12 +351,12 @@ Total rows: `15156`
 - `tests/test_transpile.py`:672 `test_types` via `validate`: `interval::int`
   - expected: `CAST(interval AS INTEGER)`
   - actual: `CAST(INTERVAL AS INTEGER)`
-- `tests/dialects/test_clickhouse.py`:1522 `test_agg_functions_multiple_suffixes` via `validate_identity`: `SELECT sumMergeIfMerge(s) FROM (SELECT sumMergeIfState(agg, 1 = 1) AS s FROM (SELECT sumState(toFloat64(number)) AS agg FROM numbers(10)))`
-  - expected: `SELECT SUMMERGEIFMERGE(s) FROM (SELECT SUMMERGEIFSTATE(agg, 1 = 1) AS s FROM (SELECT SUMSTATE(TOFLOAT64(number)) AS agg FROM NUMBERS(10)))`
-  - actual: `SELECT SUMMERGEIFMERGE(s) FROM (SELECT SUMMERGEIFSTATE(agg, 1 = 1) AS s FROM (SELECT SUMSTATE(TOFLOAT64(number)) AS agg FROM numbers(10)))`
-- `tests/dialects/test_clickhouse.py`:73 `test_clickhouse` via `validate_identity`: `CAST(x AS Enum('hello' = 1, 'world' = 2))`
-  - expected: `CAST(x AS ENUM('hello' = 1, 'world' = 2))`
-  - actual: `CAST(x AS Enum('hello' = 1, 'world' = 2))`
+- `tests/dialects/test_bigquery.py`:786 `test_bigquery` via `validate_all`: `SELECT * FROM t WHERE EXISTS(SELECT * FROM unnest(nums) AS x WHERE x > 1)`
+  - expected: `SELECT * FROM t WHERE EXISTS(SELECT * FROM UNNEST(nums) AS x WHERE x > 1)`
+  - actual: `SELECT * FROM t WHERE EXISTS(SELECT * FROM unnest(nums) AS x WHERE x > 1)`
+- `tests/dialects/test_bigquery.py`:786 `test_bigquery` via `validate_all`: `SELECT * FROM t WHERE EXISTS(SELECT * FROM unnest(nums) AS x WHERE x > 1)`
+  - expected: `SELECT * FROM t WHERE EXISTS(SELECT * FROM UNNEST(nums) AS x WHERE x > 1)`
+  - actual: `SELECT * FROM t WHERE EXISTS(SELECT * FROM unnest(nums) AS x WHERE x > 1)`
 
 ### `mismatch` `cast/type rendering: CAST()`
 
