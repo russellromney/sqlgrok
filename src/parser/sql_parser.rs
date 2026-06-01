@@ -5995,7 +5995,43 @@ impl Parser {
                 }
                 self.advance();
                 let value = self.parse_addition()?;
-                let unit = self.try_parse_datetime_field();
+                // Remember the raw text of the unit token to preserve
+                // case/pluralization (e.g. "SECONDS" → not normalized
+                // to canonical "SECOND" on output).
+                let unit_text_candidate =
+                    if matches!(self.peek_type(), TokenType::Identifier) {
+                        Some(self.peek().value.clone())
+                    } else {
+                        None
+                    };
+                let mut unit = self.try_parse_datetime_field();
+                let mut unit_text = if unit.is_some() { unit_text_candidate.clone() } else { None };
+                // Plural form: `SECONDS`, `MINUTES`, ... — accept and
+                // map to singular DateTimeField.
+                if unit.is_none()
+                    && let Some(text) = unit_text_candidate.as_ref()
+                {
+                    let upper = text.to_ascii_uppercase();
+                    let plural_unit = match upper.as_str() {
+                        "YEARS" => Some(DateTimeField::Year),
+                        "QUARTERS" => Some(DateTimeField::Quarter),
+                        "MONTHS" => Some(DateTimeField::Month),
+                        "WEEKS" => Some(DateTimeField::Week),
+                        "DAYS" => Some(DateTimeField::Day),
+                        "HOURS" => Some(DateTimeField::Hour),
+                        "MINUTES" => Some(DateTimeField::Minute),
+                        "SECONDS" => Some(DateTimeField::Second),
+                        "MILLISECONDS" => Some(DateTimeField::Millisecond),
+                        "MICROSECONDS" => Some(DateTimeField::Microsecond),
+                        "NANOSECONDS" => Some(DateTimeField::Nanosecond),
+                        _ => None,
+                    };
+                    if plural_unit.is_some() {
+                        self.advance();
+                        unit = plural_unit;
+                        unit_text = Some(text.clone());
+                    }
+                }
                 if unit.is_none()
                     && matches!(self.peek_type(), TokenType::Identifier)
                     && self.peek().value.contains('_')
@@ -6005,6 +6041,7 @@ impl Parser {
                 Ok(Expr::Interval {
                     value: Box::new(value),
                     unit,
+                    unit_text,
                 })
             }
 

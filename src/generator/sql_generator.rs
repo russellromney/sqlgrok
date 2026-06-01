@@ -2622,18 +2622,24 @@ impl Generator {
                 self.gen_expr(expr);
                 self.write(")");
             }
-            Expr::Interval { value, unit } => {
+            Expr::Interval { value, unit, unit_text } => {
                 self.write_keyword("INTERVAL ");
+                let render_unit = |g: &mut Self| {
+                    if let Some(text) = unit_text {
+                        g.write(" ");
+                        g.write(&text.to_ascii_uppercase());
+                    } else if let Some(unit) = unit {
+                        g.write(" ");
+                        g.gen_datetime_field(unit);
+                    }
+                };
                 if matches!(self.dialect, Some(Dialect::Sqlite))
                     && let Expr::Number(n) = value.as_ref()
                 {
                     self.write("'");
                     self.write(n);
                     self.write("'");
-                    if let Some(unit) = unit {
-                        self.write(" ");
-                        self.gen_datetime_field(unit);
-                    }
+                    render_unit(self);
                 } else if matches!(self.dialect, Some(Dialect::Sqlite))
                     && unit.is_none()
                     && let Expr::StringLiteral(s) = value.as_ref()
@@ -2647,10 +2653,7 @@ impl Generator {
                     self.write_keyword(&rest.to_ascii_uppercase());
                 } else {
                     self.gen_expr(value);
-                    if let Some(unit) = unit {
-                        self.write(" ");
-                        self.gen_datetime_field(unit);
-                    }
+                    render_unit(self);
                 }
             }
             Expr::ArrayLiteral(items) => {
@@ -3009,6 +3012,7 @@ impl Generator {
                         Expr::Interval {
                             value,
                             unit: interval_unit,
+                            ..
                         } => {
                             payload.push_str("INTERVAL ");
                             match value.as_ref() {

@@ -526,6 +526,12 @@ pub enum Expr {
     Interval {
         value: Box<Expr>,
         unit: Option<DateTimeField>,
+        /// Original spelling of the unit token (e.g. \"SECONDS\",
+        /// \"minute\"). Used to preserve case and plural form on
+        /// round-trip. When None, the generator falls back to the
+        /// canonical DateTimeField keyword.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        unit_text: Option<String>,
     },
     /// Array literal: `ARRAY[1, 2, 3]` or `[1, 2, 3]`
     ArrayLiteral(Vec<Expr>),
@@ -2396,9 +2402,10 @@ impl Expr {
                 field,
                 expr: Box::new(expr.transform(func)),
             },
-            Expr::Interval { value, unit } => Expr::Interval {
+            Expr::Interval { value, unit, unit_text } => Expr::Interval {
                 value: Box::new(value.transform(func)),
                 unit,
+                unit_text,
             },
             Expr::ArrayLiteral(elems) => {
                 Expr::ArrayLiteral(elems.into_iter().map(|e| e.transform(func)).collect())

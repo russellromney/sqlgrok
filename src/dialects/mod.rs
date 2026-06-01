@@ -3170,7 +3170,9 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             true_val: Box::new(transform_expr(*true_val, source, target)),
             false_val: false_val.map(|expr| Box::new(transform_expr(*expr, source, target))),
         },
-        Expr::Interval { value, unit } => transform_interval(*value, unit, source, target),
+        Expr::Interval { value, unit, unit_text } => {
+            transform_interval(*value, unit, unit_text, source, target)
+        }
         Expr::ArrayLiteral(items) => {
             let items: Vec<Expr> = items
                 .into_iter()
@@ -3701,6 +3703,7 @@ fn column_expr(name: &str) -> Expr {
 fn transform_interval(
     value: Expr,
     unit: Option<DateTimeField>,
+    unit_text: Option<String>,
     source: Dialect,
     target: Dialect,
 ) -> Expr {
@@ -3714,12 +3717,14 @@ fn transform_interval(
         return Expr::Interval {
             value: Box::new(Expr::StringLiteral(amount.to_string())),
             unit: Some(parsed_unit),
+            unit_text: None,
         };
     }
 
     Expr::Interval {
         value: Box::new(transformed_value),
         unit,
+        unit_text,
     }
 }
 
@@ -3943,7 +3948,7 @@ fn transform_typed_function(
             && matches!(interval.as_ref(), Expr::Interval { .. }) =>
         {
             let (value, ivl_unit) = match *interval {
-                Expr::Interval { value, unit: u } => (*value, u),
+                Expr::Interval { value, unit: u, .. } => (*value, u),
                 _ => unreachable!(),
             };
             let unit = unit.or(ivl_unit);
@@ -3968,7 +3973,7 @@ fn transform_typed_function(
             && matches!(interval.as_ref(), Expr::Interval { .. }) =>
         {
             let (value, ivl_unit) = match *interval {
-                Expr::Interval { value, unit: u } => (*value, u),
+                Expr::Interval { value, unit: u, .. } => (*value, u),
                 _ => unreachable!(),
             };
             let unit = unit.or(ivl_unit);
@@ -4120,6 +4125,7 @@ fn transform_generate_series_step(step: Expr, source: Dialect, target: Dialect) 
                 return Expr::Interval {
                     value: Box::new(Expr::StringLiteral(amount)),
                     unit: Some(unit),
+                    unit_text: None,
                 };
             }
             Expr::StringLiteral(literal)
