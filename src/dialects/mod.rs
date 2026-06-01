@@ -2044,6 +2044,24 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
+            // Postgres source UNNEST(c) in SELECT position → EXPLODE(c)
+            // for sqlite target.
+            if is_postgres_family(source)
+                && matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("UNNEST")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return Expr::Function {
+                    name: "EXPLODE".to_string(),
+                    args: new_args,
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
             // IS_ASCII(x) → (NOT x GLOB CAST(x'2a5b5e012d7f5d2a' AS TEXT))
             // The hex blob is the GLOB pattern `*[^\x01-\x7f]*` (any
             // non-ASCII char anywhere). Python SQLGlot uses this form
