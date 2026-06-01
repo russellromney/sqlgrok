@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11093 |
-| `mismatch` | 1622 |
+| `match` | 11095 |
+| `mismatch` | 1620 |
 | `oracle-error` | 1739 |
 | `rust-error` | 565 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 11093 |
+| `match` | `mysql` | `sqlite` | 11095 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
-| `mismatch` | `mysql` | `sqlite` | 1622 |
+| `mismatch` | `mysql` | `sqlite` | 1620 |
 | `rust-error` | `mysql` | `sqlite` | 565 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8172 |
+| `match` | `validate_all` | 8174 |
 | `match` | `validate_identity` | 2814 |
 | `oracle-error` | `validate_identity` | 1135 |
 | `mismatch` | `validate_identity` | 796 |
-| `mismatch` | `validate_all` | 763 |
+| `mismatch` | `validate_all` | 761 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 314 |
 | `rust-error` | `validate_all` | 247 |
@@ -148,8 +148,8 @@ Total rows: `15156`
 | `mismatch` | `SELECT operator multiply` | 30 |
 | `mismatch` | `A` | 25 |
 | `mismatch` | `date/time rendering: CREATE` | 23 |
-| `mismatch` | `case-only rendering difference` | 22 |
 | `mismatch` | `X` | 20 |
+| `mismatch` | `case-only rendering difference` | 20 |
 | `mismatch` | `cast/type rendering: CAST()` | 20 |
 | `mismatch` | `missing quoted identifier` | 20 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 17 |
@@ -184,7 +184,7 @@ Total rows: `15156`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1049 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 614 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 616 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 453 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 301 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 281 |
@@ -196,8 +196,8 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 164 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 150 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 128 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 121 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 120 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 119 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 102 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 102 |
@@ -351,12 +351,12 @@ Total rows: `15156`
 - `tests/test_transpile.py`:672 `test_types` via `validate`: `interval::int`
   - expected: `CAST(interval AS INTEGER)`
   - actual: `CAST(INTERVAL AS INTEGER)`
-- `tests/dialects/test_bigquery.py`:786 `test_bigquery` via `validate_all`: `SELECT * FROM t WHERE EXISTS(SELECT * FROM unnest(nums) AS x WHERE x > 1)`
-  - expected: `SELECT * FROM t WHERE EXISTS(SELECT * FROM UNNEST(nums) AS x WHERE x > 1)`
-  - actual: `SELECT * FROM t WHERE EXISTS(SELECT * FROM unnest(nums) AS x WHERE x > 1)`
-- `tests/dialects/test_bigquery.py`:786 `test_bigquery` via `validate_all`: `SELECT * FROM t WHERE EXISTS(SELECT * FROM unnest(nums) AS x WHERE x > 1)`
-  - expected: `SELECT * FROM t WHERE EXISTS(SELECT * FROM UNNEST(nums) AS x WHERE x > 1)`
-  - actual: `SELECT * FROM t WHERE EXISTS(SELECT * FROM unnest(nums) AS x WHERE x > 1)`
+- `tests/dialects/test_clickhouse.py`:73 `test_clickhouse` via `validate_identity`: `CAST(x AS Enum('hello' = 1, 'world' = 2))`
+  - expected: `CAST(x AS ENUM('hello' = 1, 'world' = 2))`
+  - actual: `CAST(x AS Enum('hello' = 1, 'world' = 2))`
+- `tests/dialects/test_clickhouse.py`:74 `test_clickhouse` via `validate_identity`: `CAST(x AS Enum('hello', 'world'))`
+  - expected: `CAST(x AS ENUM('hello', 'world'))`
+  - actual: `CAST(x AS Enum('hello', 'world'))`
 
 ### `mismatch` `cast/type rendering: CAST()`
 

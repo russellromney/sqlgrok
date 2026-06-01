@@ -6939,20 +6939,11 @@ impl Parser {
             }
             "CURRENT_DATE" => TypedFunction::CurrentDate,
             "NOW" => TypedFunction::CurrentTimestamp,
-            "PARSE_TIMESTAMP" | "PARSE_DATETIME" if args.len() == 2 => {
-                let mut it = args.into_iter();
-                let expr = it.next()?;
-                let format = it.next()?;
-                TypedFunction::StrToTime {
-                    expr: Box::new(expr),
-                    format: Box::new(format),
-                }
-            }
-            // STR_TO_TIME stays as a generic Expr::Function so we can
-            // preserve its name through to sqlite output (Python SQLGlot
-            // keeps STR_TO_TIME regardless of whether the format contains
-            // time markers, while STR_TO_DATE input has its own path).
-            "STR_TO_TIME" if args.len() == 2 => {
+            // STR_TO_TIME, PARSE_TIMESTAMP, and PARSE_DATETIME stay as
+            // generic Expr::Function so we can preserve their names
+            // through to sqlite output. Python SQLGlot keeps these
+            // identifier-preserving for all sources.
+            "STR_TO_TIME" | "PARSE_TIMESTAMP" | "PARSE_DATETIME" if args.len() == 2 => {
                 return None;
             }
             "TIME_TO_STR" | "FORMAT_TIMESTAMP" | "FORMAT_DATETIME" => {

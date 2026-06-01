@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11406 |
-| `mismatch` | 1481 |
+| `match` | 11409 |
+| `mismatch` | 1478 |
 | `oracle-error` | 1545 |
 | `rust-error` | 587 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 11406 |
+| `match` | `sqlite` | `sqlite` | 11409 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
-| `mismatch` | `sqlite` | `sqlite` | 1481 |
+| `mismatch` | `sqlite` | `sqlite` | 1478 |
 | `rust-error` | `sqlite` | `sqlite` | 587 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8298 |
+| `match` | `validate_all` | 8301 |
 | `match` | `validate_identity` | 3004 |
 | `oracle-error` | `validate_identity` | 993 |
 | `mismatch` | `validate_identity` | 711 |
-| `mismatch` | `validate_all` | 703 |
+| `mismatch` | `validate_all` | 700 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 351 |
 | `rust-error` | `validate_all` | 233 |
@@ -143,8 +143,8 @@ Total rows: `15156`
 | `mismatch` | `SELECT` | 97 |
 | `mismatch` | `CREATE` | 96 |
 | `mismatch` | `ALTER TABLE` | 41 |
-| `mismatch` | `case-only rendering difference` | 38 |
-| `mismatch` | `missing quoted identifier` | 36 |
+| `mismatch` | `case-only rendering difference` | 36 |
+| `mismatch` | `missing quoted identifier` | 35 |
 | `mismatch` | `quote-style difference` | 34 |
 | `mismatch` | `SELECT operator multiply` | 28 |
 | `mismatch` | `date/time rendering: CREATE` | 24 |
@@ -184,7 +184,7 @@ Total rows: `15156`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1075 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 678 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 681 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 458 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 344 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 289 |
@@ -203,9 +203,9 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 99 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 88 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 85 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 85 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 84 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 83 |
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
@@ -450,9 +450,9 @@ Total rows: `15156`
 - `tests/dialects/test_bigquery.py`:248 `test_bigquery` via `validate_identity`: `MERGE INTO dataset.NewArrivals USING (SELECT * FROM UNNEST([('microwave', 10, 'warehouse #1'), ('dryer', 30, 'warehouse #1'), ('oven', 20, 'warehouse #2')])) ON FALSE WHEN NOT MATCHED THEN INSERT ROW WHEN NOT MATCHED BY SOURCE THEN DELETE`
   - expected: `MERGE INTO dataset.NewArrivals USING (SELECT * FROM UNNEST("('microwave', 10, 'warehouse #1'), ('dryer', 30, 'warehouse #1'), ('oven', 20, 'warehouse #2')")) ON FALSE WHEN NOT MATCHED THEN INSERT ROW WHEN NOT MATCHED BY SOURCE THEN DELETE`
   - actual: `MERGE INTO dataset.NewArrivals USING (SELECT * FROM UNNEST([('microwave', 10, 'warehouse #1'), ('dryer', 30, 'warehouse #1'), ('oven', 20, 'warehouse #2')])) ON FALSE WHEN NOT MATCHED THEN INSERT ROW WHEN NOT MATCHED BY SOURCE THEN DELETE`
-- `tests/dialects/test_bigquery.py`:1333 `test_bigquery` via `validate_all`: `SELECT ARRAY(SELECT x FROM UNNEST([0, 1]) AS x)`
-  - expected: `SELECT ARRAY(SELECT x FROM UNNEST("0, 1") AS x)`
-  - actual: `SELECT ARRAY(SELECT x FROM UNNEST([0, 1]) AS x)`
+- `tests/dialects/test_databricks.py`:76 `test_databricks` via `validate_identity`: `` COPY INTO target FROM `s3://link` FILEFORMAT = AVRO VALIDATE = ALL FILES = ('file1', 'file2') FORMAT_OPTIONS ('opt1'='true', 'opt2'='test') COPY_OPTIONS ('mergeSchema'='true') ``
+  - expected: `COPY INTO target FROM "s3://link" WITH (FILEFORMAT AVRO, VALIDATE ALL, FILES ('file1', 'file2'), FORMAT_OPTIONS (opt1='true', opt2='test'), COPY_OPTIONS (mergeSchema='true'))`
+  - actual: `` COPY INTO target FROM `s3://link` FILEFORMAT = AVRO VALIDATE = ALL FILES = ('file1', 'file2') FORMAT_OPTIONS ('opt1'='true', 'opt2'='test') COPY_OPTIONS ('mergeSchema'='true') ``
 
 ### `mismatch` `quote-style difference`
 
