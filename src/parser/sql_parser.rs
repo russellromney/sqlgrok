@@ -3207,6 +3207,7 @@ impl Parser {
                 constraints: vec![],
                 options: vec![],
                 as_select: Some(Box::new(query)),
+                like_in_columns: None,
             }));
         }
 
@@ -3225,16 +3226,26 @@ impl Parser {
                 constraints: vec![],
                 options: vec![],
                 as_select: Some(Box::new(Statement::Select(query))),
+                like_in_columns: None,
             }));
         }
 
         let mut columns = Vec::new();
         let mut constraints = Vec::new();
+        let mut like_in_columns: Option<TableRef> = None;
 
         if self.match_token(TokenType::LParen) {
             loop {
-                // Check for table-level constraints
-                if matches!(
+                // CREATE TABLE name (LIKE other) — capture the source
+                // table; Python SQLGlot renders this as `(AS SELECT *
+                // FROM source LIMIT 0)`.
+                if self.peek().value.eq_ignore_ascii_case("LIKE")
+                    && matches!(self.peek_type(), TokenType::Identifier | TokenType::Like)
+                {
+                    self.advance();
+                    let source = self.parse_table_ref_no_alias()?;
+                    like_in_columns = Some(source);
+                } else if matches!(
                     self.peek_type(),
                     TokenType::Primary
                         | TokenType::Unique
@@ -3285,6 +3296,7 @@ impl Parser {
             constraints,
             options,
             as_select,
+            like_in_columns,
         }))
     }
 

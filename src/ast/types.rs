@@ -1736,6 +1736,12 @@ pub struct CreateTableStatement {
     pub options: Vec<CreateTableOption>,
     /// CREATE TABLE ... AS SELECT ...
     pub as_select: Option<Box<Statement>>,
+    /// CREATE TABLE … (LIKE other_table) — captured when LIKE appears
+    /// inside the column-list parens. Python SQLGlot rewrites this to
+    /// an `AS SELECT * FROM <ref> LIMIT 0` clause rendered next to any
+    /// preceding columns.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub like_in_columns: Option<TableRef>,
 }
 
 /// Table-level options following a CREATE TABLE schema, mostly used by

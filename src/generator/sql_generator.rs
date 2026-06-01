@@ -1322,6 +1322,7 @@ impl Generator {
         if let Some(as_select) = &ct.as_select
             && ct.columns.is_empty()
             && ct.constraints.is_empty()
+            && ct.like_in_columns.is_none()
         {
             self.write(" ");
             self.write_keyword("AS ");
@@ -1329,28 +1330,54 @@ impl Generator {
             return;
         }
 
-        if ct.columns.is_empty() && ct.constraints.is_empty() && ct.as_select.is_none() {
+        if ct.columns.is_empty()
+            && ct.constraints.is_empty()
+            && ct.as_select.is_none()
+            && ct.like_in_columns.is_none()
+        {
             self.gen_create_table_options(&ct.options);
             return;
         }
 
         self.write(" (");
 
+        let like_clause = ct.like_in_columns.as_ref().map(|like_ref| {
+            let mut s = String::from("AS SELECT * FROM ");
+            if let Some(c) = &like_ref.catalog {
+                s.push_str(c);
+                s.push('.');
+            }
+            if let Some(sch) = &like_ref.schema {
+                s.push_str(sch);
+                s.push('.');
+            }
+            s.push_str(&like_ref.name);
+            s.push_str(" LIMIT 0");
+            s
+        });
+
         if self.pretty {
             self.indent_up();
             for (i, col) in ct.columns.iter().enumerate() {
                 self.newline();
                 self.gen_column_def(col);
-                if i < ct.columns.len() - 1 || !ct.constraints.is_empty() {
+                if i < ct.columns.len() - 1
+                    || !ct.constraints.is_empty()
+                    || like_clause.is_some()
+                {
                     self.write(",");
                 }
             }
             for (i, constraint) in ct.constraints.iter().enumerate() {
                 self.newline();
                 self.gen_table_constraint(constraint);
-                if i < ct.constraints.len() - 1 {
+                if i < ct.constraints.len() - 1 || like_clause.is_some() {
                     self.write(",");
                 }
+            }
+            if let Some(s) = &like_clause {
+                self.newline();
+                self.write(s);
             }
             self.indent_down();
             self.newline();
@@ -1366,6 +1393,12 @@ impl Generator {
                     self.write(", ");
                 }
                 self.gen_table_constraint(constraint);
+            }
+            if let Some(s) = &like_clause {
+                if !ct.columns.is_empty() || !ct.constraints.is_empty() {
+                    self.write(", ");
+                }
+                self.write(s);
             }
         }
 
