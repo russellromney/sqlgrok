@@ -388,6 +388,17 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                     normalize_postgres_sqlite_raw_table_source(&mut join.table);
                 }
             }
+            // Rewrite `UNNEST(x) AS alias WITH OFFSET [AS pos]` into the
+            // postgres-style `UNNEST(x) WITH ORDINALITY AS alias` for any
+            // source dialect with sqlite target.
+            if matches!(target, Dialect::Sqlite) {
+                if let Some(from) = &mut sel.from {
+                    normalize_sqlite_unnest_with_offset_in_table_source(&mut from.source);
+                }
+                for join in &mut sel.joins {
+                    normalize_sqlite_unnest_with_offset_in_table_source(&mut join.table);
+                }
+            }
             // Recurse into table sources to transform inner Expr nodes
             // (e.g. UNNEST(ARRAY_LITERAL) or UNNEST(GENERATE_DATE_ARRAY(
             // DATE 'x', INTERVAL 1 WEEK))) — these would otherwise miss
@@ -723,6 +734,80 @@ fn normalize_postgres_sqlite_raw_table_source(source: &mut TableSource) {
         }
         _ => {}
     }
+}
+
+fn normalize_sqlite_unnest_with_offset_in_table_source(source: &mut TableSource) {
+    match source {
+        TableSource::Raw { sql, .. } => {
+            if let Some(rewritten) = rewrite_unnest_with_offset(sql) {
+                *sql = rewritten;
+            }
+        }
+        TableSource::Lateral { source } => {
+            normalize_sqlite_unnest_with_offset_in_table_source(source);
+        }
+        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
+            normalize_sqlite_unnest_with_offset_in_table_source(source);
+        }
+        _ => {}
+    }
+}
+
+/// Rewrites BigQuery `UNNEST(expr) [AS alias] WITH OFFSET [AS pos]` into
+/// Postgres-style `UNNEST(expr) WITH ORDINALITY AS alias` (Python
+/// SQLGlot's sqlite output). The offset alias is dropped.
+fn rewrite_unnest_with_offset(sql: &str) -> Option<String> {
+    let upper = sql.to_ascii_uppercase();
+    let unnest_pos = upper.find("UNNEST")?;
+    let with_offset_pos = find_case_insensitive(sql, "WITH OFFSET")?;
+    if with_offset_pos < unnest_pos {
+        return None;
+    }
+    // Find closing paren of UNNEST(...).
+    let after_unnest = unnest_pos + "UNNEST".len();
+    let lparen = sql[after_unnest..].find('(')?;
+    let lparen_abs = after_unnest + lparen;
+    let mut depth = 0i32;
+    let bytes = sql.as_bytes();
+    let mut rparen_abs = lparen_abs;
+    for i in lparen_abs..sql.len() {
+        match bytes[i] {
+            b'(' => depth += 1,
+            b')' => {
+                depth -= 1;
+                if depth == 0 {
+                    rparen_abs = i;
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    if depth != 0 {
+        return None;
+    }
+    // Slice [unnest_pos .. rparen_abs+1] is `UNNEST(...)`. The tail
+    // between rparen_abs+1 and with_offset_pos may carry `AS alias`.
+    let unnest_call = &sql[unnest_pos..=rparen_abs];
+    let tail_before = sql[rparen_abs + 1..with_offset_pos].trim();
+    let alias_clause = if let Some(rest) = tail_before
+        .strip_prefix("AS ")
+        .or_else(|| tail_before.strip_prefix("as "))
+    {
+        format!(" AS {}", rest.trim())
+    } else if tail_before.is_empty() {
+        String::new()
+    } else {
+        format!(" AS {tail_before}")
+    };
+    // Drop any `AS pos` suffix after WITH OFFSET — Python SQLGlot's
+    // sqlite output discards the offset column alias.
+    let mut out = String::with_capacity(sql.len());
+    out.push_str(&sql[..unnest_pos]);
+    out.push_str(unnest_call);
+    out.push_str(" WITH ORDINALITY");
+    out.push_str(&alias_clause);
+    Some(out)
 }
 
 fn strip_postgres_values_column_aliases(sql: &str) -> String {

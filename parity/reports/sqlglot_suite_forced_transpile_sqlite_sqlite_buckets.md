@@ -8,33 +8,33 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11234 |
-| `mismatch` | 1651 |
+| `match` | 11247 |
+| `mismatch` | 1640 |
 | `oracle-error` | 1545 |
-| `rust-error` | 589 |
+| `rust-error` | 587 |
 | `unsupported-harness-shape` | 137 |
 
 ## Route Buckets
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 11234 |
-| `mismatch` | `sqlite` | `sqlite` | 1651 |
+| `match` | `sqlite` | `sqlite` | 11247 |
+| `mismatch` | `sqlite` | `sqlite` | 1640 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
-| `rust-error` | `sqlite` | `sqlite` | 589 |
+| `rust-error` | `sqlite` | `sqlite` | 587 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8158 |
-| `match` | `validate_identity` | 2972 |
+| `match` | `validate_all` | 8167 |
+| `match` | `validate_identity` | 2976 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_all` | 843 |
-| `mismatch` | `validate_identity` | 741 |
+| `mismatch` | `validate_all` | 834 |
+| `mismatch` | `validate_identity` | 739 |
 | `oracle-error` | `validate_all` | 543 |
-| `rust-error` | `validate_identity` | 353 |
+| `rust-error` | `validate_identity` | 351 |
 | `rust-error` | `validate_all` | 233 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 104 |
@@ -51,12 +51,12 @@ Total rows: `15156`
 | `match` | `SELECT` | 700 |
 | `match` | `CAST()` | 560 |
 | `match` | `SELECT operator multiply` | 388 |
-| `match` | `CREATE TABLE` | 360 |
+| `match` | `CREATE TABLE` | 363 |
 | `match` | `SHOW` | 215 |
 | `match` | `CREATE` | 195 |
 | `oracle-error` | `SELECT` | 195 |
-| `mismatch` | `CREATE TABLE` | 172 |
 | `mismatch` | `SELECT` | 172 |
+| `mismatch` | `CREATE TABLE` | 169 |
 | `match` | `TRUNC()` | 164 |
 | `mismatch` | `CREATE` | 148 |
 | `oracle-error` | `SELECT operator multiply` | 143 |
@@ -97,7 +97,7 @@ Total rows: `15156`
 | `oracle-error` | `oracle parse: Expecting )` | 472 |
 | `oracle-error` | `oracle parse: Required keyword missing` | 130 |
 | `unsupported-harness-shape` | `SQLGlot expects UnsupportedError` | 119 |
-| `rust-error` | `parser: Expected identifier` | 48 |
+| `rust-error` | `parser: Expected identifier` | 46 |
 | `oracle-error` | `oracle parse: The number of provided arguments (2) is greater than the maximum number of supported arguments (1)` | 24 |
 | `oracle-error` | `oracle parse: The number of provided arguments (4) is greater than the maximum number of supported arguments (2)` | 19 |
 | `oracle-error` | `oracle parse: Expected AS after CAST` | 18 |
@@ -142,7 +142,7 @@ Total rows: `15156`
 | `mismatch` | `DDL/create-table rendering` | 150 |
 | `mismatch` | `SELECT` | 104 |
 | `mismatch` | `CREATE` | 96 |
-| `mismatch` | `missing quoted identifier` | 87 |
+| `mismatch` | `missing quoted identifier` | 84 |
 | `mismatch` | `case-only rendering difference` | 50 |
 | `mismatch` | `ALTER TABLE` | 41 |
 | `mismatch` | `quote-style difference` | 40 |
@@ -170,7 +170,6 @@ Total rows: `15156`
 | `mismatch` | `FROM` | 6 |
 | `mismatch` | `POSITION()` | 6 |
 | `mismatch` | `SELECT CEIL()` | 6 |
-| `mismatch` | `SELECT MIN_BY()` | 6 |
 | `mismatch` | `STRPOS()` | 6 |
 | `mismatch` | `STR_POSITION()` | 6 |
 | `mismatch` | `date/time rendering: SELECT DATETRUNC()` | 6 |
@@ -178,6 +177,7 @@ Total rows: `15156`
 | `mismatch` | `'\\'` | 5 |
 | `mismatch` | `INTERVAL` | 5 |
 | `mismatch` | `SELECT INSERT()` | 5 |
+| `mismatch` | `SELECT LEADING()` | 5 |
 
 ## Source Test Buckets
 
@@ -194,7 +194,7 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 169 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 152 |
-| `match` | `tests/dialects/test_presto.py` | `test_presto` | 141 |
+| `match` | `tests/dialects/test_presto.py` | `test_presto` | 147 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 119 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 119 |

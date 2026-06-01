@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 10993 |
-| `mismatch` | 1722 |
+| `match` | 11001 |
+| `mismatch` | 1714 |
 | `oracle-error` | 1739 |
 | `rust-error` | 565 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 10993 |
+| `match` | `mysql` | `sqlite` | 11001 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
-| `mismatch` | `mysql` | `sqlite` | 1722 |
+| `mismatch` | `mysql` | `sqlite` | 1714 |
 | `rust-error` | `mysql` | `sqlite` | 565 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8092 |
-| `match` | `validate_identity` | 2794 |
+| `match` | `validate_all` | 8098 |
+| `match` | `validate_identity` | 2796 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_all` | 843 |
-| `mismatch` | `validate_identity` | 816 |
+| `mismatch` | `validate_all` | 837 |
+| `mismatch` | `validate_identity` | 814 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 314 |
 | `rust-error` | `validate_all` | 247 |
@@ -175,9 +175,9 @@ Total rows: `15156`
 | `mismatch` | `INSERT` | 6 |
 | `mismatch` | `POSITION()` | 6 |
 | `mismatch` | `SELECT CEIL()` | 6 |
-| `mismatch` | `SELECT MIN_BY()` | 6 |
 | `mismatch` | `SELECT TVFTEST()` | 6 |
 | `mismatch` | `STRPOS()` | 6 |
+| `mismatch` | `STR_POSITION()` | 6 |
 
 ## Source Test Buckets
 
@@ -193,7 +193,7 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 229 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 168 |
-| `match` | `tests/dialects/test_presto.py` | `test_presto` | 157 |
+| `match` | `tests/dialects/test_presto.py` | `test_presto` | 163 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 150 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 128 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 127 |
