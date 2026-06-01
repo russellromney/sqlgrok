@@ -2903,7 +2903,12 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         Expr::Cast { expr, data_type } => {
             let expr = transform_expr(*expr, source, target);
             let data_type = map_data_type_for_source(data_type, source, target);
-            if matches!(target, Dialect::Sqlite) && matches!(data_type, DataType::Date) {
+            let is_date = matches!(&data_type, DataType::Date)
+                || matches!(
+                    &data_type,
+                    DataType::Unknown(s) if s.eq_ignore_ascii_case("DATE")
+                );
+            if matches!(target, Dialect::Sqlite) && is_date {
                 Expr::Function {
                     name: "DATE".to_string(),
                     args: vec![expr],
@@ -4254,7 +4259,41 @@ pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
     }
 }
 
+fn strip_nullable_wrapper(name: &str, upper: &str) -> Option<String> {
+    let prefix = "NULLABLE(";
+    if !upper.starts_with(prefix) || !upper.ends_with(')') {
+        return None;
+    }
+    // Use the original-case name (preserve inner type spelling).
+    let inner_start = prefix.len();
+    let inner_end = name.len() - 1;
+    if inner_start >= inner_end {
+        return None;
+    }
+    let inner = &name[inner_start..inner_end];
+    let mut canonical = inner.trim().to_string();
+    // Normalize common ClickHouse aliases that the postgres parser
+    // leaves as-is (DateTime → DATETIME, etc.).
+    let inner_upper = canonical.to_ascii_uppercase();
+    if inner_upper == "DATETIME" {
+        canonical = "DATETIME".to_string();
+    }
+    Some(canonical)
+}
+
 fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> DataType {
+    // ClickHouse-style `Nullable(T)` wrappers: strip for sqlite output
+    // and recurse on the inner type (matching Python SQLGlot, which
+    // models nullability separately).
+    if let DataType::Unknown(name) = &dt {
+        if matches!(target, Dialect::Sqlite) {
+            let upper = name.to_ascii_uppercase();
+            if let Some(inner) = strip_nullable_wrapper(name, &upper) {
+                let inner_dt = DataType::Unknown(inner);
+                return map_data_type_for_source(inner_dt, source, target);
+            }
+        }
+    }
     match (&dt, source, target) {
         (DataType::Unknown(name), s, Dialect::Sqlite)
             if is_mysql_family(s)

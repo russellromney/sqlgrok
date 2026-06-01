@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11341 |
-| `mismatch` | 1546 |
+| `match` | 11389 |
+| `mismatch` | 1498 |
 | `oracle-error` | 1545 |
 | `rust-error` | 587 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 11341 |
-| `mismatch` | `sqlite` | `sqlite` | 1546 |
+| `match` | `sqlite` | `sqlite` | 11389 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
+| `mismatch` | `sqlite` | `sqlite` | 1498 |
 | `rust-error` | `sqlite` | `sqlite` | 587 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8239 |
-| `match` | `validate_identity` | 2998 |
+| `match` | `validate_all` | 8284 |
+| `match` | `validate_identity` | 3001 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_all` | 762 |
-| `mismatch` | `validate_identity` | 717 |
+| `mismatch` | `validate_all` | 717 |
+| `mismatch` | `validate_identity` | 714 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 351 |
 | `rust-error` | `validate_all` | 233 |
@@ -60,17 +60,16 @@ Total rows: `15156`
 | `match` | `TRUNC()` | 164 |
 | `mismatch` | `CREATE` | 147 |
 | `oracle-error` | `SELECT operator multiply` | 143 |
-| `match` | `WITH` | 119 |
+| `match` | `WITH` | 127 |
 | `match` | `ALTER TABLE` | 118 |
 | `oracle-error` | `CREATE TABLE` | 113 |
+| `match` | `SELECT UNNEST()` | 112 |
 | `match` | `X` | 107 |
 | `match` | `SELECT CAST()` | 102 |
 | `match` | `SELECT DATEDIFF()` | 83 |
 | `match` | `SET` | 78 |
 | `match` | `DATE_TRUNC()` | 77 |
 | `match` | `DATE_ADD()` | 74 |
-| `match` | `SELECT UNNEST()` | 73 |
-| `mismatch` | `SELECT UNNEST()` | 72 |
 | `match` | `LOG()` | 67 |
 | `match` | `JSON_EXTRACT()` | 64 |
 | `match` | `GRANT` | 62 |
@@ -88,6 +87,7 @@ Total rows: `15156`
 | `oracle-error` | `WITH` | 52 |
 | `match` | `FROM` | 51 |
 | `match` | `INSERT` | 48 |
+| `match` | `SELECT DATE_TRUNC()` | 48 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -142,10 +142,10 @@ Total rows: `15156`
 | `mismatch` | `DDL/create-table rendering` | 149 |
 | `mismatch` | `SELECT` | 97 |
 | `mismatch` | `CREATE` | 96 |
-| `mismatch` | `missing quoted identifier` | 83 |
-| `mismatch` | `case-only rendering difference` | 42 |
+| `mismatch` | `case-only rendering difference` | 44 |
 | `mismatch` | `ALTER TABLE` | 41 |
-| `mismatch` | `quote-style difference` | 41 |
+| `mismatch` | `missing quoted identifier` | 36 |
+| `mismatch` | `quote-style difference` | 35 |
 | `mismatch` | `SELECT operator multiply` | 28 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 24 |
 | `mismatch` | `date/time rendering: CREATE` | 24 |
@@ -183,8 +183,8 @@ Total rows: `15156`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1067 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 657 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1075 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 678 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 458 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 344 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 289 |
@@ -196,14 +196,14 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 152 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 148 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 111 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 109 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 109 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 109 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 105 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 103 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 99 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 88 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 85 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 84 |
@@ -450,9 +450,9 @@ Total rows: `15156`
 - `tests/dialects/test_bigquery.py`:248 `test_bigquery` via `validate_identity`: `MERGE INTO dataset.NewArrivals USING (SELECT * FROM UNNEST([('microwave', 10, 'warehouse #1'), ('dryer', 30, 'warehouse #1'), ('oven', 20, 'warehouse #2')])) ON FALSE WHEN NOT MATCHED THEN INSERT ROW WHEN NOT MATCHED BY SOURCE THEN DELETE`
   - expected: `MERGE INTO dataset.NewArrivals USING (SELECT * FROM UNNEST("('microwave', 10, 'warehouse #1'), ('dryer', 30, 'warehouse #1'), ('oven', 20, 'warehouse #2')")) ON FALSE WHEN NOT MATCHED THEN INSERT ROW WHEN NOT MATCHED BY SOURCE THEN DELETE`
   - actual: `MERGE INTO dataset.NewArrivals USING (SELECT * FROM UNNEST([('microwave', 10, 'warehouse #1'), ('dryer', 30, 'warehouse #1'), ('oven', 20, 'warehouse #2')])) ON FALSE WHEN NOT MATCHED THEN INSERT ROW WHEN NOT MATCHED BY SOURCE THEN DELETE`
-- `tests/dialects/test_bigquery.py`:1322 `test_bigquery` via `validate_all`: `SELECT * FROM UNNEST(['7', '14']) AS x`
-  - expected: `SELECT * FROM UNNEST("'7', '14'") AS x`
-  - actual: `SELECT * FROM UNNEST(['7', '14']) AS x`
+- `tests/dialects/test_bigquery.py`:1333 `test_bigquery` via `validate_all`: `SELECT ARRAY(SELECT x FROM UNNEST([0, 1]) AS x)`
+  - expected: `SELECT ARRAY(SELECT x FROM UNNEST("0, 1") AS x)`
+  - actual: `SELECT ARRAY(SELECT x FROM UNNEST([0, 1]) AS x)`
 
 ### `mismatch` `quote-style difference`
 
