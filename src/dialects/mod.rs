@@ -2310,6 +2310,35 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     }
                 }
             }
+            // UNIX_SECONDS(x) → TIMESTAMPDIFF(x, CAST('1970-01-01 ...'
+            //                                  AS TIMESTAMPTZ), SECONDS)
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("UNIX_SECONDS")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                let epoch = Expr::Cast {
+                    expr: Box::new(Expr::StringLiteral(
+                        "1970-01-01 00:00:00+00".to_string(),
+                    )),
+                    data_type: DataType::Unknown("TIMESTAMPTZ".to_string()),
+                };
+                let seconds = Expr::Column {
+                    table: None,
+                    name: "SECONDS".to_string(),
+                    quote_style: QuoteStyle::None,
+                    table_quote_style: QuoteStyle::None,
+                };
+                return Expr::Function {
+                    name: "TIMESTAMPDIFF".to_string(),
+                    args: vec![new_args[0].clone(), epoch, seconds],
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
             // TIMESTAMP_DIFF(a, b, unit) → TIMESTAMPDIFF(a, b, UNIT)
             // and TIMESTAMP_SUB / TIMESTAMP_ADD keep their names but
             // uppercase the trailing unit arg. Python normalizes the
