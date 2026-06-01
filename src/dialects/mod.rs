@@ -2120,12 +2120,23 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     _ => unreachable!(),
                 };
                 let arg = if is_mysql_family(source) {
-                    Expr::Function {
-                        name: "DATE".to_string(),
-                        args: vec![new_args[0].clone()],
-                        distinct: false,
-                        filter: None,
-                        over: None,
+                    let inner = new_args[0].clone();
+                    // Avoid wrapping in DATE() if the arg is already a
+                    // DATE() call (e.g., from CAST(x AS DATE) lowering).
+                    let already_date = matches!(
+                        &inner,
+                        Expr::Function { name, .. } if name.eq_ignore_ascii_case("DATE")
+                    );
+                    if already_date {
+                        inner
+                    } else {
+                        Expr::Function {
+                            name: "DATE".to_string(),
+                            args: vec![inner],
+                            distinct: false,
+                            filter: None,
+                            over: None,
+                        }
                     }
                 } else {
                     new_args[0].clone()
