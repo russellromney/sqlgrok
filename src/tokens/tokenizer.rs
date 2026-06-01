@@ -610,9 +610,11 @@ impl Tokenizer {
                     if self.peek() == Some('$') {
                         delimiter.push(self.advance().unwrap());
                     } else {
+                        // Postgres/Snowflake `$name` parameter marker.
+                        // Emit the full token text (e.g. "$baz"), not just "$".
                         return Ok(self.make_token(
                             TokenType::Parameter,
-                            "$",
+                            delimiter,
                             start,
                             start_line,
                             start_col,

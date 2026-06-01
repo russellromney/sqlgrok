@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11272 |
-| `mismatch` | 1615 |
+| `match` | 11303 |
+| `mismatch` | 1584 |
 | `oracle-error` | 1545 |
 | `rust-error` | 587 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 11272 |
-| `mismatch` | `sqlite` | `sqlite` | 1615 |
+| `match` | `sqlite` | `sqlite` | 11303 |
+| `mismatch` | `sqlite` | `sqlite` | 1584 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
 | `rust-error` | `sqlite` | `sqlite` | 587 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8188 |
-| `match` | `validate_identity` | 2980 |
+| `match` | `validate_all` | 8209 |
+| `match` | `validate_identity` | 2990 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_all` | 813 |
-| `mismatch` | `validate_identity` | 735 |
+| `mismatch` | `validate_all` | 792 |
+| `mismatch` | `validate_identity` | 725 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 351 |
 | `rust-error` | `validate_all` | 233 |
@@ -48,17 +48,17 @@ Total rows: `15156`
 
 | Status | Shape | Count |
 | --- | --- | ---: |
-| `match` | `SELECT` | 700 |
+| `match` | `SELECT` | 704 |
 | `match` | `CAST()` | 560 |
 | `match` | `SELECT operator multiply` | 388 |
 | `match` | `CREATE TABLE` | 363 |
 | `match` | `SHOW` | 215 |
-| `match` | `CREATE` | 195 |
+| `match` | `CREATE` | 196 |
 | `oracle-error` | `SELECT` | 195 |
-| `mismatch` | `SELECT` | 172 |
 | `mismatch` | `CREATE TABLE` | 169 |
+| `mismatch` | `SELECT` | 168 |
 | `match` | `TRUNC()` | 164 |
-| `mismatch` | `CREATE` | 148 |
+| `mismatch` | `CREATE` | 147 |
 | `oracle-error` | `SELECT operator multiply` | 143 |
 | `match` | `ALTER TABLE` | 118 |
 | `oracle-error` | `CREATE TABLE` | 113 |
@@ -139,8 +139,8 @@ Total rows: `15156`
 | Status | Signature | Count |
 | --- | --- | ---: |
 | `mismatch` | `missing AS or alias rendering` | 320 |
-| `mismatch` | `DDL/create-table rendering` | 150 |
-| `mismatch` | `SELECT` | 104 |
+| `mismatch` | `DDL/create-table rendering` | 149 |
+| `mismatch` | `SELECT` | 100 |
 | `mismatch` | `CREATE` | 96 |
 | `mismatch` | `missing quoted identifier` | 84 |
 | `mismatch` | `case-only rendering difference` | 50 |
@@ -165,7 +165,6 @@ Total rows: `15156`
 | `mismatch` | `SELECT FLOOR()` | 7 |
 | `mismatch` | `SELECT TO_ARRAY()` | 7 |
 | `mismatch` | `whitespace-only difference` | 7 |
-| `mismatch` | `'\\\\A'` | 6 |
 | `mismatch` | `FROM` | 6 |
 | `mismatch` | `POSITION()` | 6 |
 | `mismatch` | `SELECT CEIL()` | 6 |
@@ -173,33 +172,34 @@ Total rows: `15156`
 | `mismatch` | `STR_POSITION()` | 6 |
 | `mismatch` | `date/time rendering: SELECT DATETRUNC()` | 6 |
 | `mismatch` | `date/time rendering: WITH` | 6 |
-| `mismatch` | `'\\'` | 5 |
 | `mismatch` | `INTERVAL` | 5 |
 | `mismatch` | `SELECT INSERT()` | 5 |
 | `mismatch` | `SELECT LEADING()` | 5 |
 | `mismatch` | `SELECT operator json` | 5 |
+| `mismatch` | `SELECT operator json-text` | 5 |
+| `mismatch` | `cast/type rendering: SELECT` | 5 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1059 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 650 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1061 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 657 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 456 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 344 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 289 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 263 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 251 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 229 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 232 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 172 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 152 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 148 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 119 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 116 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 117 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 109 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 109 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 109 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 105 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 99 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
@@ -303,12 +303,12 @@ Total rows: `15156`
 - `tests/test_transpile.py`:374 `test_comments` via `validate`: `-- comment4 CREATE TABLE db.tba AS SELECT a, b, c FROM tb_01 WHERE -- comment5 a = 1 AND b = 2 --comment6 -- and c = 1 -- comment7 ;`
   - expected: `/* comment4 */ CREATE TABLE db.tba AS SELECT a, b, c FROM tb_01 WHERE a /* comment5 */ = 1 AND b = 2 /* comment6 */ /* and c = 1 */ /* comment7 */`
   - actual: `CREATE TABLE db.tba AS SELECT a, b, c FROM tb_01 WHERE a = 1 AND b = 2`
-- `tests/dialects/test_athena.py`:44 `test_ddl` via `validate_identity`: `CREATE EXTERNAL TABLE george.t (id INT COMMENT 'foo \\ bar') LOCATION 's3://my-bucket/'`
-  - expected: `CREATE TABLE george.t (id INTEGER COMMENT 'foo \\ bar')`
-  - actual: `CREATE TABLE george.t (id INTEGER COMMENT 'foo \ bar')`
 - `tests/dialects/test_athena.py`:50 `test_ddl` via `validate_identity`: `CREATE EXTERNAL TABLE foo (id INT, val STRING) CLUSTERED BY (id, val) INTO 10 BUCKETS`
   - expected: `CREATE TABLE foo (id INTEGER, val TEXT)`
   - actual: `CREATE EXTERNAL TABLE foo (id INT, val STRING) CLUSTERED BY (id, val) INTO 10 BUCKETS`
+- `tests/dialects/test_bigquery.py`:199 `test_bigquery` via `validate_identity`: `CREATE TABLE x (a STRUCT<values ARRAY<INT64>>)`
+  - expected: `CREATE TABLE x (a STRUCT<values ARRAY<INTEGER>>)`
+  - actual: `CREATE TABLE x (a STRUCT<values ARRAY<INT64>>)`
 
 ### `mismatch` `PIVOT`
 

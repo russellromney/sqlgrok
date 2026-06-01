@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11243 |
-| `mismatch` | 1723 |
+| `match` | 11250 |
+| `mismatch` | 1716 |
 | `oracle-error` | 1456 |
 | `rust-error` | 597 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8169 |
-| `match` | `validate_identity` | 2967 |
+| `match` | `validate_all` | 8171 |
+| `match` | `validate_identity` | 2972 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_all` | 863 |
-| `mismatch` | `validate_identity` | 793 |
+| `mismatch` | `validate_all` | 861 |
+| `mismatch` | `validate_identity` | 788 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 350 |
 | `rust-error` | `validate_all` | 244 |
@@ -43,9 +43,9 @@ Filtered by read/write: `0`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1031 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1032 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 629 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 461 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 463 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 332 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 322 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 251 |
@@ -54,7 +54,7 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 178 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 164 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 152 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 151 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 142 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 121 |

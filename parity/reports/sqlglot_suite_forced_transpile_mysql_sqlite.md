@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11045 |
-| `mismatch` | 1670 |
+| `match` | 11052 |
+| `mismatch` | 1663 |
 | `oracle-error` | 1739 |
 | `rust-error` | 565 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8131 |
-| `match` | `validate_identity` | 2807 |
+| `match` | `validate_all` | 8133 |
+| `match` | `validate_identity` | 2812 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_all` | 804 |
-| `mismatch` | `validate_identity` | 803 |
+| `mismatch` | `validate_all` | 802 |
+| `mismatch` | `validate_identity` | 798 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 314 |
 | `rust-error` | `validate_all` | 247 |
@@ -43,9 +43,9 @@ Filtered by read/write: `0`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1048 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1049 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 611 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 451 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 453 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 301 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 281 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 252 |
@@ -57,7 +57,7 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 150 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 128 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 124 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 121 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 120 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 102 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 102 |
