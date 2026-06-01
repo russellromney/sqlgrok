@@ -415,9 +415,11 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             if matches!(target, Dialect::Sqlite) {
                 if let Some(from) = &mut sel.from {
                     rewrite_backticks_in_table_source(&mut from.source);
+                    uppercase_function_names_in_table_source(&mut from.source);
                 }
                 for join in &mut sel.joins {
                     rewrite_backticks_in_table_source(&mut join.table);
+                    uppercase_function_names_in_table_source(&mut join.table);
                 }
             }
             // Recurse into table sources to transform inner Expr nodes
@@ -809,6 +811,83 @@ fn rewrite_backticks_in_table_source(source: &mut TableSource) {
         TableSource::Lateral { source } => rewrite_backticks_in_table_source(source),
         TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
             rewrite_backticks_in_table_source(source);
+        }
+        _ => {}
+    }
+}
+
+fn uppercase_function_names_in_raw_sql(sql: &str) -> String {
+    // Walk the string; whenever we see an unquoted identifier
+    // immediately followed by `(`, uppercase the identifier — unless
+    // the identifier is acting as an alias (preceded by `AS `).
+    // Quoted identifiers and string literals are preserved verbatim.
+    let bytes = sql.as_bytes();
+    let mut out = String::with_capacity(sql.len());
+    let mut i = 0;
+    let mut last_ident_upper = String::new();
+    while i < bytes.len() {
+        let c = bytes[i] as char;
+        if c == '\'' || c == '"' {
+            let quote = c;
+            out.push(c);
+            i += 1;
+            while i < bytes.len() {
+                let cc = bytes[i] as char;
+                out.push(cc);
+                i += 1;
+                if cc == quote {
+                    if i < bytes.len() && bytes[i] as char == quote {
+                        out.push(quote);
+                        i += 1;
+                        continue;
+                    }
+                    break;
+                }
+            }
+            last_ident_upper.clear();
+            continue;
+        }
+        if c.is_ascii_alphabetic() || c == '_' {
+            let start = i;
+            while i < bytes.len() && {
+                let cc = bytes[i] as char;
+                cc.is_ascii_alphanumeric() || cc == '_'
+            } {
+                i += 1;
+            }
+            let ident = &sql[start..i];
+            let mut j = i;
+            while j < bytes.len() && (bytes[j] as char).is_whitespace() {
+                j += 1;
+            }
+            let preceded_by_as = last_ident_upper == "AS";
+            if j < bytes.len() && bytes[j] as char == '(' && !preceded_by_as {
+                out.push_str(&ident.to_ascii_uppercase());
+            } else {
+                out.push_str(ident);
+            }
+            last_ident_upper = ident.to_ascii_uppercase();
+            continue;
+        }
+        if !c.is_whitespace() {
+            last_ident_upper.clear();
+        }
+        out.push(c);
+        i += 1;
+    }
+    out
+}
+
+fn uppercase_function_names_in_table_source(source: &mut TableSource) {
+    match source {
+        TableSource::Raw { sql, .. } => {
+            *sql = uppercase_function_names_in_raw_sql(sql);
+        }
+        TableSource::Lateral { source } => {
+            uppercase_function_names_in_table_source(source);
+        }
+        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
+            uppercase_function_names_in_table_source(source);
         }
         _ => {}
     }
