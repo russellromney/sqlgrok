@@ -2126,10 +2126,9 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
-            // Mysql INSERT(s, pos, len, repl) → STUFF(...) for sqlite
-            // target (Python SQLGlot's IR name for the same function).
-            if is_mysql_family(source)
-                && matches!(target, Dialect::Sqlite)
+            // INSERT(s, pos, len, repl) → STUFF(...) for sqlite target
+            // (Python SQLGlot's IR name for the 4-arg INSERT function).
+            if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("INSERT")
                 && !distinct
                 && filter.is_none()
