@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11389 |
-| `mismatch` | 1498 |
+| `match` | 11400 |
+| `mismatch` | 1487 |
 | `oracle-error` | 1545 |
 | `rust-error` | 587 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 11389 |
+| `match` | `sqlite` | `sqlite` | 11400 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
-| `mismatch` | `sqlite` | `sqlite` | 1498 |
+| `mismatch` | `sqlite` | `sqlite` | 1487 |
 | `rust-error` | `sqlite` | `sqlite` | 587 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8284 |
-| `match` | `validate_identity` | 3001 |
+| `match` | `validate_all` | 8292 |
+| `match` | `validate_identity` | 3004 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_all` | 717 |
-| `mismatch` | `validate_identity` | 714 |
+| `mismatch` | `validate_identity` | 711 |
+| `mismatch` | `validate_all` | 709 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 351 |
 | `rust-error` | `validate_all` | 233 |
@@ -49,8 +49,8 @@ Total rows: `15156`
 | Status | Shape | Count |
 | --- | --- | ---: |
 | `match` | `SELECT` | 707 |
-| `match` | `CAST()` | 560 |
-| `match` | `SELECT operator multiply` | 389 |
+| `match` | `CAST()` | 562 |
+| `match` | `SELECT operator multiply` | 388 |
 | `match` | `CREATE TABLE` | 363 |
 | `match` | `SHOW` | 215 |
 | `match` | `CREATE` | 196 |
@@ -61,11 +61,11 @@ Total rows: `15156`
 | `mismatch` | `CREATE` | 147 |
 | `oracle-error` | `SELECT operator multiply` | 143 |
 | `match` | `WITH` | 127 |
-| `match` | `ALTER TABLE` | 118 |
+| `match` | `ALTER TABLE` | 119 |
 | `oracle-error` | `CREATE TABLE` | 113 |
 | `match` | `SELECT UNNEST()` | 112 |
+| `match` | `SELECT CAST()` | 110 |
 | `match` | `X` | 107 |
-| `match` | `SELECT CAST()` | 102 |
 | `match` | `SELECT DATEDIFF()` | 83 |
 | `match` | `SET` | 78 |
 | `match` | `DATE_TRUNC()` | 77 |
@@ -145,12 +145,12 @@ Total rows: `15156`
 | `mismatch` | `case-only rendering difference` | 44 |
 | `mismatch` | `ALTER TABLE` | 41 |
 | `mismatch` | `missing quoted identifier` | 36 |
-| `mismatch` | `quote-style difference` | 35 |
+| `mismatch` | `quote-style difference` | 34 |
 | `mismatch` | `SELECT operator multiply` | 28 |
-| `mismatch` | `cast/type rendering: SELECT CAST()` | 24 |
 | `mismatch` | `date/time rendering: CREATE` | 24 |
-| `mismatch` | `cast/type rendering: CAST()` | 19 |
+| `mismatch` | `cast/type rendering: CAST()` | 17 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
+| `mismatch` | `cast/type rendering: SELECT CAST()` | 16 |
 | `mismatch` | `A` | 15 |
 | `mismatch` | `X` | 13 |
 | `mismatch` | `WITH` | 12 |
@@ -190,8 +190,8 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 289 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 263 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 251 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 242 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 173 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 241 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 182 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 152 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 148 |
@@ -456,15 +456,15 @@ Total rows: `15156`
 
 ### `mismatch` `quote-style difference`
 
-- `tests/dialects/test_athena.py`:88 `test_ddl` via `validate_identity`: `` ALTER TABLE `foo`.`bar` ADD COLUMN `end_ts` BIGINT ``
-  - expected: `ALTER TABLE "foo"."bar" ADD COLUMN "end_ts" INTEGER`
-  - actual: `ALTER TABLE foo."bar" ADD COLUMN "end_ts" INTEGER`
 - `tests/dialects/test_athena.py`:92 `test_ddl` via `validate_identity`: `` ALTER TABLE `foo` DROP COLUMN `id` ``
   - expected: `ALTER TABLE "foo" DROP COLUMN "id"`
   - actual: `ALTER TABLE "foo" DROP COLUMN id`
 - `tests/dialects/test_athena.py`:106 `test_ddl_quoting` via `validate_identity`: `` CREATE SCHEMA `foo` ``
   - expected: `CREATE SCHEMA "foo"`
   - actual: `` CREATE SCHEMA `foo` ``
+- `tests/dialects/test_athena.py`:161 `test_dml_quoting` via `validate_identity`: `INSERT INTO "foo" ("id") VALUES (1)`
+  - expected: `INSERT INTO "foo" ("id") VALUES (1)`
+  - actual: `INSERT INTO "foo" (id) VALUES (1)`
 
 ### `oracle-error` `oracle parse: Expected AS after CAST`
 

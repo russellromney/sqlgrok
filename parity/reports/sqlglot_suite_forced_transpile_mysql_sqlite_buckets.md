@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11087 |
-| `mismatch` | 1628 |
+| `match` | 11093 |
+| `mismatch` | 1622 |
 | `oracle-error` | 1739 |
 | `rust-error` | 565 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 11087 |
+| `match` | `mysql` | `sqlite` | 11093 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
-| `mismatch` | `mysql` | `sqlite` | 1628 |
+| `mismatch` | `mysql` | `sqlite` | 1622 |
 | `rust-error` | `mysql` | `sqlite` | 565 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8165 |
-| `match` | `validate_identity` | 2815 |
+| `match` | `validate_all` | 8172 |
+| `match` | `validate_identity` | 2814 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 795 |
-| `mismatch` | `validate_all` | 770 |
+| `mismatch` | `validate_identity` | 796 |
+| `mismatch` | `validate_all` | 763 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 314 |
 | `rust-error` | `validate_all` | 247 |
@@ -49,8 +49,8 @@ Total rows: `15156`
 | Status | Shape | Count |
 | --- | --- | ---: |
 | `match` | `SELECT` | 714 |
-| `match` | `CAST()` | 489 |
-| `match` | `SELECT operator multiply` | 394 |
+| `match` | `CAST()` | 490 |
+| `match` | `SELECT operator multiply` | 390 |
 | `match` | `CREATE TABLE` | 307 |
 | `match` | `SHOW` | 206 |
 | `match` | `CREATE` | 193 |
@@ -63,11 +63,11 @@ Total rows: `15156`
 | `oracle-error` | `SELECT operator multiply` | 135 |
 | `match` | `WITH` | 125 |
 | `match` | `X` | 104 |
+| `match` | `SELECT CAST()` | 99 |
 | `match` | `SELECT UNNEST()` | 96 |
 | `oracle-error` | `CAST()` | 96 |
-| `match` | `SELECT CAST()` | 92 |
-| `match` | `ALTER TABLE` | 83 |
-| `mismatch` | `ALTER TABLE` | 83 |
+| `match` | `ALTER TABLE` | 84 |
+| `mismatch` | `ALTER TABLE` | 82 |
 | `match` | `SELECT DATEDIFF()` | 79 |
 | `mismatch` | `SELECT UNNEST()` | 79 |
 | `match` | `SET` | 78 |
@@ -144,15 +144,15 @@ Total rows: `15156`
 | `mismatch` | `CREATE` | 100 |
 | `mismatch` | `ALTER TABLE` | 74 |
 | `mismatch` | `SELECT UNNEST()` | 54 |
-| `mismatch` | `quote-style difference` | 33 |
+| `mismatch` | `quote-style difference` | 35 |
 | `mismatch` | `SELECT operator multiply` | 30 |
 | `mismatch` | `A` | 25 |
-| `mismatch` | `cast/type rendering: SELECT CAST()` | 24 |
 | `mismatch` | `date/time rendering: CREATE` | 23 |
 | `mismatch` | `case-only rendering difference` | 22 |
-| `mismatch` | `cast/type rendering: CAST()` | 21 |
 | `mismatch` | `X` | 20 |
+| `mismatch` | `cast/type rendering: CAST()` | 20 |
 | `mismatch` | `missing quoted identifier` | 20 |
+| `mismatch` | `cast/type rendering: SELECT CAST()` | 17 |
 | `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
 | `mismatch` | `WITH` | 15 |
 | `mismatch` | `json rendering: SELECT JSON_VALUE()` | 12 |
@@ -184,20 +184,20 @@ Total rows: `15156`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1049 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 617 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 614 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 453 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 301 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 281 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 261 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 250 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 241 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 173 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 240 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 181 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 173 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 164 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 150 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 128 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 121 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 120 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 118 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 103 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 102 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 102 |
@@ -363,12 +363,12 @@ Total rows: `15156`
 - `tests/dialects/test_bigquery.py`:1161 `test_bigquery` via `validate_all`: `cast(x as time format 'YYYY.MM.DD HH:MI:SSTZH')`
   - expected: `STR_TO_TIME(x, 'YYYY.MM.DD HH:MI:SSTZH')`
   - actual: `CAST(x AS TIME)`
-- `tests/dialects/test_clickhouse.py`:503 `test_clickhouse` via `validate_all`: `CAST(1 AS NULLABLE(Int64))`
-  - expected: `CAST(1 AS INTEGER)`
-  - actual: `CAST(1 AS NULLABLE(Int64))`
 - `tests/dialects/test_dialect.py`:491 `test_cast` via `validate_all`: `CAST(a AS NUMBER)`
   - expected: `CAST(a AS REAL)`
   - actual: `CAST(a AS NUMBER)`
+- `tests/dialects/test_duckdb.py`:2016 `test_cast` via `validate_identity`: `CAST(x AS INT128)`
+  - expected: `CAST(x AS INT128)`
+  - actual: `CAST(x AS INTEGER)`
 
 ### `mismatch` `cast/type rendering: SELECT CAST()`
 
@@ -456,15 +456,15 @@ Total rows: `15156`
 
 ### `mismatch` `quote-style difference`
 
-- `tests/dialects/test_athena.py`:88 `test_ddl` via `validate_identity`: `` ALTER TABLE `foo`.`bar` ADD COLUMN `end_ts` BIGINT ``
-  - expected: `ALTER TABLE "foo"."bar" ADD COLUMN "end_ts" INTEGER`
-  - actual: `ALTER TABLE foo."bar" ADD COLUMN "end_ts" INTEGER`
 - `tests/dialects/test_athena.py`:92 `test_ddl` via `validate_identity`: `` ALTER TABLE `foo` DROP COLUMN `id` ``
   - expected: `ALTER TABLE "foo" DROP COLUMN "id"`
   - actual: `ALTER TABLE "foo" DROP COLUMN id`
 - `tests/dialects/test_athena.py`:106 `test_ddl_quoting` via `validate_identity`: `` CREATE SCHEMA `foo` ``
   - expected: `CREATE SCHEMA "foo"`
   - actual: `` CREATE SCHEMA `foo` ``
+- `tests/dialects/test_bigquery.py`:99 `test_bigquery` via `validate_identity`: `` CREATE OR REPLACE TABLE `a.b.c` CLONE `a.b.d` ``
+  - expected: `CREATE OR REPLACE TABLE "a.b.c" CLONE "a.b.d"`
+  - actual: `` CREATE OR REPLACE TABLE `a.b.c` CLONE `a.b.d` ``
 
 ### `oracle-error` `KeyError: <class 'sqlglot.expressions.properties.PartitionByRangeProperty'>`
 

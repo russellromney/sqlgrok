@@ -753,11 +753,11 @@ impl Generator {
 
     fn gen_table_ref(&mut self, table: &TableRef) {
         if let Some(catalog) = &table.catalog {
-            self.write(catalog);
+            self.write_quoted(catalog, table.name_quote_style);
             self.write(".");
         }
         if let Some(schema) = &table.schema {
-            self.write(schema);
+            self.write_quoted(schema, table.name_quote_style);
             self.write(".");
         }
         self.write_quoted(&table.name, table.name_quote_style);
