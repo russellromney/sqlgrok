@@ -2016,8 +2016,8 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
-            // Mysql VERSION() → SQLITE_VERSION() for sqlite target.
-            if is_mysql_family(source)
+            // Mysql / Postgres VERSION() → SQLITE_VERSION() for sqlite.
+            if (is_mysql_family(source) || is_postgres_family(source))
                 && matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("VERSION")
                 && !distinct
@@ -2770,6 +2770,31 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 }
             } else {
                 Expr::ArrayLiteral(items)
+            }
+        }
+        // Postgres source `col[N]` → sqlite `col[N-1]` (postgres uses
+        // 1-based array indexing; Python normalizes to 0-based for
+        // sqlite output).
+        Expr::ArrayIndex { expr, index }
+            if is_postgres_family(source) && matches!(target, Dialect::Sqlite) =>
+        {
+            let new_index = match *index {
+                Expr::Number(n) => {
+                    if let Ok(parsed) = n.parse::<i64>() {
+                        Expr::Number((parsed - 1).to_string())
+                    } else {
+                        Expr::Number(n)
+                    }
+                }
+                other => Expr::BinaryOp {
+                    left: Box::new(transform_expr(other, source, target)),
+                    op: BinaryOperator::Minus,
+                    right: Box::new(Expr::Number("1".to_string())),
+                },
+            };
+            Expr::ArrayIndex {
+                expr: Box::new(transform_expr(*expr, source, target)),
+                index: Box::new(new_index),
             }
         }
         Expr::JsonAccess {
