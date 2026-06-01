@@ -34,6 +34,13 @@ fn dialect_digit_letter_is_identifier(dialect: Dialect) -> bool {
     )
 }
 
+fn dialect_interprets_string_escapes(dialect: Dialect) -> bool {
+    // SQLite does not interpret backslash sequences inside string
+    // literals (a backslash is a literal char). Most other dialects
+    // (mysql, postgres extended quotes, etc.) do.
+    !matches!(dialect, Dialect::Sqlite)
+}
+
 fn is_identifier_like(value: &str) -> bool {
     let mut chars = value.chars();
     let Some(first) = chars.next() else {
@@ -297,7 +304,8 @@ impl Parser {
             dialect_supports_hash_comments(dialect),
         )
         .with_bit_literals_as_numbers(dialect_normalizes_bit_literals(dialect))
-        .with_digit_letter_is_identifier(dialect_digit_letter_is_identifier(dialect));
+        .with_digit_letter_is_identifier(dialect_digit_letter_is_identifier(dialect))
+        .with_interpret_string_escapes(dialect_interprets_string_escapes(dialect));
         let tokens = tokenizer.tokenize()?;
         Ok(Self {
             tokens,

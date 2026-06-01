@@ -25,6 +25,11 @@ pub struct Tokenizer {
     /// `1d`, `2.0bd`) to be a single quoted identifier rather than a
     /// number followed by an alias.
     digit_letter_is_identifier: bool,
+    /// Whether backslash sequences inside `'...'` string literals
+    /// should be interpreted as escapes (`\n` → newline, `\\` → `\`,
+    /// etc.). MySQL/Postgres do this; SQLite treats backslashes as
+    /// literal characters.
+    interpret_string_escapes: bool,
 }
 
 impl Tokenizer {
@@ -40,6 +45,7 @@ impl Tokenizer {
             hash_comments: true,
             bit_literals_as_numbers: false,
             digit_letter_is_identifier: false,
+            interpret_string_escapes: true,
         }
     }
 
@@ -55,6 +61,7 @@ impl Tokenizer {
             hash_comments: true,
             bit_literals_as_numbers: false,
             digit_letter_is_identifier: false,
+            interpret_string_escapes: true,
         }
     }
 
@@ -70,6 +77,7 @@ impl Tokenizer {
             hash_comments,
             bit_literals_as_numbers: false,
             digit_letter_is_identifier: false,
+            interpret_string_escapes: true,
         }
     }
 
@@ -84,6 +92,14 @@ impl Tokenizer {
     #[must_use]
     pub fn with_digit_letter_is_identifier(mut self, enabled: bool) -> Self {
         self.digit_letter_is_identifier = enabled;
+        self
+    }
+
+    /// Enable or disable backslash-escape interpretation inside string
+    /// literals. SQLite disables this; mysql/postgres enable.
+    #[must_use]
+    pub fn with_interpret_string_escapes(mut self, enabled: bool) -> Self {
+        self.interpret_string_escapes = enabled;
         self
     }
 
@@ -667,31 +683,39 @@ impl Tokenizer {
                         return Ok(self.make_token(token_type, value, start, start_line, start_col));
                     }
                 }
-                Some('\\') => match self.peek() {
-                    Some('\'') => {
-                        self.advance();
-                        value.push('\'');
+                Some('\\') if self.interpret_string_escapes
+                    || token_type == TokenType::EscapedString =>
+                {
+                    match self.peek() {
+                        Some('\'') => {
+                            self.advance();
+                            value.push('\'');
+                        }
+                        Some('\\') => {
+                            self.advance();
+                            value.push('\\');
+                        }
+                        Some('n') => {
+                            self.advance();
+                            value.push('\n');
+                        }
+                        Some('t') => {
+                            self.advance();
+                            value.push('\t');
+                        }
+                        Some('r') => {
+                            self.advance();
+                            value.push('\r');
+                        }
+                        _ => {
+                            value.push('\\');
+                        }
                     }
-                    Some('\\') => {
-                        self.advance();
-                        value.push('\\');
-                    }
-                    Some('n') => {
-                        self.advance();
-                        value.push('\n');
-                    }
-                    Some('t') => {
-                        self.advance();
-                        value.push('\t');
-                    }
-                    Some('r') => {
-                        self.advance();
-                        value.push('\r');
-                    }
-                    _ => {
-                        value.push('\\');
-                    }
-                },
+                }
+                Some('\\') => {
+                    // Backslash is a literal character (SQLite-style).
+                    value.push('\\');
+                }
                 Some(c) => value.push(c),
                 None => {
                     return Err(SqlglotError::TokenizerError {
