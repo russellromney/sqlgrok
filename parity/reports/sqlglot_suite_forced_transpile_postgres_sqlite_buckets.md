@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11451 |
-| `mismatch` | 1516 |
+| `match` | 11459 |
+| `mismatch` | 1508 |
 | `oracle-error` | 1456 |
 | `rust-error` | 596 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 11451 |
-| `mismatch` | `postgres` | `sqlite` | 1516 |
+| `match` | `postgres` | `sqlite` | 11459 |
+| `mismatch` | `postgres` | `sqlite` | 1508 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
 | `rust-error` | `postgres` | `sqlite` | 596 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8348 |
+| `match` | `validate_all` | 8356 |
 | `match` | `validate_identity` | 2995 |
 | `oracle-error` | `validate_identity` | 949 |
 | `mismatch` | `validate_identity` | 765 |
-| `mismatch` | `validate_all` | 685 |
+| `mismatch` | `validate_all` | 677 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 350 |
 | `rust-error` | `validate_all` | 243 |
@@ -50,14 +50,14 @@ Total rows: `15156`
 | --- | --- | ---: |
 | `match` | `SELECT` | 785 |
 | `match` | `CAST()` | 578 |
+| `match` | `CREATE TABLE` | 377 |
 | `match` | `SELECT operator multiply` | 376 |
-| `match` | `CREATE TABLE` | 369 |
 | `match` | `SHOW` | 215 |
 | `oracle-error` | `SELECT` | 211 |
 | `match` | `CREATE` | 189 |
-| `mismatch` | `CREATE TABLE` | 170 |
 | `mismatch` | `CREATE` | 167 |
 | `match` | `TRUNC()` | 164 |
+| `mismatch` | `CREATE TABLE` | 162 |
 | `oracle-error` | `SELECT operator multiply` | 150 |
 | `match` | `WITH` | 125 |
 | `match` | `ALTER TABLE` | 118 |
@@ -138,8 +138,8 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 188 |
-| `mismatch` | `DDL/create-table rendering` | 169 |
+| `mismatch` | `missing AS or alias rendering` | 184 |
+| `mismatch` | `DDL/create-table rendering` | 165 |
 | `mismatch` | `CREATE` | 116 |
 | `mismatch` | `SELECT` | 60 |
 | `mismatch` | `case-only rendering difference` | 51 |

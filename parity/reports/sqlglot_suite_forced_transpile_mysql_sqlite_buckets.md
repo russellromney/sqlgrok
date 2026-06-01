@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11201 |
-| `mismatch` | 1515 |
+| `match` | 11209 |
+| `mismatch` | 1507 |
 | `oracle-error` | 1739 |
 | `rust-error` | 564 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 11201 |
+| `match` | `mysql` | `sqlite` | 11209 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
-| `mismatch` | `mysql` | `sqlite` | 1515 |
+| `mismatch` | `mysql` | `sqlite` | 1507 |
 | `rust-error` | `mysql` | `sqlite` | 564 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8269 |
+| `match` | `validate_all` | 8277 |
 | `match` | `validate_identity` | 2824 |
 | `oracle-error` | `validate_identity` | 1135 |
 | `mismatch` | `validate_identity` | 786 |
-| `mismatch` | `validate_all` | 667 |
+| `mismatch` | `validate_all` | 659 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 314 |
 | `rust-error` | `validate_all` | 246 |
@@ -51,10 +51,10 @@ Total rows: `15156`
 | `match` | `SELECT` | 756 |
 | `match` | `CAST()` | 495 |
 | `match` | `SELECT operator multiply` | 390 |
-| `match` | `CREATE TABLE` | 307 |
+| `match` | `CREATE TABLE` | 315 |
 | `match` | `SHOW` | 206 |
 | `match` | `CREATE` | 193 |
-| `mismatch` | `CREATE TABLE` | 190 |
+| `mismatch` | `CREATE TABLE` | 182 |
 | `oracle-error` | `SELECT` | 179 |
 | `match` | `TRUNC()` | 164 |
 | `mismatch` | `CREATE` | 149 |
@@ -138,8 +138,8 @@ Total rows: `15156`
 
 | Status | Signature | Count |
 | --- | --- | ---: |
-| `mismatch` | `missing AS or alias rendering` | 182 |
-| `mismatch` | `DDL/create-table rendering` | 179 |
+| `mismatch` | `missing AS or alias rendering` | 178 |
+| `mismatch` | `DDL/create-table rendering` | 175 |
 | `mismatch` | `CREATE` | 100 |
 | `mismatch` | `SELECT` | 84 |
 | `mismatch` | `ALTER TABLE` | 73 |

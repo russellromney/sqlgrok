@@ -35,10 +35,11 @@ fn dialect_digit_letter_is_identifier(dialect: Dialect) -> bool {
 }
 
 fn dialect_interprets_string_escapes(dialect: Dialect) -> bool {
-    // SQLite does not interpret backslash sequences inside string
-    // literals (a backslash is a literal char). Most other dialects
-    // (mysql, postgres extended quotes, etc.) do.
-    !matches!(dialect, Dialect::Sqlite)
+    // SQLite and (standard-conforming) Postgres treat backslashes
+    // inside `'...'` as literal characters. Postgres' E'...' strings
+    // still go through the escape decoder regardless because they're
+    // explicitly escape-aware. Mysql interprets escapes by default.
+    !matches!(dialect, Dialect::Sqlite | Dialect::Postgres)
 }
 
 fn is_identifier_like(value: &str) -> bool {
