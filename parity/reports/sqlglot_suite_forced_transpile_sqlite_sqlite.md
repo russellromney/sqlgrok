@@ -13,24 +13,24 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11428 |
-| `mismatch` | 1459 |
+| `match` | 11461 |
+| `mismatch` | 1427 |
 | `oracle-error` | 1545 |
-| `rust-error` | 587 |
+| `rust-error` | 586 |
 | `unsupported-harness-shape` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8318 |
-| `match` | `validate_identity` | 3006 |
+| `match` | `validate_all` | 8350 |
+| `match` | `validate_identity` | 3007 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 709 |
-| `mismatch` | `validate_all` | 683 |
+| `mismatch` | `validate_identity` | 708 |
+| `mismatch` | `validate_all` | 652 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 351 |
-| `rust-error` | `validate_all` | 233 |
+| `rust-error` | `validate_all` | 232 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `match` | `validate` | 104 |
 | `mismatch` | `validate` | 67 |
@@ -43,7 +43,7 @@ Filtered by read/write: `0`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1076 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1094 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 699 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 458 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 344 |
@@ -59,13 +59,13 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 109 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 109 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 105 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 102 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 99 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 85 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 84 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 84 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 83 |
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
 

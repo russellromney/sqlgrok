@@ -4997,6 +4997,49 @@ impl Parser {
                     op: BinaryOperator::Match,
                     right: Box::new(pattern),
                 };
+            } else if (self.peek().value.eq_ignore_ascii_case("RLIKE")
+                || self.peek().value.eq_ignore_ascii_case("REGEXP"))
+                && self.peek_type() == &TokenType::Identifier
+            {
+                // RLIKE / REGEXP binary operator → REGEXP_LIKE(left, right).
+                self.advance();
+                let pattern = self.parse_addition()?;
+                let regexp = Expr::TypedFunction {
+                    func: TypedFunction::RegexpLike {
+                        expr: Box::new(left),
+                        pattern: Box::new(pattern),
+                        flags: None,
+                    },
+                    filter: None,
+                    over: None,
+                };
+                left = regexp;
+            } else if self.peek_type() == &TokenType::Not
+                && (self.peek_n_type(1) == &TokenType::Identifier
+                    && (self.tokens
+                        .get(self.pos + 1)
+                        .is_some_and(|t| {
+                            t.value.eq_ignore_ascii_case("RLIKE")
+                                || t.value.eq_ignore_ascii_case("REGEXP")
+                        })))
+            {
+                // NOT RLIKE / NOT REGEXP → NOT REGEXP_LIKE(...).
+                self.advance(); // NOT
+                self.advance(); // RLIKE/REGEXP
+                let pattern = self.parse_addition()?;
+                let regexp = Expr::TypedFunction {
+                    func: TypedFunction::RegexpLike {
+                        expr: Box::new(left),
+                        pattern: Box::new(pattern),
+                        flags: None,
+                    },
+                    filter: None,
+                    over: None,
+                };
+                left = Expr::UnaryOp {
+                    op: UnaryOperator::Not,
+                    expr: Box::new(regexp),
+                };
             } else if matches!(
                 self.peek_type(),
                 TokenType::Not
