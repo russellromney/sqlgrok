@@ -1850,6 +1850,31 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
+            // CONVERT_TZ (mysql) rewrites for SQLite to match SQLGlot:
+            //   CONVERT_TZ(x, from_tz, to_tz) →
+            //       CAST(x AS TIMESTAMPNTZ) AT TIME ZONE from_tz AT TIME ZONE to_tz
+            if is_mysql_family(source)
+                && matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("CONVERT_TZ")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 3
+            {
+                let cast = Expr::Cast {
+                    expr: Box::new(new_args[0].clone()),
+                    data_type: DataType::Unknown("TIMESTAMPNTZ".to_string()),
+                };
+                return Expr::BinaryOp {
+                    left: Box::new(Expr::BinaryOp {
+                        left: Box::new(cast),
+                        op: BinaryOperator::AtTimeZone,
+                        right: Box::new(new_args[1].clone()),
+                    }),
+                    op: BinaryOperator::AtTimeZone,
+                    right: Box::new(new_args[2].clone()),
+                };
+            }
             // CONVERT_TIMEZONE rewrites for SQLite to match SQLGlot:
             //   - 2-arg: CONVERT_TIMEZONE(zone, x) → x AT TIME ZONE zone
             //   - 3-arg: CONVERT_TIMEZONE(src, tgt, x) →
