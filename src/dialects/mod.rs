@@ -410,6 +410,16 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                     rewrite_unnest_array_literal_in_table_source(&mut join.table, source);
                 }
             }
+            // Replace backticks with double-quotes inside Raw table
+            // sources (e.g. `UNNEST(\`a\`.\`b\`)`) for sqlite target.
+            if matches!(target, Dialect::Sqlite) {
+                if let Some(from) = &mut sel.from {
+                    rewrite_backticks_in_table_source(&mut from.source);
+                }
+                for join in &mut sel.joins {
+                    rewrite_backticks_in_table_source(&mut join.table);
+                }
+            }
             // Recurse into table sources to transform inner Expr nodes
             // (e.g. UNNEST(ARRAY_LITERAL) or UNNEST(GENERATE_DATE_ARRAY(
             // DATE 'x', INTERVAL 1 WEEK))) — these would otherwise miss
@@ -784,6 +794,21 @@ fn rewrite_unnest_array_literal_in_table_source(source: &mut TableSource, src_di
         }
         TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
             rewrite_unnest_array_literal_in_table_source(source, src_dialect);
+        }
+        _ => {}
+    }
+}
+
+fn rewrite_backticks_in_table_source(source: &mut TableSource) {
+    match source {
+        TableSource::Raw { sql, .. } => {
+            if sql.contains('`') {
+                *sql = sql.replace('`', "\"");
+            }
+        }
+        TableSource::Lateral { source } => rewrite_backticks_in_table_source(source),
+        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
+            rewrite_backticks_in_table_source(source);
         }
         _ => {}
     }
