@@ -1144,7 +1144,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && !distinct
                 && filter.is_none()
                 && over.is_none()
-                && new_args.len() == 2
+                && matches!(new_args.len(), 2 | 3)
             {
                 return Expr::Function {
                     name: if name.eq_ignore_ascii_case("MAX_BY") {
