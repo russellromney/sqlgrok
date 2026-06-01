@@ -1636,6 +1636,40 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && over.is_none()
                 && new_args.len() == 2
             {
+                // For postgres source, rename to TIMESTAMP_TRUNC and
+                // swap the arg order (expr, UNIT) with the unit as a
+                // bare uppercase keyword. For other sources, keep
+                // DATE_TRUNC and uppercase the unit string.
+                if is_postgres_family(source) {
+                    let unit_upper = match &new_args[0] {
+                        Expr::StringLiteral(s) => s.to_ascii_uppercase(),
+                        Expr::Column { name: col, table: None, .. } => col.to_ascii_uppercase(),
+                        _ => {
+                            return Expr::Function {
+                                name: "DATE_TRUNC".to_string(),
+                                args: new_args,
+                                distinct: false,
+                                filter: None,
+                                over: None,
+                            };
+                        }
+                    };
+                    return Expr::Function {
+                        name: "TIMESTAMP_TRUNC".to_string(),
+                        args: vec![
+                            new_args[1].clone(),
+                            Expr::Column {
+                                table: None,
+                                name: unit_upper,
+                                quote_style: QuoteStyle::None,
+                                table_quote_style: QuoteStyle::None,
+                            },
+                        ],
+                        distinct: false,
+                        filter: None,
+                        over: None,
+                    };
+                }
                 // SQLGlot uppercase-and-string-quotes the first arg of
                 // DATE_TRUNC when it isn't already a string literal.
                 let first = match &new_args[0] {
