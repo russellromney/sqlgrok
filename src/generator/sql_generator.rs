@@ -560,7 +560,16 @@ impl Generator {
                 alias,
                 alias_quote_style,
             } => {
-                self.write(name);
+                let normalized = if matches!(self.dialect, Some(Dialect::Sqlite))
+                    && !name.contains('.')
+                    && !name.contains('"')
+                    && !name.contains('`')
+                {
+                    name.to_ascii_uppercase()
+                } else {
+                    name.to_string()
+                };
+                self.write(&normalized);
                 self.write("(");
                 self.gen_expr_list(args);
                 self.write(")");
