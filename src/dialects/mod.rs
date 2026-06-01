@@ -1979,6 +1979,43 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
+            // STRING(x) → CAST(x AS TEXT) for sqlite target, any source.
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("STRING")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                return Expr::Cast {
+                    expr: Box::new(new_args[0].clone()),
+                    data_type: DataType::Unknown("TEXT".to_string()),
+                };
+            }
+            // ISNAN(x)/ISINF(x) → IS_NAN(x)/IS_INF(x) for sqlite target.
+            if matches!(target, Dialect::Sqlite)
+                && matches!(
+                    name.to_ascii_uppercase().as_str(),
+                    "ISNAN" | "ISINF"
+                )
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 1
+            {
+                let new_name = if name.eq_ignore_ascii_case("ISNAN") {
+                    "IS_NAN"
+                } else {
+                    "IS_INF"
+                };
+                return Expr::Function {
+                    name: new_name.to_string(),
+                    args: new_args,
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
+            }
             // Mysql VERSION() → SQLITE_VERSION() for sqlite target.
             if is_mysql_family(source)
                 && matches!(target, Dialect::Sqlite)
