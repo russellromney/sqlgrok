@@ -1771,6 +1771,13 @@ impl Generator {
                     }
                     self.write(name);
                 }
+                AlterTableAction::SetProperties { assignments } => {
+                    self.write_keyword("SET");
+                    for (i, assignment) in assignments.iter().enumerate() {
+                        self.write(if i == 0 { " " } else { ", " });
+                        self.gen_expr(assignment);
+                    }
+                }
                 AlterTableAction::RenameColumn { old_name, new_name } => {
                     self.write_keyword("RENAME COLUMN ");
                     self.write(old_name);

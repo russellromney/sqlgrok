@@ -1888,6 +1888,11 @@ pub struct AlterTableStatement {
 pub enum AlterTableAction {
     AddColumn(ColumnDef),
     DropColumn { name: String, if_exists: bool },
+    /// `SET ...` table-property forms. SQLGlot drops unrepresentable
+    /// property keywords (LOGGED, TABLESPACE, COMMENT=, ...) leaving a bare
+    /// `SET`, and unwraps parenthesized assignment lists (`SET (a = 1)` →
+    /// `SET a = 1`).
+    SetProperties { assignments: Vec<Expr> },
     RenameColumn { old_name: String, new_name: String },
     AlterColumnType { name: String, data_type: DataType },
     AlterColumnRaw { name: String, tail: String },

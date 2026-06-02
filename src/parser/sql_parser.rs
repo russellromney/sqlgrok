@@ -4607,6 +4607,61 @@ impl Parser {
                 is_modify: true,
             });
         }
+        if self.match_token(TokenType::Set) {
+            // Optional `TABLE PROPERTIES` prefix (Hive/Spark/Snowflake).
+            if self.peek_type() == &TokenType::Table
+                && self.tokens[(self.pos + 1).min(self.tokens.len() - 1)]
+                    .value
+                    .eq_ignore_ascii_case("PROPERTIES")
+            {
+                self.advance(); // TABLE
+                self.advance(); // PROPERTIES
+            }
+            if self.match_token(TokenType::LParen) {
+                let mut assignments = Vec::new();
+                if self.peek_type() != &TokenType::RParen {
+                    loop {
+                        assignments.push(self.parse_expr()?);
+                        if !self.match_token(TokenType::Comma) {
+                            break;
+                        }
+                    }
+                }
+                self.expect(TokenType::RParen)?;
+                return Ok(AlterTableAction::SetProperties { assignments });
+            }
+            // Recognized bare property keywords collapse to a lone `SET`;
+            // anything else (SCHEMA, OWNER TO, STATISTICS, ...) bails to the
+            // raw passthrough so it's preserved verbatim.
+            let kw = self.peek().value.to_ascii_uppercase();
+            let recognized = matches!(
+                kw.as_str(),
+                "LOGGED"
+                    | "UNLOGGED"
+                    | "WITHOUT"
+                    | "ACCESS"
+                    | "TABLESPACE"
+                    | "LOCATION"
+                    | "FILE"
+                    | "COMMENT"
+                    | "DATA_RETENTION_TIME_IN_DAYS"
+                    | "DEFAULT_DDL_COLLATION"
+            );
+            if !recognized {
+                return Err(SqlglotError::ParserError {
+                    message: "unrecognized ALTER TABLE SET form".to_string(),
+                });
+            }
+            while !matches!(
+                self.peek_type(),
+                TokenType::Comma | TokenType::Semicolon | TokenType::Eof
+            ) {
+                self.advance();
+            }
+            return Ok(AlterTableAction::SetProperties {
+                assignments: Vec::new(),
+            });
+        }
         if self.match_keyword("ADD") {
             if matches!(
                 self.peek_type(),

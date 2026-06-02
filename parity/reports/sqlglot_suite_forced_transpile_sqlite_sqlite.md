@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11597 |
-| `mismatch` | 1291 |
+| `match` | 11613 |
+| `mismatch` | 1275 |
 | `oracle-error` | 1545 |
 | `rust-error` | 586 |
 | `unsupported-harness-shape` | 137 |
@@ -24,9 +24,9 @@ Filtered by read/write: `0`
 | Status | Helper | Count |
 | --- | --- | ---: |
 | `match` | `validate_all` | 8421 |
-| `match` | `validate_identity` | 3071 |
+| `match` | `validate_identity` | 3087 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 644 |
+| `mismatch` | `validate_identity` | 628 |
 | `mismatch` | `validate_all` | 581 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 351 |
