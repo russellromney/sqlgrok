@@ -3288,6 +3288,27 @@ impl Parser {
 
         let table = self.parse_table_ref_no_alias()?;
 
+        // ClickHouse `ON CLUSTER <name>` between the table name and the
+        // column list — dropped for the sqlite target.
+        if self.peek_type() == &TokenType::On
+            && self.tokens[(self.pos + 1).min(self.tokens.len() - 1)]
+                .value
+                .eq_ignore_ascii_case("CLUSTER")
+        {
+            // A string-literal cluster name (e.g. ON CLUSTER '{cluster}') is
+            // not accepted by SQLGlot's parser — it preserves the statement
+            // verbatim as a Command, so bail to the raw passthrough.
+            let name_tok = &self.tokens[(self.pos + 2).min(self.tokens.len() - 1)];
+            if name_tok.token_type == TokenType::String {
+                return Err(SqlglotError::ParserError {
+                    message: "string ON CLUSTER name".to_string(),
+                });
+            }
+            self.advance(); // ON
+            self.advance(); // CLUSTER
+            self.advance(); // cluster name (may be a keyword like `default`)
+        }
+
         // CREATE TABLE ... AS SELECT ...
         if self.match_token(TokenType::As) {
             let query = self.parse_statement_inner()?;
@@ -3742,9 +3763,55 @@ impl Parser {
             });
         }
         if self.match_keyword("ENGINE") {
+            // ClickHouse engines are function calls, e.g. ENGINE=MergeTree()
+            // or ENGINE=Null(); accept the optional argument list.
             return Some(CreateTableOption::Engine(
-                self.parse_create_table_option_value().unwrap_or_default(),
+                self.parse_create_table_option_word_or_call()
+                    .unwrap_or_default(),
             ));
+        }
+        // ClickHouse / Doris / StarRocks table clauses that the sqlite target
+        // drops. Consume them so the CREATE TABLE parses instead of falling
+        // back to a raw passthrough.
+        if self.peek_type() == &TokenType::Order
+            && self.tokens[(self.pos + 1).min(self.tokens.len() - 1)].token_type == TokenType::By
+        {
+            self.advance(); // ORDER
+            self.advance(); // BY
+            return Some(CreateTableOption::Unknown {
+                name: "ORDER BY".to_string(),
+                value: Some(self.consume_create_table_option_until_next_option()),
+            });
+        }
+        if self.match_keyword("SETTINGS") {
+            return Some(CreateTableOption::Unknown {
+                name: "SETTINGS".to_string(),
+                value: Some(self.consume_create_table_option_until_next_option()),
+            });
+        }
+        if self.match_keyword("SAMPLE") {
+            let _ = self.match_token(TokenType::By);
+            return Some(CreateTableOption::Unknown {
+                name: "SAMPLE BY".to_string(),
+                value: Some(self.consume_create_table_option_until_next_option()),
+            });
+        }
+        if self.peek_type() == &TokenType::Primary
+            && self.tokens[(self.pos + 1).min(self.tokens.len() - 1)].token_type == TokenType::Key
+        {
+            self.advance(); // PRIMARY
+            self.advance(); // KEY
+            return Some(CreateTableOption::Unknown {
+                name: "PRIMARY KEY".to_string(),
+                value: self.parse_create_table_parenthesized_option_value(),
+            });
+        }
+        if self.match_keyword("DUPLICATE") {
+            let _ = self.match_token(TokenType::Key);
+            return Some(CreateTableOption::Unknown {
+                name: "DUPLICATE KEY".to_string(),
+                value: self.parse_create_table_parenthesized_option_value(),
+            });
         }
         if self.match_keyword("INHERITS") {
             return Some(CreateTableOption::Unknown {
@@ -4010,6 +4077,10 @@ impl Parser {
                         | "ORDER"
                         | "SETTINGS"
                         | "COMMENT"
+                        | "AS"
+                        | "PRIMARY"
+                        | "DUPLICATE"
+                        | "SAMPLE"
                 )
             {
                 break;
