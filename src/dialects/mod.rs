@@ -4779,12 +4779,17 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
             // INTEGER(width) for sqlite.
             if mapped.is_none()
                 && let Some((base, rest)) = upper.split_once('(')
-                && matches!(
+            {
+                if matches!(
                     base,
                     "INT" | "INTEGER" | "BIGINT" | "SMALLINT" | "TINYINT" | "MEDIUMINT"
-                )
-            {
-                return DataType::Unknown(format!("INTEGER({rest}"));
+                ) {
+                    return DataType::Unknown(format!("INTEGER({rest}"));
+                }
+                // VARCHAR(MAX) / CHAR(MAX) → TEXT(MAX)
+                if matches!(base, "VARCHAR" | "CHAR") {
+                    return DataType::Unknown(format!("TEXT({rest}"));
+                }
             }
             if let Some(m) = mapped {
                 return DataType::Unknown(m);

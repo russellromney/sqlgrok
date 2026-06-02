@@ -4222,6 +4222,9 @@ impl Parser {
             }
             TokenType::Varchar => {
                 self.advance();
+                if let Some(kw) = self.parse_keyword_type_param()? {
+                    return Ok(DataType::Unknown(format!("VARCHAR({kw})")));
+                }
                 let len = self.parse_single_type_param()?;
                 Ok(DataType::Varchar(len))
             }
@@ -4230,6 +4233,9 @@ impl Parser {
                 if self.match_keyword("VARYING") {
                     let len = self.parse_single_type_param()?;
                     return Ok(DataType::Varchar(len));
+                }
+                if let Some(kw) = self.parse_keyword_type_param()? {
+                    return Ok(DataType::Unknown(format!("CHAR({kw})")));
                 }
                 let len = self.parse_single_type_param()?;
                 Ok(DataType::Char(len))
@@ -4624,6 +4630,24 @@ impl Parser {
         } else {
             Ok(signed)
         }
+    }
+
+    /// Parse a non-numeric parenthesized type parameter such as `(MAX)`,
+    /// returning the keyword if present. Leaves a numeric `(n)` untouched so
+    /// the caller's numeric path handles it. Only matches `(IDENT)`.
+    fn parse_keyword_type_param(&mut self) -> Result<Option<String>> {
+        if self.peek_type() == &TokenType::LParen
+            && self.tokens[(self.pos + 1).min(self.tokens.len() - 1)].token_type
+                == TokenType::Identifier
+            && self.tokens[(self.pos + 2).min(self.tokens.len() - 1)].token_type
+                == TokenType::RParen
+        {
+            self.advance(); // (
+            let kw = self.advance().value.clone();
+            self.expect(TokenType::RParen)?;
+            return Ok(Some(kw));
+        }
+        Ok(None)
     }
 
     fn parse_single_type_param(&mut self) -> Result<Option<u32>> {
