@@ -576,7 +576,7 @@ impl Parser {
         let comments = self.take_comments();
         let mut stmt = match self.peek_type() {
             TokenType::With => self.parse_with_statement(),
-            TokenType::Pivot => self.parse_raw_statement(),
+            TokenType::Pivot | TokenType::Unpivot => self.parse_raw_statement(),
             TokenType::Select if self.starts_raw_set_operation_shape() => {
                 self.parse_raw_statement()
             }

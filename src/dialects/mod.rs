@@ -415,11 +415,13 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             // sources (e.g. `UNNEST(\`a\`.\`b\`)`) for sqlite target.
             if matches!(target, Dialect::Sqlite) {
                 if let Some(from) = &mut sel.from {
+                    drop_pivot_in_table_source(&mut from.source);
                     rewrite_backticks_in_table_source(&mut from.source);
                     uppercase_function_names_in_table_source(&mut from.source);
                     normalize_typed_literals_in_table_source(&mut from.source);
                 }
                 for join in &mut sel.joins {
+                    drop_pivot_in_table_source(&mut join.table);
                     rewrite_backticks_in_table_source(&mut join.table);
                     uppercase_function_names_in_table_source(&mut join.table);
                     normalize_typed_literals_in_table_source(&mut join.table);
@@ -592,6 +594,14 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             if is_postgres_family(source) && matches!(target, Dialect::Sqlite) {
                 raw.sql = normalize_postgres_recursive_cte_raw(&raw.sql);
                 raw.sql = normalize_postgres_copy_raw(&raw.sql);
+            }
+            // SQLite can't represent a DuckDB-style PIVOT/UNPIVOT statement;
+            // SQLGlot drops it entirely.
+            if matches!(target, Dialect::Sqlite) {
+                let trimmed = raw.sql.trim_start().to_ascii_uppercase();
+                if trimmed.starts_with("PIVOT ") || trimmed.starts_with("UNPIVOT ") {
+                    raw.sql = String::new();
+                }
             }
             // Python SQLGlot drops SHOW statements that the mysql parser
             // recognizes (TABLES, DATABASES, INDEX, COLUMNS, CREATE *,
@@ -826,6 +836,32 @@ fn rewrite_unnest_array_literal_in_table_source(source: &mut TableSource, src_di
             rewrite_unnest_array_literal_in_table_source(source, src_dialect);
         }
         _ => {}
+    }
+}
+
+/// SQLite can't represent PIVOT/UNPIVOT, so SQLGlot drops the operator and
+/// keeps the underlying table source. Recursively unwrap any pivot wrapper.
+fn drop_pivot_in_table_source(source: &mut TableSource) {
+    loop {
+        match source {
+            TableSource::Pivot { source: inner, .. }
+            | TableSource::Unpivot { source: inner, .. } => {
+                let inner = std::mem::replace(
+                    inner.as_mut(),
+                    TableSource::Raw {
+                        sql: String::new(),
+                        alias: None,
+                        alias_quote_style: QuoteStyle::None,
+                    },
+                );
+                *source = inner;
+            }
+            TableSource::Lateral { source: inner } => {
+                drop_pivot_in_table_source(inner);
+                return;
+            }
+            _ => return,
+        }
     }
 }
 
