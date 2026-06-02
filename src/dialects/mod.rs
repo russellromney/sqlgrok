@@ -593,6 +593,10 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             }
             if is_postgres_family(source) && matches!(target, Dialect::Sqlite) {
                 raw.sql = normalize_postgres_recursive_cte_raw(&raw.sql);
+            }
+            // COPY ... renders as COPY INTO ... for the sqlite target,
+            // regardless of source dialect.
+            if matches!(target, Dialect::Sqlite) {
                 raw.sql = normalize_postgres_copy_raw(&raw.sql);
             }
             // SQLite can't represent a DuckDB-style PIVOT/UNPIVOT statement;
@@ -768,9 +772,14 @@ fn normalize_postgres_recursive_cte_raw(sql: &str) -> String {
 
 fn normalize_postgres_copy_raw(sql: &str) -> String {
     let trimmed = sql.trim_start();
+    // SQLGlot renders a COPY statement as `COPY INTO ...` for the sqlite
+    // target. Insert INTO after COPY unless it's already there.
     if trimmed
-        .get(..6)
-        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("COPY ("))
+        .get(..5)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("COPY "))
+        && !trimmed
+            .get(..10)
+            .is_some_and(|p| p.eq_ignore_ascii_case("COPY INTO "))
     {
         let leading_len = sql.len() - trimmed.len();
         let mut out = String::with_capacity(sql.len() + " INTO".len());
