@@ -221,6 +221,8 @@ pub struct Parser {
     preserve_comments: bool,
     /// Accumulated comments pending attachment to the next AST node.
     pending_comments: Vec<String>,
+    /// Source dialect this parser was constructed for.
+    dialect: Dialect,
 }
 
 fn is_create_table_empty_option(option: &CreateTableOption) -> bool {
@@ -267,6 +269,7 @@ impl Parser {
             parsing_column_default: false,
             preserve_comments: false,
             pending_comments: Vec::new(),
+            dialect: Dialect::Ansi,
         })
     }
 
@@ -281,6 +284,7 @@ impl Parser {
             parsing_column_default: false,
             preserve_comments: true,
             pending_comments: Vec::new(),
+            dialect: Dialect::Ansi,
         })
     }
 
@@ -315,6 +319,7 @@ impl Parser {
             parsing_column_default: false,
             preserve_comments,
             pending_comments: Vec::new(),
+            dialect,
         })
     }
 
@@ -3174,6 +3179,94 @@ impl Parser {
             break;
         }
 
+        // CREATE [OR REPLACE] [CONSTRAINT] TRIGGER <name> ... — SQLite can't
+        // represent trigger properties, so SQLGlot collapses the recognized
+        // (EXECUTE-style) trigger form to just its name. The BEGIN ... END
+        // body form is rejected by SQLGlot's parser and preserved verbatim
+        // as a Command, so bail to the raw fallback in that case.
+        {
+            let is_constraint_trigger = self.peek_type() == &TokenType::Constraint
+                && self.tokens[(self.pos + 1).min(self.tokens.len() - 1)]
+                    .value
+                    .eq_ignore_ascii_case("TRIGGER");
+            if is_constraint_trigger {
+                self.advance(); // CONSTRAINT
+            }
+            if self.check_keyword("TRIGGER") {
+                self.advance(); // TRIGGER
+                let (name, name_quote) = self.expect_name_with_quote()?;
+                // Backtick-quoted names aren't valid in the dialects that use
+                // the EXECUTE trigger form; let those fall back to raw.
+                if matches!(name_quote, QuoteStyle::Backtick) {
+                    return Err(SqlglotError::ParserError {
+                        message: "backtick trigger name".to_string(),
+                    });
+                }
+                // If a procedural BEGIN block follows, this isn't the simple
+                // collapsible form — bail to raw passthrough.
+                let mut scan = self.pos;
+                while let Some(tok) = self.tokens.get(scan) {
+                    if matches!(tok.token_type, TokenType::Semicolon | TokenType::Eof) {
+                        break;
+                    }
+                    if tok.token_type == TokenType::Begin {
+                        return Err(SqlglotError::ParserError {
+                            message: "trigger with begin block".to_string(),
+                        });
+                    }
+                    scan += 1;
+                }
+                // Drop the rest of the trigger definition.
+                while !matches!(self.peek_type(), TokenType::Semicolon | TokenType::Eof) {
+                    self.advance();
+                }
+                let mut prefix = String::from("CREATE ");
+                if or_replace {
+                    prefix.push_str("OR REPLACE ");
+                }
+                if is_constraint_trigger {
+                    prefix.push_str("CONSTRAINT ");
+                }
+                if temporary {
+                    prefix.push_str("TEMPORARY ");
+                }
+                prefix.push_str("TRIGGER ");
+                let rendered_name = match name_quote {
+                    QuoteStyle::DoubleQuote => format!("\"{name}\""),
+                    _ => name,
+                };
+                prefix.push_str(&rendered_name);
+                return Ok(Statement::Raw(RawStatement {
+                    comments: vec![],
+                    sql: prefix,
+                }));
+            }
+        }
+
+        // CREATE [OR REPLACE] [TEMPORARY] SEQUENCE [IF NOT EXISTS] <name>
+        // [AS <type>] [options...] — SQLite drops the options.
+        if self.check_keyword("SEQUENCE") {
+            self.advance(); // SEQUENCE
+            let if_not_exists = self.parse_if_not_exists()?;
+            let name = self.parse_table_ref_no_alias()?;
+            let mut as_type = None;
+            while !matches!(self.peek_type(), TokenType::Semicolon | TokenType::Eof) {
+                if self.match_token(TokenType::As) {
+                    as_type = Some(self.parse_data_type()?);
+                } else {
+                    self.advance();
+                }
+            }
+            return Ok(Statement::CreateSequence(CreateSequenceStatement {
+                comments: vec![],
+                or_replace,
+                temporary,
+                if_not_exists,
+                name,
+                as_type,
+            }));
+        }
+
         let unique = self.match_token(TokenType::Unique);
         if unique || self.peek().token_type == TokenType::Index {
             return self.parse_create_index(unique).map(Statement::CreateIndex);
@@ -4463,21 +4556,38 @@ impl Parser {
         })
     }
 
+    /// Parse the trailing placement clause of a mysql CHANGE/MODIFY COLUMN.
+    /// Only `FIRST` and `AFTER <col>` are recognized; anything else means
+    /// this isn't a column-modify SQLGlot would lower, so bail to the raw
+    /// passthrough by returning an error.
+    fn parse_change_column_tail(&mut self) -> Result<String> {
+        if matches!(self.peek_type(), TokenType::Semicolon | TokenType::Eof)
+            || self.peek_type() == &TokenType::Comma
+        {
+            return Ok(String::new());
+        }
+        if self.match_keyword("FIRST") {
+            return Ok("FIRST".to_string());
+        }
+        if self.match_keyword("AFTER") {
+            let col = self.expect_name()?;
+            return Ok(format!("AFTER {col}"));
+        }
+        Err(SqlglotError::ParserError {
+            message: "unsupported CHANGE/MODIFY column tail".to_string(),
+        })
+    }
+
     fn parse_alter_action(&mut self) -> Result<AlterTableAction> {
-        if self.match_keyword("CHANGE") {
+        // CHANGE / MODIFY COLUMN are mysql-family syntax. SQLGlot only
+        // recognizes them under the mysql dialect; other source dialects
+        // pass the statement through as a Command, so gate on the source.
+        if matches!(self.dialect, Dialect::Mysql) && self.match_keyword("CHANGE") {
             // CHANGE [COLUMN] old_name new_name <column def> [FIRST | AFTER c]
             let _ = self.match_keyword("COLUMN");
             let old_name = self.expect_name()?;
             let new_column = self.parse_column_def()?;
-            let mut tail_tokens: Vec<String> = Vec::new();
-            while !matches!(
-                self.peek_type(),
-                TokenType::Comma | TokenType::Semicolon | TokenType::Eof
-            ) {
-                tail_tokens.push(self.peek().value.clone());
-                self.advance();
-            }
-            let tail = tail_tokens.join(" ");
+            let tail = self.parse_change_column_tail()?;
             return Ok(AlterTableAction::ChangeColumn {
                 old_name,
                 new_column,
@@ -4485,19 +4595,11 @@ impl Parser {
                 is_modify: false,
             });
         }
-        if self.match_keyword("MODIFY") {
+        if matches!(self.dialect, Dialect::Mysql) && self.match_keyword("MODIFY") {
             // MODIFY [COLUMN] <column def> — same shape but no rename.
             let _ = self.match_keyword("COLUMN");
             let new_column = self.parse_column_def()?;
-            let mut tail_tokens: Vec<String> = Vec::new();
-            while !matches!(
-                self.peek_type(),
-                TokenType::Comma | TokenType::Semicolon | TokenType::Eof
-            ) {
-                tail_tokens.push(self.peek().value.clone());
-                self.advance();
-            }
-            let tail = tail_tokens.join(" ");
+            let tail = self.parse_change_column_tail()?;
             return Ok(AlterTableAction::ChangeColumn {
                 old_name: new_column.name.clone(),
                 new_column,
@@ -7726,6 +7828,7 @@ fn attach_comments_to_statement(stmt: &mut Statement, comments: Vec<String>) {
         Statement::SetOperation(s) => s.comments = comments,
         Statement::AlterTable(s) => s.comments = comments,
         Statement::CreateView(s) => s.comments = comments,
+        Statement::CreateSequence(s) => s.comments = comments,
         Statement::DropView(s) => s.comments = comments,
         Statement::Truncate(s) => s.comments = comments,
         Statement::Explain(s) => s.comments = comments,

@@ -574,6 +574,11 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 *predicate = transform_expr(predicate.clone(), source, target);
             }
         }
+        Statement::CreateSequence(seq) => {
+            if let Some(as_type) = &mut seq.as_type {
+                *as_type = map_data_type_for_source(as_type.clone(), source, target);
+            }
+        }
         Statement::Raw(raw) => {
             if is_postgres_family(source)
                 && matches!(target, Dialect::Sqlite)
@@ -4683,6 +4688,40 @@ fn strip_nullable_wrapper(name: &str, upper: &str) -> Option<String> {
     Some(canonical)
 }
 
+/// Postgres pseudo-types and range/multirange types that SQLGlot recognizes
+/// as type keywords (and therefore uppercases) when the source is postgres.
+fn is_postgres_pseudo_type(upper: &str) -> bool {
+    matches!(
+        upper,
+        "CSTRING"
+            | "OID"
+            | "NAME"
+            | "REGCLASS"
+            | "REGCOLLATION"
+            | "REGCONFIG"
+            | "REGDICTIONARY"
+            | "REGNAMESPACE"
+            | "REGOPER"
+            | "REGOPERATOR"
+            | "REGPROC"
+            | "REGPROCEDURE"
+            | "REGROLE"
+            | "REGTYPE"
+            | "DATERANGE"
+            | "DATEMULTIRANGE"
+            | "TSRANGE"
+            | "TSMULTIRANGE"
+            | "TSTZRANGE"
+            | "TSTZMULTIRANGE"
+            | "NUMRANGE"
+            | "NUMMULTIRANGE"
+            | "INT4RANGE"
+            | "INT4MULTIRANGE"
+            | "INT8RANGE"
+            | "INT8MULTIRANGE"
+    )
+}
+
 fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> DataType {
     // Common type aliases that always map to the canonical sqlite-
     // target name regardless of source.
@@ -4699,6 +4738,13 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
             if let Some(m) = mapped {
                 return DataType::Unknown(m);
             }
+        }
+        // Postgres pseudo-types and range types are recognized type keywords
+        // in SQLGlot, so they're uppercased on output — but only when the
+        // SOURCE is postgres. Other sources treat them as user-defined type
+        // names and preserve the original case.
+        if is_postgres_family(source) && is_postgres_pseudo_type(&name.to_ascii_uppercase()) {
+            return DataType::Unknown(name.to_ascii_uppercase());
         }
     }
     // ClickHouse-style `Nullable(T)` wrappers: strip for sqlite output

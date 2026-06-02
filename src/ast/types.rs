@@ -89,6 +89,9 @@ pub enum Statement {
     AlterTable(AlterTableStatement),
     /// CREATE VIEW ...
     CreateView(CreateViewStatement),
+    /// CREATE SEQUENCE ... (most options dropped on output; an optional
+    /// `AS <type>` is preserved and type-mapped).
+    CreateSequence(CreateSequenceStatement),
     /// DROP VIEW ...
     DropView(DropViewStatement),
     /// TRUNCATE TABLE ...
@@ -105,6 +108,25 @@ pub enum Statement {
     Raw(RawStatement),
     /// Raw / passthrough expression (for expressions that don't fit a specific statement type)
     Expression(Expr),
+}
+
+/// CREATE SEQUENCE statement. SQLGlot drops sequence options (START,
+/// INCREMENT, CYCLE, CACHE, SHARING, ...) when the target can't represent
+/// them, keeping only the name and an optional `AS <datatype>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CreateSequenceStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
+    #[serde(default)]
+    pub or_replace: bool,
+    #[serde(default)]
+    pub temporary: bool,
+    #[serde(default)]
+    pub if_not_exists: bool,
+    pub name: TableRef,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub as_type: Option<DataType>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

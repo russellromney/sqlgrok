@@ -17,43 +17,6 @@ fn sqlite_function_raw_args(raw_args: &str) -> String {
         .replace(" RESPECT NULLS", "")
 }
 
-/// Type keywords that SQLGlot recognizes (and therefore uppercases on output).
-/// We only carry the ones that fall through to `DataType::Unknown` after parsing
-/// — chiefly postgres pseudo-types and range/multirange types. Names not in this
-/// set are treated as user-defined and preserved verbatim.
-fn is_recognized_type_keyword(upper: &str) -> bool {
-    matches!(
-        upper,
-        "CSTRING"
-            | "OID"
-            | "NAME"
-            | "REGCLASS"
-            | "REGCOLLATION"
-            | "REGCONFIG"
-            | "REGDICTIONARY"
-            | "REGNAMESPACE"
-            | "REGOPER"
-            | "REGOPERATOR"
-            | "REGPROC"
-            | "REGPROCEDURE"
-            | "REGROLE"
-            | "REGTYPE"
-            | "DATERANGE"
-            | "DATEMULTIRANGE"
-            | "TSRANGE"
-            | "TSMULTIRANGE"
-            | "TSTZRANGE"
-            | "TSTZMULTIRANGE"
-            | "NUMRANGE"
-            | "NUMMULTIRANGE"
-            | "INT4RANGE"
-            | "INT4MULTIRANGE"
-            | "INT8RANGE"
-            | "INT8MULTIRANGE"
-            | "RANGE"
-    )
-}
-
 /// SQL code generator that converts an AST into a SQL string.
 ///
 /// Supports all statement and expression types defined in the AST,
@@ -284,6 +247,10 @@ impl Generator {
             Statement::CreateView(s) => {
                 self.gen_comments(&s.comments);
                 self.gen_create_view(s);
+            }
+            Statement::CreateSequence(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_create_sequence(s);
             }
             Statement::DropView(s) => {
                 self.gen_comments(&s.comments);
@@ -1870,6 +1837,25 @@ impl Generator {
 
     // ── CREATE / DROP VIEW ──────────────────────────────────────
 
+    fn gen_create_sequence(&mut self, cs: &CreateSequenceStatement) {
+        self.write_keyword("CREATE ");
+        if cs.or_replace {
+            self.write_keyword("OR REPLACE ");
+        }
+        if cs.temporary {
+            self.write_keyword("TEMPORARY ");
+        }
+        self.write_keyword("SEQUENCE ");
+        if cs.if_not_exists {
+            self.write_keyword("IF NOT EXISTS ");
+        }
+        self.gen_table_ref(&cs.name);
+        if let Some(as_type) = &cs.as_type {
+            self.write_keyword(" AS ");
+            self.gen_data_type(as_type);
+        }
+    }
+
     fn gen_create_view(&mut self, cv: &CreateViewStatement) {
         self.write_keyword("CREATE ");
         if cv.or_replace {
@@ -2145,16 +2131,7 @@ impl Generator {
             DataType::Geography => self.write("GEOGRAPHY"),
             DataType::Geometry => self.write("GEOMETRY"),
             DataType::Super => self.write("SUPER"),
-            DataType::Unknown(name) => {
-                // SQLGlot uppercases recognized type keywords (postgres pseudo-types
-                // like cstring/oid/regproc, range types, etc.) but preserves genuinely
-                // user-defined type names verbatim.
-                if is_recognized_type_keyword(&name.to_uppercase()) {
-                    self.write(&name.to_uppercase());
-                } else {
-                    self.write(name);
-                }
-            }
+            DataType::Unknown(name) => self.write(name),
         }
     }
 
