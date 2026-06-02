@@ -137,6 +137,47 @@ fn identifier_data_type_name(name: &str) -> bool {
     )
 }
 
+/// Apply a MySQL `UNSIGNED` modifier to an integer/decimal type, mapping it
+/// to its U-prefixed canonical form (SMALLINT -> USMALLINT, DECIMAL(5,2) ->
+/// UDECIMAL(5, 2)), preserving any display width. Non-integer types are
+/// returned unchanged.
+fn apply_unsigned_integer(dt: DataType) -> DataType {
+    match dt {
+        DataType::Int => DataType::Unknown("UINT".to_string()),
+        DataType::BigInt => DataType::Unknown("UBIGINT".to_string()),
+        DataType::SmallInt => DataType::Unknown("USMALLINT".to_string()),
+        DataType::TinyInt => DataType::Unknown("UTINYINT".to_string()),
+        DataType::Decimal { precision, scale } | DataType::Numeric { precision, scale } => {
+            let mut suffix = String::new();
+            if let Some(p) = precision {
+                suffix = format!("({p}");
+                if let Some(s) = scale {
+                    suffix.push_str(&format!(", {s}"));
+                }
+                suffix.push(')');
+            }
+            DataType::Unknown(format!("UDECIMAL{suffix}"))
+        }
+        DataType::Unknown(name) => {
+            let (base, suffix) = match name.split_once('(') {
+                Some((b, rest)) => (b.to_string(), format!("({rest}")),
+                None => (name.clone(), String::new()),
+            };
+            let ubase = match base.trim().to_ascii_uppercase().as_str() {
+                "INT" | "INTEGER" => "UINT",
+                "BIGINT" => "UBIGINT",
+                "SMALLINT" => "USMALLINT",
+                "TINYINT" => "UTINYINT",
+                "MEDIUMINT" => "UMEDIUMINT",
+                "DECIMAL" | "NUMERIC" => "UDECIMAL",
+                _ => return DataType::Unknown(name),
+            };
+            DataType::Unknown(format!("{ubase}{suffix}"))
+        }
+        other => other,
+    }
+}
+
 fn simple_data_type_from_name(name: &str) -> DataType {
     match name.trim().to_ascii_uppercase().as_str() {
         "BIGINT" | "INT64" => DataType::BigInt,
@@ -4138,32 +4179,19 @@ impl Parser {
         let type_result = match &token.token_type {
             TokenType::Int | TokenType::Integer => {
                 self.advance();
-                // MySQL-style trailing UNSIGNED / SIGNED on integer types.
-                if self.match_keyword("UNSIGNED") {
-                    Ok(DataType::Unknown("INT UNSIGNED".to_string()))
-                } else if self.match_keyword("SIGNED") {
-                    Ok(DataType::Unknown("INT SIGNED".to_string()))
-                } else {
-                    Ok(DataType::Int)
-                }
+                Ok(self.int_type_with_optional_width("INT", DataType::Int)?)
             }
             TokenType::BigInt => {
                 self.advance();
-                if self.match_keyword("UNSIGNED") {
-                    Ok(DataType::Unknown("BIGINT UNSIGNED".to_string()))
-                } else if self.match_keyword("SIGNED") {
-                    Ok(DataType::Unknown("BIGINT SIGNED".to_string()))
-                } else {
-                    Ok(DataType::BigInt)
-                }
+                Ok(self.int_type_with_optional_width("BIGINT", DataType::BigInt)?)
             }
             TokenType::SmallInt => {
                 self.advance();
-                Ok(DataType::SmallInt)
+                Ok(self.int_type_with_optional_width("SMALLINT", DataType::SmallInt)?)
             }
             TokenType::TinyInt => {
                 self.advance();
-                Ok(DataType::TinyInt)
+                Ok(self.int_type_with_optional_width("TINYINT", DataType::TinyInt)?)
             }
             TokenType::Float => {
                 self.advance();
@@ -4389,8 +4417,17 @@ impl Parser {
             }),
         };
 
-        // PostgreSQL opt_array_bounds: typename[], typename[N], typename[][]...
+        // MySQL integer modifiers: `<inttype> [UNSIGNED|SIGNED] [ZEROFILL]`.
+        // UNSIGNED maps the type to its U-prefixed form (SMALLINT -> USMALLINT).
         let mut dt = type_result?;
+        if self.match_keyword("UNSIGNED") {
+            let _ = self.match_keyword("ZEROFILL");
+            dt = apply_unsigned_integer(dt);
+        } else if self.match_keyword("SIGNED") {
+            let _ = self.match_keyword("ZEROFILL");
+        } else {
+            let _ = self.match_keyword("ZEROFILL");
+        }
         if self.peek_type() == &TokenType::Char
             && self.peek().value.eq_ignore_ascii_case("CHARACTER")
         {
@@ -4575,6 +4612,17 @@ impl Parser {
             Ok((p, s))
         } else {
             Ok((None, None))
+        }
+    }
+
+    /// Parse an optional display width on an integer type. With a width, the
+    /// type is carried as `Unknown("BASE(n)")` (mapped to the target later);
+    /// without one the plain signed type is returned.
+    fn int_type_with_optional_width(&mut self, base: &str, signed: DataType) -> Result<DataType> {
+        if let Some(width) = self.parse_single_type_param()? {
+            Ok(DataType::Unknown(format!("{base}({width})")))
+        } else {
+            Ok(signed)
         }
     }
 

@@ -4774,6 +4774,18 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
                 "UHUGEINT" => Some("UINT128".to_string()),
                 _ => None,
             };
+            // Signed integer types carrying a MySQL display width
+            // (INT(10), BIGINT(10), TINYINT(1), ...) all fold to
+            // INTEGER(width) for sqlite.
+            if mapped.is_none()
+                && let Some((base, rest)) = upper.split_once('(')
+                && matches!(
+                    base,
+                    "INT" | "INTEGER" | "BIGINT" | "SMALLINT" | "TINYINT" | "MEDIUMINT"
+                )
+            {
+                return DataType::Unknown(format!("INTEGER({rest}"));
+            }
             if let Some(m) = mapped {
                 return DataType::Unknown(m);
             }
