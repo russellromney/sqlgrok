@@ -3510,20 +3510,73 @@ impl Parser {
         // Parse name without alias (so AS is not consumed as an alias)
         let name = self.parse_table_ref_no_alias()?;
 
-        let columns = if self.match_token(TokenType::LParen) {
-            let mut cols = vec![self.expect_name()?];
-            while self.match_token(TokenType::Comma) {
-                cols.push(self.expect_name()?);
+        // Consume optional view-modifier clauses (in any order) that the
+        // sqlite target drops: a bare-name column list, DEFINER=, SQL
+        // SECURITY, COPY GRANTS, AUTO REFRESH, and ClickHouse `TO <target>`.
+        let mut columns: Vec<String> = Vec::new();
+        loop {
+            if columns.is_empty()
+                && self.peek_type() == &TokenType::LParen
+                && self.view_column_list_ahead()
+            {
+                self.advance(); // (
+                columns.push(self.expect_name()?);
+                while self.match_token(TokenType::Comma) {
+                    columns.push(self.expect_name()?);
+                }
+                self.expect(TokenType::RParen)?;
+                continue;
             }
-            self.expect(TokenType::RParen)?;
-            cols
-        } else {
-            vec![]
-        };
+            if self.consume_sql_security_property() {
+                continue;
+            }
+            let kw = self.peek().value.to_ascii_uppercase();
+            if kw == "DEFINER" {
+                self.advance();
+                let _ = self.match_token(TokenType::Eq);
+                self.consume_view_clause_value();
+                continue;
+            }
+            if kw == "COPY"
+                && self.tokens[(self.pos + 1).min(self.tokens.len() - 1)]
+                    .value
+                    .eq_ignore_ascii_case("GRANTS")
+            {
+                self.advance(); // COPY
+                self.advance(); // GRANTS
+                continue;
+            }
+            if kw == "AUTO"
+                && self.tokens[(self.pos + 1).min(self.tokens.len() - 1)]
+                    .value
+                    .eq_ignore_ascii_case("REFRESH")
+            {
+                self.advance(); // AUTO
+                self.advance(); // REFRESH
+                self.consume_view_clause_value();
+                continue;
+            }
+            if kw == "TO"
+                && self.tokens[(self.pos + 1).min(self.tokens.len() - 1)].token_type
+                    != TokenType::LParen
+            {
+                self.advance(); // TO
+                let _ = self.parse_table_ref_no_alias()?;
+                continue;
+            }
+            break;
+        }
 
-        self.consume_sql_security_property();
-
-        self.expect(TokenType::As)?;
+        // AS is optional — some dialects allow `CREATE VIEW v (cols) SELECT ...`.
+        let _ = self.match_token(TokenType::As);
+        if !matches!(
+            self.peek_type(),
+            TokenType::Select | TokenType::With | TokenType::From | TokenType::LParen
+        ) {
+            return Err(SqlglotError::ParserError {
+                message: "expected query body in CREATE VIEW".to_string(),
+            });
+        }
         let query = self.parse_statement_inner()?;
 
         Ok(CreateViewStatement {
@@ -3544,10 +3597,53 @@ impl Parser {
             self.pos = saved_pos;
             return false;
         }
-        if self.check_keyword("INVOKER") || self.check_keyword("DEFINER") {
+        if self.check_keyword("INVOKER") || self.check_keyword("DEFINER") || self.check_keyword("NONE")
+        {
             self.advance();
         }
         true
+    }
+
+    /// True when the upcoming `(...)` is a bare-name view column list (each
+    /// entry is a name with no type), as opposed to a typed list.
+    fn view_column_list_ahead(&self) -> bool {
+        if self.peek_type() != &TokenType::LParen {
+            return false;
+        }
+        let mut i = self.pos + 1;
+        let mut expect_name = true;
+        while let Some(tok) = self.tokens.get(i) {
+            match tok.token_type {
+                TokenType::RParen => return !expect_name,
+                TokenType::Comma => {
+                    if expect_name {
+                        return false;
+                    }
+                    expect_name = true;
+                }
+                TokenType::Identifier if expect_name => expect_name = false,
+                _ => return false,
+            }
+            i += 1;
+        }
+        false
+    }
+
+    /// Consume a short view-clause value (e.g. the user after DEFINER=, or
+    /// the refresh mode after AUTO REFRESH), stopping at the query body or
+    /// the next recognized clause keyword.
+    fn consume_view_clause_value(&mut self) {
+        while !matches!(
+            self.peek_type(),
+            TokenType::As | TokenType::Select | TokenType::With | TokenType::From
+                | TokenType::Eof | TokenType::Semicolon | TokenType::LParen
+        ) {
+            let kw = self.peek().value.to_ascii_uppercase();
+            if matches!(kw.as_str(), "SQL" | "COPY" | "AUTO" | "TO" | "DEFINER") {
+                break;
+            }
+            self.advance();
+        }
     }
 
     fn parse_table_constraint(&mut self) -> Result<TableConstraint> {

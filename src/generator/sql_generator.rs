@@ -1882,7 +1882,8 @@ impl Generator {
         if cv.or_replace {
             self.write_keyword("OR REPLACE ");
         }
-        if cv.materialized {
+        // SQLite has no materialized views; SQLGlot drops the keyword.
+        if cv.materialized && !matches!(self.dialect, Some(Dialect::Sqlite)) {
             self.write_keyword("MATERIALIZED ");
         }
         self.write_keyword("VIEW ");
