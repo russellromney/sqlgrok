@@ -1492,6 +1492,15 @@ impl Generator {
         self.write(" ");
         self.gen_data_type(&col.data_type);
 
+        if let Some(generated) = &col.generated_as {
+            self.write_keyword(" AS (");
+            self.gen_expr(generated);
+            self.write(")");
+            if col.generated_stored {
+                self.write_keyword(" PERSISTED");
+            }
+        }
+
         // SQLGlot preserves source constraint order. We model the common
         // NOT NULL / UNIQUE pair: emit UNIQUE first only when it preceded
         // NOT NULL in the source.

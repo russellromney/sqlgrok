@@ -528,6 +528,9 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 if let Some(default) = &mut col.default {
                     *default = transform_expr(default.clone(), source, target);
                 }
+                if let Some(generated) = &mut col.generated_as {
+                    *generated = transform_expr(generated.clone(), source, target);
+                }
             }
             // Transform constraints (CHECK expressions)
             for constraint in &mut ct.constraints {

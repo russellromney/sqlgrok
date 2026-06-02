@@ -1872,6 +1872,12 @@ pub struct ColumnDef {
     pub auto_increment_from_identity: bool,
     pub collation: Option<String>,
     pub comment: Option<String>,
+    /// Computed/generated column expression: `AS (<expr>)`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub generated_as: Option<Expr>,
+    /// Whether the generated column is STORED (rendered as PERSISTED).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub generated_stored: bool,
 }
 
 /// ALTER TABLE statement.

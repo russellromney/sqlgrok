@@ -3598,9 +3598,25 @@ impl Parser {
         let mut auto_increment_before_primary_key = false;
         let mut collation = None;
         let mut comment = None;
+        let mut generated_as = None;
+        let mut generated_stored = false;
 
         loop {
-            if self.match_token(TokenType::Not) {
+            if self.peek_type() == &TokenType::As
+                && self.tokens[(self.pos + 1).min(self.tokens.len() - 1)].token_type
+                    == TokenType::LParen
+            {
+                // Computed/generated column: AS (<expr>) [STORED|VIRTUAL|PERSISTED]
+                self.advance(); // AS
+                self.expect(TokenType::LParen)?;
+                generated_as = Some(self.parse_expr()?);
+                self.expect(TokenType::RParen)?;
+                if self.match_keyword("STORED") || self.match_keyword("PERSISTED") {
+                    generated_stored = true;
+                } else {
+                    let _ = self.match_keyword("VIRTUAL");
+                }
+            } else if self.match_token(TokenType::Not) {
                 self.expect(TokenType::Null)?;
                 nullable = Some(false);
             } else if self.peek_type() == &TokenType::Null {
@@ -3703,6 +3719,8 @@ impl Parser {
             auto_increment_from_identity,
             collation,
             comment,
+            generated_as,
+            generated_stored,
         })
     }
 
