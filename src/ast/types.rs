@@ -1872,6 +1872,11 @@ pub struct ColumnDef {
     pub auto_increment_from_identity: bool,
     pub collation: Option<String>,
     pub comment: Option<String>,
+    /// Inline foreign-key reference spec, captured verbatim from source
+    /// (`[CONSTRAINT name] [FOREIGN KEY] REFERENCES ...`). Preserved as-is
+    /// since SQLGlot round-trips it unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reference_spec: Option<String>,
     /// Computed/generated column expression: `AS (<expr>)`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub generated_as: Option<Expr>,

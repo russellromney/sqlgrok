@@ -1580,6 +1580,11 @@ impl Generator {
             self.write(&comment.replace('\'', "''"));
             self.write("'");
         }
+
+        if let Some(reference_spec) = &col.reference_spec {
+            self.write(" ");
+            self.write(reference_spec);
+        }
     }
 
     fn gen_auto_increment_keyword(&mut self) {

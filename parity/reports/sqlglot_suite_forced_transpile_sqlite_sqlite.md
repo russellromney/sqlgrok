@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11640 |
-| `mismatch` | 1248 |
+| `match` | 11646 |
+| `mismatch` | 1242 |
 | `oracle-error` | 1545 |
 | `rust-error` | 586 |
 | `unsupported-harness-shape` | 137 |
@@ -24,9 +24,9 @@ Filtered by read/write: `0`
 | Status | Helper | Count |
 | --- | --- | ---: |
 | `match` | `validate_all` | 8427 |
-| `match` | `validate_identity` | 3108 |
+| `match` | `validate_identity` | 3114 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 607 |
+| `mismatch` | `validate_identity` | 601 |
 | `mismatch` | `validate_all` | 575 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 351 |
@@ -67,7 +67,7 @@ Filtered by read/write: `0`
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 84 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 84 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 83 |
-| `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
+| `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 82 |
 
 ## Examples
 

@@ -3621,6 +3621,7 @@ impl Parser {
         let mut comment = None;
         let mut generated_as = None;
         let mut generated_stored = false;
+        let mut reference_spec = None;
 
         loop {
             if self.peek_type() == &TokenType::As
@@ -3712,14 +3713,14 @@ impl Parser {
             } else if self.match_token(TokenType::Comment) {
                 let tok = self.expect(TokenType::String)?;
                 comment = Some(tok.value);
-            } else if self.match_token(TokenType::References) {
-                // Inline foreign key — skip for now
-                let _ = self.parse_table_ref()?;
-                if self.match_token(TokenType::LParen) {
-                    while !self.match_token(TokenType::RParen) {
-                        self.advance();
-                    }
-                }
+            } else if matches!(
+                self.peek_type(),
+                TokenType::Constraint | TokenType::Foreign | TokenType::References
+            ) {
+                // Inline foreign-key reference, optionally introduced by
+                // `CONSTRAINT name` and/or `FOREIGN KEY`. SQLGlot round-trips
+                // the whole spec unchanged, so capture it verbatim.
+                reference_spec = Some(self.capture_inline_reference_spec());
             } else {
                 break;
             }
@@ -3740,9 +3741,35 @@ impl Parser {
             auto_increment_from_identity,
             collation,
             comment,
+            reference_spec,
             generated_as,
             generated_stored,
         })
+    }
+
+    /// Capture an inline foreign-key reference spec verbatim from source,
+    /// starting at the current token (CONSTRAINT / FOREIGN / REFERENCES) and
+    /// running to the end of the column definition (a top-level comma or the
+    /// closing paren of the column list).
+    fn capture_inline_reference_spec(&mut self) -> String {
+        let start = self.char_pos_to_byte(self.peek().position);
+        let mut depth = 0usize;
+        while self.peek_type() != &TokenType::Eof {
+            match self.peek_type() {
+                TokenType::LParen => depth += 1,
+                TokenType::RParen => {
+                    if depth == 0 {
+                        break;
+                    }
+                    depth -= 1;
+                }
+                TokenType::Comma | TokenType::Semicolon if depth == 0 => break,
+                _ => {}
+            }
+            self.advance();
+        }
+        let end = self.char_pos_to_byte(self.peek().position);
+        self.sql[start..end].trim().to_string()
     }
 
     fn parse_create_table_options(&mut self) -> Vec<CreateTableOption> {
