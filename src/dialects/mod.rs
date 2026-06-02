@@ -509,16 +509,16 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                     col.auto_increment = false;
                 }
                 if matches!(target, Dialect::Sqlite)
-                    && is_postgres_family(source)
                     && col.primary_key
                     && col.auto_increment
                     && (col.auto_increment_from_identity
-                        || col.nullable != Some(false))
+                        || (is_postgres_family(source) && col.nullable != Some(false)))
                 {
-                    // Postgres BIGSERIAL / GENERATED ... AS IDENTITY are
-                    // implicit NOT NULL; drop any redundant NOT NULL on
-                    // the sqlite side. For plain auto_increment columns
-                    // without IDENTITY, keep explicit NOT NULL.
+                    // GENERATED ... AS IDENTITY (postgres) and bare
+                    // IDENTITY (tsql) are implicit NOT NULL; drop any
+                    // redundant NOT NULL on the sqlite side. For plain
+                    // auto_increment columns without IDENTITY, keep
+                    // any explicit NOT NULL (mysql/sqlite sources).
                     col.nullable = None;
                 }
                 col.data_type = map_data_type_for_source(col.data_type.clone(), source, target);

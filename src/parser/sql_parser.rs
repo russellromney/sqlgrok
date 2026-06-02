@@ -3528,6 +3528,27 @@ impl Parser {
                 unique = true;
             } else if self.match_token(TokenType::AutoIncrement) {
                 auto_increment = true;
+            } else if self.peek().value.eq_ignore_ascii_case("IDENTITY")
+                && matches!(self.peek_type(), TokenType::Identifier)
+            {
+                // T-SQL style `IDENTITY(seed, increment)` column option.
+                // Parsed and discarded (the AUTOINCREMENT we emit
+                // doesn't preserve the seed/increment).
+                self.advance();
+                if self.match_token(TokenType::LParen) {
+                    let mut depth = 1usize;
+                    while depth > 0 && self.peek_type() != &TokenType::Eof {
+                        if self.match_token(TokenType::LParen) {
+                            depth += 1;
+                        } else if self.match_token(TokenType::RParen) {
+                            depth -= 1;
+                        } else {
+                            self.advance();
+                        }
+                    }
+                }
+                auto_increment = true;
+                auto_increment_from_identity = true;
             } else if self.match_keyword("GENERATED") {
                 if self.match_keyword("ALWAYS") {
                     // SQLGlot treats both ALWAYS and BY DEFAULT identity columns
