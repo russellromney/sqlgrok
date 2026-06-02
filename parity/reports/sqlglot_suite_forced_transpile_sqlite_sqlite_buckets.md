@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11524 |
-| `mismatch` | 1364 |
+| `match` | 11539 |
+| `mismatch` | 1349 |
 | `oracle-error` | 1545 |
 | `rust-error` | 586 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 11524 |
+| `match` | `sqlite` | `sqlite` | 11539 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
-| `mismatch` | `sqlite` | `sqlite` | 1364 |
+| `mismatch` | `sqlite` | `sqlite` | 1349 |
 | `rust-error` | `sqlite` | `sqlite` | 586 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8405 |
-| `match` | `validate_identity` | 3014 |
+| `match` | `validate_all` | 8419 |
+| `match` | `validate_identity` | 3015 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_identity` | 701 |
-| `mismatch` | `validate_all` | 597 |
+| `mismatch` | `validate_identity` | 700 |
+| `mismatch` | `validate_all` | 583 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 351 |
 | `rust-error` | `validate_all` | 232 |
@@ -59,10 +59,10 @@ Total rows: `15156`
 | `mismatch` | `CREATE TABLE` | 156 |
 | `mismatch` | `CREATE` | 147 |
 | `oracle-error` | `SELECT operator multiply` | 143 |
-| `match` | `WITH` | 127 |
+| `match` | `SELECT UNNEST()` | 135 |
+| `match` | `WITH` | 125 |
 | `mismatch` | `SELECT` | 123 |
 | `match` | `ALTER TABLE` | 120 |
-| `match` | `SELECT UNNEST()` | 118 |
 | `oracle-error` | `CREATE TABLE` | 113 |
 | `match` | `SELECT CAST()` | 111 |
 | `match` | `X` | 107 |
@@ -148,7 +148,6 @@ Total rows: `15156`
 | `mismatch` | `quote-style difference` | 34 |
 | `mismatch` | `SELECT operator multiply` | 28 |
 | `mismatch` | `date/time rendering: CREATE` | 24 |
-| `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 15 |
 | `mismatch` | `X` | 13 |
 | `mismatch` | `WITH` | 12 |
@@ -157,6 +156,7 @@ Total rows: `15156`
 | `mismatch` | `COPY` | 9 |
 | `mismatch` | `PIVOT` | 9 |
 | `mismatch` | `SELECT POSEXPLODE()` | 9 |
+| `mismatch` | `cast/type rendering: WITH` | 9 |
 | `mismatch` | `whitespace-only difference` | 8 |
 | `mismatch` | `DESCRIBE` | 7 |
 | `mismatch` | `INSERT` | 7 |
@@ -169,7 +169,6 @@ Total rows: `15156`
 | `mismatch` | `STRPOS()` | 6 |
 | `mismatch` | `STR_POSITION()` | 6 |
 | `mismatch` | `date/time rendering: SELECT DATETRUNC()` | 6 |
-| `mismatch` | `date/time rendering: WITH` | 6 |
 | `mismatch` | `A` | 5 |
 | `mismatch` | `SELECT LEADING()` | 5 |
 | `mismatch` | `SELECT operator json` | 5 |
@@ -178,13 +177,14 @@ Total rows: `15156`
 | `mismatch` | `date/time rendering: SELECT CURRENT_TIME()` | 5 |
 | `mismatch` | `date/time rendering: TS_OR_DS_TO_DATE()` | 5 |
 | `mismatch` | `ARRAY_JOIN()` | 4 |
+| `mismatch` | `DETACH` | 4 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1094 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 699 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 691 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 458 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 344 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 290 |
@@ -209,12 +209,12 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 83 |
 | `match` | `tests/dialects/test_dialect.py` | `test_trim` | 80 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 78 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 75 |
 | `oracle-error` | `tests/dialects/test_snowflake.py` | `test_match_recognize` | 75 |
 | `match` | `tests/dialects/test_presto.py` | `test_time` | 74 |
 | `match` | `tests/dialects/test_exasol.py` | `test_scalar` | 73 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 70 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_time` | 68 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 67 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 66 |
 | `match` | `tests/dialects/test_hive.py` | `test_joins_without_on` | 66 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 66 |
@@ -394,6 +394,18 @@ Total rows: `15156`
   - expected: `SELECT CAST(date AS TEXT FORMAT 'YYYY') FROM (SELECT DATE('2026-03-24') AS date)`
   - actual: `SELECT CAST(date AS TEXT) FROM (SELECT DATE('2026-03-24') AS date)`
 
+### `mismatch` `cast/type rendering: WITH`
+
+- `tests/dialects/test_bigquery.py`:2060 `test_bigquery` via `validate_all`: `WITH sample AS (SELECT * FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+  - expected: `WITH sample AS (SELECT * FROM UNNEST("TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03'") AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+  - actual: `WITH sample AS (SELECT * FROM UNNEST("CAST('2024-03-15 14:35:46' AS TIMESTAMP), CAST('2024-03-16 01:12:03' AS TIMESTAMP)") AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+- `tests/dialects/test_bigquery.py`:2060 `test_bigquery` via `validate_all`: `WITH sample AS (SELECT * FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+  - expected: `WITH sample AS (SELECT * FROM UNNEST("TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03'") AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+  - actual: `WITH sample AS (SELECT * FROM UNNEST("CAST('2024-03-15 14:35:46' AS TIMESTAMP), CAST('2024-03-16 01:12:03' AS TIMESTAMP)") AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+- `tests/dialects/test_bigquery.py`:2067 `test_bigquery` via `validate_all`: `WITH sample AS (SELECT ts FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY) AS truncated_ts FROM sample`
+  - expected: `WITH sample AS (SELECT ts FROM UNNEST("TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03'") AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY) AS truncated_ts FROM sample`
+  - actual: `WITH sample AS (SELECT ts FROM UNNEST("CAST('2024-03-15 14:35:46' AS TIMESTAMP), CAST('2024-03-16 01:12:03' AS TIMESTAMP)") AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY) AS truncated_ts FROM sample`
+
 ### `mismatch` `date/time rendering: CREATE`
 
 - `tests/dialects/test_postgres.py`:1277 `test_ddl` via `validate_identity`: `CREATE CONSTRAINT TRIGGER my_trigger AFTER INSERT OR DELETE OR UPDATE OF col_a, col_b ON public.my_table DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION DO_STH()`
@@ -405,18 +417,6 @@ Total rows: `15156`
 - `tests/dialects/test_postgres.py`:1921 `test_postgres_create_trigger` via `validate_identity`: `CREATE TRIGGER audit_changes AFTER INSERT OR UPDATE OR DELETE ON products FOR EACH ROW EXECUTE FUNCTION AUDIT_LOG()`
   - expected: `CREATE TRIGGER audit_changes`
   - actual: `CREATE TRIGGER audit_changes AFTER INSERT OR UPDATE OR DELETE ON products FOR EACH ROW EXECUTE FUNCTION AUDIT_LOG()`
-
-### `mismatch` `date/time rendering: SELECT UNNEST()`
-
-- `tests/dialects/test_dialect.py`:3651 `test_generate_date_array` via `validate_all`: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
-  - expected: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE('2020-01-01'), DATE('2020-02-01'), INTERVAL '1' WEEK))`
-  - actual: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
-- `tests/dialects/test_dialect.py`:3651 `test_generate_date_array` via `validate_all`: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
-  - expected: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE('2020-01-01'), DATE('2020-02-01'), INTERVAL '1' WEEK))`
-  - actual: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
-- `tests/dialects/test_dialect.py`:3651 `test_generate_date_array` via `validate_all`: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
-  - expected: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE('2020-01-01'), DATE('2020-02-01'), INTERVAL '1' WEEK))`
-  - actual: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
 
 ### `mismatch` `missing AS or alias rendering`
 

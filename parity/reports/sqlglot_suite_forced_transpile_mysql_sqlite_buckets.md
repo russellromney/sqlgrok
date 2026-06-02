@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11249 |
-| `mismatch` | 1467 |
+| `match` | 11272 |
+| `mismatch` | 1444 |
 | `oracle-error` | 1739 |
 | `rust-error` | 564 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `mysql` | `sqlite` | 11249 |
+| `match` | `mysql` | `sqlite` | 11272 |
 | `oracle-error` | `mysql` | `sqlite` | 1739 |
-| `mismatch` | `mysql` | `sqlite` | 1467 |
+| `mismatch` | `mysql` | `sqlite` | 1444 |
 | `rust-error` | `mysql` | `sqlite` | 564 |
 | `unsupported-harness-shape` | `mysql` | `sqlite` | 137 |
 
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8314 |
-| `match` | `validate_identity` | 2827 |
+| `match` | `validate_all` | 8336 |
+| `match` | `validate_identity` | 2828 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 783 |
-| `mismatch` | `validate_all` | 622 |
+| `mismatch` | `validate_identity` | 782 |
+| `mismatch` | `validate_all` | 600 |
 | `oracle-error` | `validate_all` | 595 |
 | `rust-error` | `validate_identity` | 314 |
 | `rust-error` | `validate_all` | 246 |
@@ -59,10 +59,10 @@ Total rows: `15156`
 | `match` | `TRUNC()` | 164 |
 | `mismatch` | `CREATE` | 149 |
 | `oracle-error` | `CREATE TABLE` | 148 |
+| `match` | `SELECT UNNEST()` | 146 |
 | `oracle-error` | `SELECT operator multiply` | 135 |
+| `match` | `WITH` | 131 |
 | `mismatch` | `SELECT` | 131 |
-| `match` | `SELECT UNNEST()` | 129 |
-| `match` | `WITH` | 125 |
 | `match` | `X` | 104 |
 | `match` | `SELECT CAST()` | 100 |
 | `oracle-error` | `CAST()` | 96 |
@@ -150,7 +150,6 @@ Total rows: `15156`
 | `mismatch` | `X` | 20 |
 | `mismatch` | `missing quoted identifier` | 20 |
 | `mismatch` | `SELECT UNNEST()` | 19 |
-| `mismatch` | `date/time rendering: SELECT UNNEST()` | 17 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 16 |
 | `mismatch` | `A` | 15 |
 | `mismatch` | `WITH` | 15 |
@@ -178,6 +177,7 @@ Total rows: `15156`
 | `mismatch` | `STR_POSITION()` | 6 |
 | `mismatch` | `date/time rendering: SELECT DATETRUNC()` | 6 |
 | `mismatch` | `date/time rendering: SELECT MONTHNAME()` | 6 |
+| `mismatch` | `"""X"""` | 5 |
 
 ## Source Test Buckets
 
@@ -382,6 +382,18 @@ Total rows: `15156`
   - expected: `SELECT CAST(date AS TEXT FORMAT 'YYYY') FROM (SELECT DATE('2026-03-24') AS date)`
   - actual: `SELECT CAST(date AS TEXT) FROM (SELECT DATE('2026-03-24') AS date)`
 
+### `mismatch` `cast/type rendering: WITH`
+
+- `tests/dialects/test_bigquery.py`:2060 `test_bigquery` via `validate_all`: `WITH sample AS (SELECT * FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+  - expected: `WITH sample AS (SELECT * FROM UNNEST(ARRAY(CAST('2024-03-15 14:35:46' AS TIMESTAMPTZ), CAST('2024-03-16 01:12:03' AS TIMESTAMPTZ))) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+  - actual: `WITH sample AS (SELECT * FROM UNNEST(ARRAY(CAST('2024-03-15 14:35:46' AS TIMESTAMP), CAST('2024-03-16 01:12:03' AS TIMESTAMP))) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+- `tests/dialects/test_bigquery.py`:2060 `test_bigquery` via `validate_all`: `WITH sample AS (SELECT * FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+  - expected: `WITH sample AS (SELECT * FROM UNNEST(ARRAY(CAST('2024-03-15 14:35:46' AS TIMESTAMPTZ), CAST('2024-03-16 01:12:03' AS TIMESTAMPTZ))) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+  - actual: `WITH sample AS (SELECT * FROM UNNEST(ARRAY(CAST('2024-03-15 14:35:46' AS TIMESTAMP), CAST('2024-03-16 01:12:03' AS TIMESTAMP))) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY, 'America/New_York') AS truncated_ts FROM sample`
+- `tests/dialects/test_bigquery.py`:2067 `test_bigquery` via `validate_all`: `WITH sample AS (SELECT ts FROM UNNEST([TIMESTAMP '2024-03-15 14:35:46', TIMESTAMP '2024-03-16 01:12:03']) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY) AS truncated_ts FROM sample`
+  - expected: `WITH sample AS (SELECT ts FROM UNNEST(ARRAY(CAST('2024-03-15 14:35:46' AS TIMESTAMPTZ), CAST('2024-03-16 01:12:03' AS TIMESTAMPTZ))) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY) AS truncated_ts FROM sample`
+  - actual: `WITH sample AS (SELECT ts FROM UNNEST(ARRAY(CAST('2024-03-15 14:35:46' AS TIMESTAMP), CAST('2024-03-16 01:12:03' AS TIMESTAMP))) AS ts) SELECT ts, TIMESTAMP_TRUNC(ts, DAY) AS truncated_ts FROM sample`
+
 ### `mismatch` `date/time rendering: CREATE`
 
 - `tests/dialects/test_postgres.py`:1277 `test_ddl` via `validate_identity`: `CREATE CONSTRAINT TRIGGER my_trigger AFTER INSERT OR DELETE OR UPDATE OF col_a, col_b ON public.my_table DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION DO_STH()`
@@ -405,18 +417,6 @@ Total rows: `15156`
 - `tests/dialects/test_mysql.py`:1690 `test_valid_interval_units` via `validate_identity`: `DATE_ADD(base_date, INTERVAL day_interval MINUTE_SECOND)`
   - expected: `DATE(base_date, 'day_interval MINUTE_SECOND')`
   - actual: `DATE(base_date, 'DAY_INTERVAL')`
-
-### `mismatch` `date/time rendering: SELECT UNNEST()`
-
-- `tests/dialects/test_dialect.py`:3651 `test_generate_date_array` via `validate_all`: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
-  - expected: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE('2020-01-01'), DATE('2020-02-01'), INTERVAL '1' WEEK))`
-  - actual: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
-- `tests/dialects/test_dialect.py`:3651 `test_generate_date_array` via `validate_all`: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
-  - expected: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE('2020-01-01'), DATE('2020-02-01'), INTERVAL '1' WEEK))`
-  - actual: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
-- `tests/dialects/test_dialect.py`:3651 `test_generate_date_array` via `validate_all`: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
-  - expected: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE('2020-01-01'), DATE('2020-02-01'), INTERVAL '1' WEEK))`
-  - actual: `SELECT * FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2020-01-01', DATE '2020-02-01', INTERVAL 1 WEEK))`
 
 ### `mismatch` `json rendering: SELECT JSON_VALUE()`
 

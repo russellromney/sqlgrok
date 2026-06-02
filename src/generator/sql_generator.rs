@@ -1488,11 +1488,6 @@ impl Generator {
         self.write(" ");
         self.gen_data_type(&col.data_type);
 
-        if col.unique {
-            self.write(" ");
-            self.write_keyword("UNIQUE");
-        }
-
         match col.nullable {
             Some(false) => {
                 self.write(" ");
@@ -1503,6 +1498,11 @@ impl Generator {
                 self.write_keyword("NULL");
             }
             None => {}
+        }
+
+        if col.unique {
+            self.write(" ");
+            self.write_keyword("UNIQUE");
         }
 
         // SQLite-specific PRIMARY KEY / AUTOINCREMENT ordering, matching

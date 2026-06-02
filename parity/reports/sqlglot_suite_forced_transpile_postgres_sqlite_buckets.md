@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11528 |
-| `mismatch` | 1439 |
+| `match` | 11559 |
+| `mismatch` | 1408 |
 | `oracle-error` | 1456 |
 | `rust-error` | 596 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 11528 |
+| `match` | `postgres` | `sqlite` | 11559 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
-| `mismatch` | `postgres` | `sqlite` | 1439 |
+| `mismatch` | `postgres` | `sqlite` | 1408 |
 | `rust-error` | `postgres` | `sqlite` | 596 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
 
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8412 |
-| `match` | `validate_identity` | 3008 |
+| `match` | `validate_all` | 8442 |
+| `match` | `validate_identity` | 3009 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 752 |
-| `mismatch` | `validate_all` | 621 |
+| `mismatch` | `validate_identity` | 751 |
+| `mismatch` | `validate_all` | 591 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 350 |
 | `rust-error` | `validate_all` | 243 |
@@ -59,8 +59,8 @@ Total rows: `15156`
 | `match` | `TRUNC()` | 164 |
 | `mismatch` | `CREATE TABLE` | 159 |
 | `oracle-error` | `SELECT operator multiply` | 150 |
-| `match` | `WITH` | 125 |
-| `match` | `SELECT UNNEST()` | 120 |
+| `match` | `WITH` | 139 |
+| `match` | `SELECT UNNEST()` | 137 |
 | `match` | `ALTER TABLE` | 118 |
 | `match` | `X` | 113 |
 | `match` | `SELECT CAST()` | 107 |
@@ -85,9 +85,9 @@ Total rows: `15156`
 | `match` | `INSERT` | 54 |
 | `rust-error` | `SELECT` | 53 |
 | `match` | `FROM` | 51 |
-| `mismatch` | `SELECT UNNEST()` | 49 |
 | `match` | `SELECT DATE_TRUNC()` | 48 |
 | `match` | `SELECT TO_TIMESTAMP()` | 48 |
+| `mismatch` | `ALTER TABLE` | 47 |
 
 ## Rust/Oracle/Unsupported Error Buckets
 
@@ -146,7 +146,6 @@ Total rows: `15156`
 | `mismatch` | `ALTER TABLE` | 43 |
 | `mismatch` | `SELECT operator multiply` | 35 |
 | `mismatch` | `date/time rendering: CREATE` | 27 |
-| `mismatch` | `date/time rendering: SELECT UNNEST()` | 26 |
 | `mismatch` | `quote-style difference` | 21 |
 | `mismatch` | `cast/type rendering: SELECT TO_CHAR()` | 19 |
 | `mismatch` | `WITH` | 15 |
@@ -159,7 +158,7 @@ Total rows: `15156`
 | `mismatch` | `--` | 9 |
 | `mismatch` | `PIVOT` | 9 |
 | `mismatch` | `cast/type rendering: SELECT operator cast` | 9 |
-| `mismatch` | `cast/type rendering: WITH` | 9 |
+| `mismatch` | `date/time rendering: SELECT UNNEST()` | 9 |
 | `mismatch` | `A` | 8 |
 | `mismatch` | `CONCAT_WS()` | 8 |
 | `mismatch` | `RESET` | 8 |
@@ -176,15 +175,16 @@ Total rows: `15156`
 | `mismatch` | `X` | 6 |
 | `mismatch` | `date/time rendering: SELECT DATETRUNC()` | 6 |
 | `mismatch` | `date/time rendering: SELECT TO_TIMESTAMP()` | 6 |
-| `mismatch` | `date/time rendering: WITH` | 6 |
 | `mismatch` | `SELECT LEADING()` | 5 |
+| `mismatch` | `X[Y]` | 5 |
+| `mismatch` | `cast/type rendering: DATEDIFF()` | 5 |
 
 ## Source Test Buckets
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1070 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 673 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 681 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 475 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 332 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 323 |
@@ -406,6 +406,18 @@ Total rows: `15156`
   - expected: `SELECT STRFTIME('%Y-%m-%d hh24:%M:%S', CAST('2025-06-24 12:34:56' AS TIMESTAMP))`
   - actual: `SELECT STRFTIME('%Y-%m-%d %H:%M:%S', CAST('2025-06-24 12:34:56' AS TIMESTAMP))`
 
+### `mismatch` `cast/type rendering: SELECT operator cast`
+
+- `tests/dialects/test_databricks.py`:83 `test_databricks` via `validate_identity`: `SELECT TIMESTAMP '2025-04-29 18.47.18'::DATE`
+  - expected: `SELECT CAST(DATE('2025-04-29 18.47.18') AS TIMESTAMP)`
+  - actual: `SELECT DATE(CAST('2025-04-29 18.47.18' AS TIMESTAMP))`
+- `tests/dialects/test_dialect.py`:5325 `test_interval_with_units_dcolon` via `validate_identity`: `SELECT interval '00:00:01'::interval AS foo`
+  - expected: `SELECT CAST(INTERVAL '00:00:01' AS INTERVAL) AS foo`
+  - actual: `SELECT INTERVAL CAST('00:00:01' AS INTERVAL) AS foo`
+- `tests/dialects/test_duckdb.py`:2178 `test_cast` via `validate_identity`: `SELECT x::INT[3][3]`
+  - expected: `SELECT CAST(x AS INTEGER)[3][2]`
+  - actual: `SELECT CAST(x AS ARRAY<ARRAY<INTEGER>>)`
+
 ### `mismatch` `date/time rendering: CREATE`
 
 - `tests/dialects/test_postgres.py`:1277 `test_ddl` via `validate_identity`: `CREATE CONSTRAINT TRIGGER my_trigger AFTER INSERT OR DELETE OR UPDATE OF col_a, col_b ON public.my_table DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION DO_STH()`
@@ -417,18 +429,6 @@ Total rows: `15156`
 - `tests/dialects/test_postgres.py`:1921 `test_postgres_create_trigger` via `validate_identity`: `CREATE TRIGGER check_update BEFORE UPDATE ON accounts FOR EACH ROW EXECUTE FUNCTION CHECK_ACCOUNT_UPDATE()`
   - expected: `CREATE TRIGGER check_update`
   - actual: `CREATE TRIGGER check_update BEFORE UPDATE ON accounts FOR EACH ROW EXECUTE FUNCTION CHECK_ACCOUNT_UPDATE()`
-
-### `mismatch` `date/time rendering: SELECT UNNEST()`
-
-- `tests/dialects/test_bigquery.py`:3316 `test_generate_date_array` via `validate_all`: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, DATE_TRUNC(CURRENT_DATE, MONTH), INTERVAL '1' MONTH)) AS mnth`
-  - expected: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, TIMESTAMP_TRUNC(MONTH, CURRENT_DATE), INTERVAL '1' MONTH)) AS mnth`
-  - actual: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, DATE_TRUNC(CURRENT_DATE, MONTH), INTERVAL '1' MONTH)) AS mnth`
-- `tests/dialects/test_bigquery.py`:3316 `test_generate_date_array` via `validate_all`: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, DATE_TRUNC(CURRENT_DATE, MONTH), INTERVAL '1' MONTH)) AS mnth`
-  - expected: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, TIMESTAMP_TRUNC(MONTH, CURRENT_DATE), INTERVAL '1' MONTH)) AS mnth`
-  - actual: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, DATE_TRUNC(CURRENT_DATE, MONTH), INTERVAL '1' MONTH)) AS mnth`
-- `tests/dialects/test_bigquery.py`:3316 `test_generate_date_array` via `validate_all`: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, DATE_TRUNC(CURRENT_DATE, MONTH), INTERVAL '1' MONTH)) AS mnth`
-  - expected: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, TIMESTAMP_TRUNC(MONTH, CURRENT_DATE), INTERVAL '1' MONTH)) AS mnth`
-  - actual: `SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, DATE_TRUNC(CURRENT_DATE, MONTH), INTERVAL '1' MONTH)) AS mnth`
 
 ### `mismatch` `date/time rendering: TIME_TO_STR()`
 
