@@ -3308,6 +3308,28 @@ impl Parser {
             }));
         }
 
+        // CREATE [OR REPLACE] [TEMP|TEMPORARY] [TABLE] FUNCTION ...
+        {
+            let table_fn = self.peek_type() == &TokenType::Table
+                && self.tokens[(self.pos + 1).min(self.tokens.len() - 1)]
+                    .value
+                    .eq_ignore_ascii_case("FUNCTION");
+            if table_fn {
+                self.advance(); // TABLE (table-function → plain function)
+            }
+            if self.check_keyword("FUNCTION") {
+                self.advance(); // FUNCTION
+                return self
+                    .parse_create_function(or_replace, temporary)
+                    .map(Statement::CreateFunction);
+            }
+            if table_fn {
+                return Err(SqlglotError::ParserError {
+                    message: "unexpected TABLE in CREATE".to_string(),
+                });
+            }
+        }
+
         let unique = self.match_token(TokenType::Unique);
         if unique || self.peek().token_type == TokenType::Index {
             return self.parse_create_index(unique).map(Statement::CreateIndex);
@@ -3641,6 +3663,332 @@ impl Parser {
             let kw = self.peek().value.to_ascii_uppercase();
             if matches!(kw.as_str(), "SQL" | "COPY" | "AUTO" | "TO" | "DEFINER") {
                 break;
+            }
+            self.advance();
+        }
+    }
+
+    fn parse_create_function(
+        &mut self,
+        or_replace: bool,
+        temporary: bool,
+    ) -> Result<CreateFunctionStatement> {
+        let name = self.capture_qualified_name_text()?;
+        let mut params = Vec::new();
+        let parenthesized = self.match_token(TokenType::LParen);
+        if parenthesized {
+            if self.peek_type() != &TokenType::RParen {
+                loop {
+                    params.push(self.parse_function_param()?);
+                    if !self.match_token(TokenType::Comma) {
+                        break;
+                    }
+                }
+            }
+            self.expect(TokenType::RParen)?;
+        }
+        let body = self.parse_function_tail_and_body()?;
+        Ok(CreateFunctionStatement {
+            comments: vec![],
+            or_replace,
+            temporary,
+            name,
+            parenthesized,
+            params,
+            body,
+        })
+    }
+
+    /// Capture a (possibly dotted/quoted) name verbatim from source, advancing
+    /// past its tokens.
+    fn capture_qualified_name_text(&mut self) -> Result<String> {
+        let start = self.char_pos_to_byte(self.peek().position);
+        self.advance_name_unit();
+        while self.peek_type() == &TokenType::Dot {
+            self.advance();
+            self.advance_name_unit();
+        }
+        let end = self.char_pos_to_byte(self.peek().position);
+        Ok(self.sql[start..end].trim().to_string())
+    }
+
+    /// Advance past one name unit: an optional leading `@` sigil plus the
+    /// following identifier-ish token.
+    fn advance_name_unit(&mut self) {
+        if matches!(self.peek_type(), TokenType::AtSign) {
+            self.advance();
+        }
+        if !matches!(
+            self.peek_type(),
+            TokenType::Comma | TokenType::RParen | TokenType::Eof | TokenType::Dot
+        ) {
+            self.advance();
+        }
+    }
+
+    fn parse_function_param(&mut self) -> Result<FunctionParam> {
+        let mode = self.try_parse_param_mode();
+        if mode.is_some() {
+            let name = self.capture_param_name()?;
+            let data_type = self.parse_data_type()?;
+            let default = self.parse_param_default()?;
+            return Ok(FunctionParam {
+                mode,
+                name: Some(name),
+                data_type: Some(data_type),
+                default,
+            });
+        }
+        // No mode: decide between `name type` and a bare unnamed type.
+        let saved = self.pos;
+        let name = self.capture_param_name()?;
+        if let Ok(data_type) = self.parse_data_type() {
+            if matches!(
+                self.peek_type(),
+                TokenType::Comma | TokenType::RParen | TokenType::Eof
+            ) || self.check_keyword("DEFAULT")
+            {
+                let default = self.parse_param_default()?;
+                return Ok(FunctionParam {
+                    mode: None,
+                    name: Some(name),
+                    data_type: Some(data_type),
+                    default,
+                });
+            }
+        }
+        // Bare unnamed parameter — preserve its source text verbatim.
+        self.pos = saved;
+        let bare = self.capture_bare_param();
+        let default = self.parse_param_default()?;
+        Ok(FunctionParam {
+            mode: None,
+            name: Some(bare),
+            data_type: None,
+            default,
+        })
+    }
+
+    /// Detect and consume a parameter mode (IN/OUT/INOUT/VARIADIC) only when
+    /// the keyword is followed by a `name type` pair; otherwise the keyword is
+    /// itself the parameter name and the position is left unchanged.
+    fn try_parse_param_mode(&mut self) -> Option<String> {
+        let kw = self.peek().value.to_ascii_uppercase();
+        let mapped = match kw.as_str() {
+            "IN" => "IN",
+            "OUT" => "OUT",
+            "INOUT" => "IN OUT",
+            "VARIADIC" => "VARIADIC",
+            _ => return None,
+        };
+        let saved = self.pos;
+        self.advance(); // potential mode
+        let after_mode = self.pos;
+        let looks_like_mode = self.capture_param_name().is_ok()
+            && self.parse_data_type().is_ok()
+            && (matches!(
+                self.peek_type(),
+                TokenType::Comma | TokenType::RParen | TokenType::Eof
+            ) || self.check_keyword("DEFAULT"));
+        if looks_like_mode {
+            self.pos = after_mode;
+            Some(mapped.to_string())
+        } else {
+            self.pos = saved;
+            None
+        }
+    }
+
+    /// Capture one parameter name verbatim (handles `@x`, quoted, plain).
+    fn capture_param_name(&mut self) -> Result<String> {
+        if matches!(
+            self.peek_type(),
+            TokenType::Comma | TokenType::RParen | TokenType::Eof
+        ) {
+            return Err(SqlglotError::ParserError {
+                message: "expected parameter name".to_string(),
+            });
+        }
+        let start = self.char_pos_to_byte(self.peek().position);
+        self.advance_name_unit();
+        let end = self.char_pos_to_byte(self.peek().position);
+        Ok(self.sql[start..end].trim().to_string())
+    }
+
+    /// Capture a bare parameter (verbatim source up to comma/rparen/DEFAULT).
+    fn capture_bare_param(&mut self) -> String {
+        let start = self.char_pos_to_byte(self.peek().position);
+        let mut depth = 0usize;
+        while !matches!(self.peek_type(), TokenType::Eof) {
+            match self.peek_type() {
+                TokenType::LParen | TokenType::LBracket => depth += 1,
+                TokenType::RParen if depth == 0 => break,
+                TokenType::RParen | TokenType::RBracket => depth = depth.saturating_sub(1),
+                TokenType::Comma if depth == 0 => break,
+                _ if depth == 0 && self.check_keyword("DEFAULT") => break,
+                _ => {}
+            }
+            self.advance();
+        }
+        let end = self.char_pos_to_byte(self.peek().position);
+        self.sql[start..end].trim().to_string()
+    }
+
+    fn parse_param_default(&mut self) -> Result<Option<Expr>> {
+        if self.match_keyword("DEFAULT") {
+            Ok(Some(self.parse_expr()?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Skip the RETURNS clause and recognized modifier properties, then
+    /// capture the function body (verbatim, sans leading AS). Returns None when
+    /// there's no body. Bails (Err → raw passthrough) on any unrecognized tail
+    /// clause so an exotic function is preserved verbatim rather than
+    /// mis-rendered.
+    fn parse_function_tail_and_body(&mut self) -> Result<Option<String>> {
+        loop {
+            if matches!(self.peek_type(), TokenType::Eof | TokenType::Semicolon) {
+                return Ok(None);
+            }
+            // Body marker: RETURN <expr> (but not the RETURNS clause).
+            if self.peek().value.eq_ignore_ascii_case("RETURN")
+                && matches!(self.peek_type(), TokenType::Identifier)
+            {
+                self.advance(); // RETURN
+                let rest = self.capture_to_statement_end();
+                return Ok(Some(format!("RETURN {rest}")));
+            }
+            if self.match_token(TokenType::As) {
+                // `AS TABLE ...` is a shape SQLGlot preserves verbatim — bail.
+                if self.peek().value.eq_ignore_ascii_case("TABLE") {
+                    return Err(SqlglotError::ParserError {
+                        message: "AS TABLE function body".to_string(),
+                    });
+                }
+                return Ok(Some(self.capture_function_body_after_as()?));
+            }
+            if matches!(self.peek_type(), TokenType::Select | TokenType::With) {
+                return Ok(Some(self.capture_to_statement_end()));
+            }
+            // RETURNS <type> | RETURNS TABLE [(...) | <...>]
+            if self.match_keyword("RETURNS") {
+                if self.match_keyword("TABLE") {
+                    if self.peek_type() == &TokenType::LParen {
+                        self.consume_balanced_parentheses();
+                    } else if self.peek_type() == &TokenType::Lt {
+                        self.skip_angle_bracket_group();
+                    }
+                } else if matches!(self.peek_type(), TokenType::Null) {
+                    self.advance(); // RETURNS NULL ON NULL INPUT
+                    let _ = self.match_keyword("ON");
+                    let _ = self.match_keyword("NULL");
+                    let _ = self.match_keyword("INPUT");
+                } else {
+                    let _ = self.parse_data_type()?;
+                }
+                continue;
+            }
+            if self.consume_sql_security_property() {
+                continue;
+            }
+            let kw = self.peek().value.to_ascii_uppercase();
+            if kw == "EXECUTE" {
+                self.advance();
+                let _ = self.match_token(TokenType::As);
+                self.advance(); // CALLER / OWNER / 'user'
+                continue;
+            }
+            if matches!(
+                kw.as_str(),
+                "LANGUAGE" | "IMMUTABLE" | "STABLE" | "VOLATILE" | "STRICT" | "LEAKPROOF"
+            ) {
+                self.advance();
+                if kw == "LANGUAGE" {
+                    self.advance(); // language name
+                }
+                continue;
+            }
+            // Anything else (SET, ENVIRONMENT, HANDLER, PARAMETER STYLE,
+            // DETERMINISTIC, NOT DETERMINISTIC, WINDOW, ...) — bail to the raw
+            // passthrough so SQLGlot-preserved forms aren't mangled.
+            return Err(SqlglotError::ParserError {
+                message: format!("unrecognized function tail clause: {kw}"),
+            });
+        }
+    }
+
+    /// Capture the function body after `AS`. A single string/dollar-quoted
+    /// literal body is captured alone (dollar tag normalized to `$$`); if any
+    /// tokens trail the literal (e.g. `AS 'sql' LANGUAGE ...`), SQLGlot fails
+    /// to parse and preserves the statement verbatim, so we bail. Other body
+    /// forms (`(expr)`, `SELECT ...`, `RETURN`) extend to the statement end.
+    fn capture_function_body_after_as(&mut self) -> Result<String> {
+        // Triple-quoted bodies (""" / ''') are preserved verbatim by SQLGlot
+        // (and may not tokenize as a single String token), so bail on them.
+        let here = self.char_pos_to_byte(self.peek().position);
+        let ahead = self.sql[here..].trim_start();
+        if ahead.starts_with("\"\"\"") || ahead.starts_with("'''") {
+            return Err(SqlglotError::ParserError {
+                message: "triple-quoted function body".to_string(),
+            });
+        }
+        if matches!(self.peek_type(), TokenType::String) {
+            let start = here;
+            self.advance(); // the literal body token
+            let end = self.char_pos_to_byte(self.peek().position);
+            if !matches!(self.peek_type(), TokenType::Eof | TokenType::Semicolon) {
+                return Err(SqlglotError::ParserError {
+                    message: "trailing tokens after function body literal".to_string(),
+                });
+            }
+            let raw = self.sql[start..end].trim();
+            if raw.starts_with('$') {
+                // Dollar-quoted bodies are transformed only for postgres; the
+                // mysql/sqlite parsers preserve such functions verbatim.
+                if !matches!(self.dialect, Dialect::Postgres) {
+                    return Err(SqlglotError::ParserError {
+                        message: "dollar-quoted body (non-postgres source)".to_string(),
+                    });
+                }
+                if let Some(rel) = raw[1..].find('$') {
+                    let tag = &raw[..rel + 2]; // $...$ open tag
+                    let inner_start = tag.len();
+                    if let Some(rel_end) = raw[inner_start..].find(tag) {
+                        let inner = &raw[inner_start..inner_start + rel_end];
+                        return Ok(format!("$${inner}$$"));
+                    }
+                }
+            }
+            return Ok(raw.to_string());
+        }
+        Ok(self.capture_to_statement_end())
+    }
+
+    /// Capture remaining source from the current token to just before the
+    /// statement terminator, consuming those tokens.
+    fn capture_to_statement_end(&mut self) -> String {
+        let start = self.char_pos_to_byte(self.peek().position);
+        while !matches!(self.peek_type(), TokenType::Eof | TokenType::Semicolon) {
+            self.advance();
+        }
+        let end = self.char_pos_to_byte(self.peek().position);
+        self.sql[start..end].trim().to_string()
+    }
+
+    /// Skip a balanced `<...>` group (used for RETURNS TABLE <...>).
+    fn skip_angle_bracket_group(&mut self) {
+        if !self.match_token(TokenType::Lt) {
+            return;
+        }
+        let mut depth = 1usize;
+        while depth > 0 && !matches!(self.peek_type(), TokenType::Eof) {
+            match self.peek_type() {
+                TokenType::Lt => depth += 1,
+                TokenType::Gt => depth -= 1,
+                TokenType::ShiftRight => depth = depth.saturating_sub(2),
+                _ => {}
             }
             self.advance();
         }
@@ -8168,6 +8516,7 @@ fn attach_comments_to_statement(stmt: &mut Statement, comments: Vec<String>) {
         Statement::AlterTable(s) => s.comments = comments,
         Statement::CreateView(s) => s.comments = comments,
         Statement::CreateSequence(s) => s.comments = comments,
+        Statement::CreateFunction(s) => s.comments = comments,
         Statement::DropView(s) => s.comments = comments,
         Statement::Truncate(s) => s.comments = comments,
         Statement::Explain(s) => s.comments = comments,

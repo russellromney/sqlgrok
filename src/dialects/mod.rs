@@ -584,6 +584,16 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 *as_type = map_data_type_for_source(as_type.clone(), source, target);
             }
         }
+        Statement::CreateFunction(func) => {
+            for param in &mut func.params {
+                if let Some(data_type) = &mut param.data_type {
+                    *data_type = map_data_type_for_source(data_type.clone(), source, target);
+                }
+                if let Some(default) = &mut param.default {
+                    *default = transform_expr(default.clone(), source, target);
+                }
+            }
+        }
         Statement::Raw(raw) => {
             if is_postgres_family(source)
                 && matches!(target, Dialect::Sqlite)

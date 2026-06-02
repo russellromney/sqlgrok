@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11698 |
-| `mismatch` | 1197 |
+| `match` | 11719 |
+| `mismatch` | 1176 |
 | `oracle-error` | 1545 |
 | `rust-error` | 579 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8435 |
-| `match` | `validate_identity` | 3158 |
+| `match` | `validate_all` | 8443 |
+| `match` | `validate_identity` | 3171 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_all` | 567 |
-| `mismatch` | `validate_identity` | 564 |
+| `mismatch` | `validate_all` | 559 |
+| `mismatch` | `validate_identity` | 551 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 344 |
 | `rust-error` | `validate_all` | 232 |
@@ -45,7 +45,7 @@ Filtered by read/write: `0`
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1095 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 692 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 465 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 466 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 344 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 293 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 263 |
@@ -62,12 +62,12 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 99 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
+| `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 87 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 85 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 84 |
+| `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 83 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 83 |
-| `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 83 |
-| `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 82 |
 
 ## Examples
 

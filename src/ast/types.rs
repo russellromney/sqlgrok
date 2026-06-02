@@ -92,6 +92,9 @@ pub enum Statement {
     /// CREATE SEQUENCE ... (most options dropped on output; an optional
     /// `AS <type>` is preserved and type-mapped).
     CreateSequence(CreateSequenceStatement),
+    /// CREATE FUNCTION ... — RETURNS/LANGUAGE/modifier clauses dropped,
+    /// parameter types mapped, body preserved (prefixed AS).
+    CreateFunction(CreateFunctionStatement),
     /// DROP VIEW ...
     DropView(DropViewStatement),
     /// TRUNCATE TABLE ...
@@ -127,6 +130,49 @@ pub struct CreateSequenceStatement {
     pub name: TableRef,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub as_type: Option<DataType>,
+}
+
+/// CREATE FUNCTION statement (sqlite-target lowering). SQLGlot drops the
+/// RETURNS clause and modifier properties (LANGUAGE, IMMUTABLE, SET, ...),
+/// maps parameter types, and renders the body prefixed with AS.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CreateFunctionStatement {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
+    #[serde(default)]
+    pub or_replace: bool,
+    #[serde(default)]
+    pub temporary: bool,
+    /// Function name, captured verbatim from source (dotted/quoted preserved).
+    pub name: String,
+    /// Whether the source had a parenthesized parameter list. A function
+    /// declared without `(...)` (e.g. `CREATE FUNCTION a AS b`) renders
+    /// without parentheses.
+    #[serde(default)]
+    pub parenthesized: bool,
+    pub params: Vec<FunctionParam>,
+    /// Body rendered verbatim after `AS` (e.g. `RETURN x`, `'sql'`, `$$...$$`,
+    /// `(expr)`, `SELECT ...`). None when the function has no body.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub body: Option<String>,
+}
+
+/// A single CREATE FUNCTION parameter.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FunctionParam {
+    /// Parameter mode rendered after the type: "IN", "OUT", "IN OUT", "VARIADIC".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mode: Option<String>,
+    /// Parameter name (verbatim source: may be `@x`, `"x"`, dotted, etc.).
+    /// None is unused; a bare unnamed type parameter carries its text here.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// The parameter type (mapped for the target). None for a bare param,
+    /// in which case `name` carries the verbatim token.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_type: Option<DataType>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default: Option<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

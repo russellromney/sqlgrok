@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11726 |
-| `mismatch` | 1248 |
+| `match` | 11765 |
+| `mismatch` | 1209 |
 | `oracle-error` | 1456 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8457 |
-| `match` | `validate_identity` | 3161 |
+| `match` | `validate_all` | 8467 |
+| `match` | `validate_identity` | 3190 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 606 |
-| `mismatch` | `validate_all` | 576 |
+| `mismatch` | `validate_identity` | 577 |
+| `mismatch` | `validate_all` | 566 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 343 |
 | `rust-error` | `validate_all` | 243 |
@@ -45,7 +45,7 @@ Filtered by read/write: `0`
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1071 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 682 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 481 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 482 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 336 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 332 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 251 |
@@ -62,12 +62,12 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 107 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 104 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
+| `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 91 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
+| `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 87 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 85 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 83 |
-| `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 82 |
-| `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 80 |
 
 ## Examples
 

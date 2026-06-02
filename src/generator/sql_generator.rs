@@ -252,6 +252,10 @@ impl Generator {
                 self.gen_comments(&s.comments);
                 self.gen_create_sequence(s);
             }
+            Statement::CreateFunction(s) => {
+                self.gen_comments(&s.comments);
+                self.gen_create_function(s);
+            }
             Statement::DropView(s) => {
                 self.gen_comments(&s.comments);
                 self.gen_drop_view(s);
@@ -1853,6 +1857,48 @@ impl Generator {
                     }
                 }
             }
+        }
+    }
+
+    fn gen_create_function(&mut self, cf: &CreateFunctionStatement) {
+        self.write_keyword("CREATE ");
+        if cf.or_replace {
+            self.write_keyword("OR REPLACE ");
+        }
+        if cf.temporary {
+            self.write_keyword("TEMPORARY ");
+        }
+        self.write_keyword("FUNCTION ");
+        self.write(&cf.name);
+        if cf.parenthesized {
+            self.write("(");
+            for (index, param) in cf.params.iter().enumerate() {
+                if index > 0 {
+                    self.write(", ");
+                }
+                if let Some(name) = &param.name {
+                    self.write(name);
+                    if param.data_type.is_some() {
+                        self.write(" ");
+                    }
+                }
+                if let Some(data_type) = &param.data_type {
+                    self.gen_data_type(data_type);
+                }
+                if let Some(mode) = &param.mode {
+                    self.write(" ");
+                    self.write_keyword(mode);
+                }
+                if let Some(default) = &param.default {
+                    self.write_keyword(" DEFAULT ");
+                    self.gen_expr(default);
+                }
+            }
+            self.write(")");
+        }
+        if let Some(body) = &cf.body {
+            self.write_keyword(" AS ");
+            self.write(body);
         }
     }
 
