@@ -17,6 +17,43 @@ fn sqlite_function_raw_args(raw_args: &str) -> String {
         .replace(" RESPECT NULLS", "")
 }
 
+/// Type keywords that SQLGlot recognizes (and therefore uppercases on output).
+/// We only carry the ones that fall through to `DataType::Unknown` after parsing
+/// — chiefly postgres pseudo-types and range/multirange types. Names not in this
+/// set are treated as user-defined and preserved verbatim.
+fn is_recognized_type_keyword(upper: &str) -> bool {
+    matches!(
+        upper,
+        "CSTRING"
+            | "OID"
+            | "NAME"
+            | "REGCLASS"
+            | "REGCOLLATION"
+            | "REGCONFIG"
+            | "REGDICTIONARY"
+            | "REGNAMESPACE"
+            | "REGOPER"
+            | "REGOPERATOR"
+            | "REGPROC"
+            | "REGPROCEDURE"
+            | "REGROLE"
+            | "REGTYPE"
+            | "DATERANGE"
+            | "DATEMULTIRANGE"
+            | "TSRANGE"
+            | "TSMULTIRANGE"
+            | "TSTZRANGE"
+            | "TSTZMULTIRANGE"
+            | "NUMRANGE"
+            | "NUMMULTIRANGE"
+            | "INT4RANGE"
+            | "INT4MULTIRANGE"
+            | "INT8RANGE"
+            | "INT8MULTIRANGE"
+            | "RANGE"
+    )
+}
+
 /// SQL code generator that converts an AST into a SQL string.
 ///
 /// Supports all statement and expression types defined in the AST,
@@ -1488,6 +1525,14 @@ impl Generator {
         self.write(" ");
         self.gen_data_type(&col.data_type);
 
+        // SQLGlot preserves source constraint order. We model the common
+        // NOT NULL / UNIQUE pair: emit UNIQUE first only when it preceded
+        // NOT NULL in the source.
+        if col.unique && col.unique_before_not_null {
+            self.write(" ");
+            self.write_keyword("UNIQUE");
+        }
+
         match col.nullable {
             Some(false) => {
                 self.write(" ");
@@ -1500,7 +1545,7 @@ impl Generator {
             None => {}
         }
 
-        if col.unique {
+        if col.unique && !col.unique_before_not_null {
             self.write(" ");
             self.write_keyword("UNIQUE");
         }
@@ -1799,6 +1844,26 @@ impl Generator {
                     self.write_keyword("RENAME TO ");
                     self.write(new_name);
                 }
+                AlterTableAction::ChangeColumn {
+                    old_name,
+                    new_column,
+                    tail,
+                    is_modify,
+                } => {
+                    if *is_modify {
+                        self.write_keyword("MODIFY COLUMN ");
+                        self.gen_column_def(new_column);
+                    } else {
+                        self.write_keyword("CHANGE COLUMN ");
+                        self.write(old_name);
+                        self.write(" ");
+                        self.gen_column_def(new_column);
+                    }
+                    if !tail.is_empty() {
+                        self.write(" ");
+                        self.write(tail);
+                    }
+                }
             }
         }
     }
@@ -2080,7 +2145,16 @@ impl Generator {
             DataType::Geography => self.write("GEOGRAPHY"),
             DataType::Geometry => self.write("GEOMETRY"),
             DataType::Super => self.write("SUPER"),
-            DataType::Unknown(name) => self.write(name),
+            DataType::Unknown(name) => {
+                // SQLGlot uppercases recognized type keywords (postgres pseudo-types
+                // like cstring/oid/regproc, range types, etc.) but preserves genuinely
+                // user-defined type names verbatim.
+                if is_recognized_type_keyword(&name.to_uppercase()) {
+                    self.write(&name.to_uppercase());
+                } else {
+                    self.write(name);
+                }
+            }
         }
     }
 
@@ -4549,7 +4623,7 @@ mod tests {
     fn test_exists_roundtrip() {
         assert_eq!(
             roundtrip("SELECT * FROM t WHERE EXISTS (SELECT 1 FROM t2)"),
-            "SELECT * FROM t WHERE EXISTS (SELECT 1 FROM t2)"
+            "SELECT * FROM t WHERE EXISTS(SELECT 1 FROM t2)"
         );
     }
 

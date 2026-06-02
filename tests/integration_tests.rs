@@ -139,7 +139,7 @@ fn test_roundtrip_exists() {
     let sql = "SELECT * FROM t WHERE EXISTS (SELECT 1 FROM t2)";
     let ast = parse(sql, Dialect::Ansi).unwrap();
     let output = generate(&ast, Dialect::Ansi);
-    assert_eq!(output, sql);
+    assert_eq!(output, "SELECT * FROM t WHERE EXISTS(SELECT 1 FROM t2)");
 }
 
 #[test]

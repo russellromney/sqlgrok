@@ -3499,6 +3499,7 @@ impl Parser {
         let mut default = None;
         let mut primary_key = false;
         let mut unique = false;
+        let mut unique_before_not_null = false;
         let mut auto_increment = false;
         let mut auto_increment_from_identity = false;
         let mut auto_increment_before_primary_key = false;
@@ -3525,6 +3526,9 @@ impl Parser {
                 }
                 primary_key = true;
             } else if self.match_token(TokenType::Unique) {
+                if nullable.is_none() {
+                    unique_before_not_null = true;
+                }
                 unique = true;
             } else if self.match_token(TokenType::AutoIncrement) {
                 auto_increment = true;
@@ -3599,6 +3603,7 @@ impl Parser {
             default,
             primary_key,
             unique,
+            unique_before_not_null,
             auto_increment,
             auto_increment_before_primary_key,
             primary_key_from_table_constraint: false,
@@ -3629,6 +3634,12 @@ impl Parser {
             return Some(CreateTableOption::Engine(
                 self.parse_create_table_option_value().unwrap_or_default(),
             ));
+        }
+        if self.match_keyword("INHERITS") {
+            return Some(CreateTableOption::Unknown {
+                name: "INHERITS".to_string(),
+                value: self.parse_create_table_parenthesized_option_value(),
+            });
         }
         if self.match_token(TokenType::AutoIncrement) {
             return Some(CreateTableOption::AutoIncrement(
@@ -4453,6 +4464,47 @@ impl Parser {
     }
 
     fn parse_alter_action(&mut self) -> Result<AlterTableAction> {
+        if self.match_keyword("CHANGE") {
+            // CHANGE [COLUMN] old_name new_name <column def> [FIRST | AFTER c]
+            let _ = self.match_keyword("COLUMN");
+            let old_name = self.expect_name()?;
+            let new_column = self.parse_column_def()?;
+            let mut tail_tokens: Vec<String> = Vec::new();
+            while !matches!(
+                self.peek_type(),
+                TokenType::Comma | TokenType::Semicolon | TokenType::Eof
+            ) {
+                tail_tokens.push(self.peek().value.clone());
+                self.advance();
+            }
+            let tail = tail_tokens.join(" ");
+            return Ok(AlterTableAction::ChangeColumn {
+                old_name,
+                new_column,
+                tail,
+                is_modify: false,
+            });
+        }
+        if self.match_keyword("MODIFY") {
+            // MODIFY [COLUMN] <column def> — same shape but no rename.
+            let _ = self.match_keyword("COLUMN");
+            let new_column = self.parse_column_def()?;
+            let mut tail_tokens: Vec<String> = Vec::new();
+            while !matches!(
+                self.peek_type(),
+                TokenType::Comma | TokenType::Semicolon | TokenType::Eof
+            ) {
+                tail_tokens.push(self.peek().value.clone());
+                self.advance();
+            }
+            let tail = tail_tokens.join(" ");
+            return Ok(AlterTableAction::ChangeColumn {
+                old_name: new_column.name.clone(),
+                new_column,
+                tail,
+                is_modify: true,
+            });
+        }
         if self.match_keyword("ADD") {
             if matches!(
                 self.peek_type(),

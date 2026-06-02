@@ -554,6 +554,16 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                     AlterTableAction::AlterColumnType { data_type, .. } => {
                         *data_type = map_data_type_for_source(data_type.clone(), source, target);
                     }
+                    AlterTableAction::ChangeColumn { new_column, .. } => {
+                        new_column.data_type = map_data_type_for_source(
+                            new_column.data_type.clone(),
+                            source,
+                            target,
+                        );
+                        if let Some(default) = &mut new_column.default {
+                            *default = transform_expr(default.clone(), source, target);
+                        }
+                    }
                     _ => {}
                 }
             }

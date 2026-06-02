@@ -1832,6 +1832,12 @@ pub struct ColumnDef {
     pub default: Option<Expr>,
     pub primary_key: bool,
     pub unique: bool,
+    /// True when UNIQUE appeared before NOT NULL in the source column
+    /// definition. SQLGlot preserves source constraint order, so we carry
+    /// this to render `UNIQUE NOT NULL` rather than the default
+    /// `NOT NULL UNIQUE`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub unique_before_not_null: bool,
     pub auto_increment: bool,
     #[serde(default)]
     pub auto_increment_before_primary_key: bool,
@@ -1863,6 +1869,18 @@ pub enum AlterTableAction {
     RenameColumn { old_name: String, new_name: String },
     AlterColumnType { name: String, data_type: DataType },
     AlterColumnRaw { name: String, tail: String },
+    /// MySQL CHANGE [COLUMN] old_name new_name <full column definition>
+    ChangeColumn {
+        old_name: String,
+        new_column: ColumnDef,
+        /// Anything trailing the column definition (e.g. `FIRST`,
+        /// `AFTER col`) that we don't fully model — preserved raw.
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        tail: String,
+        /// True when the source kw was MODIFY (single-name) rather than CHANGE (old + new).
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        is_modify: bool,
+    },
     AddConstraint(TableConstraint),
     DropConstraint { name: String },
     RenameTable { new_name: String },
