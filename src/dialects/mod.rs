@@ -417,10 +417,12 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 if let Some(from) = &mut sel.from {
                     rewrite_backticks_in_table_source(&mut from.source);
                     uppercase_function_names_in_table_source(&mut from.source);
+                    normalize_typed_literals_in_table_source(&mut from.source);
                 }
                 for join in &mut sel.joins {
                     rewrite_backticks_in_table_source(&mut join.table);
                     uppercase_function_names_in_table_source(&mut join.table);
+                    normalize_typed_literals_in_table_source(&mut join.table);
                 }
             }
             // Recurse into table sources to transform inner Expr nodes
@@ -884,6 +886,131 @@ fn uppercase_function_names_in_raw_sql(sql: &str) -> String {
         i += 1;
     }
     out
+}
+
+/// Rewrites typed-literal patterns inside Raw table source text:
+///   DATE 'literal'       → DATE('literal')
+///   TIMESTAMP 'literal'  → CAST('literal' AS TIMESTAMP)
+///   INTERVAL N UNIT      → INTERVAL 'N' UNIT  (number → string literal)
+fn normalize_typed_literals_in_raw_sql(sql: &str) -> String {
+    let mut out = String::with_capacity(sql.len() + 16);
+    let bytes = sql.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let c = bytes[i] as char;
+        // Skip string literals.
+        if c == '\'' {
+            out.push(c);
+            i += 1;
+            while i < bytes.len() {
+                let cc = bytes[i] as char;
+                out.push(cc);
+                i += 1;
+                if cc == '\'' {
+                    if i < bytes.len() && bytes[i] as char == '\'' {
+                        out.push('\'');
+                        i += 1;
+                        continue;
+                    }
+                    break;
+                }
+            }
+            continue;
+        }
+        // Identifier-like keywords.
+        if c.is_ascii_alphabetic() || c == '_' {
+            let start = i;
+            while i < bytes.len() && {
+                let cc = bytes[i] as char;
+                cc.is_ascii_alphanumeric() || cc == '_'
+            } {
+                i += 1;
+            }
+            let ident = &sql[start..i];
+            let upper = ident.to_ascii_uppercase();
+            // DATE 'literal' / TIMESTAMP 'literal'
+            if matches!(upper.as_str(), "DATE" | "TIMESTAMP") {
+                let mut j = i;
+                while j < bytes.len() && (bytes[j] as char).is_whitespace() {
+                    j += 1;
+                }
+                if j < bytes.len() && bytes[j] as char == '\'' {
+                    // Find closing quote.
+                    let lit_start = j + 1;
+                    let mut k = lit_start;
+                    while k < bytes.len() {
+                        if bytes[k] as char == '\'' {
+                            if k + 1 < bytes.len() && bytes[k + 1] as char == '\'' {
+                                k += 2;
+                                continue;
+                            }
+                            break;
+                        }
+                        k += 1;
+                    }
+                    if k < bytes.len() && bytes[k] as char == '\'' {
+                        let lit = &sql[lit_start..k];
+                        if upper == "DATE" {
+                            out.push_str("DATE('");
+                            out.push_str(lit);
+                            out.push_str("')");
+                        } else {
+                            out.push_str("CAST('");
+                            out.push_str(lit);
+                            out.push_str("' AS TIMESTAMP)");
+                        }
+                        i = k + 1;
+                        continue;
+                    }
+                }
+                out.push_str(ident);
+                continue;
+            }
+            // INTERVAL N UNIT — quote the numeric N.
+            if upper == "INTERVAL" {
+                out.push_str(ident);
+                // Skip whitespace.
+                while i < bytes.len() && (bytes[i] as char).is_whitespace() {
+                    out.push(bytes[i] as char);
+                    i += 1;
+                }
+                // If next is a bare number, quote it.
+                if i < bytes.len() && (bytes[i] as char).is_ascii_digit() {
+                    let num_start = i;
+                    while i < bytes.len() && {
+                        let cc = bytes[i] as char;
+                        cc.is_ascii_digit() || cc == '.'
+                    } {
+                        i += 1;
+                    }
+                    out.push('\'');
+                    out.push_str(&sql[num_start..i]);
+                    out.push('\'');
+                }
+                continue;
+            }
+            out.push_str(ident);
+            continue;
+        }
+        out.push(c);
+        i += 1;
+    }
+    out
+}
+
+fn normalize_typed_literals_in_table_source(source: &mut TableSource) {
+    match source {
+        TableSource::Raw { sql, .. } => {
+            *sql = normalize_typed_literals_in_raw_sql(sql);
+        }
+        TableSource::Lateral { source } => {
+            normalize_typed_literals_in_table_source(source);
+        }
+        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
+            normalize_typed_literals_in_table_source(source);
+        }
+        _ => {}
+    }
 }
 
 fn uppercase_function_names_in_table_source(source: &mut TableSource) {

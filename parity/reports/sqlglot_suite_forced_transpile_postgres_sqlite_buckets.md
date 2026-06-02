@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11493 |
-| `mismatch` | 1474 |
+| `match` | 11528 |
+| `mismatch` | 1439 |
 | `oracle-error` | 1456 |
 | `rust-error` | 596 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 11493 |
-| `mismatch` | `postgres` | `sqlite` | 1474 |
+| `match` | `postgres` | `sqlite` | 11528 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
+| `mismatch` | `postgres` | `sqlite` | 1439 |
 | `rust-error` | `postgres` | `sqlite` | 596 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
 
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8380 |
-| `match` | `validate_identity` | 3005 |
+| `match` | `validate_all` | 8412 |
+| `match` | `validate_identity` | 3008 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 755 |
-| `mismatch` | `validate_all` | 653 |
+| `mismatch` | `validate_identity` | 752 |
+| `mismatch` | `validate_all` | 621 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 350 |
 | `rust-error` | `validate_all` | 243 |
@@ -60,13 +60,12 @@ Total rows: `15156`
 | `mismatch` | `CREATE TABLE` | 159 |
 | `oracle-error` | `SELECT operator multiply` | 150 |
 | `match` | `WITH` | 125 |
+| `match` | `SELECT UNNEST()` | 120 |
 | `match` | `ALTER TABLE` | 118 |
 | `match` | `X` | 113 |
 | `match` | `SELECT CAST()` | 107 |
 | `oracle-error` | `CREATE TABLE` | 106 |
-| `match` | `SELECT UNNEST()` | 87 |
 | `match` | `SELECT DATEDIFF()` | 83 |
-| `mismatch` | `SELECT UNNEST()` | 82 |
 | `match` | `SET` | 78 |
 | `match` | `DATE_TRUNC()` | 77 |
 | `match` | `DATE_ADD()` | 74 |
@@ -86,6 +85,7 @@ Total rows: `15156`
 | `match` | `INSERT` | 54 |
 | `rust-error` | `SELECT` | 53 |
 | `match` | `FROM` | 51 |
+| `mismatch` | `SELECT UNNEST()` | 49 |
 | `match` | `SELECT DATE_TRUNC()` | 48 |
 | `match` | `SELECT TO_TIMESTAMP()` | 48 |
 
@@ -142,8 +142,7 @@ Total rows: `15156`
 | `mismatch` | `DDL/create-table rendering` | 161 |
 | `mismatch` | `CREATE` | 116 |
 | `mismatch` | `SELECT` | 56 |
-| `mismatch` | `case-only rendering difference` | 51 |
-| `mismatch` | `SELECT UNNEST()` | 48 |
+| `mismatch` | `case-only rendering difference` | 53 |
 | `mismatch` | `ALTER TABLE` | 43 |
 | `mismatch` | `SELECT operator multiply` | 35 |
 | `mismatch` | `date/time rendering: CREATE` | 27 |
@@ -153,6 +152,7 @@ Total rows: `15156`
 | `mismatch` | `WITH` | 15 |
 | `mismatch` | `cast/type rendering: CAST()` | 14 |
 | `mismatch` | `date/time rendering: TIME_TO_STR()` | 14 |
+| `mismatch` | `SELECT UNNEST()` | 13 |
 | `mismatch` | `cast/type rendering: SELECT CAST()` | 13 |
 | `mismatch` | `SELECT RLIKE()` | 12 |
 | `mismatch` | `COPY` | 10 |
@@ -183,8 +183,8 @@ Total rows: `15156`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1062 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 665 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1070 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 673 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 475 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 332 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 323 |
@@ -197,7 +197,7 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 142 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 122 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 121 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 113 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 108 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 107 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 104 |
@@ -214,7 +214,6 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_exasol.py` | `test_scalar` | 73 |
 | `rust-error` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 71 |
 | `match` | `tests/dialects/test_sqlite.py` | `test_sqlite` | 69 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 69 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_time` | 68 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_ddl` | 68 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_cast` | 67 |
@@ -223,6 +222,7 @@ Total rows: `15156`
 | `match` | `tests/dialects/test_dialect.py` | `test_string_functions` | 64 |
 | `match` | `tests/dialects/test_mysql.py` | `test_identity` | 64 |
 | `match` | `tests/dialects/test_dialect.py` | `test_set_operators` | 63 |
+| `match` | `tests/dialects/test_mysql.py` | `test_ddl` | 63 |
 
 ## Bucket Examples
 
@@ -324,15 +324,15 @@ Total rows: `15156`
 
 ### `mismatch` `SELECT UNNEST()`
 
-- `tests/dialects/test_bigquery.py`:1322 `test_bigquery` via `validate_all`: `SELECT * FROM UNNEST(['7', '14']) AS x`
-  - expected: `SELECT * FROM UNNEST(ARRAY('7', '14')) AS x`
-  - actual: `SELECT * FROM UNNEST(['7', '14']) AS x`
-- `tests/dialects/test_bigquery.py`:1322 `test_bigquery` via `validate_all`: `SELECT * FROM UNNEST(['7', '14']) AS x`
-  - expected: `SELECT * FROM UNNEST(ARRAY('7', '14')) AS x`
-  - actual: `SELECT * FROM UNNEST(['7', '14']) AS x`
-- `tests/dialects/test_bigquery.py`:1322 `test_bigquery` via `validate_all`: `SELECT * FROM UNNEST(['7', '14']) AS x`
-  - expected: `SELECT * FROM UNNEST(ARRAY('7', '14')) AS x`
-  - actual: `SELECT * FROM UNNEST(['7', '14']) AS x`
+- `tests/dialects/test_bigquery.py`:2644 `test_unnest` via `validate_all`: `SELECT name, laps FROM UNNEST([STRUCT('Rudisha' AS name, [23.4, 26.3, 26.4, 26.1] AS laps), STRUCT('Makhloufi' AS name, [24.5, 25.4, 26.6, 26.1] AS laps)])`
+  - expected: `SELECT name, laps FROM UNNEST(ARRAY(STRUCT('Rudisha' AS name, ARRAY(23.4, 26.3, 26.4, 26.1) AS laps), STRUCT('Makhloufi' AS name, ARRAY(24.5, 25.4, 26.6, 26.1) AS laps)))`
+  - actual: `SELECT name, laps FROM UNNEST(ARRAY(STRUCT('Rudisha' AS name, [23.4, 26.3, 26.4, 26.1] AS laps), STRUCT('Makhloufi' AS name, [24.5, 25.4, 26.6, 26.1] AS laps)))`
+- `tests/dialects/test_bigquery.py`:2644 `test_unnest` via `validate_all`: `SELECT name, laps FROM UNNEST([STRUCT('Rudisha' AS name, [23.4, 26.3, 26.4, 26.1] AS laps), STRUCT('Makhloufi' AS name, [24.5, 25.4, 26.6, 26.1] AS laps)])`
+  - expected: `SELECT name, laps FROM UNNEST(ARRAY(STRUCT('Rudisha' AS name, ARRAY(23.4, 26.3, 26.4, 26.1) AS laps), STRUCT('Makhloufi' AS name, ARRAY(24.5, 25.4, 26.6, 26.1) AS laps)))`
+  - actual: `SELECT name, laps FROM UNNEST(ARRAY(STRUCT('Rudisha' AS name, [23.4, 26.3, 26.4, 26.1] AS laps), STRUCT('Makhloufi' AS name, [24.5, 25.4, 26.6, 26.1] AS laps)))`
+- `tests/dialects/test_bigquery.py`:2658 `test_unnest` via `validate_all`: `SELECT participant FROM UNNEST([STRUCT('Rudisha' AS name, [23.4, 26.3, 26.4, 26.1] AS laps)]) AS participant`
+  - expected: `SELECT participant FROM UNNEST(ARRAY(STRUCT('Rudisha' AS name, ARRAY(23.4, 26.3, 26.4, 26.1) AS laps))) AS participant`
+  - actual: `SELECT participant FROM UNNEST(ARRAY(STRUCT('Rudisha' AS name, [23.4, 26.3, 26.4, 26.1] AS laps))) AS participant`
 
 ### `mismatch` `SELECT operator multiply`
 
