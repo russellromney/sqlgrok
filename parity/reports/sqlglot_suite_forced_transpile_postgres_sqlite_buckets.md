@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11490 |
-| `mismatch` | 1477 |
+| `match` | 11493 |
+| `mismatch` | 1474 |
 | `oracle-error` | 1456 |
 | `rust-error` | 596 |
 | `unsupported-harness-shape` | 137 |
@@ -18,8 +18,8 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `postgres` | `sqlite` | 11490 |
-| `mismatch` | `postgres` | `sqlite` | 1477 |
+| `match` | `postgres` | `sqlite` | 11493 |
+| `mismatch` | `postgres` | `sqlite` | 1474 |
 | `oracle-error` | `postgres` | `sqlite` | 1456 |
 | `rust-error` | `postgres` | `sqlite` | 596 |
 | `unsupported-harness-shape` | `postgres` | `sqlite` | 137 |
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8377 |
+| `match` | `validate_all` | 8380 |
 | `match` | `validate_identity` | 3005 |
 | `oracle-error` | `validate_identity` | 949 |
 | `mismatch` | `validate_identity` | 755 |
-| `mismatch` | `validate_all` | 656 |
+| `mismatch` | `validate_all` | 653 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 350 |
 | `rust-error` | `validate_all` | 243 |
@@ -50,14 +50,14 @@ Total rows: `15156`
 | --- | --- | ---: |
 | `match` | `SELECT` | 789 |
 | `match` | `CAST()` | 578 |
-| `match` | `CREATE TABLE` | 377 |
+| `match` | `CREATE TABLE` | 380 |
 | `match` | `SELECT operator multiply` | 376 |
 | `match` | `SHOW` | 215 |
 | `oracle-error` | `SELECT` | 211 |
 | `match` | `CREATE` | 190 |
 | `mismatch` | `CREATE` | 166 |
 | `match` | `TRUNC()` | 164 |
-| `mismatch` | `CREATE TABLE` | 162 |
+| `mismatch` | `CREATE TABLE` | 159 |
 | `oracle-error` | `SELECT operator multiply` | 150 |
 | `match` | `WITH` | 125 |
 | `match` | `ALTER TABLE` | 118 |
@@ -139,7 +139,7 @@ Total rows: `15156`
 | Status | Signature | Count |
 | --- | --- | ---: |
 | `mismatch` | `missing AS or alias rendering` | 184 |
-| `mismatch` | `DDL/create-table rendering` | 164 |
+| `mismatch` | `DDL/create-table rendering` | 161 |
 | `mismatch` | `CREATE` | 116 |
 | `mismatch` | `SELECT` | 56 |
 | `mismatch` | `case-only rendering difference` | 51 |

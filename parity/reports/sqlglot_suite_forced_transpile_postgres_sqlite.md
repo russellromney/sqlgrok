@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11493 |
-| `mismatch` | 1474 |
+| `match` | 11528 |
+| `mismatch` | 1439 |
 | `oracle-error` | 1456 |
 | `rust-error` | 596 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8380 |
-| `match` | `validate_identity` | 3005 |
+| `match` | `validate_all` | 8412 |
+| `match` | `validate_identity` | 3008 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 755 |
-| `mismatch` | `validate_all` | 653 |
+| `mismatch` | `validate_identity` | 752 |
+| `mismatch` | `validate_all` | 621 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 350 |
 | `rust-error` | `validate_all` | 243 |
@@ -43,8 +43,8 @@ Filtered by read/write: `0`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1062 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 665 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1070 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 673 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 475 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 332 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 323 |
@@ -57,7 +57,7 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 142 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 125 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 122 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 121 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 113 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 108 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 107 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 104 |

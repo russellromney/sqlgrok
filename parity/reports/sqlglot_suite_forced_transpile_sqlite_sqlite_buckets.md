@@ -8,8 +8,8 @@ Total rows: `15156`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11519 |
-| `mismatch` | 1369 |
+| `match` | 11524 |
+| `mismatch` | 1364 |
 | `oracle-error` | 1545 |
 | `rust-error` | 586 |
 | `unsupported-harness-shape` | 137 |
@@ -18,9 +18,9 @@ Total rows: `15156`
 
 | Status | Read | Write | Count |
 | --- | --- | --- | ---: |
-| `match` | `sqlite` | `sqlite` | 11519 |
+| `match` | `sqlite` | `sqlite` | 11524 |
 | `oracle-error` | `sqlite` | `sqlite` | 1545 |
-| `mismatch` | `sqlite` | `sqlite` | 1369 |
+| `mismatch` | `sqlite` | `sqlite` | 1364 |
 | `rust-error` | `sqlite` | `sqlite` | 586 |
 | `unsupported-harness-shape` | `sqlite` | `sqlite` | 137 |
 
@@ -28,11 +28,11 @@ Total rows: `15156`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8400 |
+| `match` | `validate_all` | 8405 |
 | `match` | `validate_identity` | 3014 |
 | `oracle-error` | `validate_identity` | 993 |
 | `mismatch` | `validate_identity` | 701 |
-| `mismatch` | `validate_all` | 602 |
+| `mismatch` | `validate_all` | 597 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 351 |
 | `rust-error` | `validate_all` | 232 |
@@ -51,12 +51,12 @@ Total rows: `15156`
 | `match` | `SELECT` | 749 |
 | `match` | `CAST()` | 567 |
 | `match` | `SELECT operator multiply` | 388 |
-| `match` | `CREATE TABLE` | 371 |
+| `match` | `CREATE TABLE` | 376 |
 | `match` | `SHOW` | 215 |
 | `match` | `CREATE` | 196 |
 | `oracle-error` | `SELECT` | 195 |
 | `match` | `TRUNC()` | 164 |
-| `mismatch` | `CREATE TABLE` | 161 |
+| `mismatch` | `CREATE TABLE` | 156 |
 | `mismatch` | `CREATE` | 147 |
 | `oracle-error` | `SELECT operator multiply` | 143 |
 | `match` | `WITH` | 127 |
@@ -139,7 +139,7 @@ Total rows: `15156`
 | Status | Signature | Count |
 | --- | --- | ---: |
 | `mismatch` | `missing AS or alias rendering` | 301 |
-| `mismatch` | `DDL/create-table rendering` | 145 |
+| `mismatch` | `DDL/create-table rendering` | 140 |
 | `mismatch` | `CREATE` | 96 |
 | `mismatch` | `SELECT` | 55 |
 | `mismatch` | `ALTER TABLE` | 40 |

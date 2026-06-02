@@ -399,10 +399,11 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                     normalize_sqlite_unnest_with_offset_in_table_source(&mut join.table);
                 }
             }
-            // For sqlite source, `UNNEST([…])` inside a Raw table source
-            // becomes `UNNEST("…")` (Python's array-literal-to-quoted
-            // -string fallback applied inside UNNEST).
-            if matches!(target, Dialect::Sqlite) && matches!(source, Dialect::Sqlite) {
+            // UNNEST([…]) inside a Raw table source needs source-specific
+            // rewrites for sqlite output:
+            //   - sqlite source: → UNNEST("…")  (quoted-id fallback)
+            //   - postgres/mysql source: → UNNEST(ARRAY(…))
+            if matches!(target, Dialect::Sqlite) {
                 if let Some(from) = &mut sel.from {
                     rewrite_unnest_array_literal_in_table_source(&mut from.source, source);
                 }
@@ -789,6 +790,13 @@ fn rewrite_unnest_array_literal_in_table_source(source: &mut TableSource, src_di
                 if let Some(r) = rewrite_unnest_array_literal_sqlite(sql) {
                     *sql = r;
                 }
+            } else if matches!(
+                src_dialect,
+                Dialect::Postgres | Dialect::Mysql | Dialect::SingleStore | Dialect::Doris
+            ) {
+                if let Some(r) = rewrite_unnest_array_literal_to_array_call(sql) {
+                    *sql = r;
+                }
             }
         }
         TableSource::Lateral { source } => {
@@ -891,6 +899,52 @@ fn uppercase_function_names_in_table_source(source: &mut TableSource) {
         }
         _ => {}
     }
+}
+
+/// For postgres/mysql source → sqlite target, `UNNEST([items])`
+/// becomes `UNNEST(ARRAY(items))` — Python SQLGlot wraps the
+/// bracketed list in an ARRAY function call. Handles nested brackets
+/// inside the outer `[…]` by tracking depth.
+fn rewrite_unnest_array_literal_to_array_call(sql: &str) -> Option<String> {
+    let upper = sql.to_ascii_uppercase();
+    let unnest_pos = upper.find("UNNEST(")?;
+    let after_lparen = unnest_pos + "UNNEST".len() + 1;
+    let body_start = sql[after_lparen..]
+        .find(|c: char| !c.is_whitespace())
+        .map(|o| after_lparen + o)?;
+    if !sql[body_start..].starts_with('[') {
+        return None;
+    }
+    // Find matching `]` at depth 0.
+    let bytes = sql.as_bytes();
+    let mut depth = 0i32;
+    let mut close = body_start;
+    let mut i = body_start;
+    while i < sql.len() {
+        match bytes[i] {
+            b'[' => depth += 1,
+            b']' => {
+                depth -= 1;
+                if depth == 0 {
+                    close = i;
+                    break;
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    if depth != 0 {
+        return None;
+    }
+    let inside = &sql[body_start + 1..close];
+    let mut out = String::with_capacity(sql.len() + 6);
+    out.push_str(&sql[..body_start]);
+    out.push_str("ARRAY(");
+    out.push_str(inside);
+    out.push(')');
+    out.push_str(&sql[close + 1..]);
+    Some(out)
 }
 
 /// For sqlite source → sqlite target, `UNNEST([1, 2, 3])` becomes
