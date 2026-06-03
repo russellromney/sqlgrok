@@ -27,6 +27,9 @@ this file records what landed.
   subprocess for each one-row case.
 - Added benchmark report caveats to Markdown and JSON output so low-sample runs
   and core per-case reports are labeled as diagnostic evidence.
+- Reduced tokenizer allocation on the hot parse path by pre-sizing the token
+  output buffer and avoiding heap allocation for ordinary ASCII keyword
+  classification.
 
 ### Public Documentation Cleanup
 

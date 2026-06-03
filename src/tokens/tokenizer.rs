@@ -107,7 +107,7 @@ impl Tokenizer {
     ///
     /// Whitespace tokens are skipped. Comments are optionally preserved.
     pub fn tokenize(&mut self) -> Result<Vec<Token>> {
-        let mut tokens = Vec::new();
+        let mut tokens = Vec::with_capacity((self.input.len() / 4).max(1));
         loop {
             let token = self.next_token()?;
             match token.token_type {
@@ -685,8 +685,8 @@ impl Tokenizer {
                         return Ok(self.make_token(token_type, value, start, start_line, start_col));
                     }
                 }
-                Some('\\') if self.interpret_string_escapes
-                    || token_type == TokenType::EscapedString =>
+                Some('\\')
+                    if self.interpret_string_escapes || token_type == TokenType::EscapedString =>
                 {
                     match self.peek() {
                         Some('\'') => {
@@ -849,7 +849,21 @@ impl Tokenizer {
 
     /// Map a word to its keyword token type, or `Identifier` if not a keyword.
     fn keyword_type(word: &str) -> TokenType {
-        match word.to_uppercase().as_str() {
+        let mut upper = [0u8; 64];
+        if word.len() <= upper.len() {
+            for (dst, src) in upper.iter_mut().zip(word.bytes()) {
+                *dst = src.to_ascii_uppercase();
+            }
+            let upper = std::str::from_utf8(&upper[..word.len()])
+                .expect("identifier tokenizer only produces ASCII words");
+            return Self::keyword_type_upper(upper);
+        }
+
+        Self::keyword_type_upper(&word.to_ascii_uppercase())
+    }
+
+    fn keyword_type_upper(word: &str) -> TokenType {
+        match word {
             "SELECT" => TokenType::Select,
             "FROM" => TokenType::From,
             "WHERE" => TokenType::Where,
