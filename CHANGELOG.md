@@ -9,6 +9,8 @@ this file records what landed.
 
 - Made `sqlgrok_*` the canonical public C ABI while keeping legacy
   `sqlglot_*` compatibility aliases.
+- Added `sqlgrok_transpile_into` as an experimental caller-owned-buffer C ABI
+  path for measuring output allocation overhead.
 - Renamed generated FFI header/package references to `sqlgrok.h` and updated
   C/C++ examples, package metadata, and FFI workflows.
 - Updated the prototype Node/Koffi, Ruby/Fiddle, and Go/cgo benchmark bindings
@@ -16,6 +18,9 @@ this file records what landed.
 - Published current single-call binding performance numbers for PyO3,
   Node/Koffi, Ruby/Fiddle, and Go/cgo against the same MySQL/Postgres/SQLite
   priority workloads.
+- Added per-case benchmark reporting, a direct C ABI benchmark, and Criterion
+  phase benches for tokenize/parse/transform/generate/full-transpile slowdown
+  investigation.
 
 ### Public Documentation Cleanup
 

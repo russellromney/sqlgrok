@@ -14,6 +14,7 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::ptr;
+use std::slice;
 
 use crate::dialects::Dialect;
 
@@ -95,6 +96,38 @@ unsafe fn free_impl(ptr: *mut c_char) {
     }
 }
 
+unsafe fn transpile_into_impl(
+    sql: *const c_char,
+    from_dialect: *const c_char,
+    to_dialect: *const c_char,
+    buffer: *mut c_char,
+    buffer_len: usize,
+) -> isize {
+    let sql_str = match unsafe { cstr_to_option(sql) } {
+        Some(s) => s,
+        None => return -1,
+    };
+    let from = resolve_dialect(unsafe { cstr_to_option(from_dialect) });
+    let to = resolve_dialect(unsafe { cstr_to_option(to_dialect) });
+
+    let result = match crate::transpile(sql_str, from, to) {
+        Ok(result) => result,
+        Err(_) => return -1,
+    };
+    let required = result.len();
+    if buffer.is_null() || buffer_len == 0 {
+        return required.try_into().unwrap_or(isize::MAX);
+    }
+    if buffer_len <= required {
+        return required.try_into().unwrap_or(isize::MAX);
+    }
+
+    let target = unsafe { slice::from_raw_parts_mut(buffer.cast::<u8>(), buffer_len) };
+    target[..required].copy_from_slice(result.as_bytes());
+    target[required] = 0;
+    required.try_into().unwrap_or(isize::MAX)
+}
+
 /// Parse a SQL string and return its AST serialised as JSON.
 ///
 /// * `sql`     – null-terminated SQL string (required).
@@ -135,6 +168,34 @@ pub unsafe extern "C" fn sqlgrok_transpile(
     to_dialect: *const c_char,
 ) -> *mut c_char {
     unsafe { transpile_impl(sql, from_dialect, to_dialect) }
+}
+
+/// Transpile into a caller-owned buffer and return the required byte length.
+///
+/// The return value is the number of UTF-8 bytes required for the SQL output,
+/// excluding the trailing NUL. Pass `NULL` or a zero-length buffer to query the
+/// required length. When `buffer_len` is greater than the returned length,
+/// sqlgrok writes the output followed by a NUL terminator. Returns `-1` on
+/// parse/transpile failure or invalid input.
+///
+/// This API exists for bindings that want to avoid allocating and freeing an
+/// owned C string for every call.
+///
+/// # Safety
+///
+/// `sql` must be a valid null-terminated C string. `from_dialect` and
+/// `to_dialect` may be null or valid null-terminated C strings. `buffer` may be
+/// null only when `buffer_len` is zero; otherwise it must point to writable
+/// memory of at least `buffer_len` bytes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sqlgrok_transpile_into(
+    sql: *const c_char,
+    from_dialect: *const c_char,
+    to_dialect: *const c_char,
+    buffer: *mut c_char,
+    buffer_len: usize,
+) -> isize {
+    unsafe { transpile_into_impl(sql, from_dialect, to_dialect, buffer, buffer_len) }
 }
 
 /// Generate SQL from a JSON-serialised AST for the given dialect.
@@ -202,6 +263,22 @@ pub unsafe extern "C" fn sqlglot_transpile(
     to_dialect: *const c_char,
 ) -> *mut c_char {
     unsafe { transpile_impl(sql, from_dialect, to_dialect) }
+}
+
+/// Compatibility alias for [`sqlgrok_transpile_into`].
+///
+/// # Safety
+///
+/// Same requirements as [`sqlgrok_transpile_into`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sqlglot_transpile_into(
+    sql: *const c_char,
+    from_dialect: *const c_char,
+    to_dialect: *const c_char,
+    buffer: *mut c_char,
+    buffer_len: usize,
+) -> isize {
+    unsafe { transpile_into_impl(sql, from_dialect, to_dialect, buffer, buffer_len) }
 }
 
 /// Compatibility alias for [`sqlgrok_generate`].

@@ -87,7 +87,7 @@ using a batch shortcut.
 | Workload | Python SQLGlot | PyO3 | Node/Koffi | Ruby/Fiddle | Go/cgo |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | MySQL -> SQLite | 359.9 us | 9.7 us (37.1x) | 9.0 us (40.0x) | 17.2 us (21.0x) | 13.1 us (27.4x) |
-| Postgres -> SQLite | 269.4 us | 7.9 us (34.1x) | 46.9 us (5.7x) | 16.1 us (16.7x) | 84.6 us (3.2x) |
+| Postgres -> SQLite | 317.9 us | 10.4 us (30.4x) | 15.0 us (21.2x) | 16.1 us (16.7x) | 13.6 us (23.4x) |
 | SQLite -> SQLite | 384.7 us | 9.7 us (39.6x) | 35.7 us (10.8x) | 66.3 us (5.8x) | 33.9 us (11.3x) |
 
 These are local, release-build, five-sample medians over checked-in 8-case
@@ -127,6 +127,7 @@ The public C ABI uses `sqlgrok_*` symbols and generated `sqlgrok.h` headers:
 
 - `sqlgrok_parse`
 - `sqlgrok_transpile`
+- `sqlgrok_transpile_into`
 - `sqlgrok_generate`
 - `sqlgrok_version`
 - `sqlgrok_free`

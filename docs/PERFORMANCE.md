@@ -110,6 +110,8 @@ cargo build --release --lib
 node bindings/node/bench.js --cases benchmarks/cases/postgres_sqlite.jsonl --samples 5
 ruby bindings/ruby/bench.rb --cases benchmarks/cases/postgres_sqlite.jsonl --samples 5
 cd bindings/go && go run . --cases ../../benchmarks/cases/postgres_sqlite.jsonl --samples 5
+cc bindings/c/bench.c -Itarget/ffi/include -Ltarget/release -lsqlgrok -o target/sqlgrok_c_bench
+DYLD_LIBRARY_PATH=target/release target/sqlgrok_c_bench --workload postgres --mode allocated
 ```
 
 These bindings intentionally benchmark one `transpile(sql, read, write)` call at
@@ -136,14 +138,66 @@ with one sqlgrok binding call per SQL string. Each row used the checked-in
 | Workload | Python SQLGlot | PyO3 | Node/Koffi | Ruby/Fiddle | Go/cgo |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | MySQL -> SQLite | 359.9 us | 9.7 us (37.1x) | 9.0 us (40.0x) | 17.2 us (21.0x) | 13.1 us (27.4x) |
-| Postgres -> SQLite | 269.4 us | 7.9 us (34.1x) | 46.9 us (5.7x) | 16.1 us (16.7x) | 84.6 us (3.2x) |
+| Postgres -> SQLite | 317.9 us | 10.4 us (30.4x) | 15.0 us (21.2x) | 16.1 us (16.7x) | 13.6 us (23.4x) |
 | SQLite -> SQLite | 384.7 us | 9.7 us (39.6x) | 35.7 us (10.8x) | 66.3 us (5.8x) | 33.9 us (11.3x) |
 
 The PyO3 numbers are the most mature binding data. The Node/Ruby/Go bindings
 are deliberately thin prototypes over the C ABI, useful for overhead discovery
-but not final package designs. The Postgres and SQLite identity rows show that
-some FFI paths still have noisy or workload-sensitive overhead worth profiling
-before publishing language packages.
+but not final package designs.
+
+## Slowdown Investigation
+
+The benchmark layer now has three tools for finding where time goes:
+
+- `--per-case` on `bench-sqlglot` runs aggregate timing plus one timing pass per
+  workload row.
+- `bindings/c/bench.c` measures the direct C ABI without Node/Ruby/Go runtime
+  overhead.
+- `cargo bench --bench parser_bench` includes tokenize, parse, transform,
+  generate, full transpile, and `transpile_many` phase benches for priority
+  cases.
+
+Current Postgres-to-SQLite per-case PyO3 medians:
+
+| Case | Python SQLGlot | PyO3 | Speedup |
+| --- | ---: | ---: | ---: |
+| `postgres-window-nulls` | 224.2 us | 11.9 us | 18.9x |
+| `postgres-distinct-on` | 352.7 us | 8.9 us | 39.8x |
+| `postgres-extract-date-trunc` | 275.6 us | 8.3 us | 33.0x |
+| `postgres-rollup` | 283.4 us | 8.3 us | 34.1x |
+| `postgres-json-path-text` | 212.3 us | 8.0 us | 26.4x |
+| `postgres-string-agg` | 241.6 us | 7.1 us | 34.0x |
+| `postgres-identity-column` | 301.3 us | 6.8 us | 44.4x |
+| `postgres-offset-only` | 198.7 us | 3.4 us | 57.6x |
+
+Direct C ABI Postgres-to-SQLite medians:
+
+| Mode | Median | p95 | Note |
+| --- | ---: | ---: | --- |
+| `allocated` | 7.3 us | 9.2 us | `sqlgrok_transpile` returning owned string plus `sqlgrok_free`. |
+| `into` | 8.0 us | 10.1 us | `sqlgrok_transpile_into` writing into caller buffer. |
+| `version` | 0.012 us | 0.021 us | Raw C call floor using `sqlgrok_version`. |
+
+The caller-owned-buffer API is not faster yet because sqlgrok still builds the
+Rust output `String` internally before copying. Returned C string allocation is
+not the dominant cost.
+
+Short Criterion phase run highlights:
+
+| Case / phase | Median-ish result |
+| --- | ---: |
+| MySQL `GROUP_CONCAT` parse | ~10.2 us |
+| MySQL `GROUP_CONCAT` transform | ~3.4 us |
+| MySQL `GROUP_CONCAT` generate | ~0.8 us |
+| Postgres `DISTINCT ON` parse | ~6.9 us |
+| Postgres `DISTINCT ON` transform | ~2.8 us |
+| Postgres identity-column parse | ~11.0 us |
+| SQLite multi-CTE transpile | ~30.7 us |
+| `transpile_many` priority cases | ~65.2 us for 4 cases |
+
+The next real optimization targets are parser/token allocation and the
+multi-CTE/full-transpile path. Generation is generally sub-microsecond in these
+priority cases.
 
 If sqlgrok is not materially faster, profile the Rust path instead of assuming
 the port is doomed. Useful targets include tokenizer allocation, parser

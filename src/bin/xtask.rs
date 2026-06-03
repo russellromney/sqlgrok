@@ -258,70 +258,15 @@ fn run_bench_sqlglot(args: BenchSqlglotArgs) -> Result<(), String> {
     validate_bench_cases(&args.sqlglot, &cases)?;
 
     let operations = args.iterations * cases.len();
-    let mut baseline_samples = Vec::with_capacity(args.samples);
-    let mut candidate_samples = Vec::with_capacity(args.samples);
-    let mut expected_checksum = None;
-
-    for sample_index in 0..args.samples {
-        eprintln!(
-            "running benchmark sample {}/{} ({})",
-            sample_index + 1,
-            args.samples,
-            if sample_index % 2 == 0 {
-                "python first"
-            } else {
-                "candidate first"
-            }
-        );
-
-        let (baseline, candidate) = if sample_index % 2 == 0 {
-            let baseline = run_python_benchmark(&args, &cases)?;
-            let candidate = run_candidate_benchmark(&args, &cases)?;
-            (baseline, candidate)
-        } else {
-            let candidate = run_candidate_benchmark(&args, &cases)?;
-            let baseline = run_python_benchmark(&args, &cases)?;
-            (baseline, candidate)
-        };
-
-        if baseline.checksum != candidate.checksum {
-            return Err(format!(
-                "benchmark checksum mismatch on sample {}: python={}, {}={}",
-                sample_index + 1,
-                baseline.checksum,
-                args.mode.candidate_label(),
-                candidate.checksum
-            ));
-        }
-        if let Some(checksum) = expected_checksum {
-            if baseline.checksum != checksum {
-                return Err(format!(
-                    "benchmark checksum changed on sample {}: expected {}, got {}",
-                    sample_index + 1,
-                    checksum,
-                    baseline.checksum
-                ));
-            }
-        } else {
-            expected_checksum = Some(baseline.checksum);
-        }
-
-        baseline_samples.push(BenchSample::from_result(
-            sample_index + 1,
-            operations,
-            baseline,
-        ));
-        candidate_samples.push(BenchSample::from_result(
-            sample_index + 1,
-            operations,
-            candidate,
-        ));
-    }
-
-    let baseline = BenchStats::from_samples(baseline_samples)?;
-    let candidate = BenchStats::from_samples(candidate_samples)?;
-    let report = render_benchmark_report(&args, &cases, &baseline, &candidate);
-    let json_report = render_benchmark_json(&args, &cases, &baseline, &candidate)?;
+    let (baseline, candidate) = run_benchmark_samples(&args, &cases, operations, "aggregate")?;
+    let per_case = if args.per_case {
+        Some(run_per_case_benchmarks(&args, &cases)?)
+    } else {
+        None
+    };
+    let report = render_benchmark_report(&args, &cases, &baseline, &candidate, per_case.as_deref());
+    let json_report =
+        render_benchmark_json(&args, &cases, &baseline, &candidate, per_case.as_deref())?;
     if args.dry_run {
         print!("{report}");
         return Ok(());
@@ -731,6 +676,7 @@ struct BenchSqlglotArgs {
     iterations: usize,
     warmup: usize,
     samples: usize,
+    per_case: bool,
     output: PathBuf,
     json_output: Option<PathBuf>,
     python: PathBuf,
@@ -938,6 +884,7 @@ impl BenchSqlglotArgs {
         let mut iterations = 2_000;
         let mut warmup = 100;
         let mut samples = 5;
+        let mut per_case = false;
         let mut output = None;
         let mut json_output = None;
         let mut python = None;
@@ -966,6 +913,7 @@ impl BenchSqlglotArgs {
                         format!("--samples must be a positive integer, got {raw:?}")
                     })?;
                 }
+                "--per-case" => per_case = true,
                 "--output" => output = Some(next_value(&mut args, "--output")?.into()),
                 "--json-output" => {
                     json_output = Some(next_value(&mut args, "--json-output")?.into())
@@ -997,6 +945,7 @@ impl BenchSqlglotArgs {
             iterations,
             warmup,
             samples,
+            per_case,
             output,
             json_output,
             python,
@@ -1024,7 +973,7 @@ impl BenchSqlglotArgs {
     }
 
     fn usage() -> String {
-        "usage: cargo run --release --bin xtask -- bench-sqlglot --sqlglot /path/to/sqlglot [--mode core|python-binding|python-binding-batch] [--cases benchmarks/cases/postgres_sqlite.jsonl] [--iterations 2000] [--warmup 100] [--samples 5] [--output benchmarks/reports/sqlglot_comparison_core.md] [--json-output benchmarks/reports/sqlglot_comparison_core.json] [--python python3] [--dry-run]".to_string()
+        "usage: cargo run --release --bin xtask -- bench-sqlglot --sqlglot /path/to/sqlglot [--mode core|python-binding|python-binding-batch] [--cases benchmarks/cases/postgres_sqlite.jsonl] [--iterations 2000] [--warmup 100] [--samples 5] [--per-case] [--output benchmarks/reports/sqlglot_comparison_core.md] [--json-output benchmarks/reports/sqlglot_comparison_core.json] [--python python3] [--dry-run]".to_string()
     }
 }
 
@@ -1243,6 +1192,19 @@ struct BenchStats {
     mean_ns_per_op: f64,
     median_ns_per_op: f64,
     p95_ns_per_op: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct BenchCaseComparison {
+    id: String,
+    read: String,
+    write: String,
+    sql: String,
+    tags: Vec<String>,
+    feature: String,
+    baseline: BenchStats,
+    candidate: BenchStats,
+    median_speedup: f64,
 }
 
 impl BenchStats {
@@ -1640,6 +1602,102 @@ fn run_candidate_benchmark(
     }
 }
 
+fn run_benchmark_samples(
+    args: &BenchSqlglotArgs,
+    cases: &[BenchCase],
+    operations: usize,
+    label: &str,
+) -> Result<(BenchStats, BenchStats), String> {
+    let mut baseline_samples = Vec::with_capacity(args.samples);
+    let mut candidate_samples = Vec::with_capacity(args.samples);
+    let mut expected_checksum = None;
+
+    for sample_index in 0..args.samples {
+        eprintln!(
+            "running {label} benchmark sample {}/{} ({})",
+            sample_index + 1,
+            args.samples,
+            if sample_index % 2 == 0 {
+                "python first"
+            } else {
+                "candidate first"
+            }
+        );
+
+        let (baseline, candidate) = if sample_index % 2 == 0 {
+            let baseline = run_python_benchmark(args, cases)?;
+            let candidate = run_candidate_benchmark(args, cases)?;
+            (baseline, candidate)
+        } else {
+            let candidate = run_candidate_benchmark(args, cases)?;
+            let baseline = run_python_benchmark(args, cases)?;
+            (baseline, candidate)
+        };
+
+        if baseline.checksum != candidate.checksum {
+            return Err(format!(
+                "{label}: benchmark checksum mismatch on sample {}: python={}, {}={}",
+                sample_index + 1,
+                baseline.checksum,
+                args.mode.candidate_label(),
+                candidate.checksum
+            ));
+        }
+        if let Some(checksum) = expected_checksum {
+            if baseline.checksum != checksum {
+                return Err(format!(
+                    "{label}: benchmark checksum changed on sample {}: expected {}, got {}",
+                    sample_index + 1,
+                    checksum,
+                    baseline.checksum
+                ));
+            }
+        } else {
+            expected_checksum = Some(baseline.checksum);
+        }
+
+        baseline_samples.push(BenchSample::from_result(
+            sample_index + 1,
+            operations,
+            baseline,
+        ));
+        candidate_samples.push(BenchSample::from_result(
+            sample_index + 1,
+            operations,
+            candidate,
+        ));
+    }
+
+    Ok((
+        BenchStats::from_samples(baseline_samples)?,
+        BenchStats::from_samples(candidate_samples)?,
+    ))
+}
+
+fn run_per_case_benchmarks(
+    args: &BenchSqlglotArgs,
+    cases: &[BenchCase],
+) -> Result<Vec<BenchCaseComparison>, String> {
+    let mut results = Vec::with_capacity(cases.len());
+    for case in cases {
+        let label = format!("case {}", case.id);
+        let one_case = std::slice::from_ref(case);
+        let (baseline, candidate) = run_benchmark_samples(args, one_case, args.iterations, &label)?;
+        results.push(BenchCaseComparison {
+            id: case.id.clone(),
+            read: case.read.clone(),
+            write: case.write.clone(),
+            sql: case.sql.clone(),
+            tags: case.tags.clone(),
+            feature: case.feature.clone(),
+            median_speedup: baseline.median_ns_per_op / candidate.median_ns_per_op,
+            baseline,
+            candidate,
+        });
+    }
+    Ok(results)
+}
+
 fn run_python_benchmark(
     args: &BenchSqlglotArgs,
     cases: &[BenchCase],
@@ -1814,6 +1872,7 @@ fn render_benchmark_report(
     cases: &[BenchCase],
     baseline: &BenchStats,
     candidate: &BenchStats,
+    per_case: Option<&[BenchCaseComparison]>,
 ) -> String {
     let operations = args.iterations * cases.len();
     let speedup = baseline.median_ns_per_op / candidate.median_ns_per_op;
@@ -1896,6 +1955,35 @@ fn render_benchmark_report(
     }
     out.push('\n');
 
+    if let Some(per_case) = per_case {
+        let mut rows = per_case.iter().collect::<Vec<_>>();
+        rows.sort_by(|left, right| {
+            right
+                .candidate
+                .median_ns_per_op
+                .total_cmp(&left.candidate.median_ns_per_op)
+        });
+        out.push_str("## Per-Case Breakdown\n\n");
+        out.push_str("| id | Python us/op | candidate us/op | speedup | tags |\n");
+        out.push_str("| --- | ---: | ---: | ---: | --- |\n");
+        for row in rows {
+            let tags = if row.tags.is_empty() {
+                row.feature.clone()
+            } else {
+                row.tags.join(",")
+            };
+            out.push_str(&format!(
+                "| `{}` | {:.3} | {:.3} | {:.2}x | `{}` |\n",
+                row.id,
+                row.baseline.median_ns_per_op / 1_000.0,
+                row.candidate.median_ns_per_op / 1_000.0,
+                row.median_speedup,
+                tags
+            ));
+        }
+        out.push('\n');
+    }
+
     out.push_str("## Workload\n\n");
     out.push_str("| id | read | write | tags | SQL |\n");
     out.push_str("| --- | --- | --- | --- | --- |\n");
@@ -1923,6 +2011,7 @@ fn render_benchmark_json(
     cases: &[BenchCase],
     baseline: &BenchStats,
     candidate: &BenchStats,
+    per_case: Option<&[BenchCaseComparison]>,
 ) -> Result<String, String> {
     let operations = args.iterations * cases.len();
     let report = serde_json::json!({
@@ -1944,6 +2033,7 @@ fn render_benchmark_json(
             "stats": candidate,
         },
         "median_speedup": baseline.median_ns_per_op / candidate.median_ns_per_op,
+        "per_case": per_case,
     });
     serde_json::to_string_pretty(&report)
         .map_err(|err| format!("failed to serialize benchmark JSON: {err}"))
