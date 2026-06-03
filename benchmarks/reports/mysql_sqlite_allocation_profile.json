@@ -1,0 +1,285 @@
+{
+  "aggregate": {
+    "allocated_bytes": 61153000,
+    "allocations": 949000,
+    "allocations_per_op": 118.625,
+    "bytes_per_op": 7644.125,
+    "checksum": 586000,
+    "deallocated_bytes": 61153000,
+    "deallocations": 949000,
+    "net_bytes": 0,
+    "operations": 8000
+  },
+  "case_count": 8,
+  "case_file": "benchmarks/cases/mysql_sqlite.jsonl",
+  "cases": [
+    {
+      "feature": "aggregate",
+      "id": "mysql-group-concat-order-separator",
+      "read": "mysql",
+      "sql": "SELECT GROUP_CONCAT(v ORDER BY v SEPARATOR '|') FROM gc",
+      "tags": [
+        "aggregate",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "json",
+      "id": "mysql-json-extract-key",
+      "read": "mysql",
+      "sql": "SELECT JSON_EXTRACT(data, '$.k') FROM events WHERE id = 1",
+      "tags": [
+        "json",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "limit",
+      "id": "mysql-limit-offset-comma",
+      "read": "mysql",
+      "sql": "SELECT a, b FROM t WHERE a > 10 ORDER BY b DESC LIMIT 5, 10",
+      "tags": [
+        "limit",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "datetime",
+      "id": "mysql-date-format",
+      "read": "mysql",
+      "sql": "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') FROM users",
+      "tags": [
+        "datetime",
+        "function"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "expression",
+      "id": "mysql-if-cast-div",
+      "read": "mysql",
+      "sql": "SELECT IF(a > 0, CAST(a AS SIGNED INTEGER), 7 DIV 2), x / y FROM metrics",
+      "tags": [
+        "expression",
+        "function"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "ddl",
+      "id": "mysql-insert-ignore",
+      "read": "mysql",
+      "sql": "INSERT IGNORE INTO users (id, email) VALUES (1, 'a@example.com')",
+      "tags": [
+        "ddl",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "ddl",
+      "id": "mysql-on-duplicate-key",
+      "read": "mysql",
+      "sql": "INSERT INTO users (id, email) VALUES (1, 'a@example.com') ON DUPLICATE KEY UPDATE email = VALUES(email)",
+      "tags": [
+        "ddl",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "ddl",
+      "id": "mysql-computed-column",
+      "read": "mysql",
+      "sql": "CREATE TABLE users (id INT PRIMARY KEY, email VARCHAR(255), email_lc VARCHAR(255) AS (LOWER(email)) STORED)",
+      "tags": [
+        "ddl",
+        "migration"
+      ],
+      "write": "sqlite"
+    }
+  ],
+  "iterations": 1000,
+  "per_case": [
+    {
+      "feature": "aggregate",
+      "id": "mysql-group-concat-order-separator",
+      "read": "mysql",
+      "sql": "SELECT GROUP_CONCAT(v ORDER BY v SEPARATOR '|') FROM gc",
+      "stats": {
+        "allocated_bytes": 4764000,
+        "allocations": 102000,
+        "allocations_per_op": 102.0,
+        "bytes_per_op": 4764.0,
+        "checksum": 35000,
+        "deallocated_bytes": 4764000,
+        "deallocations": 102000,
+        "net_bytes": 0,
+        "operations": 1000
+      },
+      "tags": [
+        "aggregate",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "json",
+      "id": "mysql-json-extract-key",
+      "read": "mysql",
+      "sql": "SELECT JSON_EXTRACT(data, '$.k') FROM events WHERE id = 1",
+      "stats": {
+        "allocated_bytes": 7657000,
+        "allocations": 112000,
+        "allocations_per_op": 112.0,
+        "bytes_per_op": 7657.0,
+        "checksum": 45000,
+        "deallocated_bytes": 7657000,
+        "deallocations": 112000,
+        "net_bytes": 0,
+        "operations": 1000
+      },
+      "tags": [
+        "json",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "limit",
+      "id": "mysql-limit-offset-comma",
+      "read": "mysql",
+      "sql": "SELECT a, b FROM t WHERE a > 10 ORDER BY b DESC LIMIT 5, 10",
+      "stats": {
+        "allocated_bytes": 7897000,
+        "allocations": 115000,
+        "allocations_per_op": 115.0,
+        "bytes_per_op": 7897.0,
+        "checksum": 65000,
+        "deallocated_bytes": 7897000,
+        "deallocations": 115000,
+        "net_bytes": 0,
+        "operations": 1000
+      },
+      "tags": [
+        "limit",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "datetime",
+      "id": "mysql-date-format",
+      "read": "mysql",
+      "sql": "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') FROM users",
+      "stats": {
+        "allocated_bytes": 5014000,
+        "allocations": 93000,
+        "allocations_per_op": 93.0,
+        "bytes_per_op": 5014.0,
+        "checksum": 50000,
+        "deallocated_bytes": 5014000,
+        "deallocations": 93000,
+        "net_bytes": 0,
+        "operations": 1000
+      },
+      "tags": [
+        "datetime",
+        "function"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "expression",
+      "id": "mysql-if-cast-div",
+      "read": "mysql",
+      "sql": "SELECT IF(a > 0, CAST(a AS SIGNED INTEGER), 7 DIV 2), x / y FROM metrics",
+      "stats": {
+        "allocated_bytes": 15169000,
+        "allocations": 192000,
+        "allocations_per_op": 192.0,
+        "bytes_per_op": 15169.0,
+        "checksum": 109000,
+        "deallocated_bytes": 15169000,
+        "deallocations": 192000,
+        "net_bytes": 0,
+        "operations": 1000
+      },
+      "tags": [
+        "expression",
+        "function"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "ddl",
+      "id": "mysql-insert-ignore",
+      "read": "mysql",
+      "sql": "INSERT IGNORE INTO users (id, email) VALUES (1, 'a@example.com')",
+      "stats": {
+        "allocated_bytes": 3434000,
+        "allocations": 66000,
+        "allocations_per_op": 66.0,
+        "bytes_per_op": 3434.0,
+        "checksum": 67000,
+        "deallocated_bytes": 3434000,
+        "deallocations": 66000,
+        "net_bytes": 0,
+        "operations": 1000
+      },
+      "tags": [
+        "ddl",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "ddl",
+      "id": "mysql-on-duplicate-key",
+      "read": "mysql",
+      "sql": "INSERT INTO users (id, email) VALUES (1, 'a@example.com') ON DUPLICATE KEY UPDATE email = VALUES(email)",
+      "stats": {
+        "allocated_bytes": 6539000,
+        "allocations": 132000,
+        "allocations_per_op": 132.0,
+        "bytes_per_op": 6539.0,
+        "checksum": 107000,
+        "deallocated_bytes": 6539000,
+        "deallocations": 132000,
+        "net_bytes": 0,
+        "operations": 1000
+      },
+      "tags": [
+        "ddl",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "ddl",
+      "id": "mysql-computed-column",
+      "read": "mysql",
+      "sql": "CREATE TABLE users (id INT PRIMARY KEY, email VARCHAR(255), email_lc VARCHAR(255) AS (LOWER(email)) STORED)",
+      "stats": {
+        "allocated_bytes": 10679000,
+        "allocations": 137000,
+        "allocations_per_op": 137.0,
+        "bytes_per_op": 10679.0,
+        "checksum": 108000,
+        "deallocated_bytes": 10679000,
+        "deallocations": 137000,
+        "net_bytes": 0,
+        "operations": 1000
+      },
+      "tags": [
+        "ddl",
+        "migration"
+      ],
+      "write": "sqlite"
+    }
+  ],
+  "warmup": 100
+}

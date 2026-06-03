@@ -889,29 +889,47 @@ impl BenchSqlglotArgs {
         let mut json_output = None;
         let mut python = None;
         let mut dry_run = false;
+        let mut iterations_set = false;
+        let mut warmup_set = false;
+        let mut samples_set = false;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--sqlglot" => sqlglot = Some(next_value(&mut args, "--sqlglot")?.into()),
                 "--mode" => mode = BenchMode::parse(&next_value(&mut args, "--mode")?)?,
+                "--profile" => {
+                    let profile = BenchProfile::parse(&next_value(&mut args, "--profile")?)?;
+                    if !iterations_set {
+                        iterations = profile.iterations();
+                    }
+                    if !warmup_set {
+                        warmup = profile.warmup();
+                    }
+                    if !samples_set {
+                        samples = profile.samples();
+                    }
+                }
                 "--cases" => cases = Some(next_value(&mut args, "--cases")?.into()),
                 "--iterations" => {
                     let raw = next_value(&mut args, "--iterations")?;
                     iterations = raw.parse().map_err(|_| {
                         format!("--iterations must be a positive integer, got {raw:?}")
                     })?;
+                    iterations_set = true;
                 }
                 "--warmup" => {
                     let raw = next_value(&mut args, "--warmup")?;
                     warmup = raw.parse().map_err(|_| {
                         format!("--warmup must be a non-negative integer, got {raw:?}")
                     })?;
+                    warmup_set = true;
                 }
                 "--samples" => {
                     let raw = next_value(&mut args, "--samples")?;
                     samples = raw.parse().map_err(|_| {
                         format!("--samples must be a positive integer, got {raw:?}")
                     })?;
+                    samples_set = true;
                 }
                 "--per-case" => per_case = true,
                 "--output" => output = Some(next_value(&mut args, "--output")?.into()),
@@ -973,7 +991,7 @@ impl BenchSqlglotArgs {
     }
 
     fn usage() -> String {
-        "usage: cargo run --release --bin xtask -- bench-sqlglot --sqlglot /path/to/sqlglot [--mode core|python-binding|python-binding-batch] [--cases benchmarks/cases/postgres_sqlite.jsonl] [--iterations 2000] [--warmup 100] [--samples 5] [--per-case] [--output benchmarks/reports/sqlglot_comparison_core.md] [--json-output benchmarks/reports/sqlglot_comparison_core.json] [--python python3] [--dry-run]".to_string()
+        "usage: cargo run --release --bin xtask -- bench-sqlglot --sqlglot /path/to/sqlglot [--mode core|python-binding|python-binding-batch] [--profile quick|publishable] [--cases benchmarks/cases/postgres_sqlite.jsonl] [--iterations 2000] [--warmup 100] [--samples 5] [--per-case] [--output benchmarks/reports/sqlglot_comparison_core.md] [--json-output benchmarks/reports/sqlglot_comparison_core.json] [--python python3] [--dry-run]".to_string()
     }
 }
 
@@ -1250,6 +1268,45 @@ enum BenchMode {
     Core,
     PythonBinding,
     PythonBindingBatch,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BenchProfile {
+    Quick,
+    Publishable,
+}
+
+impl BenchProfile {
+    fn parse(value: &str) -> Result<Self, String> {
+        match value {
+            "quick" => Ok(Self::Quick),
+            "publishable" => Ok(Self::Publishable),
+            _ => Err(format!(
+                "unknown benchmark profile {value:?}; expected quick or publishable"
+            )),
+        }
+    }
+
+    fn iterations(self) -> usize {
+        match self {
+            Self::Quick => 2_000,
+            Self::Publishable => 5_000,
+        }
+    }
+
+    fn warmup(self) -> usize {
+        match self {
+            Self::Quick => 100,
+            Self::Publishable => 500,
+        }
+    }
+
+    fn samples(self) -> usize {
+        match self {
+            Self::Quick => 5,
+            Self::Publishable => 10,
+        }
+    }
 }
 
 impl BenchMode {
@@ -1554,8 +1611,8 @@ fn validate_bench_cases(sqlglot: &PathBuf, cases: &[BenchCase]) -> Result<(), St
     Ok(())
 }
 
-fn run_rust_benchmark(args: &BenchSqlglotArgs, cases: &[BenchCase]) -> Result<BenchResult, String> {
-    let dialects = cases
+fn bench_case_dialects(cases: &[BenchCase]) -> Result<Vec<(Dialect, Dialect)>, String> {
+    cases
         .iter()
         .map(|case| {
             let read = Dialect::from_str(&case.read)
@@ -1564,7 +1621,11 @@ fn run_rust_benchmark(args: &BenchSqlglotArgs, cases: &[BenchCase]) -> Result<Be
                 .ok_or_else(|| format!("{}: unknown write dialect {:?}", case.id, case.write))?;
             Ok((read, write))
         })
-        .collect::<Result<Vec<_>, String>>()?;
+        .collect()
+}
+
+fn run_rust_benchmark(args: &BenchSqlglotArgs, cases: &[BenchCase]) -> Result<BenchResult, String> {
+    let dialects = bench_case_dialects(cases)?;
 
     let mut checksum = 0usize;
     for _ in 0..args.warmup {

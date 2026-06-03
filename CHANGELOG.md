@@ -30,6 +30,9 @@ this file records what landed.
 - Reduced tokenizer allocation on the hot parse path by pre-sizing the token
   output buffer and avoiding heap allocation for ordinary ASCII keyword
   classification.
+- Added the dedicated `sqlgrok_alloc_profile` helper binary for Rust-core
+  allocation reports and `bench-sqlglot --profile publishable` for stronger
+  timing defaults before publishing benchmark claims.
 
 ### Public Documentation Cleanup
 

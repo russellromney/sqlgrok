@@ -1,0 +1,47 @@
+# sqlgrok Allocation Profile
+
+Counts allocations in a dedicated helper binary while repeatedly calling `sqlgrok::transpile(...)`.
+
+## Summary
+
+- Case file: `benchmarks/cases/sqlite_sqlite.jsonl`
+- Cases: `8`
+- Iterations per case: `1000`
+- Warmup iterations per case: `100`
+- Operations: `8000`
+- Output checksum: `590000`
+- Allocated: `6.63 KiB/op` across `90.25` allocations/op
+- Total allocated: `51.77 MiB`
+- Net bytes after drops: `0`
+
+## Notes
+
+- This is allocation accounting, not wall-clock timing. Pair it with `bench-sqlglot` and Criterion phase benches.
+- Counts include the output `String` returned by `transpile`, because normal callers also receive that allocation.
+- The counting allocator lives only in this helper binary, so normal `xtask bench-sqlglot` timing is not perturbed.
+
+## Per-Case Breakdown
+
+| id | KiB/op | allocations/op | net bytes/op | tags |
+| --- | ---: | ---: | ---: | --- |
+| `sqlite-cte` | 15.34 | 155.00 | 0.00 | `cte,orm` |
+| `sqlite-simple-select` | 8.09 | 115.00 | 0.00 | `select,orm` |
+| `sqlite-create-table` | 6.82 | 103.00 | 0.00 | `ddl,migration` |
+| `sqlite-window` | 6.22 | 99.00 | 0.00 | `window,orm` |
+| `sqlite-alter-table` | 4.85 | 52.00 | 0.00 | `ddl,migration` |
+| `sqlite-json-type` | 4.12 | 87.00 | 0.00 | `json,orm` |
+| `sqlite-count-distinct` | 3.88 | 77.00 | 0.00 | `aggregate,orm` |
+| `sqlite-insert-or-ignore` | 3.70 | 34.00 | 0.00 | `ddl,orm` |
+
+## Workload
+
+| id | read | write | tags | SQL |
+| --- | --- | --- | --- | --- |
+| `sqlite-simple-select` | `sqlite` | `sqlite` | `select,orm` | `SELECT a, b FROM t WHERE a > 10 ORDER BY b DESC LIMIT 10 OFFSET 5` |
+| `sqlite-json-type` | `sqlite` | `sqlite` | `json,orm` | `SELECT JSON_TYPE(data, '$.k') FROM events` |
+| `sqlite-create-table` | `sqlite` | `sqlite` | `ddl,migration` | `CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE, created_at TEXT DEFAULT CURRENT_TIMESTAMP)` |
+| `sqlite-insert-or-ignore` | `sqlite` | `sqlite` | `ddl,orm` | `INSERT OR IGNORE INTO users (id, email) VALUES (1, 'a@example.com')` |
+| `sqlite-window` | `sqlite` | `sqlite` | `window,orm` | `SELECT user_id, ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY created_at) FROM events` |
+| `sqlite-cte` | `sqlite` | `sqlite` | `cte,orm` | `WITH a AS (SELECT 1 AS x), b AS (SELECT 2 AS y) SELECT a.x + b.y FROM a, b` |
+| `sqlite-count-distinct` | `sqlite` | `sqlite` | `aggregate,orm` | `SELECT COUNT(DISTINCT name) FROM users GROUP BY account_id` |
+| `sqlite-alter-table` | `sqlite` | `sqlite` | `ddl,migration` | `ALTER TABLE users ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP` |

@@ -10,11 +10,9 @@ Run benchmark commands with a release build for meaningful numbers:
 ```bash
 cargo run --release --bin xtask -- bench-sqlglot \
   --mode core \
+  --profile publishable \
   --sqlglot /Users/russellromney/Documents/Github/sqlglot \
   --cases benchmarks/cases/postgres_sqlite.jsonl \
-  --iterations 2000 \
-  --warmup 100 \
-  --samples 5
 ```
 
 Use `--dry-run` to print the report instead of writing it.
@@ -101,6 +99,10 @@ compare median and p95 timings across:
 same runner is not always helped or hurt by process/cache position. The headline
 speedup is based on median ns/op, not the fastest sample.
 
+Use `--profile publishable` for stronger local timing reports. It expands the
+defaults to `--iterations 5000 --warmup 500 --samples 10`; explicit
+`--iterations`, `--warmup`, and `--samples` flags still win when provided.
+
 Per-case reports need one extra caveat: `--per-case --mode core` is useful for
 finding slow Rust rows, but it is not a fair headline speedup comparison. The
 Rust candidate runs in-process while the Python SQLGlot oracle runs through a
@@ -154,15 +156,40 @@ but not final package designs.
 
 ## Slowdown Investigation
 
-The benchmark layer now has three tools for finding where time goes:
+The benchmark layer now has four tools for finding where time goes:
 
 - `--per-case` on `bench-sqlglot` runs aggregate timing plus one timing pass per
   workload row.
+- `sqlgrok_alloc_profile` counts allocated bytes and allocation calls for the
+  Rust `sqlgrok::transpile(...)` path without perturbing normal timing runs.
 - `bindings/c/bench.c` measures the direct C ABI without Node/Ruby/Go runtime
   overhead.
 - `cargo bench --bench parser_bench` includes tokenize, parse, transform,
   generate, full transpile, and `transpile_many` phase benches for priority
   cases.
+
+Run allocation profiling with:
+
+```bash
+cargo run --release --bin sqlgrok_alloc_profile -- \
+  --cases benchmarks/cases/postgres_sqlite.jsonl \
+  --iterations 1000 \
+  --warmup 100 \
+  --per-case
+```
+
+The allocation report is not a wall-clock benchmark. Use it to identify which
+cases allocate the most and then confirm timing wins with `bench-sqlglot` or
+Criterion.
+
+Current allocation-profile snapshot, using the checked-in 8-case workloads with
+`--iterations 1000 --warmup 100 --per-case`:
+
+| Workload | Allocated | Allocations | Heaviest checked-in case |
+| --- | ---: | ---: | --- |
+| MySQL -> SQLite | 7.46 KiB/op | 118.62 allocs/op | `mysql-if-cast-div` at 14.81 KiB/op |
+| Postgres -> SQLite | 6.88 KiB/op | 110.62 allocs/op | `postgres-distinct-on` at 10.94 KiB/op |
+| SQLite -> SQLite | 6.63 KiB/op | 90.25 allocs/op | `sqlite-cte` at 15.34 KiB/op |
 
 Current Postgres-to-SQLite per-case PyO3 medians:
 
