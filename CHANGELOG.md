@@ -33,6 +33,8 @@ this file records what landed.
 - Added the dedicated `sqlgrok_alloc_profile` helper binary for Rust-core
   allocation reports and `bench-sqlglot --profile publishable` for stronger
   timing defaults before publishing benchmark claims.
+- Extended `sqlgrok_alloc_profile` with `--phase` support so allocation reports
+  can isolate tokenize, parse, transform, generate, and full transpile costs.
 
 ### Public Documentation Cleanup
 

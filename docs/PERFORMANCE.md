@@ -173,6 +173,7 @@ Run allocation profiling with:
 ```bash
 cargo run --release --bin sqlgrok_alloc_profile -- \
   --cases benchmarks/cases/postgres_sqlite.jsonl \
+  --phase transpile \
   --iterations 1000 \
   --warmup 100 \
   --per-case
@@ -182,6 +183,11 @@ The allocation report is not a wall-clock benchmark. Use it to identify which
 cases allocate the most and then confirm timing wins with `bench-sqlglot` or
 Criterion.
 
+Use `--phase tokenize|parse|transform|generate|transpile` to isolate allocation
+pressure. `transform` pre-parses before resetting counters, and `generate`
+pre-parses plus transforms before resetting counters, so those phase reports do
+not include earlier setup allocation.
+
 Current allocation-profile snapshot, using the checked-in 8-case workloads with
 `--iterations 1000 --warmup 100 --per-case`:
 
@@ -190,6 +196,19 @@ Current allocation-profile snapshot, using the checked-in 8-case workloads with
 | MySQL -> SQLite | 7.46 KiB/op | 118.62 allocs/op | `mysql-if-cast-div` at 14.81 KiB/op |
 | Postgres -> SQLite | 6.88 KiB/op | 110.62 allocs/op | `postgres-distinct-on` at 10.94 KiB/op |
 | SQLite -> SQLite | 6.63 KiB/op | 90.25 allocs/op | `sqlite-cte` at 15.34 KiB/op |
+
+Example phase read on the current heaviest MySQL row, `mysql-if-cast-div`:
+
+| Phase | Allocated | Allocations |
+| --- | ---: | ---: |
+| tokenize | 3.61 KiB/op | 30 allocs/op |
+| parse | 6.56 KiB/op | 110 allocs/op |
+| transform | 7.90 KiB/op | 72 allocs/op |
+| generate | 0.35 KiB/op | 10 allocs/op |
+| transpile | 14.81 KiB/op | 192 allocs/op |
+
+That points the next optimization at MySQL expression transforms, not generator
+string growth.
 
 Current Postgres-to-SQLite per-case PyO3 medians:
 

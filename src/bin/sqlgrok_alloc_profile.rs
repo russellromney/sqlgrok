@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
-use sqlgrok::{Dialect, transpile};
+use sqlgrok::{Dialect, dialects, generate, parse, tokens::Tokenizer, transpile};
 
 struct CountingAllocator;
 
@@ -49,12 +49,23 @@ static GLOBAL_ALLOCATOR: CountingAllocator = CountingAllocator;
 #[derive(Debug)]
 struct Args {
     cases: PathBuf,
+    phase: AllocationPhase,
     iterations: usize,
     warmup: usize,
     per_case: bool,
     output: PathBuf,
     json_output: Option<PathBuf>,
     dry_run: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum AllocationPhase {
+    Tokenize,
+    Parse,
+    Transform,
+    Generate,
+    Transpile,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -113,10 +124,17 @@ fn run() -> Result<(), String> {
     args.validate()?;
 
     let cases = read_bench_cases(&args.cases)?;
-    let aggregate = profile_allocation_cases(&cases, args.iterations, args.warmup, "aggregate")?;
+    let aggregate = profile_allocation_cases(
+        &cases,
+        args.phase,
+        args.iterations,
+        args.warmup,
+        "aggregate",
+    )?;
     let per_case = if args.per_case {
         Some(profile_allocation_cases_individually(
             &cases,
+            args.phase,
             args.iterations,
             args.warmup,
         )?)
@@ -157,6 +175,7 @@ impl Args {
     fn parse(args: impl Iterator<Item = String>) -> Result<Self, String> {
         let mut args = args.peekable();
         let mut cases = None;
+        let mut phase = AllocationPhase::Transpile;
         let mut iterations = 1_000;
         let mut warmup = 100;
         let mut per_case = false;
@@ -167,6 +186,7 @@ impl Args {
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--cases" => cases = Some(next_value(&mut args, "--cases")?.into()),
+                "--phase" => phase = AllocationPhase::parse(&next_value(&mut args, "--phase")?)?,
                 "--iterations" => {
                     let raw = next_value(&mut args, "--iterations")?;
                     iterations = raw.parse().map_err(|_| {
@@ -197,6 +217,7 @@ impl Args {
 
         Ok(Self {
             cases,
+            phase,
             iterations,
             warmup,
             per_case,
@@ -217,7 +238,32 @@ impl Args {
     }
 
     fn usage() -> String {
-        "usage: cargo run --release --bin sqlgrok_alloc_profile -- --cases benchmarks/cases/postgres_sqlite.jsonl [--iterations 1000] [--warmup 100] [--per-case] [--output benchmarks/reports/allocation_profile.md] [--json-output benchmarks/reports/allocation_profile.json] [--dry-run]".to_string()
+        "usage: cargo run --release --bin sqlgrok_alloc_profile -- --cases benchmarks/cases/postgres_sqlite.jsonl [--phase tokenize|parse|transform|generate|transpile] [--iterations 1000] [--warmup 100] [--per-case] [--output benchmarks/reports/allocation_profile.md] [--json-output benchmarks/reports/allocation_profile.json] [--dry-run]".to_string()
+    }
+}
+
+impl AllocationPhase {
+    fn parse(value: &str) -> Result<Self, String> {
+        match value {
+            "tokenize" => Ok(Self::Tokenize),
+            "parse" => Ok(Self::Parse),
+            "transform" => Ok(Self::Transform),
+            "generate" => Ok(Self::Generate),
+            "transpile" => Ok(Self::Transpile),
+            _ => Err(format!(
+                "unknown allocation phase {value:?}; expected tokenize, parse, transform, generate, or transpile"
+            )),
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Tokenize => "tokenize",
+            Self::Parse => "parse",
+            Self::Transform => "transform",
+            Self::Generate => "generate",
+            Self::Transpile => "transpile",
+        }
     }
 }
 
@@ -304,32 +350,130 @@ fn allocation_counters() -> AllocationCounters {
 
 fn profile_allocation_cases(
     cases: &[BenchCase],
+    phase: AllocationPhase,
     iterations: usize,
     warmup: usize,
     label: &str,
 ) -> Result<AllocationStats, String> {
     let dialects = bench_case_dialects(cases)?;
+    let prepared = PreparedCases::new(cases, &dialects, phase)?;
     let mut checksum = 0usize;
 
     for _ in 0..warmup {
-        for (case, (read, write)) in cases.iter().zip(&dialects) {
-            let output = transpile(std::hint::black_box(&case.sql), *read, *write)
-                .map_err(|err| format!("{}: allocation warmup failed: {err}", case.id))?;
-            checksum = checksum.wrapping_add(output.len());
+        for index in 0..cases.len() {
+            checksum = checksum.wrapping_add(
+                run_phase_operation(cases, &dialects, &prepared, phase, index).map_err(|err| {
+                    format!("{}: allocation warmup failed: {err}", cases[index].id)
+                })?,
+            );
         }
     }
 
     checksum = 0;
     reset_allocation_counters();
     for _ in 0..iterations {
-        for (case, (read, write)) in cases.iter().zip(&dialects) {
-            let output = transpile(std::hint::black_box(&case.sql), *read, *write)
-                .map_err(|err| format!("{}: allocation profile failed: {err}", case.id))?;
-            checksum = checksum.wrapping_add(output.len());
+        for index in 0..cases.len() {
+            checksum = checksum.wrapping_add(
+                run_phase_operation(cases, &dialects, &prepared, phase, index).map_err(|err| {
+                    format!("{}: allocation profile failed: {err}", cases[index].id)
+                })?,
+            );
         }
     }
     let counters = allocation_counters();
     allocation_stats_from_counters(counters, iterations * cases.len(), checksum, label)
+}
+
+enum PreparedCases {
+    None,
+    Parsed(Vec<sqlgrok::ast::Statement>),
+    Transformed(Vec<sqlgrok::ast::Statement>),
+}
+
+impl PreparedCases {
+    fn new(
+        cases: &[BenchCase],
+        dialects: &[(Dialect, Dialect)],
+        phase: AllocationPhase,
+    ) -> Result<Self, String> {
+        match phase {
+            AllocationPhase::Tokenize | AllocationPhase::Parse | AllocationPhase::Transpile => {
+                Ok(Self::None)
+            }
+            AllocationPhase::Transform => {
+                let parsed = cases
+                    .iter()
+                    .zip(dialects)
+                    .map(|(case, (read, _))| {
+                        parse(&case.sql, *read).map_err(|err| {
+                            format!("{}: allocation prepare parse failed: {err}", case.id)
+                        })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(Self::Parsed(parsed))
+            }
+            AllocationPhase::Generate => {
+                let transformed = cases
+                    .iter()
+                    .zip(dialects)
+                    .map(|(case, (read, write))| {
+                        let ast = parse(&case.sql, *read).map_err(|err| {
+                            format!("{}: allocation prepare parse failed: {err}", case.id)
+                        })?;
+                        Ok(dialects::transform(&ast, *read, *write))
+                    })
+                    .collect::<Result<Vec<_>, String>>()?;
+                Ok(Self::Transformed(transformed))
+            }
+        }
+    }
+}
+
+fn run_phase_operation(
+    cases: &[BenchCase],
+    dialects: &[(Dialect, Dialect)],
+    prepared: &PreparedCases,
+    phase: AllocationPhase,
+    index: usize,
+) -> Result<usize, String> {
+    let case = &cases[index];
+    let (read, write) = dialects[index];
+    match phase {
+        AllocationPhase::Tokenize => {
+            let mut tokenizer = Tokenizer::new(std::hint::black_box(&case.sql));
+            let tokens = tokenizer.tokenize().map_err(|err| err.to_string())?;
+            Ok(tokens.len())
+        }
+        AllocationPhase::Parse => {
+            let ast =
+                parse(std::hint::black_box(&case.sql), read).map_err(|err| err.to_string())?;
+            let marker = (&ast as *const _) as usize;
+            std::hint::black_box(&ast);
+            Ok(marker & 0xff)
+        }
+        AllocationPhase::Transform => {
+            let PreparedCases::Parsed(parsed) = prepared else {
+                return Err("transform phase missing prepared parsed ASTs".to_string());
+            };
+            let transformed =
+                dialects::transform(std::hint::black_box(&parsed[index]), read, write);
+            let marker = (&transformed as *const _) as usize;
+            std::hint::black_box(&transformed);
+            Ok(marker & 0xff)
+        }
+        AllocationPhase::Generate => {
+            let PreparedCases::Transformed(transformed) = prepared else {
+                return Err("generate phase missing prepared transformed ASTs".to_string());
+            };
+            let output = generate(std::hint::black_box(&transformed[index]), write);
+            Ok(output.len())
+        }
+        AllocationPhase::Transpile => {
+            let output = transpile(std::hint::black_box(&case.sql), read, write)
+                .map_err(|err| err.to_string())?;
+            Ok(output.len())
+        }
+    }
 }
 
 fn allocation_stats_from_counters(
@@ -358,6 +502,7 @@ fn allocation_stats_from_counters(
 
 fn profile_allocation_cases_individually(
     cases: &[BenchCase],
+    phase: AllocationPhase,
     iterations: usize,
     warmup: usize,
 ) -> Result<Vec<AllocationCaseProfile>, String> {
@@ -365,6 +510,7 @@ fn profile_allocation_cases_individually(
     for case in cases {
         let stats = profile_allocation_cases(
             std::slice::from_ref(case),
+            phase,
             iterations,
             warmup,
             &format!("case {}", case.id),
@@ -390,11 +536,13 @@ fn render_report(
 ) -> String {
     let mut out = String::new();
     out.push_str("# sqlgrok Allocation Profile\n\n");
-    out.push_str(
-        "Counts allocations in a dedicated helper binary while repeatedly calling `sqlgrok::transpile(...)`.\n\n",
-    );
+    out.push_str(&format!(
+        "Counts allocations in a dedicated helper binary while repeatedly measuring the `{}` phase.\n\n",
+        args.phase.as_str()
+    ));
     out.push_str("## Summary\n\n");
     out.push_str(&format!("- Case file: `{}`\n", args.cases.display()));
+    out.push_str(&format!("- Phase: `{}`\n", args.phase.as_str()));
     out.push_str(&format!("- Cases: `{}`\n", cases.len()));
     out.push_str(&format!("- Iterations per case: `{}`\n", args.iterations));
     out.push_str(&format!(
@@ -421,9 +569,14 @@ fn render_report(
     out.push_str(
         "- This is allocation accounting, not wall-clock timing. Pair it with `bench-sqlglot` and Criterion phase benches.\n",
     );
-    out.push_str(
-        "- Counts include the output `String` returned by `transpile`, because normal callers also receive that allocation.\n",
-    );
+    match args.phase {
+        AllocationPhase::Generate | AllocationPhase::Transpile => out.push_str(
+            "- Counts include the output `String`, because normal callers also receive that allocation.\n",
+        ),
+        AllocationPhase::Tokenize | AllocationPhase::Parse | AllocationPhase::Transform => out.push_str(
+            "- Counts exclude later phases; prepared inputs for transform/generate are built before counters are reset.\n",
+        ),
+    }
     out.push_str(
         "- The counting allocator lives only in this helper binary, so normal `xtask bench-sqlglot` timing is not perturbed.\n\n",
     );
@@ -482,6 +635,7 @@ fn render_json(
 ) -> Result<String, String> {
     let report = serde_json::json!({
         "case_file": args.cases,
+        "phase": args.phase,
         "cases": cases,
         "case_count": cases.len(),
         "iterations": args.iterations,
