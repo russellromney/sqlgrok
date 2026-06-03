@@ -606,14 +606,6 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             if matches!(target, Dialect::Sqlite) {
                 raw.sql = normalize_postgres_copy_raw(&raw.sql);
             }
-            // SQLite can't represent a DuckDB-style PIVOT/UNPIVOT statement;
-            // SQLGlot drops it entirely.
-            if matches!(target, Dialect::Sqlite) {
-                let trimmed = raw.sql.trim_start().to_ascii_uppercase();
-                if trimmed.starts_with("PIVOT ") || trimmed.starts_with("UNPIVOT ") {
-                    raw.sql = String::new();
-                }
-            }
             // Python SQLGlot drops SHOW statements that the mysql parser
             // recognizes (TABLES, DATABASES, INDEX, COLUMNS, CREATE *,
             // VARIABLES, etc.) but preserves unrecognized SHOW forms
@@ -841,10 +833,9 @@ fn rewrite_unnest_array_literal_in_table_source(source: &mut TableSource, src_di
             } else if matches!(
                 src_dialect,
                 Dialect::Postgres | Dialect::Mysql | Dialect::SingleStore | Dialect::Doris
-            ) {
-                if let Some(r) = rewrite_unnest_array_literal_to_array_call(sql) {
-                    *sql = r;
-                }
+            ) && let Some(r) = rewrite_unnest_array_literal_to_array_call(sql)
+            {
+                *sql = r;
             }
         }
         TableSource::Lateral { source } => {
@@ -885,11 +876,10 @@ fn drop_pivot_in_table_source(source: &mut TableSource) {
 
 fn rewrite_backticks_in_table_source(source: &mut TableSource) {
     match source {
-        TableSource::Raw { sql, .. } => {
-            if sql.contains('`') {
-                *sql = sql.replace('`', "\"");
-            }
+        TableSource::Raw { sql, .. } if sql.contains('`') => {
+            *sql = sql.replace('`', "\"");
         }
+        TableSource::Raw { .. } => {}
         TableSource::Lateral { source } => rewrite_backticks_in_table_source(source),
         TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
             rewrite_backticks_in_table_source(source);
@@ -1193,8 +1183,8 @@ fn rewrite_unnest_with_offset(sql: &str) -> Option<String> {
     let mut depth = 0i32;
     let bytes = sql.as_bytes();
     let mut rparen_abs = lparen_abs;
-    for i in lparen_abs..sql.len() {
-        match bytes[i] {
+    for (i, byte) in bytes.iter().enumerate().skip(lparen_abs) {
+        match *byte {
             b'(' => depth += 1,
             b')' => {
                 depth -= 1;
@@ -1822,7 +1812,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && !distinct
                 && filter.is_none()
                 && over.is_none()
-                && matches!(new_args.len(), 2 | 3 | 4)
+                && matches!(new_args.len(), 2..=4)
             {
                 if new_args.len() == 2 {
                     return Expr::Function {
@@ -2567,23 +2557,20 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && filter.is_none()
                 && over.is_none()
                 && new_args.len() == 1
-            {
-                if let Expr::Function {
+                && let Expr::Function {
                     name: inner_name,
                     args: inner_args,
                     ..
                 } = &new_args[0]
-                {
-                    if inner_name.eq_ignore_ascii_case("ARRAY") {
-                        return Expr::Function {
-                            name: "ARRAY".to_string(),
-                            args: inner_args.clone(),
-                            distinct: false,
-                            filter: None,
-                            over: None,
-                        };
-                    }
-                }
+                && inner_name.eq_ignore_ascii_case("ARRAY")
+            {
+                return Expr::Function {
+                    name: "ARRAY".to_string(),
+                    args: inner_args.clone(),
+                    distinct: false,
+                    filter: None,
+                    over: None,
+                };
             }
             // UNIX_SECONDS(x) → TIMESTAMPDIFF(x, CAST('1970-01-01 ...'
             //                                  AS TIMESTAMPTZ), SECONDS)
@@ -3736,13 +3723,12 @@ fn propagate_nulls_direction(raw: &str) -> String {
                 }
                 depth -= 1;
             }
-            _ if depth == 0 => {
-                if upper_bytes[i..].starts_with(b" LIMIT ")
-                    || upper_bytes[i..].starts_with(b" OFFSET ")
-                {
-                    end = i;
-                    break;
-                }
+            _ if depth == 0
+                && (upper_bytes[i..].starts_with(b" LIMIT ")
+                    || upper_bytes[i..].starts_with(b" OFFSET ")) =>
+            {
+                end = i;
+                break;
             }
             _ => {}
         }
@@ -4856,13 +4842,13 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
     // ClickHouse-style `Nullable(T)` wrappers: strip for sqlite output
     // and recurse on the inner type (matching Python SQLGlot, which
     // models nullability separately).
-    if let DataType::Unknown(name) = &dt {
-        if matches!(target, Dialect::Sqlite) {
-            let upper = name.to_ascii_uppercase();
-            if let Some(inner) = strip_nullable_wrapper(name, &upper) {
-                let inner_dt = DataType::Unknown(inner);
-                return map_data_type_for_source(inner_dt, source, target);
-            }
+    if let DataType::Unknown(name) = &dt
+        && matches!(target, Dialect::Sqlite)
+    {
+        let upper = name.to_ascii_uppercase();
+        if let Some(inner) = strip_nullable_wrapper(name, &upper) {
+            let inner_dt = DataType::Unknown(inner);
+            return map_data_type_for_source(inner_dt, source, target);
         }
     }
     match (&dt, source, target) {

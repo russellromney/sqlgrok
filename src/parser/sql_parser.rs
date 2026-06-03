@@ -27,10 +27,7 @@ fn dialect_normalizes_bit_literals(dialect: Dialect) -> bool {
 fn dialect_digit_letter_is_identifier(dialect: Dialect) -> bool {
     matches!(
         dialect,
-        Dialect::Mysql
-            | Dialect::SingleStore
-            | Dialect::Doris
-            | Dialect::StarRocks
+        Dialect::Mysql | Dialect::SingleStore | Dialect::Doris | Dialect::StarRocks
     )
 }
 
@@ -49,6 +46,49 @@ fn is_identifier_like(value: &str) -> bool {
     };
     (first.is_ascii_alphabetic() || first == '_')
         && chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+}
+
+fn is_reserved_implicit_alias_keyword(value: &str) -> bool {
+    [
+        "FROM",
+        "WHERE",
+        "GROUP",
+        "ORDER",
+        "LIMIT",
+        "HAVING",
+        "UNION",
+        "INTERSECT",
+        "EXCEPT",
+        "JOIN",
+        "INNER",
+        "LEFT",
+        "RIGHT",
+        "FULL",
+        "CROSS",
+        "NATURAL",
+        "STRAIGHT_JOIN",
+        "ON",
+        "WINDOW",
+        "QUALIFY",
+        "SELECT",
+        "INTO",
+        "VALUES",
+        "SET",
+        "RETURNING",
+        "PIVOT",
+        "UNPIVOT",
+        "FOR",
+        "FORCE",
+        "USE",
+        "IGNORE",
+        "LOCK",
+        "INDEXED",
+        "AT",
+        "BEFORE",
+        "CHANGES",
+    ]
+    .iter()
+    .any(|keyword| value.eq_ignore_ascii_case(keyword))
 }
 
 fn data_type_with_format(data_type: DataType, format: &Expr) -> DataType {
@@ -434,7 +474,7 @@ impl Parser {
 
     /// Check if the current token's uppercased value matches a keyword string.
     fn check_keyword(&self, keyword: &str) -> bool {
-        self.peek().value.to_uppercase() == keyword
+        self.peek().value.eq_ignore_ascii_case(keyword)
     }
 
     /// Match a keyword by string value (for multi-word context-sensitive keywords).
@@ -1715,11 +1755,11 @@ impl Parser {
         }
         // Implicit alias
         if self.is_name_token() {
-            let token = self.peek().clone();
-            let peeked_upper = token.value.to_uppercase();
+            let token = self.peek();
             // Don't consume SEMI/ANTI as an alias if the next token is
             // JOIN — they're join keywords.
-            if matches!(peeked_upper.as_str(), "SEMI" | "ANTI")
+            if (token.value.eq_ignore_ascii_case("SEMI")
+                || token.value.eq_ignore_ascii_case("ANTI"))
                 && self
                     .tokens
                     .get(self.pos + 1)
@@ -1727,50 +1767,11 @@ impl Parser {
             {
                 return Ok(None);
             }
-            if token.quote_char != '\0'
-                || !matches!(
-                    peeked_upper.as_str(),
-                    "FROM"
-                        | "WHERE"
-                        | "GROUP"
-                        | "ORDER"
-                        | "LIMIT"
-                        | "HAVING"
-                        | "UNION"
-                        | "INTERSECT"
-                        | "EXCEPT"
-                        | "JOIN"
-                        | "INNER"
-                        | "LEFT"
-                        | "RIGHT"
-                        | "FULL"
-                        | "CROSS"
-                        | "NATURAL"
-                        | "STRAIGHT_JOIN"
-                        | "ON"
-                        | "WINDOW"
-                        | "QUALIFY"
-                        | "SELECT"
-                        | "INTO"
-                        | "VALUES"
-                        | "SET"
-                        | "RETURNING"
-                        | "PIVOT"
-                        | "UNPIVOT"
-                        | "FOR"
-                        | "FORCE"
-                        | "USE"
-                        | "IGNORE"
-                        | "LOCK"
-                        | "INDEXED"
-                        | "AT"
-                        | "BEFORE"
-                        | "CHANGES"
-                )
-            {
-                self.advance();
+            if token.quote_char != '\0' || !is_reserved_implicit_alias_keyword(&token.value) {
+                let alias = token.value.clone();
                 let qs = quote_style_from_char(token.quote_char);
-                return Ok(Some((token.value.clone(), qs)));
+                self.advance();
+                return Ok(Some((alias, qs)));
             }
         }
         Ok(None)
@@ -3654,7 +3655,9 @@ impl Parser {
             self.pos = saved_pos;
             return false;
         }
-        if self.check_keyword("INVOKER") || self.check_keyword("DEFINER") || self.check_keyword("NONE")
+        if self.check_keyword("INVOKER")
+            || self.check_keyword("DEFINER")
+            || self.check_keyword("NONE")
         {
             self.advance();
         }
@@ -3692,8 +3695,13 @@ impl Parser {
     fn consume_view_clause_value(&mut self) {
         while !matches!(
             self.peek_type(),
-            TokenType::As | TokenType::Select | TokenType::With | TokenType::From
-                | TokenType::Eof | TokenType::Semicolon | TokenType::LParen
+            TokenType::As
+                | TokenType::Select
+                | TokenType::With
+                | TokenType::From
+                | TokenType::Eof
+                | TokenType::Semicolon
+                | TokenType::LParen
         ) {
             let kw = self.peek().value.to_ascii_uppercase();
             if matches!(kw.as_str(), "SQL" | "COPY" | "AUTO" | "TO" | "DEFINER") {
@@ -3777,20 +3785,19 @@ impl Parser {
         // No mode: decide between `name type` and a bare unnamed type.
         let saved = self.pos;
         let name = self.capture_param_name()?;
-        if let Ok(data_type) = self.parse_data_type() {
-            if matches!(
+        if let Ok(data_type) = self.parse_data_type()
+            && (matches!(
                 self.peek_type(),
                 TokenType::Comma | TokenType::RParen | TokenType::Eof
-            ) || self.check_keyword("DEFAULT")
-            {
-                let default = self.parse_param_default()?;
-                return Ok(FunctionParam {
-                    mode: None,
-                    name: Some(name),
-                    data_type: Some(data_type),
-                    default,
-                });
-            }
+            ) || self.check_keyword("DEFAULT"))
+        {
+            let default = self.parse_param_default()?;
+            return Ok(FunctionParam {
+                mode: None,
+                name: Some(name),
+                data_type: Some(data_type),
+                default,
+            });
         }
         // Bare unnamed parameter — preserve its source text verbatim.
         self.pos = saved;
@@ -3979,7 +3986,7 @@ impl Parser {
                 });
             }
             let raw = self.sql[start..end].trim();
-            if raw.starts_with('$') {
+            if let Some(stripped) = raw.strip_prefix('$') {
                 // Dollar-quoted bodies are transformed only for postgres; the
                 // mysql/sqlite parsers preserve such functions verbatim.
                 if !matches!(self.dialect, Dialect::Postgres) {
@@ -3987,7 +3994,7 @@ impl Parser {
                         message: "dollar-quoted body (non-postgres source)".to_string(),
                     });
                 }
-                if let Some(rel) = raw[1..].find('$') {
+                if let Some(rel) = stripped.find('$') {
                     let tag = &raw[..rel + 2]; // $...$ open tag
                     let inner_start = tag.len();
                     if let Some(rel_end) = raw[inner_start..].find(tag) {
@@ -4908,9 +4915,8 @@ impl Parser {
         if self.match_keyword("UNSIGNED") {
             let _ = self.match_keyword("ZEROFILL");
             dt = apply_unsigned_integer(dt);
-        } else if self.match_keyword("SIGNED") {
-            let _ = self.match_keyword("ZEROFILL");
         } else {
+            let _ = self.match_keyword("SIGNED");
             let _ = self.match_keyword("ZEROFILL");
         }
         if self.peek_type() == &TokenType::Char
@@ -5297,36 +5303,10 @@ impl Parser {
                 self.expect(TokenType::RParen)?;
                 return Ok(AlterTableAction::SetProperties { assignments });
             }
-            // Recognized bare property keywords collapse to a lone `SET`;
-            // anything else (SCHEMA, OWNER TO, STATISTICS, ...) bails to the
-            // raw passthrough so it's preserved verbatim.
-            let kw = self.peek().value.to_ascii_uppercase();
-            let recognized = matches!(
-                kw.as_str(),
-                "LOGGED"
-                    | "UNLOGGED"
-                    | "WITHOUT"
-                    | "ACCESS"
-                    | "TABLESPACE"
-                    | "LOCATION"
-                    | "FILE"
-                    | "COMMENT"
-                    | "DATA_RETENTION_TIME_IN_DAYS"
-                    | "DEFAULT_DDL_COLLATION"
-            );
-            if !recognized {
-                return Err(SqlglotError::ParserError {
-                    message: "unrecognized ALTER TABLE SET form".to_string(),
-                });
-            }
-            while !matches!(
-                self.peek_type(),
-                TokenType::Comma | TokenType::Semicolon | TokenType::Eof
-            ) {
-                self.advance();
-            }
-            return Ok(AlterTableAction::SetProperties {
-                assignments: Vec::new(),
+            // Bare property keywords are not represented losslessly by the
+            // current AST, so preserve the statement as a raw passthrough.
+            return Err(SqlglotError::ParserError {
+                message: "bare ALTER TABLE SET form".to_string(),
             });
         }
         if self.match_keyword("ADD") {
@@ -5360,16 +5340,17 @@ impl Parser {
             // modifier? Save raw text up to the next comma/semi/eof.
             let start_pos = self.pos;
             let v0 = self.peek().value.to_uppercase();
-            let v1 = self.tokens
+            let v1 = self
+                .tokens
                 .get(self.pos + 1)
                 .map(|t| t.value.to_uppercase())
                 .unwrap_or_default();
-            let v2 = self.tokens
+            let v2 = self
+                .tokens
                 .get(self.pos + 2)
                 .map(|t| t.value.to_uppercase())
                 .unwrap_or_default();
-            let is_type_change =
-                v0 == "TYPE" || (v0 == "SET" && v1 == "DATA" && v2 == "TYPE");
+            let is_type_change = v0 == "TYPE" || (v0 == "SET" && v1 == "DATA" && v2 == "TYPE");
             // Some dialects (postgres, sqlite, duckdb) accept the bare
             // form `ALTER COLUMN name <data_type>`. Try to parse a data
             // type tentatively; if it succeeds and the following token
@@ -5926,12 +5907,10 @@ impl Parser {
                 left = regexp;
             } else if self.peek_type() == &TokenType::Not
                 && (self.peek_n_type(1) == &TokenType::Identifier
-                    && (self.tokens
-                        .get(self.pos + 1)
-                        .is_some_and(|t| {
-                            t.value.eq_ignore_ascii_case("RLIKE")
-                                || t.value.eq_ignore_ascii_case("REGEXP")
-                        })))
+                    && (self.tokens.get(self.pos + 1).is_some_and(|t| {
+                        t.value.eq_ignore_ascii_case("RLIKE")
+                            || t.value.eq_ignore_ascii_case("REGEXP")
+                    })))
             {
                 // NOT RLIKE / NOT REGEXP → NOT REGEXP_LIKE(...).
                 self.advance(); // NOT
@@ -6908,14 +6887,17 @@ impl Parser {
                 // Remember the raw text of the unit token to preserve
                 // case/pluralization (e.g. "SECONDS" → not normalized
                 // to canonical "SECOND" on output).
-                let unit_text_candidate =
-                    if matches!(self.peek_type(), TokenType::Identifier) {
-                        Some(self.peek().value.clone())
-                    } else {
-                        None
-                    };
+                let unit_text_candidate = if matches!(self.peek_type(), TokenType::Identifier) {
+                    Some(self.peek().value.clone())
+                } else {
+                    None
+                };
                 let mut unit = self.try_parse_datetime_field();
-                let mut unit_text = if unit.is_some() { unit_text_candidate.clone() } else { None };
+                let mut unit_text = if unit.is_some() {
+                    unit_text_candidate.clone()
+                } else {
+                    None
+                };
                 // Plural form: `SECONDS`, `MINUTES`, ... — accept and
                 // map to singular DateTimeField.
                 if unit.is_none()
@@ -7854,12 +7836,7 @@ impl Parser {
             "DATE_ADD" | "TIMESTAMPADD" => {
                 if args.len() == 3 {
                     let unit = Self::expr_to_datetime_field(&args[2]);
-                    if unit.is_none() {
-                        // Third arg isn't a recognized DateTimeField — keep
-                        // the call as a generic Expr::Function so we don't
-                        // lose information when rendering.
-                        return None;
-                    }
+                    unit.as_ref()?;
                     let mut it = args.into_iter();
                     let first = it.next()?;
                     let second = it.next()?;

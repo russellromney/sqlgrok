@@ -1944,15 +1944,29 @@ pub struct AlterTableStatement {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum AlterTableAction {
     AddColumn(ColumnDef),
-    DropColumn { name: String, if_exists: bool },
+    DropColumn {
+        name: String,
+        if_exists: bool,
+    },
     /// `SET ...` table-property forms. SQLGlot drops unrepresentable
     /// property keywords (LOGGED, TABLESPACE, COMMENT=, ...) leaving a bare
     /// `SET`, and unwraps parenthesized assignment lists (`SET (a = 1)` →
     /// `SET a = 1`).
-    SetProperties { assignments: Vec<Expr> },
-    RenameColumn { old_name: String, new_name: String },
-    AlterColumnType { name: String, data_type: DataType },
-    AlterColumnRaw { name: String, tail: String },
+    SetProperties {
+        assignments: Vec<Expr>,
+    },
+    RenameColumn {
+        old_name: String,
+        new_name: String,
+    },
+    AlterColumnType {
+        name: String,
+        data_type: DataType,
+    },
+    AlterColumnRaw {
+        name: String,
+        tail: String,
+    },
     /// MySQL CHANGE [COLUMN] old_name new_name <full column definition>
     ChangeColumn {
         old_name: String,
@@ -1966,8 +1980,12 @@ pub enum AlterTableAction {
         is_modify: bool,
     },
     AddConstraint(TableConstraint),
-    DropConstraint { name: String },
-    RenameTable { new_name: String },
+    DropConstraint {
+        name: String,
+    },
+    RenameTable {
+        new_name: String,
+    },
 }
 
 /// CREATE VIEW statement.
@@ -2510,7 +2528,11 @@ impl Expr {
                 field,
                 expr: Box::new(expr.transform(func)),
             },
-            Expr::Interval { value, unit, unit_text } => Expr::Interval {
+            Expr::Interval {
+                value,
+                unit,
+                unit_text,
+            } => Expr::Interval {
                 value: Box::new(value.transform(func)),
                 unit,
                 unit_text,

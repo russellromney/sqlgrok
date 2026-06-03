@@ -11,8 +11,8 @@ Counts allocations in a dedicated helper binary while repeatedly measuring the `
 - Warmup iterations per case: `100`
 - Operations: `8000`
 - Output checksum: `834000`
-- Allocated: `6.50 KiB/op` across `105.50` allocations/op
-- Total allocated: `50.81 MiB`
+- Allocated: `6.43 KiB/op` across `88.00` allocations/op
+- Total allocated: `50.25 MiB`
 - Net bytes after drops: `0`
 
 ## Notes
@@ -25,14 +25,14 @@ Counts allocations in a dedicated helper binary while repeatedly measuring the `
 
 | id | KiB/op | allocations/op | net bytes/op | tags |
 | --- | ---: | ---: | ---: | --- |
-| `postgres-distinct-on` | 10.89 | 135.00 | 0.00 | `rewrite,orm` |
-| `postgres-extract-date-trunc` | 7.78 | 125.00 | 0.00 | `datetime,function` |
-| `postgres-json-path-text` | 7.58 | 118.00 | 0.00 | `json,orm` |
-| `postgres-rollup` | 7.24 | 121.00 | 0.00 | `grouping,analytics` |
-| `postgres-identity-column` | 6.15 | 108.00 | 0.00 | `ddl,migration` |
-| `postgres-window-nulls` | 5.83 | 92.00 | 0.00 | `window,orm` |
-| `postgres-string-agg` | 4.71 | 105.00 | 0.00 | `aggregate,orm` |
-| `postgres-offset-only` | 1.85 | 40.00 | 0.00 | `limit,orm` |
+| `postgres-distinct-on` | 10.81 | 118.00 | 0.00 | `rewrite,orm` |
+| `postgres-extract-date-trunc` | 7.71 | 103.00 | 0.00 | `datetime,function` |
+| `postgres-json-path-text` | 7.54 | 106.00 | 0.00 | `json,orm` |
+| `postgres-rollup` | 7.18 | 101.00 | 0.00 | `grouping,analytics` |
+| `postgres-identity-column` | 5.95 | 69.00 | 0.00 | `ddl,migration` |
+| `postgres-window-nulls` | 5.77 | 80.00 | 0.00 | `window,orm` |
+| `postgres-string-agg` | 4.66 | 93.00 | 0.00 | `aggregate,orm` |
+| `postgres-offset-only` | 1.83 | 34.00 | 0.00 | `limit,orm` |
 
 ## Workload
 

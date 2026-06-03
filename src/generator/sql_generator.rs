@@ -1369,10 +1369,7 @@ impl Generator {
             for (i, col) in ct.columns.iter().enumerate() {
                 self.newline();
                 self.gen_column_def(col);
-                if i < ct.columns.len() - 1
-                    || !ct.constraints.is_empty()
-                    || like_clause.is_some()
-                {
+                if i < ct.columns.len() - 1 || !ct.constraints.is_empty() || like_clause.is_some() {
                     self.write(",");
                 }
             }
@@ -2774,7 +2771,11 @@ impl Generator {
                 self.gen_expr(expr);
                 self.write(")");
             }
-            Expr::Interval { value, unit, unit_text } => {
+            Expr::Interval {
+                value,
+                unit,
+                unit_text,
+            } => {
                 self.write_keyword("INTERVAL ");
                 let render_unit = |g: &mut Self| {
                     if let Some(text) = unit_text {

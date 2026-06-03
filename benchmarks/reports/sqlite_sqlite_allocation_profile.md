@@ -11,8 +11,8 @@ Counts allocations in a dedicated helper binary while repeatedly measuring the `
 - Warmup iterations per case: `100`
 - Operations: `8000`
 - Output checksum: `590000`
-- Allocated: `6.42 KiB/op` across `86.38` allocations/op
-- Total allocated: `50.13 MiB`
+- Allocated: `6.35 KiB/op` across `70.50` allocations/op
+- Total allocated: `49.65 MiB`
 - Net bytes after drops: `0`
 
 ## Notes
@@ -25,14 +25,14 @@ Counts allocations in a dedicated helper binary while repeatedly measuring the `
 
 | id | KiB/op | allocations/op | net bytes/op | tags |
 | --- | ---: | ---: | ---: | --- |
-| `sqlite-cte` | 14.99 | 147.00 | 0.00 | `cte,orm` |
-| `sqlite-simple-select` | 7.74 | 108.00 | 0.00 | `select,orm` |
-| `sqlite-create-table` | 6.80 | 102.00 | 0.00 | `ddl,migration` |
-| `sqlite-window` | 5.82 | 92.00 | 0.00 | `window,orm` |
-| `sqlite-alter-table` | 4.83 | 51.00 | 0.00 | `ddl,migration` |
-| `sqlite-json-type` | 3.76 | 83.00 | 0.00 | `json,orm` |
-| `sqlite-insert-or-ignore` | 3.70 | 34.00 | 0.00 | `ddl,orm` |
-| `sqlite-count-distinct` | 3.69 | 74.00 | 0.00 | `aggregate,orm` |
+| `sqlite-cte` | 14.96 | 125.00 | 0.00 | `cte,orm` |
+| `sqlite-simple-select` | 7.68 | 87.00 | 0.00 | `select,orm` |
+| `sqlite-create-table` | 6.62 | 64.00 | 0.00 | `ddl,migration` |
+| `sqlite-window` | 5.76 | 80.00 | 0.00 | `window,orm` |
+| `sqlite-alter-table` | 4.76 | 40.00 | 0.00 | `ddl,migration` |
+| `sqlite-json-type` | 3.73 | 74.00 | 0.00 | `json,orm` |
+| `sqlite-insert-or-ignore` | 3.67 | 29.00 | 0.00 | `ddl,orm` |
+| `sqlite-count-distinct` | 3.65 | 65.00 | 0.00 | `aggregate,orm` |
 
 ## Workload
 

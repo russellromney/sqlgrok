@@ -39,6 +39,13 @@ this file records what landed.
   `transform_expr` instead of cloning them first; refreshed allocation reports
   now show MySQL/Postgres/SQLite priority lanes at `6.98`/`6.50`/`6.42` KiB per
   transpile operation.
+- Reduced parser allocation counts by avoiding uppercase `String` creation for
+  hot context-keyword checks; full-transpile reports now show
+  MySQL/Postgres/SQLite priority lanes at `92.38`/`88.00`/`70.50`
+  allocations per operation.
+- Cleared the local format/strict-Clippy blockers and preserved raw
+  SQLite-targeted top-level `PIVOT` / bare Postgres `ALTER TABLE ... SET`
+  statements so the focused transpile suite is green again.
 
 ### Public Documentation Cleanup
 
