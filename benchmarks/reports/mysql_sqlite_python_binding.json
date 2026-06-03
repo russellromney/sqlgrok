@@ -1,0 +1,187 @@
+{
+  "baseline": {
+    "name": "Python SQLGlot",
+    "stats": {
+      "checksum": 586000,
+      "max_ns_per_op": 463847.59375,
+      "mean_ns_per_op": 358864.5875,
+      "median_ns_per_op": 359930.239625,
+      "min_ns_per_op": 249899.817625,
+      "p95_ns_per_op": 463847.59375,
+      "samples": [
+        {
+          "checksum": 586000,
+          "elapsed_ns": 3710780750,
+          "ns_per_op": 463847.59375,
+          "sample": 1
+        },
+        {
+          "checksum": 586000,
+          "elapsed_ns": 2984602042,
+          "ns_per_op": 373075.25525,
+          "sample": 2
+        },
+        {
+          "checksum": 586000,
+          "elapsed_ns": 2780560250,
+          "ns_per_op": 347570.03125,
+          "sample": 3
+        },
+        {
+          "checksum": 586000,
+          "elapsed_ns": 1999198541,
+          "ns_per_op": 249899.817625,
+          "sample": 4
+        },
+        {
+          "checksum": 586000,
+          "elapsed_ns": 2879441917,
+          "ns_per_op": 359930.239625,
+          "sample": 5
+        }
+      ]
+    }
+  },
+  "candidate": {
+    "name": "sqlgrok PyO3 single-call",
+    "stats": {
+      "checksum": 586000,
+      "max_ns_per_op": 12728.651,
+      "mean_ns_per_op": 10285.790625,
+      "median_ns_per_op": 9713.145875,
+      "min_ns_per_op": 8209.59375,
+      "p95_ns_per_op": 12728.651,
+      "samples": [
+        {
+          "checksum": 586000,
+          "elapsed_ns": 65676750,
+          "ns_per_op": 8209.59375,
+          "sample": 1
+        },
+        {
+          "checksum": 586000,
+          "elapsed_ns": 101829208,
+          "ns_per_op": 12728.651,
+          "sample": 2
+        },
+        {
+          "checksum": 586000,
+          "elapsed_ns": 76902125,
+          "ns_per_op": 9612.765625,
+          "sample": 3
+        },
+        {
+          "checksum": 586000,
+          "elapsed_ns": 89318375,
+          "ns_per_op": 11164.796875,
+          "sample": 4
+        },
+        {
+          "checksum": 586000,
+          "elapsed_ns": 77705167,
+          "ns_per_op": 9713.145875,
+          "sample": 5
+        }
+      ]
+    }
+  },
+  "case_count": 8,
+  "case_file": "benchmarks/cases/mysql_sqlite.jsonl",
+  "cases": [
+    {
+      "feature": "aggregate",
+      "id": "mysql-group-concat-order-separator",
+      "read": "mysql",
+      "sql": "SELECT GROUP_CONCAT(v ORDER BY v SEPARATOR '|') FROM gc",
+      "tags": [
+        "aggregate",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "json",
+      "id": "mysql-json-extract-key",
+      "read": "mysql",
+      "sql": "SELECT JSON_EXTRACT(data, '$.k') FROM events WHERE id = 1",
+      "tags": [
+        "json",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "limit",
+      "id": "mysql-limit-offset-comma",
+      "read": "mysql",
+      "sql": "SELECT a, b FROM t WHERE a > 10 ORDER BY b DESC LIMIT 5, 10",
+      "tags": [
+        "limit",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "datetime",
+      "id": "mysql-date-format",
+      "read": "mysql",
+      "sql": "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') FROM users",
+      "tags": [
+        "datetime",
+        "function"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "expression",
+      "id": "mysql-if-cast-div",
+      "read": "mysql",
+      "sql": "SELECT IF(a > 0, CAST(a AS SIGNED INTEGER), 7 DIV 2), x / y FROM metrics",
+      "tags": [
+        "expression",
+        "function"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "ddl",
+      "id": "mysql-insert-ignore",
+      "read": "mysql",
+      "sql": "INSERT IGNORE INTO users (id, email) VALUES (1, 'a@example.com')",
+      "tags": [
+        "ddl",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "ddl",
+      "id": "mysql-on-duplicate-key",
+      "read": "mysql",
+      "sql": "INSERT INTO users (id, email) VALUES (1, 'a@example.com') ON DUPLICATE KEY UPDATE email = VALUES(email)",
+      "tags": [
+        "ddl",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "ddl",
+      "id": "mysql-computed-column",
+      "read": "mysql",
+      "sql": "CREATE TABLE users (id INT PRIMARY KEY, email VARCHAR(255), email_lc VARCHAR(255) AS (LOWER(email)) STORED)",
+      "tags": [
+        "ddl",
+        "migration"
+      ],
+      "write": "sqlite"
+    }
+  ],
+  "iterations": 1000,
+  "median_speedup": 37.05599033073309,
+  "mode": "python-binding",
+  "operations": 8000,
+  "samples": 5,
+  "sqlglot": "/Users/russellromney/Documents/Github/sqlglot",
+  "warmup": 100
+}

@@ -5,6 +5,18 @@ this file records what landed.
 
 ## 2026-06-02
 
+### Public ABI And Binding Benchmarks
+
+- Made `sqlgrok_*` the canonical public C ABI while keeping legacy
+  `sqlglot_*` compatibility aliases.
+- Renamed generated FFI header/package references to `sqlgrok.h` and updated
+  C/C++ examples, package metadata, and FFI workflows.
+- Updated the prototype Node/Koffi, Ruby/Fiddle, and Go/cgo benchmark bindings
+  to use the public `sqlgrok_*` ABI and emit multi-sample median/p95 reports.
+- Published current single-call binding performance numbers for PyO3,
+  Node/Koffi, Ruby/Fiddle, and Go/cgo against the same MySQL/Postgres/SQLite
+  priority workloads.
+
 ### Public Documentation Cleanup
 
 - Kept the public documentation surface intentionally small: README, roadmap,

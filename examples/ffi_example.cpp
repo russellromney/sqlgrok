@@ -21,24 +21,24 @@
 #include <stdexcept>
 
 extern "C" {
-#include "sqlglot.h"
+#include "sqlgrok.h"
 }
 
 // ── RAII helper ──────────────────────────────────────────────────────────
-// unique_ptr with a custom deleter so every sqlglot string is freed
-// automatically when the SqlglotString goes out of scope.
+// unique_ptr with a custom deleter so every sqlgrok string is freed
+// automatically when the SqlgrokString goes out of scope.
 
-struct SqlglotDeleter {
-    void operator()(char *p) const noexcept { sqlglot_free(p); }
+struct SqlgrokDeleter {
+    void operator()(char *p) const noexcept { sqlgrok_free(p); }
 };
 
-using SqlglotString = std::unique_ptr<char, SqlglotDeleter>;
+using SqlgrokString = std::unique_ptr<char, SqlgrokDeleter>;
 
 // ── Convenience wrappers ─────────────────────────────────────────────────
 
 /// Parse SQL and return the JSON AST, or std::nullopt on failure.
 std::optional<std::string> parse(const char *sql, const char *dialect = nullptr) {
-    SqlglotString result(sqlglot_parse(sql, dialect));
+    SqlgrokString result(sqlgrok_parse(sql, dialect));
     if (!result) return std::nullopt;
     return std::string(result.get());
 }
@@ -47,14 +47,14 @@ std::optional<std::string> parse(const char *sql, const char *dialect = nullptr)
 std::optional<std::string> transpile(const char *sql,
                                      const char *from_dialect,
                                      const char *to_dialect) {
-    SqlglotString result(sqlglot_transpile(sql, from_dialect, to_dialect));
+    SqlgrokString result(sqlgrok_transpile(sql, from_dialect, to_dialect));
     if (!result) return std::nullopt;
     return std::string(result.get());
 }
 
 /// Generate SQL from a JSON AST, or std::nullopt on failure.
 std::optional<std::string> generate(const char *ast_json, const char *dialect = nullptr) {
-    SqlglotString result(sqlglot_generate(ast_json, dialect));
+    SqlgrokString result(sqlgrok_generate(ast_json, dialect));
     if (!result) return std::nullopt;
     return std::string(result.get());
 }
@@ -62,7 +62,7 @@ std::optional<std::string> generate(const char *ast_json, const char *dialect = 
 // ── Main ────────────────────────────────────────────────────────────────
 
 int main() {
-    std::printf("sqlgrok version: %s\n\n", sqlglot_version());
+    std::printf("sqlgrok version: %s\n\n", sqlgrok_version());
 
     // --- Transpile examples ---
     struct Example {

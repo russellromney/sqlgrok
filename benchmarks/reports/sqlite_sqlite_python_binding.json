@@ -1,0 +1,187 @@
+{
+  "baseline": {
+    "name": "Python SQLGlot",
+    "stats": {
+      "checksum": 590000,
+      "max_ns_per_op": 619146.6145,
+      "mean_ns_per_op": 379395.16872500005,
+      "median_ns_per_op": 384749.942625,
+      "min_ns_per_op": 205958.875,
+      "p95_ns_per_op": 619146.6145,
+      "samples": [
+        {
+          "checksum": 590000,
+          "elapsed_ns": 1647671000,
+          "ns_per_op": 205958.875,
+          "sample": 1
+        },
+        {
+          "checksum": 590000,
+          "elapsed_ns": 4953172916,
+          "ns_per_op": 619146.6145,
+          "sample": 2
+        },
+        {
+          "checksum": 590000,
+          "elapsed_ns": 3077999541,
+          "ns_per_op": 384749.942625,
+          "sample": 3
+        },
+        {
+          "checksum": 590000,
+          "elapsed_ns": 3477162167,
+          "ns_per_op": 434645.270875,
+          "sample": 4
+        },
+        {
+          "checksum": 590000,
+          "elapsed_ns": 2019801125,
+          "ns_per_op": 252475.140625,
+          "sample": 5
+        }
+      ]
+    }
+  },
+  "candidate": {
+    "name": "sqlgrok PyO3 single-call",
+    "stats": {
+      "checksum": 590000,
+      "max_ns_per_op": 17295.734375,
+      "mean_ns_per_op": 10991.636475000001,
+      "median_ns_per_op": 9727.395875,
+      "min_ns_per_op": 6433.875,
+      "p95_ns_per_op": 17295.734375,
+      "samples": [
+        {
+          "checksum": 590000,
+          "elapsed_ns": 77819167,
+          "ns_per_op": 9727.395875,
+          "sample": 1
+        },
+        {
+          "checksum": 590000,
+          "elapsed_ns": 51471000,
+          "ns_per_op": 6433.875,
+          "sample": 2
+        },
+        {
+          "checksum": 590000,
+          "elapsed_ns": 103243875,
+          "ns_per_op": 12905.484375,
+          "sample": 3
+        },
+        {
+          "checksum": 590000,
+          "elapsed_ns": 138365875,
+          "ns_per_op": 17295.734375,
+          "sample": 4
+        },
+        {
+          "checksum": 590000,
+          "elapsed_ns": 68765542,
+          "ns_per_op": 8595.69275,
+          "sample": 5
+        }
+      ]
+    }
+  },
+  "case_count": 8,
+  "case_file": "benchmarks/cases/sqlite_sqlite.jsonl",
+  "cases": [
+    {
+      "feature": "select",
+      "id": "sqlite-simple-select",
+      "read": "sqlite",
+      "sql": "SELECT a, b FROM t WHERE a > 10 ORDER BY b DESC LIMIT 10 OFFSET 5",
+      "tags": [
+        "select",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "json",
+      "id": "sqlite-json-type",
+      "read": "sqlite",
+      "sql": "SELECT JSON_TYPE(data, '$.k') FROM events",
+      "tags": [
+        "json",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "ddl",
+      "id": "sqlite-create-table",
+      "read": "sqlite",
+      "sql": "CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE, created_at TEXT DEFAULT CURRENT_TIMESTAMP)",
+      "tags": [
+        "ddl",
+        "migration"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "ddl",
+      "id": "sqlite-insert-or-ignore",
+      "read": "sqlite",
+      "sql": "INSERT OR IGNORE INTO users (id, email) VALUES (1, 'a@example.com')",
+      "tags": [
+        "ddl",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "window",
+      "id": "sqlite-window",
+      "read": "sqlite",
+      "sql": "SELECT user_id, ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY created_at) FROM events",
+      "tags": [
+        "window",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "cte",
+      "id": "sqlite-cte",
+      "read": "sqlite",
+      "sql": "WITH a AS (SELECT 1 AS x), b AS (SELECT 2 AS y) SELECT a.x + b.y FROM a, b",
+      "tags": [
+        "cte",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "aggregate",
+      "id": "sqlite-count-distinct",
+      "read": "sqlite",
+      "sql": "SELECT COUNT(DISTINCT name) FROM users GROUP BY account_id",
+      "tags": [
+        "aggregate",
+        "orm"
+      ],
+      "write": "sqlite"
+    },
+    {
+      "feature": "ddl",
+      "id": "sqlite-alter-table",
+      "read": "sqlite",
+      "sql": "ALTER TABLE users ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP",
+      "tags": [
+        "ddl",
+        "migration"
+      ],
+      "write": "sqlite"
+    }
+  ],
+  "iterations": 1000,
+  "median_speedup": 39.55323167363125,
+  "mode": "python-binding",
+  "operations": 8000,
+  "samples": 5,
+  "sqlglot": "/Users/russellromney/Documents/Github/sqlglot",
+  "warmup": 100
+}

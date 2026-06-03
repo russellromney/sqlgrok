@@ -101,18 +101,49 @@ compare median and p95 timings across:
 same runner is not always helped or hurt by process/cache position. The headline
 speedup is based on median ns/op, not the fastest sample.
 
+## Language Binding Benchmarks
+
+The prototype Node, Ruby, and Go bindings call the same release-built C ABI:
+
+```bash
+cargo build --release --lib
+node bindings/node/bench.js --cases benchmarks/cases/postgres_sqlite.jsonl --samples 5
+ruby bindings/ruby/bench.rb --cases benchmarks/cases/postgres_sqlite.jsonl --samples 5
+cd bindings/go && go run . --cases ../../benchmarks/cases/postgres_sqlite.jsonl --samples 5
+```
+
+These bindings intentionally benchmark one `transpile(sql, read, write)` call at
+a time. They do not use `transpile_many`, because most application integrations
+will cross the boundary per request.
+
+The public C ABI is:
+
+- `sqlgrok_parse(sql, dialect)`.
+- `sqlgrok_transpile(sql, read, write)`.
+- `sqlgrok_generate(ast_json, dialect)`.
+- `sqlgrok_version()`.
+- `sqlgrok_free(ptr)`.
+
+Returned strings must be freed with `sqlgrok_free`. The older `sqlglot_*`
+symbols remain as compatibility aliases for early experiments.
+
 ## Current Snapshot
 
-Fresh local release-build `python-binding` runs compare one Python SQLGlot
-`transpile(...)` call with one PyO3-backed `sqlgrok.transpile(...)` call per SQL
-string. Each row below used the checked-in 8-case workload, `--iterations 1000`,
-`--warmup 100`, and `--samples 5`.
+Fresh local release-build runs compare one Python SQLGlot `transpile(...)` call
+with one sqlgrok binding call per SQL string. Each row used the checked-in
+8-case workload, `--iterations 1000`, `--warmup 100`, and `--samples 5`.
 
-| Workload | Python SQLGlot median | sqlgrok PyO3 median | Median speedup |
-| --- | ---: | ---: | ---: |
-| MySQL -> SQLite | 784.7 us/op | 21.0 us/op | 37.3x |
-| Postgres -> SQLite | 806.6 us/op | 21.2 us/op | 38.0x |
-| SQLite -> SQLite | 585.4 us/op | 17.9 us/op | 32.8x |
+| Workload | Python SQLGlot | PyO3 | Node/Koffi | Ruby/Fiddle | Go/cgo |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| MySQL -> SQLite | 359.9 us | 9.7 us (37.1x) | 9.0 us (40.0x) | 17.2 us (21.0x) | 13.1 us (27.4x) |
+| Postgres -> SQLite | 269.4 us | 7.9 us (34.1x) | 46.9 us (5.7x) | 16.1 us (16.7x) | 84.6 us (3.2x) |
+| SQLite -> SQLite | 384.7 us | 9.7 us (39.6x) | 35.7 us (10.8x) | 66.3 us (5.8x) | 33.9 us (11.3x) |
+
+The PyO3 numbers are the most mature binding data. The Node/Ruby/Go bindings
+are deliberately thin prototypes over the C ABI, useful for overhead discovery
+but not final package designs. The Postgres and SQLite identity rows show that
+some FFI paths still have noisy or workload-sensitive overhead worth profiling
+before publishing language packages.
 
 If sqlgrok is not materially faster, profile the Rust path instead of assuming
 the port is doomed. Useful targets include tokenizer allocation, parser

@@ -79,7 +79,7 @@ jobs:
         run: |
           cargo install cbindgen
           mkdir -p target/ffi/include
-          cbindgen --config cbindgen.toml --crate sqlgrok --output target/ffi/include/sqlglot.h
+          cbindgen --config cbindgen.toml --crate sqlgrok --output target/ffi/include/sqlgrok.h
 
       # ── Package tarball ─────────────────────────────────────────────
       - name: Package tarball
@@ -95,7 +95,7 @@ jobs:
           cp "$BASE/libsqlgrok.a"     "$STAGING/lib/" || true
           cp "$BASE/libsqlgrok.so"    "$STAGING/lib/" || true
           cp "$BASE/libsqlgrok.dylib" "$STAGING/lib/" || true
-          cp target/ffi/include/sqlglot.h  "$STAGING/include/"
+          cp target/ffi/include/sqlgrok.h  "$STAGING/include/"
           cp README.md LICENSE             "$STAGING/"
 
           TARBALL="${STAGING}.tar.gz"

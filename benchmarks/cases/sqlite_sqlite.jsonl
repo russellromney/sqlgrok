@@ -1,0 +1,8 @@
+{"id":"sqlite-simple-select","sql":"SELECT a, b FROM t WHERE a > 10 ORDER BY b DESC LIMIT 10 OFFSET 5","read":"sqlite","write":"sqlite","tags":["select","orm"]}
+{"id":"sqlite-json-type","sql":"SELECT JSON_TYPE(data, '$.k') FROM events","read":"sqlite","write":"sqlite","tags":["json","orm"]}
+{"id":"sqlite-create-table","sql":"CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE, created_at TEXT DEFAULT CURRENT_TIMESTAMP)","read":"sqlite","write":"sqlite","tags":["ddl","migration"]}
+{"id":"sqlite-insert-or-ignore","sql":"INSERT OR IGNORE INTO users (id, email) VALUES (1, 'a@example.com')","read":"sqlite","write":"sqlite","tags":["ddl","orm"]}
+{"id":"sqlite-window","sql":"SELECT user_id, ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY created_at) FROM events","read":"sqlite","write":"sqlite","tags":["window","orm"]}
+{"id":"sqlite-cte","sql":"WITH a AS (SELECT 1 AS x), b AS (SELECT 2 AS y) SELECT a.x + b.y FROM a, b","read":"sqlite","write":"sqlite","tags":["cte","orm"]}
+{"id":"sqlite-count-distinct","sql":"SELECT COUNT(DISTINCT name) FROM users GROUP BY account_id","read":"sqlite","write":"sqlite","tags":["aggregate","orm"]}
+{"id":"sqlite-alter-table","sql":"ALTER TABLE users ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP","read":"sqlite","write":"sqlite","tags":["ddl","migration"]}

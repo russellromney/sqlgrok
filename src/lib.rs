@@ -194,6 +194,54 @@ pub fn transpile_statements_pretty(
     Ok(results)
 }
 
+/// A single request for [`transpile_many`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TranspileRequest {
+    pub sql: String,
+    pub read: Dialect,
+    pub write: Dialect,
+    pub pretty: bool,
+}
+
+/// The result for one [`transpile_many`] request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TranspileManyResult {
+    pub ok: bool,
+    pub sql: Option<Vec<String>>,
+    pub error: Option<String>,
+}
+
+/// Transpile many SQL strings in one API call.
+///
+/// This is primarily useful for language bindings, where crossing the host
+/// language boundary once per query can dominate benchmark and application
+/// runtime.
+#[must_use]
+pub fn transpile_many(requests: &[TranspileRequest]) -> Vec<TranspileManyResult> {
+    requests
+        .iter()
+        .map(|request| {
+            let result = if request.pretty {
+                transpile_statements_pretty(&request.sql, request.read, request.write)
+            } else {
+                transpile_statements(&request.sql, request.read, request.write)
+            };
+            match result {
+                Ok(sql) => TranspileManyResult {
+                    ok: true,
+                    sql: Some(sql),
+                    error: None,
+                },
+                Err(err) => TranspileManyResult {
+                    ok: false,
+                    sql: None,
+                    error: Some(err.to_string()),
+                },
+            }
+        })
+        .collect()
+}
+
 /// Transpile a SQL string preserving comments through the pipeline.
 ///
 /// # Errors

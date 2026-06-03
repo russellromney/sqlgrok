@@ -247,19 +247,81 @@ fn run_bucket_suite_report(args: BucketSuiteReportArgs) -> Result<(), String> {
 fn run_bench_sqlglot(args: BenchSqlglotArgs) -> Result<(), String> {
     args.validate()?;
 
-    let cases = bench_cases();
+    let cases = if let Some(path) = &args.cases {
+        read_bench_cases(path)?
+    } else {
+        bench_cases()
+    };
+    if cases.is_empty() {
+        return Err("benchmark workload must contain at least one case".to_string());
+    }
     validate_bench_cases(&args.sqlglot, &cases)?;
 
-    let python = run_python_benchmark(&args, &cases)?;
-    let rust = run_rust_benchmark(&args, &cases)?;
-    if python.checksum != rust.checksum {
-        return Err(format!(
-            "benchmark checksum mismatch: python={}, rust={}",
-            python.checksum, rust.checksum
+    let operations = args.iterations * cases.len();
+    let mut baseline_samples = Vec::with_capacity(args.samples);
+    let mut candidate_samples = Vec::with_capacity(args.samples);
+    let mut expected_checksum = None;
+
+    for sample_index in 0..args.samples {
+        eprintln!(
+            "running benchmark sample {}/{} ({})",
+            sample_index + 1,
+            args.samples,
+            if sample_index % 2 == 0 {
+                "python first"
+            } else {
+                "candidate first"
+            }
+        );
+
+        let (baseline, candidate) = if sample_index % 2 == 0 {
+            let baseline = run_python_benchmark(&args, &cases)?;
+            let candidate = run_candidate_benchmark(&args, &cases)?;
+            (baseline, candidate)
+        } else {
+            let candidate = run_candidate_benchmark(&args, &cases)?;
+            let baseline = run_python_benchmark(&args, &cases)?;
+            (baseline, candidate)
+        };
+
+        if baseline.checksum != candidate.checksum {
+            return Err(format!(
+                "benchmark checksum mismatch on sample {}: python={}, {}={}",
+                sample_index + 1,
+                baseline.checksum,
+                args.mode.candidate_label(),
+                candidate.checksum
+            ));
+        }
+        if let Some(checksum) = expected_checksum {
+            if baseline.checksum != checksum {
+                return Err(format!(
+                    "benchmark checksum changed on sample {}: expected {}, got {}",
+                    sample_index + 1,
+                    checksum,
+                    baseline.checksum
+                ));
+            }
+        } else {
+            expected_checksum = Some(baseline.checksum);
+        }
+
+        baseline_samples.push(BenchSample::from_result(
+            sample_index + 1,
+            operations,
+            baseline,
+        ));
+        candidate_samples.push(BenchSample::from_result(
+            sample_index + 1,
+            operations,
+            candidate,
         ));
     }
 
-    let report = render_benchmark_report(&args, &cases, &python, &rust);
+    let baseline = BenchStats::from_samples(baseline_samples)?;
+    let candidate = BenchStats::from_samples(candidate_samples)?;
+    let report = render_benchmark_report(&args, &cases, &baseline, &candidate);
+    let json_report = render_benchmark_json(&args, &cases, &baseline, &candidate)?;
     if args.dry_run {
         print!("{report}");
         return Ok(());
@@ -272,6 +334,15 @@ fn run_bench_sqlglot(args: BenchSqlglotArgs) -> Result<(), String> {
     fs::write(&args.output, report)
         .map_err(|err| format!("failed to write {}: {err}", args.output.display()))?;
     eprintln!("wrote {}", args.output.display());
+    if let Some(json_output) = &args.json_output {
+        if let Some(parent) = json_output.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|err| format!("failed to create {}: {err}", parent.display()))?;
+        }
+        fs::write(json_output, json_report)
+            .map_err(|err| format!("failed to write {}: {err}", json_output.display()))?;
+        eprintln!("wrote {}", json_output.display());
+    }
 
     Ok(())
 }
@@ -655,9 +726,15 @@ impl SummarizeReportArgs {
 #[derive(Debug)]
 struct BenchSqlglotArgs {
     sqlglot: PathBuf,
+    mode: BenchMode,
+    cases: Option<PathBuf>,
     iterations: usize,
     warmup: usize,
+    samples: usize,
     output: PathBuf,
+    json_output: Option<PathBuf>,
+    python: PathBuf,
+    python_args: Vec<String>,
     dry_run: bool,
 }
 
@@ -856,14 +933,21 @@ impl BenchSqlglotArgs {
     fn parse(args: impl Iterator<Item = String>) -> Result<Self, String> {
         let mut args = args.peekable();
         let mut sqlglot = None;
+        let mut mode = BenchMode::Core;
+        let mut cases = None;
         let mut iterations = 2_000;
         let mut warmup = 100;
+        let mut samples = 5;
         let mut output = None;
+        let mut json_output = None;
+        let mut python = None;
         let mut dry_run = false;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--sqlglot" => sqlglot = Some(next_value(&mut args, "--sqlglot")?.into()),
+                "--mode" => mode = BenchMode::parse(&next_value(&mut args, "--mode")?)?,
+                "--cases" => cases = Some(next_value(&mut args, "--cases")?.into()),
                 "--iterations" => {
                     let raw = next_value(&mut args, "--iterations")?;
                     iterations = raw.parse().map_err(|_| {
@@ -876,18 +960,47 @@ impl BenchSqlglotArgs {
                         format!("--warmup must be a non-negative integer, got {raw:?}")
                     })?;
                 }
+                "--samples" => {
+                    let raw = next_value(&mut args, "--samples")?;
+                    samples = raw.parse().map_err(|_| {
+                        format!("--samples must be a positive integer, got {raw:?}")
+                    })?;
+                }
                 "--output" => output = Some(next_value(&mut args, "--output")?.into()),
+                "--json-output" => {
+                    json_output = Some(next_value(&mut args, "--json-output")?.into())
+                }
+                "--python" => python = Some(next_value(&mut args, "--python")?.into()),
                 "--dry-run" => dry_run = true,
                 "-h" | "--help" => return Err(Self::usage()),
                 _ => return Err(format!("unknown argument {arg:?}\n\n{}", Self::usage())),
             }
         }
 
+        let output = output.unwrap_or_else(|| {
+            PathBuf::from("benchmarks/reports")
+                .join(format!("sqlglot_comparison_{}.md", mode.as_str()))
+        });
+        let json_output = Some(json_output.unwrap_or_else(|| output.with_extension("json")));
+        let (python, python_args) = if let Some(python) = python {
+            (python, Vec::new())
+        } else if let Some(python) = env::var_os("PYTHON").map(PathBuf::from) {
+            (python, Vec::new())
+        } else {
+            default_uv_python_command()
+        };
+
         Ok(Self {
             sqlglot: sqlglot.unwrap_or_else(default_sqlglot_path),
+            mode,
+            cases,
             iterations,
             warmup,
-            output: output.unwrap_or_else(|| PathBuf::from("benchmarks/sqlglot_comparison.md")),
+            samples,
+            output,
+            json_output,
+            python,
+            python_args,
             dry_run,
         })
     }
@@ -899,11 +1012,19 @@ impl BenchSqlglotArgs {
         if self.iterations == 0 {
             return Err("--iterations must be greater than zero".to_string());
         }
+        if self.samples == 0 {
+            return Err("--samples must be greater than zero".to_string());
+        }
+        if let Some(cases) = &self.cases
+            && !cases.is_file()
+        {
+            return Err(format!("{} does not exist", cases.display()));
+        }
         Ok(())
     }
 
     fn usage() -> String {
-        "usage: cargo run --release --bin xtask -- bench-sqlglot --sqlglot /path/to/sqlglot [--iterations 2000] [--warmup 100] [--output benchmarks/sqlglot_comparison.md] [--dry-run]".to_string()
+        "usage: cargo run --release --bin xtask -- bench-sqlglot --sqlglot /path/to/sqlglot [--mode core|python-binding|python-binding-batch] [--cases benchmarks/cases/postgres_sqlite.jsonl] [--iterations 2000] [--warmup 100] [--samples 5] [--output benchmarks/reports/sqlglot_comparison_core.md] [--json-output benchmarks/reports/sqlglot_comparison_core.json] [--python python3] [--dry-run]".to_string()
     }
 }
 
@@ -927,6 +1048,28 @@ fn default_sqlglot_path() -> PathBuf {
             || PathBuf::from("../sqlglot"),
             |parent| parent.join("sqlglot"),
         )
+}
+
+fn default_uv_python_command() -> (PathBuf, Vec<String>) {
+    (
+        PathBuf::from("uv"),
+        vec![
+            "run".to_string(),
+            "--project".to_string(),
+            "python".to_string(),
+            "--with".to_string(),
+            "pytest".to_string(),
+            "--with".to_string(),
+            "pytz".to_string(),
+            "python".to_string(),
+        ],
+    )
+}
+
+fn python_command(python: &Path, python_args: &[String]) -> Command {
+    let mut command = Command::new(python);
+    command.args(python_args);
+    command
 }
 
 fn default_sqlglot_test_modules(sqlglot: &Path) -> Vec<String> {
@@ -1054,24 +1197,126 @@ enum OutcomeStatus {
     OracleError,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct BenchCase {
-    id: &'static str,
-    sql: &'static str,
-    read: &'static str,
-    write: &'static str,
-    feature: &'static str,
+    id: String,
+    sql: String,
+    read: String,
+    write: String,
+    #[serde(default)]
+    tags: Vec<String>,
+    #[serde(default)]
+    feature: String,
 }
 
-#[derive(Debug, Deserialize)]
-struct PythonBenchResult {
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct BenchResult {
     elapsed_ns: u128,
     checksum: usize,
 }
 
-struct RustBenchResult {
+#[derive(Debug, Clone, Serialize)]
+struct BenchSample {
+    sample: usize,
     elapsed_ns: u128,
+    ns_per_op: f64,
     checksum: usize,
+}
+
+impl BenchSample {
+    fn from_result(sample: usize, operations: usize, result: BenchResult) -> Self {
+        Self {
+            sample,
+            elapsed_ns: result.elapsed_ns,
+            ns_per_op: result.elapsed_ns as f64 / operations as f64,
+            checksum: result.checksum,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct BenchStats {
+    samples: Vec<BenchSample>,
+    checksum: usize,
+    min_ns_per_op: f64,
+    max_ns_per_op: f64,
+    mean_ns_per_op: f64,
+    median_ns_per_op: f64,
+    p95_ns_per_op: f64,
+}
+
+impl BenchStats {
+    fn from_samples(samples: Vec<BenchSample>) -> Result<Self, String> {
+        let checksum = samples
+            .first()
+            .map(|sample| sample.checksum)
+            .ok_or_else(|| "benchmark statistics require at least one sample".to_string())?;
+        if let Some(sample) = samples.iter().find(|sample| sample.checksum != checksum) {
+            return Err(format!(
+                "benchmark checksum changed inside stats: expected {}, got {} on sample {}",
+                checksum, sample.checksum, sample.sample
+            ));
+        }
+
+        let mut values = samples
+            .iter()
+            .map(|sample| sample.ns_per_op)
+            .collect::<Vec<_>>();
+        values.sort_by(|left, right| left.total_cmp(right));
+
+        let min_ns_per_op = values[0];
+        let max_ns_per_op = values[values.len() - 1];
+        let mean_ns_per_op = values.iter().sum::<f64>() / values.len() as f64;
+        let median_ns_per_op = median_sorted(&values);
+        let p95_ns_per_op = percentile_sorted(&values, 0.95);
+
+        Ok(Self {
+            samples,
+            checksum,
+            min_ns_per_op,
+            max_ns_per_op,
+            mean_ns_per_op,
+            median_ns_per_op,
+            p95_ns_per_op,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum BenchMode {
+    Core,
+    PythonBinding,
+    PythonBindingBatch,
+}
+
+impl BenchMode {
+    fn parse(value: &str) -> Result<Self, String> {
+        match value {
+            "core" => Ok(Self::Core),
+            "python-binding" => Ok(Self::PythonBinding),
+            "python-binding-batch" => Ok(Self::PythonBindingBatch),
+            _ => Err(format!(
+                "unknown benchmark mode {value:?}; expected core, python-binding, or python-binding-batch"
+            )),
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Core => "core",
+            Self::PythonBinding => "python-binding",
+            Self::PythonBindingBatch => "python-binding-batch",
+        }
+    }
+
+    fn candidate_label(self) -> &'static str {
+        match self {
+            Self::Core => "sqlgrok direct Rust",
+            Self::PythonBinding => "sqlgrok PyO3 single-call",
+            Self::PythonBindingBatch => "sqlgrok PyO3 batch",
+        }
+    }
 }
 
 fn import_sqlglot_fixtures(args: &ImportArgs) -> Result<Vec<FixtureCase>, String> {
@@ -1196,83 +1441,128 @@ fn filter_matching_outcomes(outcomes: Vec<CaseOutcome>) -> Vec<FixtureCase> {
 }
 
 fn bench_cases() -> Vec<BenchCase> {
-    vec![
-        BenchCase {
-            id: "mysql-group-concat",
-            sql: "SELECT GROUP_CONCAT(v ORDER BY v SEPARATOR '|') FROM gc",
-            read: "mysql",
-            write: "sqlite",
-            feature: "aggregate",
-        },
-        BenchCase {
-            id: "mysql-json-extract",
-            sql: "SELECT JSON_EXTRACT(data, '$.k') FROM events WHERE id = 1",
-            read: "mysql",
-            write: "sqlite",
-            feature: "json",
-        },
-        BenchCase {
-            id: "mysql-limit-offset",
-            sql: "SELECT a, b FROM t WHERE a > 10 ORDER BY b DESC LIMIT 5, 10",
-            read: "mysql",
-            write: "sqlite",
-            feature: "limit",
-        },
-        BenchCase {
-            id: "mysql-date-format",
-            sql: "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') FROM users",
-            read: "mysql",
-            write: "sqlite",
-            feature: "datetime",
-        },
-        BenchCase {
-            id: "mysql-if-cast-division",
-            sql: "SELECT IF(a > 0, CAST(a AS SIGNED INTEGER), 7 DIV 2), x / y FROM metrics",
-            read: "mysql",
-            write: "sqlite",
-            feature: "expression",
-        },
-        BenchCase {
-            id: "postgres-distinct-on",
-            sql: "SELECT DISTINCT ON (account_id) account_id, created_at FROM events ORDER BY account_id, created_at DESC",
-            read: "postgres",
-            write: "sqlite",
-            feature: "rewrite",
-        },
-        BenchCase {
-            id: "postgres-json-path",
-            sql: "SELECT payload #>> '{customer,0,name}' FROM events WHERE payload ->> 'kind' = 'signup'",
-            read: "postgres",
-            write: "sqlite",
-            feature: "json",
-        },
-        BenchCase {
-            id: "postgres-extract-cast",
-            sql: "SELECT EXTRACT(YEAR FROM CAST(created_at AS DATE)), DATE_TRUNC('month', created_at) FROM events",
-            read: "postgres",
-            write: "sqlite",
-            feature: "datetime",
-        },
-        BenchCase {
-            id: "postgres-rollup",
-            sql: "SELECT region, product, SUM(revenue) FROM sales GROUP BY ROLLUP(region, product)",
-            read: "postgres",
-            write: "sqlite",
-            feature: "grouping",
-        },
-        BenchCase {
-            id: "postgres-window-nulls",
-            sql: "SELECT user_id, ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY created_at) FROM events",
-            read: "postgres",
-            write: "sqlite",
-            feature: "window",
-        },
+    [
+        (
+            "mysql-group-concat",
+            "SELECT GROUP_CONCAT(v ORDER BY v SEPARATOR '|') FROM gc",
+            "mysql",
+            "aggregate",
+        ),
+        (
+            "mysql-json-extract",
+            "SELECT JSON_EXTRACT(data, '$.k') FROM events WHERE id = 1",
+            "mysql",
+            "json",
+        ),
+        (
+            "mysql-limit-offset",
+            "SELECT a, b FROM t WHERE a > 10 ORDER BY b DESC LIMIT 5, 10",
+            "mysql",
+            "limit",
+        ),
+        (
+            "mysql-date-format",
+            "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') FROM users",
+            "mysql",
+            "datetime",
+        ),
+        (
+            "mysql-if-cast-division",
+            "SELECT IF(a > 0, CAST(a AS SIGNED INTEGER), 7 DIV 2), x / y FROM metrics",
+            "mysql",
+            "expression",
+        ),
+        (
+            "postgres-distinct-on",
+            "SELECT DISTINCT ON (account_id) account_id, created_at FROM events ORDER BY account_id, created_at DESC",
+            "postgres",
+            "rewrite",
+        ),
+        (
+            "postgres-json-path",
+            "SELECT payload #>> '{customer,0,name}' FROM events WHERE payload ->> 'kind' = 'signup'",
+            "postgres",
+            "json",
+        ),
+        (
+            "postgres-extract-cast",
+            "SELECT EXTRACT(YEAR FROM CAST(created_at AS DATE)), DATE_TRUNC('month', created_at) FROM events",
+            "postgres",
+            "datetime",
+        ),
+        (
+            "postgres-rollup",
+            "SELECT region, product, SUM(revenue) FROM sales GROUP BY ROLLUP(region, product)",
+            "postgres",
+            "grouping",
+        ),
+        (
+            "postgres-window-nulls",
+            "SELECT user_id, ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY created_at) FROM events",
+            "postgres",
+            "window",
+        ),
     ]
+    .into_iter()
+    .map(|(id, sql, read, feature)| BenchCase {
+        id: id.to_string(),
+        sql: sql.to_string(),
+        read: read.to_string(),
+        write: "sqlite".to_string(),
+        tags: vec![feature.to_string()],
+        feature: feature.to_string(),
+    })
+    .collect()
+}
+
+fn read_bench_cases(path: &Path) -> Result<Vec<BenchCase>, String> {
+    let text = fs::read_to_string(path)
+        .map_err(|err| format!("failed to read {}: {err}", path.display()))?;
+    let mut cases = Vec::new();
+    let mut ids = HashSet::new();
+    for (index, line) in text.lines().enumerate() {
+        if line.trim().is_empty() || line.trim_start().starts_with('#') {
+            continue;
+        }
+        let mut case: BenchCase = serde_json::from_str(line)
+            .map_err(|err| format!("{}:{}: invalid JSON: {err}", path.display(), index + 1))?;
+        if case.id.trim().is_empty() {
+            return Err(format!(
+                "{}:{}: id must not be empty",
+                path.display(),
+                index + 1
+            ));
+        }
+        if !ids.insert(case.id.clone()) {
+            return Err(format!("duplicate benchmark case id {:?}", case.id));
+        }
+        if case.sql.trim().is_empty() {
+            return Err(format!("{}: sql must not be empty", case.id));
+        }
+        if case.read.trim().is_empty() {
+            return Err(format!("{}: read must not be empty", case.id));
+        }
+        if case.write.trim().is_empty() {
+            return Err(format!("{}: write must not be empty", case.id));
+        }
+        if case.feature.is_empty() {
+            case.feature = case
+                .tags
+                .first()
+                .cloned()
+                .unwrap_or_else(|| "uncategorized".to_string());
+        }
+        cases.push(case);
+    }
+    if cases.is_empty() {
+        return Err(format!("{} contains no benchmark cases", path.display()));
+    }
+    Ok(cases)
 }
 
 fn validate_bench_cases(sqlglot: &PathBuf, cases: &[BenchCase]) -> Result<(), String> {
     for case in cases {
-        let oracle = python_oracle_transpile_sql(sqlglot, case.sql, case.read, case.write)?;
+        let oracle = python_oracle_transpile_sql(sqlglot, &case.sql, &case.read, &case.write)?;
         if !oracle.ok {
             return Err(format!(
                 "{}: Python SQLGlot oracle error: {}",
@@ -1286,11 +1576,11 @@ fn validate_bench_cases(sqlglot: &PathBuf, cases: &[BenchCase]) -> Result<(), St
                 case.id
             ));
         };
-        let read = Dialect::from_str(case.read)
+        let read = Dialect::from_str(&case.read)
             .ok_or_else(|| format!("{}: unknown read dialect {:?}", case.id, case.read))?;
-        let write = Dialect::from_str(case.write)
+        let write = Dialect::from_str(&case.write)
             .ok_or_else(|| format!("{}: unknown write dialect {:?}", case.id, case.write))?;
-        let actual = transpile(case.sql, read, write)
+        let actual = transpile(&case.sql, read, write)
             .map_err(|err| format!("{}: sqlgrok failed: {err}", case.id))?;
         if actual != expected {
             return Err(format!(
@@ -1302,16 +1592,13 @@ fn validate_bench_cases(sqlglot: &PathBuf, cases: &[BenchCase]) -> Result<(), St
     Ok(())
 }
 
-fn run_rust_benchmark(
-    args: &BenchSqlglotArgs,
-    cases: &[BenchCase],
-) -> Result<RustBenchResult, String> {
+fn run_rust_benchmark(args: &BenchSqlglotArgs, cases: &[BenchCase]) -> Result<BenchResult, String> {
     let dialects = cases
         .iter()
         .map(|case| {
-            let read = Dialect::from_str(case.read)
+            let read = Dialect::from_str(&case.read)
                 .ok_or_else(|| format!("{}: unknown read dialect {:?}", case.id, case.read))?;
-            let write = Dialect::from_str(case.write)
+            let write = Dialect::from_str(&case.write)
                 .ok_or_else(|| format!("{}: unknown write dialect {:?}", case.id, case.write))?;
             Ok((read, write))
         })
@@ -1320,7 +1607,7 @@ fn run_rust_benchmark(
     let mut checksum = 0usize;
     for _ in 0..args.warmup {
         for (case, (read, write)) in cases.iter().zip(&dialects) {
-            let output = transpile(std::hint::black_box(case.sql), *read, *write)
+            let output = transpile(std::hint::black_box(&case.sql), *read, *write)
                 .map_err(|err| format!("{}: sqlgrok warmup failed: {err}", case.id))?;
             checksum = checksum.wrapping_add(output.len());
         }
@@ -1330,37 +1617,50 @@ fn run_rust_benchmark(
     let started = Instant::now();
     for _ in 0..args.iterations {
         for (case, (read, write)) in cases.iter().zip(&dialects) {
-            let output = transpile(std::hint::black_box(case.sql), *read, *write)
+            let output = transpile(std::hint::black_box(&case.sql), *read, *write)
                 .map_err(|err| format!("{}: sqlgrok benchmark failed: {err}", case.id))?;
             checksum = checksum.wrapping_add(output.len());
         }
     }
 
-    Ok(RustBenchResult {
+    Ok(BenchResult {
         elapsed_ns: started.elapsed().as_nanos(),
         checksum,
     })
 }
 
+fn run_candidate_benchmark(
+    args: &BenchSqlglotArgs,
+    cases: &[BenchCase],
+) -> Result<BenchResult, String> {
+    match args.mode {
+        BenchMode::Core => run_rust_benchmark(args, cases),
+        BenchMode::PythonBinding => run_python_binding_benchmark(args, cases),
+        BenchMode::PythonBindingBatch => run_python_binding_batch_benchmark(args, cases),
+    }
+}
+
 fn run_python_benchmark(
     args: &BenchSqlglotArgs,
     cases: &[BenchCase],
-) -> Result<PythonBenchResult, String> {
+) -> Result<BenchResult, String> {
     let payload = serde_json::json!({
         "cases": cases,
         "iterations": args.iterations,
         "warmup": args.warmup,
     });
 
-    let mut child = Command::new("python3")
+    let mut command = python_command(&args.python, &args.python_args);
+    command
         .arg("-c")
         .arg(SQLGLOT_BENCHMARK_SCRIPT)
         .arg(&args.sqlglot)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = command
         .spawn()
-        .map_err(|err| format!("failed to run python3 benchmark: {err}"))?;
+        .map_err(|err| format!("failed to run Python SQLGlot benchmark: {err}"))?;
 
     {
         let stdin = child
@@ -1377,7 +1677,7 @@ fn run_python_benchmark(
         .map_err(|err| format!("failed to read Python benchmark output: {err}"))?;
     if !output.status.success() {
         return Err(format!(
-            "python3 benchmark exited with {}\nstderr:\n{}",
+            "Python SQLGlot benchmark exited with {}\nstderr:\n{}",
             output.status,
             String::from_utf8_lossy(&output.stderr)
         ));
@@ -1392,64 +1692,261 @@ fn run_python_benchmark(
     })
 }
 
+fn run_python_binding_benchmark(
+    args: &BenchSqlglotArgs,
+    cases: &[BenchCase],
+) -> Result<BenchResult, String> {
+    let payload = serde_json::json!({
+        "cases": cases,
+        "iterations": args.iterations,
+        "warmup": args.warmup,
+    });
+
+    let mut command = python_command(&args.python, &args.python_args);
+    command
+        .arg("-c")
+        .arg(SQLGROK_PYTHON_BINDING_BENCHMARK_SCRIPT)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = command
+        .spawn()
+        .map_err(|err| format!("failed to run sqlgrok Python binding benchmark: {err}"))?;
+
+    {
+        let stdin = child
+            .stdin
+            .as_mut()
+            .ok_or_else(|| "failed to open sqlgrok Python binding benchmark stdin".to_string())?;
+        stdin
+            .write_all(payload.to_string().as_bytes())
+            .map_err(|err| format!("failed to write sqlgrok Python binding stdin: {err}"))?;
+    }
+
+    let output = child
+        .wait_with_output()
+        .map_err(|err| format!("failed to read sqlgrok Python binding benchmark output: {err}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "sqlgrok Python binding benchmark exited with {}\nstderr:\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+
+    serde_json::from_slice(&output.stdout).map_err(|err| {
+        format!(
+            "invalid sqlgrok Python binding benchmark JSON: {err}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        )
+    })
+}
+
+fn run_python_binding_batch_benchmark(
+    args: &BenchSqlglotArgs,
+    cases: &[BenchCase],
+) -> Result<BenchResult, String> {
+    let payload = serde_json::json!({
+        "cases": cases,
+        "iterations": args.iterations,
+        "warmup": args.warmup,
+    });
+
+    let mut command = python_command(&args.python, &args.python_args);
+    command
+        .arg("-c")
+        .arg(SQLGROK_PYTHON_BINDING_BATCH_BENCHMARK_SCRIPT)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = command
+        .spawn()
+        .map_err(|err| format!("failed to run sqlgrok Python binding batch benchmark: {err}"))?;
+
+    {
+        let stdin = child.stdin.as_mut().ok_or_else(|| {
+            "failed to open sqlgrok Python binding batch benchmark stdin".to_string()
+        })?;
+        stdin
+            .write_all(payload.to_string().as_bytes())
+            .map_err(|err| format!("failed to write sqlgrok Python binding batch stdin: {err}"))?;
+    }
+
+    let output = child.wait_with_output().map_err(|err| {
+        format!("failed to read sqlgrok Python binding batch benchmark output: {err}")
+    })?;
+    if !output.status.success() {
+        return Err(format!(
+            "sqlgrok Python binding batch benchmark exited with {}\nstderr:\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+
+    serde_json::from_slice(&output.stdout).map_err(|err| {
+        format!(
+            "invalid sqlgrok Python binding batch benchmark JSON: {err}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        )
+    })
+}
+
+fn median_sorted(values: &[f64]) -> f64 {
+    let middle = values.len() / 2;
+    if values.len().is_multiple_of(2) {
+        (values[middle - 1] + values[middle]) / 2.0
+    } else {
+        values[middle]
+    }
+}
+
+fn percentile_sorted(values: &[f64], percentile: f64) -> f64 {
+    let index = ((values.len() as f64 * percentile).ceil() as usize)
+        .saturating_sub(1)
+        .min(values.len() - 1);
+    values[index]
+}
+
 fn render_benchmark_report(
     args: &BenchSqlglotArgs,
     cases: &[BenchCase],
-    python: &PythonBenchResult,
-    rust: &RustBenchResult,
+    baseline: &BenchStats,
+    candidate: &BenchStats,
 ) -> String {
     let operations = args.iterations * cases.len();
-    let python_per_op = python.elapsed_ns as f64 / operations as f64;
-    let rust_per_op = rust.elapsed_ns as f64 / operations as f64;
-    let speedup = python_per_op / rust_per_op;
+    let speedup = baseline.median_ns_per_op / candidate.median_ns_per_op;
 
     let mut out = String::new();
     out.push_str("# SQLGlot Performance Comparison\n\n");
-    out.push_str("Compares sqlgrok's in-process Rust transpiler against Python SQLGlot on parity-clean MySQL/Postgres to SQLite cases.\n\n");
+    out.push_str("Compares Python SQLGlot against a parity-clean sqlgrok execution path.\n\n");
     out.push_str("Run with a release build for meaningful numbers:\n\n");
     out.push_str("```bash\n");
-    out.push_str("cargo run --release --bin xtask -- bench-sqlglot --sqlglot /path/to/sqlglot\n");
+    out.push_str(&format!(
+        "cargo run --release --bin xtask -- bench-sqlglot --mode {} --sqlglot /path/to/sqlglot\n",
+        args.mode.as_str()
+    ));
     out.push_str("```\n\n");
     out.push_str("## Summary\n\n");
     out.push_str(&format!(
         "- SQLGlot checkout: `{}`\n",
         args.sqlglot.display()
     ));
+    if let Some(cases) = &args.cases {
+        out.push_str(&format!("- Case file: `{}`\n", cases.display()));
+    }
+    out.push_str(&format!("- Mode: `{}`\n", args.mode.as_str()));
+    out.push_str("- Baseline: `Python SQLGlot`\n");
+    out.push_str(&format!("- Candidate: `{}`\n", args.mode.candidate_label()));
     out.push_str(&format!("- Cases: `{}`\n", cases.len()));
     out.push_str(&format!("- Iterations per case: `{}`\n", args.iterations));
     out.push_str(&format!(
         "- Warmup iterations per case: `{}`\n",
         args.warmup
     ));
+    out.push_str(&format!("- Samples: `{}`\n", args.samples));
     out.push_str(&format!("- Total measured operations: `{operations}`\n"));
     out.push_str(&format!(
-        "- Python SQLGlot total: `{:.3} ms` (`{:.3} us/op`)\n",
-        python.elapsed_ns as f64 / 1_000_000.0,
-        python_per_op / 1_000.0
+        "- Python SQLGlot median: `{:.3} us/op` (p95 `{:.3}`)\n",
+        baseline.median_ns_per_op / 1_000.0,
+        baseline.p95_ns_per_op / 1_000.0
     ));
     out.push_str(&format!(
-        "- sqlgrok total: `{:.3} ms` (`{:.3} us/op`)\n",
-        rust.elapsed_ns as f64 / 1_000_000.0,
-        rust_per_op / 1_000.0
+        "- {} median: `{:.3} us/op` (p95 `{:.3}`)\n",
+        args.mode.candidate_label(),
+        candidate.median_ns_per_op / 1_000.0,
+        candidate.p95_ns_per_op / 1_000.0
     ));
-    out.push_str(&format!("- Speedup: `{speedup:.2}x`\n"));
-    out.push_str(&format!("- Output checksum: `{}`\n\n", rust.checksum));
+    out.push_str(&format!("- Median speedup: `{speedup:.2}x`\n"));
+    out.push_str(&format!("- Output checksum: `{}`\n\n", candidate.checksum));
+
+    out.push_str("## Distribution\n\n");
+    out.push_str("| runner | min us/op | mean us/op | median us/op | p95 us/op | max us/op |\n");
+    out.push_str("| --- | ---: | ---: | ---: | ---: | ---: |\n");
+    out.push_str(&format!(
+        "| Python SQLGlot | {:.3} | {:.3} | {:.3} | {:.3} | {:.3} |\n",
+        baseline.min_ns_per_op / 1_000.0,
+        baseline.mean_ns_per_op / 1_000.0,
+        baseline.median_ns_per_op / 1_000.0,
+        baseline.p95_ns_per_op / 1_000.0,
+        baseline.max_ns_per_op / 1_000.0
+    ));
+    out.push_str(&format!(
+        "| {} | {:.3} | {:.3} | {:.3} | {:.3} | {:.3} |\n\n",
+        args.mode.candidate_label(),
+        candidate.min_ns_per_op / 1_000.0,
+        candidate.mean_ns_per_op / 1_000.0,
+        candidate.median_ns_per_op / 1_000.0,
+        candidate.p95_ns_per_op / 1_000.0,
+        candidate.max_ns_per_op / 1_000.0
+    ));
+
+    out.push_str("## Samples\n\n");
+    out.push_str("| sample | Python SQLGlot us/op | candidate us/op | speedup |\n");
+    out.push_str("| ---: | ---: | ---: | ---: |\n");
+    for (baseline, candidate) in baseline.samples.iter().zip(&candidate.samples) {
+        out.push_str(&format!(
+            "| {} | {:.3} | {:.3} | {:.2}x |\n",
+            baseline.sample,
+            baseline.ns_per_op / 1_000.0,
+            candidate.ns_per_op / 1_000.0,
+            baseline.ns_per_op / candidate.ns_per_op
+        ));
+    }
+    out.push('\n');
 
     out.push_str("## Workload\n\n");
-    out.push_str("| id | read | write | feature | SQL |\n");
+    out.push_str("| id | read | write | tags | SQL |\n");
     out.push_str("| --- | --- | --- | --- | --- |\n");
     for case in cases {
+        let tags = if case.tags.is_empty() {
+            case.feature.clone()
+        } else {
+            case.tags.join(",")
+        };
         out.push_str(&format!(
             "| `{}` | `{}` | `{}` | `{}` | `{}` |\n",
             case.id,
             case.read,
             case.write,
-            case.feature,
+            tags,
             case.sql.replace('|', "\\|")
         ));
     }
 
     out
+}
+
+fn render_benchmark_json(
+    args: &BenchSqlglotArgs,
+    cases: &[BenchCase],
+    baseline: &BenchStats,
+    candidate: &BenchStats,
+) -> Result<String, String> {
+    let operations = args.iterations * cases.len();
+    let report = serde_json::json!({
+        "mode": args.mode,
+        "sqlglot": args.sqlglot,
+        "case_file": args.cases,
+        "cases": cases,
+        "case_count": cases.len(),
+        "iterations": args.iterations,
+        "warmup": args.warmup,
+        "samples": args.samples,
+        "operations": operations,
+        "baseline": {
+            "name": "Python SQLGlot",
+            "stats": baseline,
+        },
+        "candidate": {
+            "name": args.mode.candidate_label(),
+            "stats": candidate,
+        },
+        "median_speedup": baseline.median_ns_per_op / candidate.median_ns_per_op,
+    });
+    serde_json::to_string_pretty(&report)
+        .map_err(|err| format!("failed to serialize benchmark JSON: {err}"))
 }
 
 fn write_report(path: &PathBuf, outcomes: &[CaseOutcome]) -> Result<(), String> {
@@ -2402,7 +2899,7 @@ fn code_span(text: &str) -> String {
 fn generate_ast_inventory(args: &InventoryArgs) -> Result<String, String> {
     let output = Command::new("python3")
         .arg("-c")
-        .arg(SQLGLOT_AST_INVENTORY)
+        .arg(SQLGLOT_AST_INVENTORY_SCRIPT)
         .arg(&args.sqlglot)
         .arg(&args.rust_ast)
         .output()
@@ -2771,7 +3268,69 @@ elapsed_ns = time.perf_counter_ns() - started
 print(json.dumps({"elapsed_ns": elapsed_ns, "checksum": checksum}))
 "#;
 
-const SQLGLOT_AST_INVENTORY: &str = r###"
+const SQLGROK_PYTHON_BINDING_BENCHMARK_SCRIPT: &str = r#"
+import json
+import sys
+import time
+
+import sqlgrok
+
+payload = json.load(sys.stdin)
+cases = payload["cases"]
+iterations = int(payload["iterations"])
+warmup = int(payload["warmup"])
+
+checksum = 0
+for _ in range(warmup):
+    for case in cases:
+        checksum += len(sqlgrok.transpile(case["sql"], read=case["read"], write=case["write"])[0])
+
+checksum = 0
+started = time.perf_counter_ns()
+for _ in range(iterations):
+    for case in cases:
+        checksum += len(sqlgrok.transpile(case["sql"], read=case["read"], write=case["write"])[0])
+elapsed_ns = time.perf_counter_ns() - started
+
+print(json.dumps({"elapsed_ns": elapsed_ns, "checksum": checksum}))
+"#;
+
+const SQLGROK_PYTHON_BINDING_BATCH_BENCHMARK_SCRIPT: &str = r#"
+import json
+import sys
+import time
+
+import sqlgrok
+
+payload = json.load(sys.stdin)
+cases = payload["cases"]
+iterations = int(payload["iterations"])
+warmup = int(payload["warmup"])
+requests = [
+    {"sql": case["sql"], "read": case["read"], "write": case["write"]}
+    for case in cases
+]
+
+checksum = 0
+for _ in range(warmup):
+    for row in sqlgrok.transpile_many(requests):
+        if not row["ok"]:
+            raise RuntimeError(row["error"])
+        checksum += len(row["sql"][0])
+
+checksum = 0
+started = time.perf_counter_ns()
+for _ in range(iterations):
+    for row in sqlgrok.transpile_many(requests):
+        if not row["ok"]:
+            raise RuntimeError(row["error"])
+        checksum += len(row["sql"][0])
+elapsed_ns = time.perf_counter_ns() - started
+
+print(json.dumps({"elapsed_ns": elapsed_ns, "checksum": checksum}))
+"#;
+
+const SQLGLOT_AST_INVENTORY_SCRIPT: &str = r###"
 import ast
 import re
 import sys

@@ -1,0 +1,8 @@
+{
+  "name": "sqlgrok-node-ffi-bench",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "koffi": "^2.14.1"
+  }
+}

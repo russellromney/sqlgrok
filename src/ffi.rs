@@ -6,7 +6,10 @@
 //! # Memory management
 //!
 //! Every `*mut c_char` returned by a function in this module **must** be freed
-//! by calling [`sqlglot_free`]. Failing to do so will leak memory.
+//! by calling [`sqlgrok_free`]. Failing to do so will leak memory.
+//!
+//! The `sqlgrok_*` symbols are the public ABI. The older `sqlglot_*` symbols
+//! remain as compatibility shims while early consumers migrate.
 
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
@@ -39,22 +42,7 @@ fn to_c_string(s: String) -> *mut c_char {
 
 // ── public C API ─────────────────────────────────────────────────────────
 
-/// Parse a SQL string and return its AST serialised as JSON.
-///
-/// * `sql`     – null-terminated SQL string (required).
-/// * `dialect` – null-terminated dialect name, e.g. `"postgres"`. Pass `NULL`
-///   for ANSI SQL.
-///
-/// Returns a heap-allocated JSON string on success, or `NULL` on failure.
-/// The caller **must** free a non-null return value with [`sqlglot_free`].
-///
-/// # Safety
-///
-/// `sql` must be a valid null-terminated C string. `dialect` may be null or a
-/// valid null-terminated C string. The returned pointer must be freed with
-/// [`sqlglot_free`] when non-null.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn sqlglot_parse(sql: *const c_char, dialect: *const c_char) -> *mut c_char {
+unsafe fn parse_impl(sql: *const c_char, dialect: *const c_char) -> *mut c_char {
     let sql_str = match unsafe { cstr_to_option(sql) } {
         Some(s) => s,
         None => return ptr::null_mut(),
@@ -70,22 +58,7 @@ pub unsafe extern "C" fn sqlglot_parse(sql: *const c_char, dialect: *const c_cha
     }
 }
 
-/// Transpile a single SQL statement from one dialect to another.
-///
-/// * `sql`          – null-terminated SQL string (required).
-/// * `from_dialect` – source dialect name, or `NULL` for ANSI.
-/// * `to_dialect`   – target dialect name, or `NULL` for ANSI.
-///
-/// Returns a heap-allocated SQL string on success, or `NULL` on failure.
-/// The caller **must** free a non-null return value with [`sqlglot_free`].
-///
-/// # Safety
-///
-/// `sql` must be a valid null-terminated C string. `from_dialect` and
-/// `to_dialect` may be null or valid null-terminated C strings. The returned
-/// pointer must be freed with [`sqlglot_free`] when non-null.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn sqlglot_transpile(
+unsafe fn transpile_impl(
     sql: *const c_char,
     from_dialect: *const c_char,
     to_dialect: *const c_char,
@@ -103,24 +76,7 @@ pub unsafe extern "C" fn sqlglot_transpile(
     }
 }
 
-/// Generate SQL from a JSON-serialised AST for the given dialect.
-///
-/// * `ast_json` – null-terminated JSON string of a serialised `Statement`.
-/// * `dialect`  – target dialect name, or `NULL` for ANSI.
-///
-/// Returns a heap-allocated SQL string on success, or `NULL` on failure.
-/// The caller **must** free a non-null return value with [`sqlglot_free`].
-///
-/// # Safety
-///
-/// `ast_json` must be a valid null-terminated C string. `dialect` may be null
-/// or a valid null-terminated C string. The returned pointer must be freed with
-/// [`sqlglot_free`] when non-null.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn sqlglot_generate(
-    ast_json: *const c_char,
-    dialect: *const c_char,
-) -> *mut c_char {
+unsafe fn generate_impl(ast_json: *const c_char, dialect: *const c_char) -> *mut c_char {
     let json_str = match unsafe { cstr_to_option(ast_json) } {
         Some(s) => s,
         None => return ptr::null_mut(),
@@ -133,16 +89,85 @@ pub unsafe extern "C" fn sqlglot_generate(
     }
 }
 
+unsafe fn free_impl(ptr: *mut c_char) {
+    if !ptr.is_null() {
+        drop(unsafe { CString::from_raw(ptr) });
+    }
+}
+
+/// Parse a SQL string and return its AST serialised as JSON.
+///
+/// * `sql`     – null-terminated SQL string (required).
+/// * `dialect` – null-terminated dialect name, e.g. `"postgres"`. Pass `NULL`
+///   for ANSI SQL.
+///
+/// Returns a heap-allocated JSON string on success, or `NULL` on failure.
+/// The caller **must** free a non-null return value with [`sqlgrok_free`].
+///
+/// # Safety
+///
+/// `sql` must be a valid null-terminated C string. `dialect` may be null or a
+/// valid null-terminated C string. The returned pointer must be freed with
+/// [`sqlgrok_free`] when non-null.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sqlgrok_parse(sql: *const c_char, dialect: *const c_char) -> *mut c_char {
+    unsafe { parse_impl(sql, dialect) }
+}
+
+/// Transpile a single SQL statement from one dialect to another.
+///
+/// * `sql`          – null-terminated SQL string (required).
+/// * `from_dialect` – source dialect name, or `NULL` for ANSI.
+/// * `to_dialect`   – target dialect name, or `NULL` for ANSI.
+///
+/// Returns a heap-allocated SQL string on success, or `NULL` on failure.
+/// The caller **must** free a non-null return value with [`sqlgrok_free`].
+///
+/// # Safety
+///
+/// `sql` must be a valid null-terminated C string. `from_dialect` and
+/// `to_dialect` may be null or valid null-terminated C strings. The returned
+/// pointer must be freed with [`sqlgrok_free`] when non-null.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sqlgrok_transpile(
+    sql: *const c_char,
+    from_dialect: *const c_char,
+    to_dialect: *const c_char,
+) -> *mut c_char {
+    unsafe { transpile_impl(sql, from_dialect, to_dialect) }
+}
+
+/// Generate SQL from a JSON-serialised AST for the given dialect.
+///
+/// * `ast_json` – null-terminated JSON string of a serialised `Statement`.
+/// * `dialect`  – target dialect name, or `NULL` for ANSI.
+///
+/// Returns a heap-allocated SQL string on success, or `NULL` on failure.
+/// The caller **must** free a non-null return value with [`sqlgrok_free`].
+///
+/// # Safety
+///
+/// `ast_json` must be a valid null-terminated C string. `dialect` may be null
+/// or a valid null-terminated C string. The returned pointer must be freed with
+/// [`sqlgrok_free`] when non-null.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sqlgrok_generate(
+    ast_json: *const c_char,
+    dialect: *const c_char,
+) -> *mut c_char {
+    unsafe { generate_impl(ast_json, dialect) }
+}
+
 /// Return the library version as a static null-terminated string.
 ///
 /// The returned pointer **must not** be freed — it points to static memory.
 #[unsafe(no_mangle)]
-pub extern "C" fn sqlglot_version() -> *const c_char {
+pub extern "C" fn sqlgrok_version() -> *const c_char {
     // The trailing \0 makes this a valid C string.
     concat!(env!("CARGO_PKG_VERSION"), "\0").as_ptr() as *const c_char
 }
 
-/// Free a string previously returned by any `sqlglot_*` function.
+/// Free a string previously returned by any `sqlgrok_*` function.
 ///
 /// Passing `NULL` is safe and results in a no-op.
 ///
@@ -151,8 +176,59 @@ pub extern "C" fn sqlglot_version() -> *const c_char {
 /// `ptr` must be null or a pointer previously returned by this library that has
 /// not already been freed.
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn sqlgrok_free(ptr: *mut c_char) {
+    unsafe { free_impl(ptr) };
+}
+
+/// Compatibility alias for [`sqlgrok_parse`].
+///
+/// # Safety
+///
+/// Same requirements as [`sqlgrok_parse`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sqlglot_parse(sql: *const c_char, dialect: *const c_char) -> *mut c_char {
+    unsafe { parse_impl(sql, dialect) }
+}
+
+/// Compatibility alias for [`sqlgrok_transpile`].
+///
+/// # Safety
+///
+/// Same requirements as [`sqlgrok_transpile`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sqlglot_transpile(
+    sql: *const c_char,
+    from_dialect: *const c_char,
+    to_dialect: *const c_char,
+) -> *mut c_char {
+    unsafe { transpile_impl(sql, from_dialect, to_dialect) }
+}
+
+/// Compatibility alias for [`sqlgrok_generate`].
+///
+/// # Safety
+///
+/// Same requirements as [`sqlgrok_generate`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn sqlglot_generate(
+    ast_json: *const c_char,
+    dialect: *const c_char,
+) -> *mut c_char {
+    unsafe { generate_impl(ast_json, dialect) }
+}
+
+/// Compatibility alias for [`sqlgrok_version`].
+#[unsafe(no_mangle)]
+pub extern "C" fn sqlglot_version() -> *const c_char {
+    sqlgrok_version()
+}
+
+/// Compatibility alias for [`sqlgrok_free`].
+///
+/// # Safety
+///
+/// Same requirements as [`sqlgrok_free`].
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn sqlglot_free(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        drop(unsafe { CString::from_raw(ptr) });
-    }
+    unsafe { free_impl(ptr) };
 }

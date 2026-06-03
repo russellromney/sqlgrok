@@ -66,7 +66,7 @@ jobs:
         run: |
           cargo install cbindgen
           mkdir -p include
-          cbindgen --config cbindgen.toml --crate sqlgrok --output include/sqlglot.h
+          cbindgen --config cbindgen.toml --crate sqlgrok --output include/sqlgrok.h
 
       - name: Identify built artefacts
         id: artifacts
@@ -90,7 +90,7 @@ jobs:
         run: |
           STAGING="sqlgrok-ffi-${{ matrix.artifact }}"
           mkdir -p "$STAGING/lib" "$STAGING/include" "$STAGING/bin"
-          cp include/sqlglot.h        "$STAGING/include/"
+          cp include/sqlgrok.h        "$STAGING/include/"
           cp "${{ steps.artifacts.outputs.static }}" "$STAGING/lib/" || true
           cp "${{ steps.artifacts.outputs.dylib }}"  "$STAGING/lib/" || true
           cp "${{ steps.artifacts.outputs.cli }}"     "$STAGING/bin/" || true
@@ -120,20 +120,20 @@ jobs:
           tar xzf sqlgrok-ffi-linux-amd64.tar.gz
           cat > sanity.c << 'EOF'
           #include <stdio.h>
-          #include "sqlgrok-ffi-linux-amd64/include/sqlglot.h"
+          #include "sqlgrok-ffi-linux-amd64/include/sqlgrok.h"
 
           int main(void) {
-              const char *ver = sqlglot_version();
-              printf("sqlglot version: %s\n", ver);
+              const char *ver = sqlgrok_version();
+              printf("sqlgrok version: %s\n", ver);
 
-              char *result = sqlglot_transpile(
+              char *result = sqlgrok_transpile(
                   "SELECT * FROM t LIMIT 10",
                   "mysql",
                   "postgres"
               );
               if (result) {
                   printf("transpiled: %s\n", result);
-                  sqlglot_free(result);
+                  sqlgrok_free(result);
               } else {
                   fprintf(stderr, "transpile failed\n");
                   return 1;

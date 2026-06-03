@@ -80,19 +80,20 @@ budgets, forced-pair mode, and dialect-version notes.
 ## Performance Snapshot
 
 sqlgrok's Rust core is already materially faster than Python SQLGlot on
-parity-clean SQLite-targeted workloads. In the current PyO3 single-call
-benchmark, which calls `sqlgrok.transpile(...)` once per SQL string rather than
-using a batch shortcut, median speedups were:
+parity-clean SQLite-targeted workloads. The current single-call binding
+benchmark calls one `transpile(sql, read, write)` per SQL string rather than
+using a batch shortcut.
 
-| Workload | Python SQLGlot median | sqlgrok PyO3 median | Median speedup |
-| --- | ---: | ---: | ---: |
-| MySQL -> SQLite | 784.7 us/op | 21.0 us/op | 37.3x |
-| Postgres -> SQLite | 806.6 us/op | 21.2 us/op | 38.0x |
-| SQLite -> SQLite | 585.4 us/op | 17.9 us/op | 32.8x |
+| Workload | Python SQLGlot | PyO3 | Node/Koffi | Ruby/Fiddle | Go/cgo |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| MySQL -> SQLite | 359.9 us | 9.7 us (37.1x) | 9.0 us (40.0x) | 17.2 us (21.0x) | 13.1 us (27.4x) |
+| Postgres -> SQLite | 269.4 us | 7.9 us (34.1x) | 46.9 us (5.7x) | 16.1 us (16.7x) | 84.6 us (3.2x) |
+| SQLite -> SQLite | 384.7 us | 9.7 us (39.6x) | 35.7 us (10.8x) | 66.3 us (5.8x) | 33.9 us (11.3x) |
 
 These are local, release-build, five-sample medians over checked-in 8-case
-workloads. See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for the repeatable
-benchmark command and caveats.
+workloads. PyO3 is the most mature binding; Node/Ruby/Go are thin prototype FFI
+benches. See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for repeatable commands
+and caveats.
 
 ## Docs
 
@@ -119,6 +120,19 @@ uv run --project python python -c "import sqlgrok; print(sqlgrok.transpile('SELE
 
 The shim exists first for SQLGlot-suite validation. The Rust crate and CLI
 remain the primary product surface while the binding APIs settle.
+
+## C ABI
+
+The public C ABI uses `sqlgrok_*` symbols and generated `sqlgrok.h` headers:
+
+- `sqlgrok_parse`
+- `sqlgrok_transpile`
+- `sqlgrok_generate`
+- `sqlgrok_version`
+- `sqlgrok_free`
+
+The earlier `sqlglot_*` symbols remain as compatibility aliases while the
+binding prototypes migrate.
 
 ## Lineage
 

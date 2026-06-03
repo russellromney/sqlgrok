@@ -30,7 +30,7 @@ clean:
 # ── C/C++ FFI targets ────────────────────────────────────────────────────
 
 FFI_OUT = target/ffi
-HEADER  = $(FFI_OUT)/include/sqlglot.h
+HEADER  = $(FFI_OUT)/include/sqlgrok.h
 
 ## Generate the C header with cbindgen
 ffi-header: $(HEADER)

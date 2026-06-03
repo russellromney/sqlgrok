@@ -1,0 +1,8 @@
+{"id":"mysql-group-concat-order-separator","sql":"SELECT GROUP_CONCAT(v ORDER BY v SEPARATOR '|') FROM gc","read":"mysql","write":"sqlite","tags":["aggregate","orm"]}
+{"id":"mysql-json-extract-key","sql":"SELECT JSON_EXTRACT(data, '$.k') FROM events WHERE id = 1","read":"mysql","write":"sqlite","tags":["json","orm"]}
+{"id":"mysql-limit-offset-comma","sql":"SELECT a, b FROM t WHERE a > 10 ORDER BY b DESC LIMIT 5, 10","read":"mysql","write":"sqlite","tags":["limit","orm"]}
+{"id":"mysql-date-format","sql":"SELECT DATE_FORMAT(created_at, '%Y-%m-%d') FROM users","read":"mysql","write":"sqlite","tags":["datetime","function"]}
+{"id":"mysql-if-cast-div","sql":"SELECT IF(a > 0, CAST(a AS SIGNED INTEGER), 7 DIV 2), x / y FROM metrics","read":"mysql","write":"sqlite","tags":["expression","function"]}
+{"id":"mysql-insert-ignore","sql":"INSERT IGNORE INTO users (id, email) VALUES (1, 'a@example.com')","read":"mysql","write":"sqlite","tags":["ddl","orm"]}
+{"id":"mysql-on-duplicate-key","sql":"INSERT INTO users (id, email) VALUES (1, 'a@example.com') ON DUPLICATE KEY UPDATE email = VALUES(email)","read":"mysql","write":"sqlite","tags":["ddl","orm"]}
+{"id":"mysql-computed-column","sql":"CREATE TABLE users (id INT PRIMARY KEY, email VARCHAR(255), email_lc VARCHAR(255) AS (LOWER(email)) STORED)","read":"mysql","write":"sqlite","tags":["ddl","migration"]}

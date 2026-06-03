@@ -3,64 +3,64 @@
  *
  * Build (macOS):
  *   cargo build --release
- *   cbindgen --config cbindgen.toml --crate sqlgrok --output target/ffi/include/sqlglot.h
+ *   cbindgen --config cbindgen.toml --crate sqlgrok --output target/ffi/include/sqlgrok.h
  *   gcc examples/ffi_example.c -Itarget/ffi/include -Ltarget/release -lsqlgrok -o ffi_example
  *   ./ffi_example                           # macOS: dylib is found via -L
  *
  * Build (Linux):
  *   cargo build --release
- *   cbindgen --config cbindgen.toml --crate sqlgrok --output target/ffi/include/sqlglot.h
+ *   cbindgen --config cbindgen.toml --crate sqlgrok --output target/ffi/include/sqlgrok.h
  *   gcc examples/ffi_example.c -Itarget/ffi/include -Ltarget/release -lsqlgrok -lpthread -ldl -lm -o ffi_example
  *   LD_LIBRARY_PATH=target/release ./ffi_example
  */
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "sqlglot.h"
+#include "sqlgrok.h"
 
 int main(void) {
     /* ── Library version ──────────────────────────────────────────── */
-    printf("sqlgrok version: %s\n\n", sqlglot_version());
+    printf("sqlgrok version: %s\n\n", sqlgrok_version());
 
     /* ── Transpile ────────────────────────────────────────────────── */
     const char *sql = "SELECT NOW(), IFNULL(a, b) FROM t LIMIT 10";
     printf("Input (MySQL):    %s\n", sql);
 
-    char *pg = sqlglot_transpile(sql, "mysql", "postgres");
+    char *pg = sqlgrok_transpile(sql, "mysql", "postgres");
     if (pg) {
         printf("Output (Postgres): %s\n", pg);
-        sqlglot_free(pg);
+        sqlgrok_free(pg);
     }
 
-    char *tsql = sqlglot_transpile(sql, "mysql", "tsql");
+    char *tsql = sqlgrok_transpile(sql, "mysql", "tsql");
     if (tsql) {
         printf("Output (T-SQL):    %s\n\n", tsql);
-        sqlglot_free(tsql);
+        sqlgrok_free(tsql);
     }
 
     /* ── Parse to JSON AST ────────────────────────────────────────── */
     const char *simple = "SELECT a, b FROM users WHERE active = true";
-    char *json = sqlglot_parse(simple, "ansi");
+    char *json = sqlgrok_parse(simple, "ansi");
     if (json) {
         printf("AST JSON (first 200 chars):\n  %.200s...\n\n", json);
     }
 
     /* ── Generate SQL back from the JSON AST ──────────────────────── */
     if (json) {
-        char *regenerated = sqlglot_generate(json, "postgres");
+        char *regenerated = sqlgrok_generate(json, "postgres");
         if (regenerated) {
             printf("Regenerated (Postgres): %s\n", regenerated);
-            sqlglot_free(regenerated);
+            sqlgrok_free(regenerated);
         }
-        sqlglot_free(json);
+        sqlgrok_free(json);
     }
 
     /* ── Error handling: NULL on invalid SQL ──────────────────────── */
-    char *bad = sqlglot_parse("NOT VALID SQL ???", "ansi");
+    char *bad = sqlgrok_parse("NOT VALID SQL ???", "ansi");
     if (bad == NULL) {
         printf("\nGraceful NULL on parse error — as expected.\n");
     } else {
-        sqlglot_free(bad);
+        sqlgrok_free(bad);
     }
 
     return 0;
