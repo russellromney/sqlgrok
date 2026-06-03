@@ -1,37 +1,38 @@
 # sqlgrok Allocation Profile
 
-Counts allocations in a dedicated helper binary while repeatedly calling `sqlgrok::transpile(...)`.
+Counts allocations in a dedicated helper binary while repeatedly measuring the `transpile` phase.
 
 ## Summary
 
 - Case file: `benchmarks/cases/postgres_sqlite.jsonl`
+- Phase: `transpile`
 - Cases: `8`
 - Iterations per case: `1000`
 - Warmup iterations per case: `100`
 - Operations: `8000`
 - Output checksum: `834000`
-- Allocated: `6.88 KiB/op` across `110.62` allocations/op
-- Total allocated: `53.73 MiB`
+- Allocated: `6.50 KiB/op` across `105.50` allocations/op
+- Total allocated: `50.81 MiB`
 - Net bytes after drops: `0`
 
 ## Notes
 
 - This is allocation accounting, not wall-clock timing. Pair it with `bench-sqlglot` and Criterion phase benches.
-- Counts include the output `String` returned by `transpile`, because normal callers also receive that allocation.
+- Counts include the output `String`, because normal callers also receive that allocation.
 - The counting allocator lives only in this helper binary, so normal `xtask bench-sqlglot` timing is not perturbed.
 
 ## Per-Case Breakdown
 
 | id | KiB/op | allocations/op | net bytes/op | tags |
 | --- | ---: | ---: | ---: | --- |
-| `postgres-distinct-on` | 10.94 | 140.00 | 0.00 | `rewrite,orm` |
-| `postgres-json-path-text` | 8.67 | 129.00 | 0.00 | `json,orm` |
-| `postgres-extract-date-trunc` | 8.32 | 130.00 | 0.00 | `datetime,function` |
-| `postgres-rollup` | 7.79 | 128.00 | 0.00 | `grouping,analytics` |
-| `postgres-window-nulls` | 6.23 | 99.00 | 0.00 | `window,orm` |
+| `postgres-distinct-on` | 10.89 | 135.00 | 0.00 | `rewrite,orm` |
+| `postgres-extract-date-trunc` | 7.78 | 125.00 | 0.00 | `datetime,function` |
+| `postgres-json-path-text` | 7.58 | 118.00 | 0.00 | `json,orm` |
+| `postgres-rollup` | 7.24 | 121.00 | 0.00 | `grouping,analytics` |
 | `postgres-identity-column` | 6.15 | 108.00 | 0.00 | `ddl,migration` |
-| `postgres-string-agg` | 5.08 | 110.00 | 0.00 | `aggregate,orm` |
-| `postgres-offset-only` | 1.85 | 41.00 | 0.00 | `limit,orm` |
+| `postgres-window-nulls` | 5.83 | 92.00 | 0.00 | `window,orm` |
+| `postgres-string-agg` | 4.71 | 105.00 | 0.00 | `aggregate,orm` |
+| `postgres-offset-only` | 1.85 | 40.00 | 0.00 | `limit,orm` |
 
 ## Workload
 

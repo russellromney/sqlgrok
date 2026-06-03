@@ -329,24 +329,24 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
 
             for item in &mut sel.columns {
                 if let SelectItem::Expr { expr, .. } = item {
-                    *expr = transform_expr(expr.clone(), source, target);
+                    transform_expr_in_place(expr, source, target);
                 }
             }
             if let Some(wh) = &mut sel.where_clause {
-                *wh = transform_expr(wh.clone(), source, target);
+                transform_expr_in_place(wh, source, target);
             }
             for gb in &mut sel.group_by {
-                *gb = transform_expr(gb.clone(), source, target);
+                transform_expr_in_place(gb, source, target);
             }
             for expr in &mut sel.distinct_on {
-                *expr = transform_expr(expr.clone(), source, target);
+                transform_expr_in_place(expr, source, target);
             }
             transform_order_by_items(&mut sel.order_by, source, target);
             for expr in &mut sel.limit_by {
-                *expr = transform_expr(expr.clone(), source, target);
+                transform_expr_in_place(expr, source, target);
             }
             if let Some(having) = &mut sel.having {
-                *having = transform_expr(having.clone(), source, target);
+                transform_expr_in_place(having, source, target);
             }
             if matches!(target, Dialect::Sqlite) {
                 if let Some(from) = &mut sel.from {
@@ -452,7 +452,7 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             if let InsertSource::Values(rows) = &mut ins.source {
                 for row in rows {
                     for val in row {
-                        *val = transform_expr(val.clone(), source, target);
+                        transform_expr_in_place(val, source, target);
                     }
                 }
             }
@@ -461,28 +461,28 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                     on_conflict.compact_target = true;
                 }
                 if let Some(where_expr) = &mut on_conflict.target_where {
-                    *where_expr = transform_expr(where_expr.clone(), source, target);
+                    transform_expr_in_place(where_expr, source, target);
                 }
                 if let ConflictAction::DoUpdate(assignments) = &mut on_conflict.action {
                     for (_, val) in assignments {
-                        *val = transform_expr(val.clone(), source, target);
+                        transform_expr_in_place(val, source, target);
                     }
                 }
                 if let Some(where_expr) = &mut on_conflict.action_where {
-                    *where_expr = transform_expr(where_expr.clone(), source, target);
+                    transform_expr_in_place(where_expr, source, target);
                 }
             }
         }
         Statement::Update(upd) => {
             for (_, val) in &mut upd.assignments {
-                *val = transform_expr(val.clone(), source, target);
+                transform_expr_in_place(val, source, target);
             }
             if let Some(wh) = &mut upd.where_clause {
-                *wh = transform_expr(wh.clone(), source, target);
+                transform_expr_in_place(wh, source, target);
             }
         }
         Statement::Expression(expr) => {
-            *expr = transform_expr(expr.clone(), source, target);
+            transform_expr_in_place(expr, source, target);
             // Statement-level REPLACE(...) is unsupported syntax in SQLGlot's
             // MySQL / SQLite parsers, so Python falls back to the Command
             // parser and re-renders with a space before the open paren. We
@@ -528,16 +528,16 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 }
                 col.data_type = map_data_type_for_source(col.data_type.clone(), source, target);
                 if let Some(default) = &mut col.default {
-                    *default = transform_expr(default.clone(), source, target);
+                    transform_expr_in_place(default, source, target);
                 }
                 if let Some(generated) = &mut col.generated_as {
-                    *generated = transform_expr(generated.clone(), source, target);
+                    transform_expr_in_place(generated, source, target);
                 }
             }
             // Transform constraints (CHECK expressions)
             for constraint in &mut ct.constraints {
                 if let TableConstraint::Check { expr, .. } = constraint {
-                    *expr = transform_expr(expr.clone(), source, target);
+                    transform_expr_in_place(expr, source, target);
                 }
             }
             // Transform AS SELECT subquery
@@ -553,20 +553,17 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                         col.data_type =
                             map_data_type_for_source(col.data_type.clone(), source, target);
                         if let Some(default) = &mut col.default {
-                            *default = transform_expr(default.clone(), source, target);
+                            transform_expr_in_place(default, source, target);
                         }
                     }
                     AlterTableAction::AlterColumnType { data_type, .. } => {
                         *data_type = map_data_type_for_source(data_type.clone(), source, target);
                     }
                     AlterTableAction::ChangeColumn { new_column, .. } => {
-                        new_column.data_type = map_data_type_for_source(
-                            new_column.data_type.clone(),
-                            source,
-                            target,
-                        );
+                        new_column.data_type =
+                            map_data_type_for_source(new_column.data_type.clone(), source, target);
                         if let Some(default) = &mut new_column.default {
-                            *default = transform_expr(default.clone(), source, target);
+                            transform_expr_in_place(default, source, target);
                         }
                     }
                     _ => {}
@@ -576,7 +573,7 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
         Statement::CreateIndex(idx) => {
             transform_order_by_items(&mut idx.columns, source, target);
             if let Some(predicate) = &mut idx.where_clause {
-                *predicate = transform_expr(predicate.clone(), source, target);
+                transform_expr_in_place(predicate, source, target);
             }
         }
         Statement::CreateSequence(seq) => {
@@ -590,7 +587,7 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                     *data_type = map_data_type_for_source(data_type.clone(), source, target);
                 }
                 if let Some(default) = &mut param.default {
-                    *default = transform_expr(default.clone(), source, target);
+                    transform_expr_in_place(default, source, target);
                 }
             }
         }
@@ -623,7 +620,9 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             // (USERS, AGGREGATES, ...) as raw Command passthroughs.
             if is_mysql_family(source) && matches!(target, Dialect::Sqlite) {
                 let trimmed = raw.sql.trim_start();
-                if trimmed.get(..4).is_some_and(|p| p.eq_ignore_ascii_case("SHOW"))
+                if trimmed
+                    .get(..4)
+                    .is_some_and(|p| p.eq_ignore_ascii_case("SHOW"))
                     && mysql_show_is_recognized(trimmed)
                 {
                     raw.sql = String::new();
@@ -1164,7 +1163,9 @@ fn rewrite_unnest_array_literal_sqlite(sql: &str) -> Option<String> {
         return None;
     }
     // Find matching `]` (no nesting for arrays in this form).
-    let close_bracket = sql[body_start + 1..].find(']').map(|o| body_start + 1 + o)?;
+    let close_bracket = sql[body_start + 1..]
+        .find(']')
+        .map(|o| body_start + 1 + o)?;
     let inside = &sql[body_start + 1..close_bracket];
     let mut out = String::with_capacity(sql.len());
     out.push_str(&sql[..body_start]);
@@ -1397,10 +1398,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
-                && !matches!(
-                    source,
-                    Dialect::Mysql | Dialect::Postgres | Dialect::Sqlite
-                )
+                && !matches!(source, Dialect::Mysql | Dialect::Postgres | Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("STARTS_WITH")
                 && !distinct
                 && filter.is_none()
@@ -1483,10 +1481,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 return sqlite_postgres_json_typeof(new_args[0].clone());
             }
             if matches!(target, Dialect::Sqlite)
-                && !matches!(
-                    source,
-                    Dialect::Mysql | Dialect::Postgres | Dialect::Sqlite
-                )
+                && !matches!(source, Dialect::Mysql | Dialect::Postgres | Dialect::Sqlite)
                 && matches!(
                     name.to_ascii_uppercase().as_str(),
                     "JSONB_EXTRACT" | "JSONB_EXTRACT_SCALAR"
@@ -2076,7 +2071,11 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 if is_postgres_family(source) {
                     let unit_upper = match &new_args[0] {
                         Expr::StringLiteral(s) => s.to_ascii_uppercase(),
-                        Expr::Column { name: col, table: None, .. } => col.to_ascii_uppercase(),
+                        Expr::Column {
+                            name: col,
+                            table: None,
+                            ..
+                        } => col.to_ascii_uppercase(),
                         _ => {
                             return Expr::Function {
                                 name: "DATE_TRUNC".to_string(),
@@ -2569,7 +2568,12 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && over.is_none()
                 && new_args.len() == 1
             {
-                if let Expr::Function { name: inner_name, args: inner_args, .. } = &new_args[0] {
+                if let Expr::Function {
+                    name: inner_name,
+                    args: inner_args,
+                    ..
+                } = &new_args[0]
+                {
                     if inner_name.eq_ignore_ascii_case("ARRAY") {
                         return Expr::Function {
                             name: "ARRAY".to_string(),
@@ -2591,9 +2595,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && new_args.len() == 1
             {
                 let epoch = Expr::Cast {
-                    expr: Box::new(Expr::StringLiteral(
-                        "1970-01-01 00:00:00+00".to_string(),
-                    )),
+                    expr: Box::new(Expr::StringLiteral("1970-01-01 00:00:00+00".to_string())),
                     data_type: DataType::Unknown("TIMESTAMPTZ".to_string()),
                 };
                 let seconds = Expr::Column {
@@ -2622,7 +2624,12 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && new_args.len() == 3
             {
                 let mut args = new_args.clone();
-                if let Expr::Column { table: None, name: ref n, .. } = args[2] {
+                if let Expr::Column {
+                    table: None,
+                    name: ref n,
+                    ..
+                } = args[2]
+                {
                     let upper = n.to_ascii_uppercase();
                     args[2] = Expr::Column {
                         table: None,
@@ -2651,9 +2658,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && new_args.len() == 1
             {
                 let glob_pattern = Expr::Cast {
-                    expr: Box::new(Expr::HexString(
-                        "2a5b5e012d7f5d2a".to_string(),
-                    )),
+                    expr: Box::new(Expr::HexString("2a5b5e012d7f5d2a".to_string())),
                     data_type: DataType::Unknown("TEXT".to_string()),
                 };
                 let glob_op = Expr::BinaryOp {
@@ -2682,10 +2687,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             }
             // ISNAN(x)/ISINF(x) → IS_NAN(x)/IS_INF(x) for sqlite target.
             if matches!(target, Dialect::Sqlite)
-                && matches!(
-                    name.to_ascii_uppercase().as_str(),
-                    "ISNAN" | "ISINF"
-                )
+                && matches!(name.to_ascii_uppercase().as_str(), "ISNAN" | "ISINF")
                 && !distinct
                 && filter.is_none()
                 && over.is_none()
@@ -3194,9 +3196,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                             over,
                         };
                     }
-                    TypedFunction::Left { expr, n }
-                        if !matches!(target, Dialect::Sqlite) =>
-                    {
+                    TypedFunction::Left { expr, n } if !matches!(target, Dialect::Sqlite) => {
                         return Expr::Function {
                             name: "SUBSTR".to_string(),
                             args: vec![
@@ -3209,9 +3209,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                             over,
                         };
                     }
-                    TypedFunction::Right { expr, n }
-                        if !matches!(target, Dialect::Sqlite) =>
-                    {
+                    TypedFunction::Right { expr, n } if !matches!(target, Dialect::Sqlite) => {
                         return Expr::Function {
                             name: "SUBSTR".to_string(),
                             args: vec![
@@ -3441,9 +3439,11 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             true_val: Box::new(transform_expr(*true_val, source, target)),
             false_val: false_val.map(|expr| Box::new(transform_expr(*expr, source, target))),
         },
-        Expr::Interval { value, unit, unit_text } => {
-            transform_interval(*value, unit, unit_text, source, target)
-        }
+        Expr::Interval {
+            value,
+            unit,
+            unit_text,
+        } => transform_interval(*value, unit, unit_text, source, target),
         Expr::ArrayLiteral(items) => {
             let items: Vec<Expr> = items
                 .into_iter()
@@ -3585,7 +3585,10 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 table_quote_style: new_tqs,
             }
         }
-        Expr::Exists { mut subquery, negated } => {
+        Expr::Exists {
+            mut subquery,
+            negated,
+        } => {
             transform_statement(&mut subquery, source, target);
             Expr::Exists { subquery, negated }
         }
@@ -3593,7 +3596,11 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             transform_statement(&mut stmt, source, target);
             Expr::Subquery(stmt)
         }
-        Expr::InSubquery { expr, mut subquery, negated } => {
+        Expr::InSubquery {
+            expr,
+            mut subquery,
+            negated,
+        } => {
             transform_statement(&mut subquery, source, target);
             Expr::InSubquery {
                 expr: Box::new(transform_expr(*expr, source, target)),
@@ -3604,6 +3611,11 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         // Everything else stays the same
         other => other,
     }
+}
+
+fn transform_expr_in_place(expr: &mut Expr, source: Dialect, target: Dialect) {
+    let old = std::mem::replace(expr, Expr::Null);
+    *expr = transform_expr(old, source, target);
 }
 
 fn concat_expr(args: Vec<Expr>) -> Expr {
@@ -3678,7 +3690,7 @@ fn sqlite_real_cast(expr: Expr) -> Expr {
 
 fn transform_window_spec(mut spec: WindowSpec, source: Dialect, target: Dialect) -> WindowSpec {
     for expr in &mut spec.partition_by {
-        *expr = transform_expr(expr.clone(), source, target);
+        transform_expr_in_place(expr, source, target);
     }
     transform_order_by_items(&mut spec.order_by, source, target);
     spec
@@ -3686,7 +3698,7 @@ fn transform_window_spec(mut spec: WindowSpec, source: Dialect, target: Dialect)
 
 fn transform_order_by_items(items: &mut [OrderByItem], source: Dialect, target: Dialect) {
     for item in items {
-        item.expr = transform_expr(item.expr.clone(), source, target);
+        transform_expr_in_place(&mut item.expr, source, target);
         if is_postgres_family(source)
             && matches!(target, Dialect::Sqlite)
             && item.nulls_first.is_none()
@@ -3741,20 +3753,22 @@ fn propagate_nulls_direction(raw: &str) -> String {
         .split(',')
         .map(|item| {
             let trimmed = item.trim_end();
-            let leading_spaces: String = item.chars()
-                .take_while(|c| c.is_whitespace())
-                .collect();
+            let leading_spaces: String = item.chars().take_while(|c| c.is_whitespace()).collect();
             let core = trimmed.trim_start();
             // Detect parenthesized expr like `(a + b) DESC` — strip
             // any trailing direction keyword to decide.
             let upper_core = core.to_ascii_uppercase();
             let is_desc = upper_core.ends_with(" DESC");
-            let already_has_nulls = upper_core.ends_with(" NULLS FIRST")
-                || upper_core.ends_with(" NULLS LAST");
+            let already_has_nulls =
+                upper_core.ends_with(" NULLS FIRST") || upper_core.ends_with(" NULLS LAST");
             if already_has_nulls || core.is_empty() {
                 return format!("{leading_spaces}{core}");
             }
-            let suffix = if is_desc { " NULLS FIRST" } else { " NULLS LAST" };
+            let suffix = if is_desc {
+                " NULLS FIRST"
+            } else {
+                " NULLS LAST"
+            };
             format!("{leading_spaces}{core}{suffix}")
         })
         .collect::<Vec<_>>()
@@ -5173,13 +5187,13 @@ fn transform_exprs_in_table_source(ts: &mut TableSource, source: Dialect, target
         }
         TableSource::TableFunction { args, .. } => {
             for arg in args {
-                *arg = transform_expr(arg.clone(), source, target);
+                transform_expr_in_place(arg, source, target);
             }
         }
         TableSource::Values { rows, .. } => {
             for row in rows {
                 for v in row {
-                    *v = transform_expr(v.clone(), source, target);
+                    transform_expr_in_place(v, source, target);
                 }
             }
         }
@@ -5190,7 +5204,7 @@ fn transform_exprs_in_table_source(ts: &mut TableSource, source: Dialect, target
             transform_exprs_in_table_source(inner, source, target);
         }
         TableSource::Unnest { expr, .. } => {
-            *expr = Box::new(transform_expr(*expr.clone(), source, target));
+            transform_expr_in_place(expr, source, target);
         }
     }
 }

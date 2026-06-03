@@ -1,37 +1,38 @@
 # sqlgrok Allocation Profile
 
-Counts allocations in a dedicated helper binary while repeatedly calling `sqlgrok::transpile(...)`.
+Counts allocations in a dedicated helper binary while repeatedly measuring the `transpile` phase.
 
 ## Summary
 
 - Case file: `benchmarks/cases/sqlite_sqlite.jsonl`
+- Phase: `transpile`
 - Cases: `8`
 - Iterations per case: `1000`
 - Warmup iterations per case: `100`
 - Operations: `8000`
 - Output checksum: `590000`
-- Allocated: `6.63 KiB/op` across `90.25` allocations/op
-- Total allocated: `51.77 MiB`
+- Allocated: `6.42 KiB/op` across `86.38` allocations/op
+- Total allocated: `50.13 MiB`
 - Net bytes after drops: `0`
 
 ## Notes
 
 - This is allocation accounting, not wall-clock timing. Pair it with `bench-sqlglot` and Criterion phase benches.
-- Counts include the output `String` returned by `transpile`, because normal callers also receive that allocation.
+- Counts include the output `String`, because normal callers also receive that allocation.
 - The counting allocator lives only in this helper binary, so normal `xtask bench-sqlglot` timing is not perturbed.
 
 ## Per-Case Breakdown
 
 | id | KiB/op | allocations/op | net bytes/op | tags |
 | --- | ---: | ---: | ---: | --- |
-| `sqlite-cte` | 15.34 | 155.00 | 0.00 | `cte,orm` |
-| `sqlite-simple-select` | 8.09 | 115.00 | 0.00 | `select,orm` |
-| `sqlite-create-table` | 6.82 | 103.00 | 0.00 | `ddl,migration` |
-| `sqlite-window` | 6.22 | 99.00 | 0.00 | `window,orm` |
-| `sqlite-alter-table` | 4.85 | 52.00 | 0.00 | `ddl,migration` |
-| `sqlite-json-type` | 4.12 | 87.00 | 0.00 | `json,orm` |
-| `sqlite-count-distinct` | 3.88 | 77.00 | 0.00 | `aggregate,orm` |
+| `sqlite-cte` | 14.99 | 147.00 | 0.00 | `cte,orm` |
+| `sqlite-simple-select` | 7.74 | 108.00 | 0.00 | `select,orm` |
+| `sqlite-create-table` | 6.80 | 102.00 | 0.00 | `ddl,migration` |
+| `sqlite-window` | 5.82 | 92.00 | 0.00 | `window,orm` |
+| `sqlite-alter-table` | 4.83 | 51.00 | 0.00 | `ddl,migration` |
+| `sqlite-json-type` | 3.76 | 83.00 | 0.00 | `json,orm` |
 | `sqlite-insert-or-ignore` | 3.70 | 34.00 | 0.00 | `ddl,orm` |
+| `sqlite-count-distinct` | 3.69 | 74.00 | 0.00 | `aggregate,orm` |
 
 ## Workload
 

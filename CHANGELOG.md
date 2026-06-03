@@ -35,6 +35,10 @@ this file records what landed.
   timing defaults before publishing benchmark claims.
 - Extended `sqlgrok_alloc_profile` with `--phase` support so allocation reports
   can isolate tokenize, parse, transform, generate, and full transpile costs.
+- Reduced dialect-transform allocation by moving expressions into
+  `transform_expr` instead of cloning them first; refreshed allocation reports
+  now show MySQL/Postgres/SQLite priority lanes at `6.98`/`6.50`/`6.42` KiB per
+  transpile operation.
 
 ### Public Documentation Cleanup
 

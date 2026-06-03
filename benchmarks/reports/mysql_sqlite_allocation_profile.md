@@ -1,37 +1,38 @@
 # sqlgrok Allocation Profile
 
-Counts allocations in a dedicated helper binary while repeatedly calling `sqlgrok::transpile(...)`.
+Counts allocations in a dedicated helper binary while repeatedly measuring the `transpile` phase.
 
 ## Summary
 
 - Case file: `benchmarks/cases/mysql_sqlite.jsonl`
+- Phase: `transpile`
 - Cases: `8`
 - Iterations per case: `1000`
 - Warmup iterations per case: `100`
 - Operations: `8000`
 - Output checksum: `586000`
-- Allocated: `7.46 KiB/op` across `118.62` allocations/op
-- Total allocated: `58.32 MiB`
+- Allocated: `6.98 KiB/op` across `112.38` allocations/op
+- Total allocated: `54.51 MiB`
 - Net bytes after drops: `0`
 
 ## Notes
 
 - This is allocation accounting, not wall-clock timing. Pair it with `bench-sqlglot` and Criterion phase benches.
-- Counts include the output `String` returned by `transpile`, because normal callers also receive that allocation.
+- Counts include the output `String`, because normal callers also receive that allocation.
 - The counting allocator lives only in this helper binary, so normal `xtask bench-sqlglot` timing is not perturbed.
 
 ## Per-Case Breakdown
 
 | id | KiB/op | allocations/op | net bytes/op | tags |
 | --- | ---: | ---: | ---: | --- |
-| `mysql-if-cast-div` | 14.81 | 192.00 | 0.00 | `expression,function` |
-| `mysql-computed-column` | 10.43 | 137.00 | 0.00 | `ddl,migration` |
-| `mysql-limit-offset-comma` | 7.71 | 115.00 | 0.00 | `limit,orm` |
-| `mysql-json-extract-key` | 7.48 | 112.00 | 0.00 | `json,orm` |
-| `mysql-on-duplicate-key` | 6.39 | 132.00 | 0.00 | `ddl,orm` |
-| `mysql-date-format` | 4.90 | 93.00 | 0.00 | `datetime,function` |
-| `mysql-group-concat-order-separator` | 4.65 | 102.00 | 0.00 | `aggregate,orm` |
-| `mysql-insert-ignore` | 3.35 | 66.00 | 0.00 | `ddl,orm` |
+| `mysql-if-cast-div` | 13.07 | 174.00 | 0.00 | `expression,function` |
+| `mysql-computed-column` | 10.25 | 135.00 | 0.00 | `ddl,migration` |
+| `mysql-limit-offset-comma` | 7.36 | 108.00 | 0.00 | `limit,orm` |
+| `mysql-json-extract-key` | 6.78 | 104.00 | 0.00 | `json,orm` |
+| `mysql-on-duplicate-key` | 6.19 | 127.00 | 0.00 | `ddl,orm` |
+| `mysql-date-format` | 4.52 | 89.00 | 0.00 | `datetime,function` |
+| `mysql-group-concat-order-separator` | 4.29 | 98.00 | 0.00 | `aggregate,orm` |
+| `mysql-insert-ignore` | 3.34 | 64.00 | 0.00 | `ddl,orm` |
 
 ## Workload
 
