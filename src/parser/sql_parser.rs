@@ -3308,6 +3308,41 @@ impl Parser {
             }));
         }
 
+        // CREATE SCHEMA [IF NOT EXISTS] <name> [options...] — sqlite drops the
+        // trailing options (DEFAULT COLLATE, WITH (...), ...). A CLONE form is
+        // preserved verbatim, so bail to the raw passthrough there.
+        if self.check_keyword("SCHEMA") || self.check_keyword("DATABASE") {
+            let keyword = self.peek().value.to_ascii_uppercase();
+            self.advance(); // SCHEMA / DATABASE
+            let if_not_exists = self.parse_if_not_exists()?;
+            // Backtick identifiers convert to double quotes for mysql/sqlite;
+            // postgres doesn't treat backticks as identifiers, so it preserves
+            // the name verbatim (SQLGlot falls back to a Command there).
+            let raw_name = self.capture_qualified_name_text()?;
+            let name = if matches!(self.dialect, Dialect::Postgres) {
+                raw_name
+            } else {
+                raw_name.replace('`', "\"")
+            };
+            if self.peek().value.eq_ignore_ascii_case("CLONE") {
+                return Err(SqlglotError::ParserError {
+                    message: "CREATE SCHEMA ... CLONE".to_string(),
+                });
+            }
+            while !matches!(self.peek_type(), TokenType::Semicolon | TokenType::Eof) {
+                self.advance();
+            }
+            let mut sql = format!("CREATE {keyword} ");
+            if if_not_exists {
+                sql.push_str("IF NOT EXISTS ");
+            }
+            sql.push_str(&name);
+            return Ok(Statement::Raw(RawStatement {
+                comments: vec![],
+                sql,
+            }));
+        }
+
         // CREATE [OR REPLACE] [TEMP|TEMPORARY] [TABLE] FUNCTION ...
         {
             let table_fn = self.peek_type() == &TokenType::Table
