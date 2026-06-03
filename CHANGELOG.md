@@ -21,6 +21,12 @@ this file records what landed.
 - Added per-case benchmark reporting, a direct C ABI benchmark, and Criterion
   phase benches for tokenize/parse/transform/generate/full-transpile slowdown
   investigation.
+- Added the slowest Postgres window/null-order row to the phase benchmark set
+  and documented the `--per-case --mode core` caveat: it is good for finding
+  slow Rust rows, but not a fair headline speedup because Python runs through a
+  subprocess for each one-row case.
+- Added benchmark report caveats to Markdown and JSON output so low-sample runs
+  and core per-case reports are labeled as diagnostic evidence.
 
 ### Public Documentation Cleanup
 

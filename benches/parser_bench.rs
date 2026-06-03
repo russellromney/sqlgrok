@@ -75,6 +75,12 @@ fn phase_cases() -> Vec<(&'static str, &'static str, Dialect, Dialect)> {
             Dialect::Sqlite,
         ),
         (
+            "postgres_window_nulls",
+            "SELECT user_id, ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY created_at) FROM events",
+            Dialect::Postgres,
+            Dialect::Sqlite,
+        ),
+        (
             "sqlite_cte",
             "WITH a AS (SELECT 1 AS x), b AS (SELECT 2 AS y) SELECT a.x + b.y FROM a, b",
             Dialect::Sqlite,

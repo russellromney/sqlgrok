@@ -1920,6 +1920,15 @@ fn render_benchmark_report(
     out.push_str(&format!("- Median speedup: `{speedup:.2}x`\n"));
     out.push_str(&format!("- Output checksum: `{}`\n\n", candidate.checksum));
 
+    let caveats = benchmark_caveats(args, per_case.is_some());
+    if !caveats.is_empty() {
+        out.push_str("## Measurement Caveats\n\n");
+        for caveat in &caveats {
+            out.push_str(&format!("- {caveat}\n"));
+        }
+        out.push('\n');
+    }
+
     out.push_str("## Distribution\n\n");
     out.push_str("| runner | min us/op | mean us/op | median us/op | p95 us/op | max us/op |\n");
     out.push_str("| --- | ---: | ---: | ---: | ---: | ---: |\n");
@@ -1964,6 +1973,11 @@ fn render_benchmark_report(
                 .total_cmp(&left.candidate.median_ns_per_op)
         });
         out.push_str("## Per-Case Breakdown\n\n");
+        if args.mode == BenchMode::Core {
+            out.push_str(
+                "`core` per-case speedups are diagnostic only: the Rust candidate runs in-process, while the Python oracle runs through a subprocess for each one-row case. Use the candidate column to find slow Rust rows.\n\n",
+            );
+        }
         out.push_str("| id | Python us/op | candidate us/op | speedup | tags |\n");
         out.push_str("| --- | ---: | ---: | ---: | --- |\n");
         for row in rows {
@@ -2006,6 +2020,21 @@ fn render_benchmark_report(
     out
 }
 
+fn benchmark_caveats(args: &BenchSqlglotArgs, has_per_case: bool) -> Vec<&'static str> {
+    let mut caveats = Vec::new();
+    if has_per_case && args.mode == BenchMode::Core {
+        caveats.push(
+            "`--per-case --mode core` is a Rust profiler view, not a fair headline speedup: one-row Python oracle timings include poorly amortized subprocess startup/import cost.",
+        );
+    }
+    if args.samples < 10 {
+        caveats.push(
+            "Fewer than 10 samples is directional evidence; rerun on a quiet machine with more samples before publishing performance claims.",
+        );
+    }
+    caveats
+}
+
 fn render_benchmark_json(
     args: &BenchSqlglotArgs,
     cases: &[BenchCase],
@@ -2014,6 +2043,7 @@ fn render_benchmark_json(
     per_case: Option<&[BenchCaseComparison]>,
 ) -> Result<String, String> {
     let operations = args.iterations * cases.len();
+    let caveats = benchmark_caveats(args, per_case.is_some());
     let report = serde_json::json!({
         "mode": args.mode,
         "sqlglot": args.sqlglot,
@@ -2032,6 +2062,7 @@ fn render_benchmark_json(
             "name": args.mode.candidate_label(),
             "stats": candidate,
         },
+        "measurement_caveats": caveats,
         "median_speedup": baseline.median_ns_per_op / candidate.median_ns_per_op,
         "per_case": per_case,
     });

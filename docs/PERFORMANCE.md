@@ -101,6 +101,13 @@ compare median and p95 timings across:
 same runner is not always helped or hurt by process/cache position. The headline
 speedup is based on median ns/op, not the fastest sample.
 
+Per-case reports need one extra caveat: `--per-case --mode core` is useful for
+finding slow Rust rows, but it is not a fair headline speedup comparison. The
+Rust candidate runs in-process while the Python SQLGlot oracle runs through a
+subprocess for each one-row case, so Python startup/import cost is poorly
+amortized. Use `python-binding` per-case reports for binding-to-binding
+comparisons, and use `core` per-case reports as Rust-side profiling input.
+
 ## Language Binding Benchmarks
 
 The prototype Node, Ruby, and Go bindings call the same release-built C ABI:
@@ -190,6 +197,7 @@ Short Criterion phase run highlights:
 | MySQL `GROUP_CONCAT` transform | ~3.4 us |
 | MySQL `GROUP_CONCAT` generate | ~0.8 us |
 | Postgres `DISTINCT ON` parse | ~6.9 us |
+| Postgres window/null-order parse | ~5.3 us |
 | Postgres `DISTINCT ON` transform | ~2.8 us |
 | Postgres identity-column parse | ~11.0 us |
 | SQLite multi-CTE transpile | ~30.7 us |
@@ -198,6 +206,10 @@ Short Criterion phase run highlights:
 The next real optimization targets are parser/token allocation and the
 multi-CTE/full-transpile path. Generation is generally sub-microsecond in these
 priority cases.
+
+Short Criterion runs are diagnostic, not publication-grade measurements. Use
+longer `--warm-up-time` / `--measurement-time` runs before claiming a regression
+or improvement from phase benches.
 
 If sqlgrok is not materially faster, profile the Rust path instead of assuming
 the port is doomed. Useful targets include tokenizer allocation, parser
