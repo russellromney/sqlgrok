@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11553 |
-| `mismatch` | 1170 |
+| `match` | 11560 |
+| `mismatch` | 1163 |
 | `oracle-error` | 1739 |
 | `rust-error` | 557 |
 | `unsupported-harness-shape` | 137 |
@@ -23,12 +23,12 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8429 |
-| `match` | `validate_identity` | 3016 |
+| `match` | `validate_all` | 8431 |
+| `match` | `validate_identity` | 3021 |
 | `oracle-error` | `validate_identity` | 1135 |
-| `mismatch` | `validate_identity` | 601 |
+| `mismatch` | `validate_identity` | 596 |
 | `oracle-error` | `validate_all` | 595 |
-| `mismatch` | `validate_all` | 507 |
+| `mismatch` | `validate_all` | 505 |
 | `rust-error` | `validate_identity` | 307 |
 | `rust-error` | `validate_all` | 246 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
@@ -43,7 +43,7 @@ Filtered by read/write: `0`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1081 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1083 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 659 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 465 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 301 |
@@ -63,10 +63,10 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 99 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 96 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
+| `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 89 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 88 |
-| `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 86 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 86 |
 | `oracle-error` | `tests/dialects/test_tsql.py` | `test_option` | 86 |
 
 ## Examples

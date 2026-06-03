@@ -4241,21 +4241,39 @@ impl<'a> Parser<'a> {
                     self.expect(TokenType::Default)?;
                 }
                 self.expect(TokenType::As)?;
-                self.expect_keyword("IDENTITY")?;
-                if self.match_token(TokenType::LParen) {
-                    let mut depth = 1usize;
-                    while depth > 0 && self.peek_type() != &TokenType::Eof {
-                        if self.match_token(TokenType::LParen) {
-                            depth += 1;
-                        } else if self.match_token(TokenType::RParen) {
-                            depth -= 1;
-                        } else {
-                            self.advance();
+                if self.peek_type() == &TokenType::LParen {
+                    // GENERATED ALWAYS AS (<expr>) [STORED|VIRTUAL].
+                    self.expect(TokenType::LParen)?;
+                    let gen_expr = self.parse_expr()?;
+                    self.expect(TokenType::RParen)?;
+                    if self.match_keyword("STORED") || self.match_keyword("PERSISTED") {
+                        generated_as = Some(gen_expr);
+                        generated_stored = true;
+                    } else if self.match_keyword("VIRTUAL") {
+                        generated_as = Some(gen_expr);
+                    } else {
+                        // A non-stored computed column folds to a bare
+                        // AUTOINCREMENT in SQLGlot's sqlite output.
+                        auto_increment = true;
+                        auto_increment_from_identity = true;
+                    }
+                } else {
+                    self.expect_keyword("IDENTITY")?;
+                    if self.match_token(TokenType::LParen) {
+                        let mut depth = 1usize;
+                        while depth > 0 && self.peek_type() != &TokenType::Eof {
+                            if self.match_token(TokenType::LParen) {
+                                depth += 1;
+                            } else if self.match_token(TokenType::RParen) {
+                                depth -= 1;
+                            } else {
+                                self.advance();
+                            }
                         }
                     }
+                    auto_increment = true;
+                    auto_increment_from_identity = true;
                 }
-                auto_increment = true;
-                auto_increment_from_identity = true;
             } else if self.match_token(TokenType::Collate) {
                 collation = Some(self.expect_name()?);
             } else if self.match_token(TokenType::Comment) {

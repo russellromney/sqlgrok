@@ -1551,6 +1551,12 @@ impl Generator {
                     self.write(" ");
                     self.write_keyword("PRIMARY KEY");
                 }
+            } else if col.auto_increment_from_identity {
+                // GENERATED ... AS IDENTITY (and GENERATED ALWAYS AS (expr))
+                // render a bare AUTOINCREMENT in sqlite, even without a PK —
+                // unlike a plain AUTO_INCREMENT, which is dropped.
+                self.write(" ");
+                self.write_keyword("AUTOINCREMENT");
             }
         } else {
             if col.primary_key {
