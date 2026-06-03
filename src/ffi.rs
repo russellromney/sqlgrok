@@ -309,3 +309,136 @@ pub extern "C" fn sqlglot_version() -> *const c_char {
 pub unsafe extern "C" fn sqlglot_free(ptr: *mut c_char) {
     unsafe { free_impl(ptr) };
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Dialect;
+    use std::ffi::{CStr, CString};
+
+    fn cstring(value: &str) -> CString {
+        CString::new(value).unwrap()
+    }
+
+    #[test]
+    fn transpile_into_reports_required_length_without_buffer() {
+        let sql = cstring("SELECT IFNULL(a, 0) FROM t");
+        let read = cstring("mysql");
+        let write = cstring("sqlite");
+        let expected = crate::transpile(sql.to_str().unwrap(), Dialect::Mysql, Dialect::Sqlite)
+            .unwrap()
+            .len();
+
+        let required = unsafe {
+            sqlgrok_transpile_into(
+                sql.as_ptr(),
+                read.as_ptr(),
+                write.as_ptr(),
+                ptr::null_mut(),
+                0,
+            )
+        };
+
+        assert_eq!(required, expected as isize);
+    }
+
+    #[test]
+    fn transpile_into_does_not_write_to_too_small_buffer() {
+        let sql = cstring("SELECT IFNULL(a, 0) FROM t");
+        let read = cstring("mysql");
+        let write = cstring("sqlite");
+        let expected = crate::transpile(sql.to_str().unwrap(), Dialect::Mysql, Dialect::Sqlite)
+            .unwrap()
+            .len();
+        let mut buffer = vec![b'X' as c_char; expected];
+
+        let required = unsafe {
+            sqlgrok_transpile_into(
+                sql.as_ptr(),
+                read.as_ptr(),
+                write.as_ptr(),
+                buffer.as_mut_ptr(),
+                buffer.len(),
+            )
+        };
+
+        assert_eq!(required, expected as isize);
+        assert!(buffer.iter().all(|byte| *byte == b'X' as c_char));
+    }
+
+    #[test]
+    fn transpile_into_writes_nul_terminated_output() {
+        let sql = cstring("SELECT IFNULL(a, 0) FROM t");
+        let read = cstring("mysql");
+        let write = cstring("sqlite");
+        let expected =
+            crate::transpile(sql.to_str().unwrap(), Dialect::Mysql, Dialect::Sqlite).unwrap();
+        let mut buffer = vec![0 as c_char; expected.len() + 1];
+
+        let written = unsafe {
+            sqlgrok_transpile_into(
+                sql.as_ptr(),
+                read.as_ptr(),
+                write.as_ptr(),
+                buffer.as_mut_ptr(),
+                buffer.len(),
+            )
+        };
+
+        assert_eq!(written, expected.len() as isize);
+        let output = unsafe { CStr::from_ptr(buffer.as_ptr()) };
+        assert_eq!(output.to_str().unwrap(), expected);
+    }
+
+    #[test]
+    fn transpile_into_returns_error_for_null_sql() {
+        let read = cstring("mysql");
+        let write = cstring("sqlite");
+        let mut buffer = [0 as c_char; 16];
+
+        let result = unsafe {
+            sqlgrok_transpile_into(
+                ptr::null(),
+                read.as_ptr(),
+                write.as_ptr(),
+                buffer.as_mut_ptr(),
+                buffer.len(),
+            )
+        };
+
+        assert_eq!(result, -1);
+    }
+
+    #[test]
+    fn legacy_transpile_into_alias_matches_public_symbol() {
+        let sql = cstring("SELECT IFNULL(a, 0) FROM t");
+        let read = cstring("mysql");
+        let write = cstring("sqlite");
+        let mut public_buffer = vec![0 as c_char; 128];
+        let mut legacy_buffer = vec![0 as c_char; 128];
+
+        let public_written = unsafe {
+            sqlgrok_transpile_into(
+                sql.as_ptr(),
+                read.as_ptr(),
+                write.as_ptr(),
+                public_buffer.as_mut_ptr(),
+                public_buffer.len(),
+            )
+        };
+        let legacy_written = unsafe {
+            sqlglot_transpile_into(
+                sql.as_ptr(),
+                read.as_ptr(),
+                write.as_ptr(),
+                legacy_buffer.as_mut_ptr(),
+                legacy_buffer.len(),
+            )
+        };
+
+        assert_eq!(legacy_written, public_written);
+        let public_output = unsafe { CStr::from_ptr(public_buffer.as_ptr()) };
+        let legacy_output = unsafe { CStr::from_ptr(legacy_buffer.as_ptr()) };
+        assert_eq!(legacy_output, public_output);
+    }
+}
