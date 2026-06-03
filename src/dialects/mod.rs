@@ -3839,13 +3839,14 @@ fn rewrite_semi_anti_joins(sel: &mut SelectStatement) {
 
 fn rewrite_postgres_distinct_on(
     sel: &SelectStatement,
-    source: Dialect,
+    _source: Dialect,
     target: Dialect,
 ) -> Option<SelectStatement> {
-    if !is_postgres_family(source)
-        || !matches!(target, Dialect::Sqlite)
-        || sel.distinct_on.is_empty()
-    {
+    // SQLGlot lowers DISTINCT ON to a ROW_NUMBER() window for every source
+    // dialect when the target can't represent it (the NULLS direction in the
+    // window order is already carried by sel.order_by — present for postgres,
+    // absent for mysql/sqlite).
+    if !matches!(target, Dialect::Sqlite) || sel.distinct_on.is_empty() {
         return None;
     }
 
