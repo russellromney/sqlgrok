@@ -3,11 +3,29 @@
 Quick summaries of completed sqlgrok work. The roadmap says what should happen next;
 this file records what landed.
 
+## 2026-06-02
+
+### Public Documentation Cleanup
+
+- Kept the public documentation surface intentionally small: README, roadmap,
+  changelog, parity docs, and performance docs.
+- Merged parser architecture, AST inventory direction, and binding plans into
+  the roadmap instead of maintaining separate stale-prone docs.
+- Reframed the old quick parity-check language as a curated regression corpus and made
+  the SQLGlot pytest bridge the explicit parity goal.
+- Renamed internal SQLite execution fixtures and reports to generic
+  SQLite-compatibility terminology.
+- Kept package metadata on MIT-only licensing and version `0.1.0`.
+
 ## 2026-05-22
 
 ### Parser Coverage Ratchet
 
-- Added a separate cinch correctness lane with an `xtask check-sqlite-correctness` command, documentation, and seed cases that run Python SQLGlot's SQLite-targeted output against stock SQLite.
+- Added a batch transpilation API in Rust and PyO3 (`transpile_many`) plus benchmark support for parity-clean JSONL workloads, direct Rust versus PyO3 single-call/batch binding modes, Markdown/JSON reports, and seed MySQL-to-SQLite, Postgres-to-SQLite, and SQLite identity case files.
+- Added prototype Node/Koffi, Ruby/Fiddle, and Go/cgo FFI benchmark bindings against the existing C ABI to measure cross-language single-call overhead.
+- Made `xtask bench-sqlglot` fairer by adding multi-sample runs, alternating Python/candidate order, median/min/mean/p95/max reporting, per-sample Markdown/JSON output, and median-based speedups.
+- Published the current PyO3 single-call performance snapshot in the README and performance docs: roughly `33x`-`38x` median speedups over Python SQLGlot on the checked-in MySQL/Postgres/SQLite-to-SQLite workloads.
+- Added a separate SQLite compatibility lane with an `xtask check-sqlite-correctness` command and seed cases that run Python SQLGlot's SQLite-targeted output against stock SQLite.
 - Reduced imported SQLGlot rust-errors for SQLite->SQLite from 8 to 0, MySQL->SQLite from 73 to 8, and Postgres->SQLite from 112 to 62.
 - Added parser/generator carriers for MySQL user variables, `:=`, `<=>`, `&&`, hex literals, qualified upsert/update assignments, `VALUES(...)`, and common cast/type suffix forms.
 - Added Postgres tokenizer/parser support for dollar-quoted strings, psycopg `%s` parameters, `!~`/`!~*`, `VALUES` table sources, ordered aggregate argument carriers, window `EXCLUDE` parsing, and `IS DISTINCT FROM`.
@@ -51,7 +69,7 @@ this file records what landed.
 - Started the Postgres join rust-error bucket with SQLite parity carriers for `XMLTABLE`, `ROWS FROM`, and multi-argument/ordinality `UNNEST` table sources.
 - Reduced the imported Postgres-to-SQLite rust-error backlog from `57` to `28` by adding parity for wrapped `ARRAY(SELECT ...)`, `VARIADIC ARRAY` arguments, additional Postgres `TRIM`/`SUBSTRING` grammar forms, quoted collation preservation, and unary square/cube-root operators.
 - Cleared the remaining imported Postgres-to-SQLite rust-error backlog from `28` to `0` with carriers for `WITHIN GROUP`, `LIKE`/`ILIKE ALL`, collated casts, Postgres range/distance operators, transaction `END` aliases, `OVERLAY`, recursive CTE `SEARCH`/`CYCLE`, schema-qualified cast types, `COPY` subqueries, negative JSON indexes, array containment, `MERGE ... DO NOTHING`, window `EXCLUDE`, and parenthesized `VALUES` joins.
-- Matched cinch hole-finder Postgres-to-SQLite parity for `NATURAL JOIN`, quoted DDL column identifiers, generated identity primary keys, column-default `now()`, multi-CTE queries, and SQLGlot-shaped index DDL while documenting `CONCURRENTLY`/`USING` as SQLGlot-preserved engine/upstream candidates.
+- Matched SQLite compatibility Postgres-to-SQLite parity for `NATURAL JOIN`, quoted DDL column identifiers, generated identity primary keys, column-default `now()`, multi-CTE queries, and SQLGlot-shaped index DDL while documenting `CONCURRENTLY`/`USING` as SQLGlot-preserved engine/upstream candidates.
 - Superseded the partial SQLGlot fixture-importer plan with a pytest-driven SQLGlot suite bridge plan and added the first `maturin`/`pyo3` Python shim exposing `sqlgrok.transpile(...)`.
 - Added the first SQLGlot pytest bridge: helper patching for `validate`, `validate_all`, and `validate_identity`, classified JSONL reports, an `xtask run-sqlglot-suite` wrapper, and a Postgres-to-SQLite budgeted module run.
 - Widened the SQLGlot pytest bridge to full transpile-family runs for Postgres-to-SQLite, MySQL-to-SQLite, and SQLite identity, with Markdown summaries, checked-in budgets, and `uv` as the default Python runner.
@@ -140,7 +158,7 @@ this file records what landed.
 
 - Added [ROADMAP.md](ROADMAP.md) with executable parity milestones and implementation sessions.
 - Hardened the roadmap with a hostile review pass so each session names files, tasks, and acceptance checks.
-- Added [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), including the Databend parser article as inspiration for parser ergonomics while keeping Python SQLGlot as the behavior contract.
+- Added parser architecture notes, including the Databend parser article as inspiration for parser ergonomics while keeping Python SQLGlot as the behavior contract.
 
 ### Parity Harness
 
@@ -151,15 +169,15 @@ this file records what landed.
 
 ### CI And Tooling
 
-- Added standard CI for format, clippy, tests, and pinned Python SQLGlot parity smoke.
+- Added standard CI for format, clippy, tests, and pinned Python SQLGlot curated parity.
 - Added `xtask import-sqlglot-fixtures` for deterministic SQLGlot fixture extraction with `--dry-run`, `--limit`, `--read`, and `--write`.
 
 ### First Parity Ratchets
 
 - Locked in MySQL `GROUP_CONCAT(... SEPARATOR ...)` to SQLite parity.
 - Added `JoinType::Comma` so comma joins preserve SQLGlot string parity while remaining semantic cartesian joins in execution.
-- Removed the accepted-divergence marker from the comma join smoke case.
-- Reached smoke parity with `4/4` exact matches and `0` accepted divergences.
+- Removed the accepted-divergence marker from the comma join curated case.
+- Reached curated parity with `4/4` exact matches and `0` accepted divergences.
 
 ### Project Memory
 
@@ -168,7 +186,7 @@ this file records what landed.
 ### AST Inventory
 
 - Added `xtask inventory-ast` to compare Python SQLGlot's `sqlglot/expressions/` package against sqlgrok's Rust AST enums.
-- Added [docs/AST_INVENTORY.md](docs/AST_INVENTORY.md) with coverage counts, priority gaps, module summaries, and a full generated inventory.
+- Added an AST inventory report with coverage counts, priority gaps, module summaries, and a full generated inventory.
 - Marked AST inventory complete in the roadmap and selected DDL/type normalization as the next ratchet.
 
 ### DDL And Type Normalization

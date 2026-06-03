@@ -1,91 +1,80 @@
-# SQLGlot Parity Harness
+# SQLGlot Parity
 
-sqlgrok uses Python SQLGlot as a behavioral oracle while keeping the implementation pure Rust.
+sqlgrok uses Python SQLGlot as its behavioral oracle while keeping the
+implementation pure Rust.
 
-String parity is the default product contract: when sqlgrok transpiles the same input
-and dialect pair as Python SQLGlot, the output should match exactly.
+String parity is the default product contract: when sqlgrok transpiles the same
+input and dialect pair as Python SQLGlot, the output should match exactly.
 
-There is a separate cinch correctness lane for testing whether SQLGlot's SQLite-targeted
-output is actually accepted by stock SQLite. See [CINCH_CORRECTNESS.md](CINCH_CORRECTNESS.md).
-Those findings are upstream/cinch candidates and should not change sqlgrok's default
-output unless Python SQLGlot changes or sqlgrok grows an explicit opt-in compatibility
-mode.
+SQLite execution compatibility is a separate concern. If Python SQLGlot emits
+SQLite-targeted SQL that a specific SQLite build rejects, that is useful
+evidence for an upstream SQLGlot issue or an opt-in compatibility mode. It is
+not, by itself, a reason for default sqlgrok output to diverge from SQLGlot.
 
 ## Coverage Model
 
-There are two parity layers:
+sqlgrok has five testing layers:
 
-1. **Fast JSONL smoke parity**: `tests/sqlglot_parity.rs` loads `parity/cases/*.jsonl`,
-   calls Python SQLGlot for each source SQL, then requires sqlgrok to match exactly.
-   This is a regression corpus, not the full SQLGlot suite.
-2. **SQLGlot suite bridge**: the planned authoritative layer runs/adapts Python
-   SQLGlot's own pytest helpers against a `maturin` Python shim backed by sqlgrok.
-   This bridge must preserve SQLGlot's helper semantics instead of relying on static
-   extraction alone.
+1. **Rust tests**: focused parser, generator, dialect, optimizer, CLI, and
+   regression coverage. These prove local behavior, but they are not the full
+   SQLGlot suite.
+2. **Curated parity regression corpus**: `tests/sqlglot_parity.rs` loads
+   `parity/cases/*.jsonl`, calls Python SQLGlot for each source SQL, and
+   requires sqlgrok to match exactly unless a row explicitly documents a known
+   divergence. This is a reviewable bug-locking corpus.
+3. **SQLGlot suite bridge**: the primary parity layer. It runs or adapts Python
+   SQLGlot's pytest helpers against a `maturin` Python shim backed by sqlgrok.
+4. **Forced-pair backlog reports**: broad discovery reports that replay
+   pytest-discovered SQL through priority read/write pairs using Python SQLGlot
+   as the oracle.
+5. **SQLite execution compatibility**: optional checks that run SQLite-targeted
+   SQL against concrete engines such as stock SQLite, libSQL, or Turso. These
+   checks find portability and upstream-candidate issues, but they are not the
+   SQLGlot parity oracle.
 
-The old fixture importer remains useful for ratcheting and smoke generation, but it is
-not sufficient as the project completion criterion.
+The curated corpus currently lives in `parity/cases/curated.jsonl` plus any
+additional JSONL files under `parity/cases/`.
 
 ## Python Shim
 
-The first bridge dependency is a small Python package under `python/`:
+The bridge depends on the package under `python/`:
 
 ```bash
+uv run --project python --with maturin maturin develop --manifest-path python/Cargo.toml
 uv run --project python python -c "import sqlgrok; print(sqlgrok.transpile('SELECT 1', read='postgres', write='sqlite'))"
 ```
 
-The shim exposes a SQLGlot-shaped `sqlgrok.transpile(sql, read=None, write=None) -> list[str]`
-surface. It is test infrastructure first; the stable Rust API and CLI remain the product
-surface while the bridge matures.
+The shim exposes a SQLGlot-shaped surface:
+
+```python
+sqlgrok.transpile(sql, read=None, write=None) -> list[str]
+```
+
+It also exposes batch APIs for suite tooling and binding benchmarks. The Rust
+crate and CLI remain the primary product surface while the binding API settles.
 
 ## SQLGlot Suite Bridge
 
-The bridge runner should execute selected SQLGlot pytest modules from a local checkout,
-starting with transpilation. It should adapt or monkeypatch SQLGlot's `validate`,
-`validate_all`, and `validate_identity` helpers so each upstream case records:
+The bridge runner executes selected SQLGlot pytest modules from a local checkout
+and adapts SQLGlot helper semantics. It currently focuses on transpilation and
+helper calls such as:
+
+- `validate`
+- `validate_all`
+- `validate_identity`
+
+Each recorded row includes:
 
 - source test file, test function, and source line;
-- source SQL, read dialect, write dialect, and expected SQL according to SQLGlot's own
-  helper logic;
-- actual sqlgrok output through the Python shim;
+- helper name;
+- source SQL;
+- read and write dialects;
+- expected SQL according to Python SQLGlot;
+- actual sqlgrok output when available;
 - status: `match`, `mismatch`, `rust-error`, `oracle-error`, or
   `unsupported-harness-shape`.
 
-The bridge output belongs in `parity/reports/sqlglot_suite_<family>_<read>_<write>.jsonl`
-with a Markdown summary beside it.
-
-The Markdown summary also records coverage accounting:
-
-- `Observed helper attempts`: every SQLGlot helper call the bridge saw while running the
-  selected upstream pytest modules.
-- `Filtered by read/write`: helper calls whose read/write route did not match the
-  requested bridge lane.
-- `Filtered Routes`: the largest helper/read/write buckets that were seen but filtered.
-
-These counts are the reconciliation layer between the pytest bridge and the legacy static
-importer. The pytest bridge records SQLGlot's explicit helper routes; the importer can
-force a requested read/write pair over many extracted SQL snippets to create a broader
-ratchet backlog. The bridge is the long-term source of truth, while importer reports
-remain useful for finding work until more SQLGlot helper shapes and bridge lanes are
-adapted.
-
-The bridge also has an explicit forced-pair mode for backlog discovery. In this mode,
-pytest still discovers SQL through SQLGlot's helpers, but every captured source SQL is
-re-evaluated as the requested `--read`/`--write` pair. The expected output comes from a
-fresh Python SQLGlot oracle call for that forced pair, not from the helper's original
-target string. These reports are written as
-`parity/reports/sqlglot_suite_forced_<family>_<read>_<write>.jsonl` so they do not
-replace the stricter helper-route budget reports.
-
-CI should gate the bridge by budget:
-
-- fail if `rust-error`, `oracle-error`, or `unsupported-harness-shape` increases;
-- fail if `mismatch` increases above the checked-in budget;
-- allow mismatch reductions only when the budget is updated intentionally.
-
-The landed bridge runs the upstream transpile family, `tests/test_transpile.py` plus all
-`tests/dialects/test_*.py` modules, with read/write filters selecting the rows that enter
-the report:
+Run a budgeted helper-route bridge:
 
 ```bash
 cargo run --features cli --bin xtask -- run-sqlglot-suite \
@@ -97,10 +86,28 @@ cargo run --features cli --bin xtask -- run-sqlglot-suite \
   --pytest-arg -q
 ```
 
-This is the first full-family transpile bridge for the tracked lanes. It still starts with
-transpile helper semantics; parse/generate and optimizer helpers are future bridge lanes.
+Reports are written to:
 
-Run the forced-pair backlog view with `--force-pair`:
+```text
+parity/reports/sqlglot_suite_<family>_<read>_<write>.jsonl
+parity/reports/sqlglot_suite_<family>_<read>_<write>.md
+```
+
+The Markdown summary records coverage accounting:
+
+- observed helper attempts;
+- rows filtered by read/write route;
+- largest filtered route buckets;
+- status counts for the requested lane.
+
+These counts reconcile the pytest bridge with older static importer reports.
+The pytest bridge is the long-term source of truth for upstream helper semantics.
+
+## Forced-Pair Backlog
+
+Forced-pair mode keeps pytest discovery but evaluates every captured source SQL
+under the requested read/write pair. Expected output comes from a fresh Python
+SQLGlot oracle call for that forced pair.
 
 ```bash
 cargo run --features cli --bin xtask -- run-sqlglot-suite \
@@ -112,30 +119,58 @@ cargo run --features cli --bin xtask -- run-sqlglot-suite \
   --pytest-arg -q
 ```
 
-Summarize a forced report into attackable buckets:
+Forced reports are written separately:
+
+```text
+parity/reports/sqlglot_suite_forced_<family>_<read>_<write>.jsonl
+parity/reports/sqlglot_suite_forced_<family>_<read>_<write>.md
+```
+
+Summarize a forced report into implementation buckets:
 
 ```bash
 cargo run --features cli --bin xtask -- bucket-suite-report \
   --input parity/reports/sqlglot_suite_forced_transpile_mysql_sqlite.jsonl
 ```
 
-The bucket report groups rows by status, helper, source test, SQL shape, normalized parser
-error, and mismatch signature. Use it to choose cluster-sized implementation slices
-instead of reading the full JSONL by hand.
+Use forced-pair reports to choose cluster-sized implementation slices. They are
+broader than helper-route reports, but they are still oracle-backed.
 
-As of the latest checked-in reports, the forced-pair bridge sees all `15,164` transpile
-helper attempts for each tracked lane:
+## Budgets
 
-- MySQL->SQLite: `7,892` match, `3,905` mismatch, `1,487` rust-error, `1,743` oracle-error,
-  `137` unsupported harness shape.
-- Postgres->SQLite: `8,505` match, `3,507` mismatch, `1,558` rust-error, `1,457`
-  oracle-error, `137` unsupported harness shape.
-- SQLite->SQLite: `8,144` match, `3,824` mismatch, `1,510` rust-error, `1,549`
-  oracle-error, `137` unsupported harness shape.
+CI should gate suite reports by checked-in budgets:
+
+- fail if `rust-error`, `oracle-error`, or `unsupported-harness-shape`
+  increases;
+- fail if `mismatch` increases above the checked-in budget;
+- allow reductions only when the budget is updated intentionally.
+
+The next budget improvement is row-level diffing. Count-level budgets can miss a
+bad trade where one row is fixed and a different row regresses. Row-level
+budgets should use stable case identifiers derived from source file, line,
+helper name, SQL, and requested dialect pair.
+
+## Dialect Versions
+
+SQLGlot dialects are dialect families. sqlgrok should document concrete
+execution profiles separately from SQLGlot string parity.
+
+Initial profiles:
+
+- PostgreSQL: modern ORM-relevant Postgres, roughly Postgres 16+ syntax.
+- MySQL: modern MySQL 8.x syntax and common ORM/driver SQL.
+- SQLite: stock SQLite, with notes for JSON operators, generated columns, window
+  functions, STRICT tables, and optional math functions.
+- libSQL/Turso: execution-compatibility profiles layered on top of SQLite
+  string parity, not separate default transpilation oracles.
+
+For example, SQLGlot may output SQLite-dialect JSON operators that require a
+recent SQLite build. That is not a string-parity failure. It belongs in an
+execution-compatibility lane.
 
 ## Case Format
 
-Parity cases are JSON Lines files under `parity/cases/`:
+Curated parity cases are JSON Lines files under `parity/cases/`:
 
 ```json
 {"id":"mysql-group-concat-separator-to-sqlite","sql":"SELECT GROUP_CONCAT(v SEPARATOR '|') FROM gc","read":"mysql","write":"sqlite","tags":["transpile","mysql","sqlite","aggregate","function"],"source":"manual:orm-mysql-group-concat","mode":"transpile"}
@@ -148,34 +183,36 @@ Fields:
 - `read`: source dialect name.
 - `write`: target dialect name.
 - `tags`: optional lowercase kebab-case labels for filtering and reporting.
-- `source`: optional source reference such as an upstream fixture path, issue id, or manual reproducer id.
+- `source`: optional source reference such as an upstream fixture path, issue id,
+  or manual reproducer id.
 - `mode`: optional harness mode. Currently only `transpile` is supported.
-- `skip_reason`: optional reason to skip the case while preserving it in the corpus.
-- `accepted_rust`: optional known-divergence output. If omitted, Rust must match Python exactly.
+- `skip_reason`: optional reason to skip the case while preserving it in the
+  corpus.
+- `accepted_rust`: optional known-divergence output. If omitted, Rust must match
+  Python exactly.
 - `note`: optional explanation for known divergences.
 
-## Running
+## Curated Corpus Commands
 
-Point the test at a Python SQLGlot checkout:
+Run all curated cases:
 
 ```bash
-SQLGLOT_PYTHON_PATH=/path/to/sqlglot cargo test sqlglot_python_smoke_parity --features cli -- --nocapture
+SQLGLOT_PYTHON_PATH=/path/to/sqlglot \
+  cargo test sqlglot_python_curated_parity --features cli -- --nocapture
 ```
 
-If `SQLGLOT_PYTHON_PATH` is not set, the test also checks for a sibling checkout at `../sqlglot`.
-
-Filter a run with environment variables:
+Filter a run:
 
 ```bash
 SQLGROK_PARITY_ID=mysql-group-concat-separator-to-sqlite \
   SQLGLOT_PYTHON_PATH=/path/to/sqlglot \
-  cargo test sqlglot_python_smoke_parity --features cli -- --nocapture
+  cargo test sqlglot_python_curated_parity --features cli -- --nocapture
 
 SQLGROK_PARITY_TAG=join \
   SQLGROK_PARITY_READ=mysql \
   SQLGROK_PARITY_WRITE=sqlite \
   SQLGLOT_PYTHON_PATH=/path/to/sqlglot \
-  cargo test sqlglot_python_smoke_parity --features cli -- --nocapture
+  cargo test sqlglot_python_curated_parity --features cli -- --nocapture
 ```
 
 Supported filters:
@@ -185,12 +222,14 @@ Supported filters:
 - `SQLGROK_PARITY_READ`
 - `SQLGROK_PARITY_WRITE`
 
-The harness rejects duplicate case ids and invalid tags. Tags must be lowercase kebab-case.
+The harness rejects duplicate case ids and invalid tags. Tags must be lowercase
+kebab-case.
 
-## Importing SQLGlot Fixtures
+## Legacy Importer
 
-The importer is a legacy ratchet tool. Use `xtask` to extract a small, deterministic
-batch from a local Python SQLGlot checkout:
+`xtask import-sqlglot-fixtures` is a legacy ratchet tool. It can extract a
+deterministic subset of SQLGlot transpile cases into JSONL, but it is not the
+full suite and should not be described that way.
 
 ```bash
 cargo run --bin xtask -- import-sqlglot-fixtures \
@@ -202,71 +241,5 @@ cargo run --bin xtask -- import-sqlglot-fixtures \
   --dry-run
 ```
 
-Drop `--dry-run` to write the default output file:
-
-```bash
-cargo run --bin xtask -- import-sqlglot-fixtures \
-  --sqlglot /path/to/sqlglot \
-  --family transpile \
-  --read mysql \
-  --write sqlite \
-  --limit 25
-```
-
-By default, imported cases are written to `parity/cases/transpile_<read>_<write>.jsonl`.
-Use `--output` to choose a different file. The importer currently supports the `transpile`
-family and scans SQLGlot's core transpile test plus dialect test files. It extracts
-literal `validate`, `validate_all`, and dialect-class `validate_identity` calls, including
-simple local variables, f-strings, and loops, then uses Python SQLGlot as the oracle for
-the requested read/write dialect pair.
-
-Use `--only-matching` when you want a non-breaking seed file. That mode runs each imported
-candidate through both Python SQLGlot and sqlgrok, then keeps only exact matches:
-
-```bash
-cargo run --bin xtask -- import-sqlglot-fixtures \
-  --sqlglot /path/to/sqlglot \
-  --family transpile \
-  --read postgres \
-  --write sqlite \
-  --all \
-  --only-matching
-```
-
-Use `--report-output` to make the full candidate backlog explicit instead of relying on
-manual review. The report is JSONL with each candidate marked as `match`,
-`mismatch`, `rust-error`, or `oracle-error`, including Python's expected output
-and sqlgrok's actual output when available:
-
-```bash
-cargo run --bin xtask -- import-sqlglot-fixtures \
-  --sqlglot /path/to/sqlglot \
-  --family transpile \
-  --read mysql \
-  --write sqlite \
-  --all \
-  --only-matching \
-  --report-output parity/reports/transpile_mysql_sqlite.jsonl
-```
-
-Summarize a report to choose the next work item:
-
-```bash
-cargo run --bin xtask -- summarize-report \
-  --input parity/reports/transpile_mysql_sqlite.jsonl \
-  --output parity/reports/transpile_mysql_sqlite.md
-```
-
-Imported cases include `source_file`, `source_line`, and `test_name` metadata so
-larger batches can be traced back to the exact SQLGlot test. The importer also
-adds feature tags for obvious DDL, index, and constraint cases.
-
-## Ratchet
-
-The intended workflow is:
-
-1. Add or import a failing SQLGlot case.
-2. Mark it with `accepted_rust` only when the divergence is intentional and documented.
-3. Fix sqlgrok.
-4. Remove `accepted_rust` once exact parity is reached.
-5. Add a narrow Rust regression test for the fixed gap.
+Use it for small curated fixture additions. Use the SQLGlot suite bridge and
+forced-pair reports for broad parity visibility.

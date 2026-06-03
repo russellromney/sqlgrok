@@ -45,17 +45,20 @@ struct ParitySummary {
 }
 
 #[test]
-fn sqlglot_python_smoke_parity() {
+fn sqlglot_python_curated_parity() {
     let Some(sqlglot_path) = python_sqlglot_path() else {
         eprintln!(
-            "skipping SQLGlot parity smoke: set SQLGLOT_PYTHON_PATH or clone Python SQLGlot beside sqlgrok"
+            "skipping SQLGlot curated parity: set SQLGLOT_PYTHON_PATH or clone Python SQLGlot beside sqlgrok"
         );
         return;
     };
 
     let filters = ParityFilters::from_env();
     let cases = load_cases();
-    assert!(!cases.is_empty(), "parity smoke corpus should not be empty");
+    assert!(
+        !cases.is_empty(),
+        "curated parity corpus should not be empty"
+    );
 
     let mut summary = ParitySummary::default();
     for case in cases {

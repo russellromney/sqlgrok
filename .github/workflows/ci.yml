@@ -39,8 +39,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --features cli
 
-  parity-smoke:
-    name: sqlglot parity smoke
+  curated-parity:
+    name: sqlglot curated parity
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sqlgrok
@@ -57,8 +57,8 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Run parity smoke
+      - name: Run curated parity corpus
         working-directory: sqlgrok
         env:
           SQLGLOT_PYTHON_PATH: ${{ github.workspace }}/sqlglot
-        run: cargo test sqlglot_python_smoke_parity --features cli -- --nocapture
+        run: cargo test sqlglot_python_curated_parity --features cli -- --nocapture

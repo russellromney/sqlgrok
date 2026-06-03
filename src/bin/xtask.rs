@@ -485,7 +485,7 @@ impl CheckSqliteCorrectnessArgs {
         }
 
         let sqlglot = sqlglot.ok_or_else(|| "--sqlglot is required".to_string())?;
-        let input = input.unwrap_or_else(|| PathBuf::from("correctness/cases/cinch_sqlite.jsonl"));
+        let input = input.unwrap_or_else(|| PathBuf::from("correctness/cases/sqlite_compat.jsonl"));
         let markdown_output = markdown_output.unwrap_or_else(|| {
             let stem = input
                 .file_stem()
@@ -528,7 +528,7 @@ impl CheckSqliteCorrectnessArgs {
     }
 
     fn usage() -> String {
-        "usage: cargo run --bin xtask -- check-sqlite-correctness --sqlglot /path/to/sqlglot [--input correctness/cases/cinch_sqlite.jsonl] [--jsonl-output correctness/reports/cinch_sqlite.jsonl] [--markdown-output correctness/reports/cinch_sqlite.md] [--dry-run]".to_string()
+        "usage: cargo run --bin xtask -- check-sqlite-correctness --sqlglot /path/to/sqlglot [--input correctness/cases/sqlite_compat.jsonl] [--jsonl-output correctness/reports/sqlite_compat.jsonl] [--markdown-output correctness/reports/sqlite_compat.md] [--dry-run]".to_string()
     }
 }
 
@@ -545,7 +545,7 @@ impl InventoryArgs {
         let mut args = args.peekable();
         let mut sqlglot = None;
         let mut rust_ast = PathBuf::from("src/ast/types.rs");
-        let mut output = PathBuf::from("docs/AST_INVENTORY.md");
+        let mut output = PathBuf::from("parity/reports/ast_inventory.md");
         let mut dry_run = false;
 
         while let Some(arg) = args.next() {
@@ -589,7 +589,7 @@ impl InventoryArgs {
     }
 
     fn usage() -> String {
-        "usage: cargo run --bin xtask -- inventory-ast --sqlglot /path/to/sqlglot [--rust-ast src/ast/types.rs] [--output docs/AST_INVENTORY.md] [--dry-run]".to_string()
+        "usage: cargo run --bin xtask -- inventory-ast --sqlglot /path/to/sqlglot [--rust-ast src/ast/types.rs] [--output parity/reports/ast_inventory.md] [--dry-run]".to_string()
     }
 }
 
@@ -2212,7 +2212,7 @@ fn summarize_correctness(input: &Path, outcomes: &[CorrectnessOutcome]) -> Strin
     let mut output = String::new();
     output.push_str("# SQLite Correctness Report\n\n");
     output.push_str(&format!("Source: `{}`\n\n", input.display()));
-    output.push_str("This report runs Python SQLGlot's SQLite-targeted output against stock `sqlite3`. A `sqlite-error` row is not a sqlgrok parity failure by itself; it is a cinch correctness or upstream SQLGlot candidate to investigate.\n\n");
+    output.push_str("This report runs Python SQLGlot's SQLite-targeted output against stock `sqlite3`. A `sqlite-error` row is not a sqlgrok parity failure by itself; it is a SQLite compatibility or upstream SQLGlot candidate to investigate.\n\n");
     output.push_str(&format!("Total candidates: `{}`\n\n", outcomes.len()));
 
     output.push_str("## Status Counts\n\n");

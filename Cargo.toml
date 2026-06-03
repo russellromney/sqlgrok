@@ -1,13 +1,13 @@
 [package]
 name = "sqlgrok"
-version = "0.9.27"
+version = "0.1.0"
 edition = "2024"
 description = "A pure-Rust SQLGlot port with Python SQLGlot parity tests"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/russellromney/sqlgrok"
 homepage = "https://github.com/russellromney/sqlgrok"
-documentation = "https://github.com/russellromney/sqlgrok/blob/master/docs/guide.md"
+documentation = "https://github.com/russellromney/sqlgrok/blob/master/docs/PARITY.md"
 keywords = ["sql", "parser", "transpiler", "ast", "database"]
 categories = ["parser-implementations", "database"]
 exclude = ["packaging/test/", ".dockerignore", ".github/"]

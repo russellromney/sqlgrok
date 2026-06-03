@@ -1595,7 +1595,7 @@ fn test_identity_insert_on_conflict() {
 }
 
 #[test]
-fn test_cinch_holefinder_postgres_ddl_join_cte_batch_to_sqlite() {
+fn test_sqlite_compatibility_postgres_ddl_join_cte_batch_to_sqlite() {
     validate_with_dialect(
         "SELECT count(*) FROM jl NATURAL JOIN jr",
         "SELECT COUNT(*) FROM jl NATURAL JOIN jr",

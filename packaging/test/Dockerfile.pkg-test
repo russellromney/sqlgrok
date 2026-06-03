@@ -57,7 +57,7 @@ RUN echo "=== Building RPM package ===" && \
     rpm -qip "$RPM" && \
     rpm -qlp "$RPM"
 
-# ── Install and smoke-test the .deb ──────────────────────────────────────
+# ── Install and sanity-test the .deb ──────────────────────────────────────
 RUN echo "=== Installing and testing .deb ===" && \
     DEB=$(find target/debian -name '*.deb' | head -1) && \
     dpkg -i "$DEB" && \

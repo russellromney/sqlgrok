@@ -103,8 +103,8 @@ jobs:
           path: sqlgrok-ffi-${{ matrix.artifact }}.tar.gz
           retention-days: 30
 
-  # Optional: run a quick smoke test by linking into a C program
-  smoke-test:
+  # Optional: run a quick sanity test by linking into a C program
+  sanity-test:
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -115,10 +115,10 @@ jobs:
         with:
           name: sqlgrok-ffi-linux-amd64
 
-      - name: Extract and compile C smoke test
+      - name: Extract and compile C sanity test
         run: |
           tar xzf sqlgrok-ffi-linux-amd64.tar.gz
-          cat > smoke.c << 'EOF'
+          cat > sanity.c << 'EOF'
           #include <stdio.h>
           #include "sqlgrok-ffi-linux-amd64/include/sqlglot.h"
 
@@ -141,9 +141,9 @@ jobs:
               return 0;
           }
           EOF
-          gcc smoke.c \
+          gcc sanity.c \
             -Lsqlgrok-ffi-linux-amd64/lib \
             -lsqlgrok \
             -lpthread -ldl -lm \
-            -o smoke
-          LD_LIBRARY_PATH=sqlgrok-ffi-linux-amd64/lib ./smoke
+            -o sanity
+          LD_LIBRARY_PATH=sqlgrok-ffi-linux-amd64/lib ./sanity

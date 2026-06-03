@@ -149,7 +149,6 @@ endif
 	sed -i '' 's/^version = ".*"/version = "$(VERSION)"/' Cargo.toml
 	@# Update version in documentation
 	sed -i '' 's/sqlgrok = "[^"]*"/sqlgrok = "$(VERSION)"/' README.md
-	sed -i '' 's/sqlgrok = "[^"]*"/sqlgrok = "$(VERSION)"/' docs/installation.md
 	@# Sync Cargo.lock
 	cargo generate-lockfile
 	@echo "Version updated to $(VERSION)"
