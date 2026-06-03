@@ -7122,6 +7122,17 @@ impl Parser {
                         })
                     }
                 } else {
+                    // In MySQL (no ANSI_QUOTES) a source double-quoted token is
+                    // a string literal, not an identifier. Detect genuine
+                    // source quoting via the source text (a leading `"`), not
+                    // the quote_char flag, which is also set on bare
+                    // identifiers that merely need output quoting.
+                    if matches!(self.dialect, Dialect::Mysql) {
+                        let byte = self.char_pos_to_byte(name_token.position);
+                        if self.sql[byte..].starts_with('"') {
+                            return Ok(Expr::StringLiteral(name));
+                        }
+                    }
                     Ok(Expr::Column {
                         table: None,
                         name,
