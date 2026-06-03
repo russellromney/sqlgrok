@@ -1601,6 +1601,21 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over,
                 };
             }
+            // POSITION(needle, haystack, position) lowers to the SUBSTRING /
+            // offset IIF form — SUBSTRING over the haystack (2nd arg).
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("POSITION")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 3
+            {
+                return sqlite_instr_with_position(
+                    new_args[1].clone(),
+                    new_args[0].clone(),
+                    new_args[2].clone(),
+                );
+            }
             if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("CHARINDEX")
                 && !distinct
@@ -1812,7 +1827,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && !distinct
                 && filter.is_none()
                 && over.is_none()
-                && (new_args.len() == 2 || new_args.len() == 3)
+                && matches!(new_args.len(), 2 | 3 | 4)
             {
                 if new_args.len() == 2 {
                     return Expr::Function {
@@ -1823,6 +1838,8 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                         over,
                     };
                 }
+                // 3- and 4-arg: STR_POSITION(haystack, needle, position[,
+                // occurrence]) — the occurrence arg is dropped.
                 return sqlite_instr_with_position(
                     new_args[0].clone(),
                     new_args[1].clone(),

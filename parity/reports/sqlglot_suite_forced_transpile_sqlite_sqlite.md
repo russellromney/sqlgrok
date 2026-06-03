@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11719 |
-| `mismatch` | 1176 |
+| `match` | 11731 |
+| `mismatch` | 1164 |
 | `oracle-error` | 1545 |
 | `rust-error` | 579 |
 | `unsupported-harness-shape` | 137 |
@@ -23,11 +23,11 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8443 |
-| `match` | `validate_identity` | 3171 |
+| `match` | `validate_all` | 8454 |
+| `match` | `validate_identity` | 3172 |
 | `oracle-error` | `validate_identity` | 993 |
-| `mismatch` | `validate_all` | 559 |
-| `mismatch` | `validate_identity` | 551 |
+| `mismatch` | `validate_identity` | 550 |
+| `mismatch` | `validate_all` | 548 |
 | `oracle-error` | `validate_all` | 543 |
 | `rust-error` | `validate_identity` | 344 |
 | `rust-error` | `validate_all` | 232 |
@@ -49,9 +49,9 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 344 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 293 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 263 |
-| `match` | `tests/dialects/test_dialect.py` | `test_operators` | 251 |
+| `match` | `tests/dialects/test_dialect.py` | `test_operators` | 262 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 244 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 184 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 185 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 176 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 152 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 149 |
