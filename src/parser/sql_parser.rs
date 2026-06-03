@@ -292,10 +292,10 @@ fn normalize_dollar_quoted_strings(sql: &str) -> String {
 ///
 /// Supports CTEs (WITH), subqueries, UNION/INTERSECT/EXCEPT, CAST,
 /// window functions (OVER), EXISTS, EXTRACT, INTERVAL, and more.
-pub struct Parser {
+pub struct Parser<'a> {
     tokens: Vec<Token>,
     pos: usize,
-    sql: String,
+    sql: &'a str,
     parsing_column_default: bool,
     /// Whether to preserve comments during parsing.
     #[allow(dead_code)]
@@ -338,15 +338,15 @@ fn make_select_star_limit_zero(source: TableRef) -> SelectStatement {
     }
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     /// Create a new parser from a SQL string.
-    pub fn new(sql: &str) -> Result<Self> {
+    pub fn new(sql: &'a str) -> Result<Self> {
         let mut tokenizer = Tokenizer::new(sql);
         let tokens = tokenizer.tokenize()?;
         Ok(Self {
             tokens,
             pos: 0,
-            sql: sql.to_string(),
+            sql,
             parsing_column_default: false,
             preserve_comments: false,
             pending_comments: Vec::new(),
@@ -355,13 +355,13 @@ impl Parser {
     }
 
     /// Create a new parser that preserves SQL comments in the AST.
-    pub fn new_with_comments(sql: &str) -> Result<Self> {
+    pub fn new_with_comments(sql: &'a str) -> Result<Self> {
         let mut tokenizer = Tokenizer::with_comments(sql);
         let tokens = tokenizer.tokenize()?;
         Ok(Self {
             tokens,
             pos: 0,
-            sql: sql.to_string(),
+            sql,
             parsing_column_default: false,
             preserve_comments: true,
             pending_comments: Vec::new(),
@@ -370,17 +370,17 @@ impl Parser {
     }
 
     /// Create a parser using source-dialect tokenization rules.
-    pub fn new_with_dialect(sql: &str, dialect: Dialect) -> Result<Self> {
+    pub fn new_with_dialect(sql: &'a str, dialect: Dialect) -> Result<Self> {
         Self::new_with_dialect_options(sql, dialect, false)
     }
 
     /// Create a parser that preserves comments using source-dialect tokenization rules.
-    pub fn new_with_comments_and_dialect(sql: &str, dialect: Dialect) -> Result<Self> {
+    pub fn new_with_comments_and_dialect(sql: &'a str, dialect: Dialect) -> Result<Self> {
         Self::new_with_dialect_options(sql, dialect, true)
     }
 
     fn new_with_dialect_options(
-        sql: &str,
+        sql: &'a str,
         dialect: Dialect,
         preserve_comments: bool,
     ) -> Result<Self> {
@@ -396,7 +396,7 @@ impl Parser {
         Ok(Self {
             tokens,
             pos: 0,
-            sql: sql.to_string(),
+            sql,
             parsing_column_default: false,
             preserve_comments,
             pending_comments: Vec::new(),
@@ -986,10 +986,7 @@ impl Parser {
     }
 
     fn char_pos_to_byte(&self, char_pos: usize) -> usize {
-        self.sql
-            .char_indices()
-            .nth(char_pos)
-            .map_or(self.sql.len(), |(byte_pos, _)| byte_pos)
+        char_pos.min(self.sql.len())
     }
 
     fn normalize_sqlite_command(sql: &str) -> String {

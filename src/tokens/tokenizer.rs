@@ -9,8 +9,8 @@ use crate::tokens::{Token, TokenType};
 /// - Quoted identifiers (`"..."` and backtick)
 /// - String literals with escape handling
 /// - Multi-character operators (`<=`, `>=`, `<>`, `!=`, `||`, `::`, `->`, `->>`)
-pub struct Tokenizer {
-    input: Vec<char>,
+pub struct Tokenizer<'a> {
+    input: &'a str,
     pos: usize,
     line: usize,
     col: usize,
@@ -32,12 +32,12 @@ pub struct Tokenizer {
     interpret_string_escapes: bool,
 }
 
-impl Tokenizer {
+impl<'a> Tokenizer<'a> {
     /// Create a new tokenizer for the given SQL input.
     #[must_use]
-    pub fn new(input: &str) -> Self {
+    pub fn new(input: &'a str) -> Self {
         Self {
-            input: input.chars().collect(),
+            input,
             pos: 0,
             line: 1,
             col: 1,
@@ -51,9 +51,9 @@ impl Tokenizer {
 
     /// Create a tokenizer that preserves comment tokens.
     #[must_use]
-    pub fn with_comments(input: &str) -> Self {
+    pub fn with_comments(input: &'a str) -> Self {
         Self {
-            input: input.chars().collect(),
+            input,
             pos: 0,
             line: 1,
             col: 1,
@@ -67,9 +67,9 @@ impl Tokenizer {
 
     /// Create a tokenizer with explicit comment handling options.
     #[must_use]
-    pub fn with_options(input: &str, preserve_comments: bool, hash_comments: bool) -> Self {
+    pub fn with_options(input: &'a str, preserve_comments: bool, hash_comments: bool) -> Self {
         Self {
-            input: input.chars().collect(),
+            input,
             pos: 0,
             line: 1,
             col: 1,
@@ -128,34 +128,37 @@ impl Tokenizer {
     }
 
     fn peek(&self) -> Option<char> {
-        self.input.get(self.pos).copied()
+        self.input.get(self.pos..)?.chars().next()
     }
 
     fn peek_at(&self, offset: usize) -> Option<char> {
-        self.input.get(self.pos + offset).copied()
+        self.input.get(self.pos..)?.chars().nth(offset)
+    }
+
+    fn char_at_byte(&self, pos: usize) -> Option<char> {
+        self.input.get(pos..)?.chars().next()
     }
 
     fn hash_looks_like_numeric_operator(&self, start: usize) -> bool {
         let has_left_operand = self.input[..start]
-            .iter()
+            .chars()
             .rev()
-            .take_while(|ch| **ch != '\n')
+            .take_while(|ch| *ch != '\n')
             .any(|ch| !ch.is_whitespace());
         if !has_left_operand {
             return false;
         }
 
         self.input[self.pos..]
-            .iter()
-            .copied()
+            .chars()
             .find(|ch| !ch.is_whitespace())
             .is_some_and(|ch| ch.is_ascii_digit())
     }
 
     fn advance(&mut self) -> Option<char> {
-        let ch = self.input.get(self.pos).copied();
+        let ch = self.peek();
         if let Some(c) = ch {
-            self.pos += 1;
+            self.pos += c.len_utf8();
             if c == '\n' {
                 self.line += 1;
                 self.col = 1;
@@ -225,14 +228,17 @@ impl Tokenizer {
                 {
                     let mut scan = self.pos;
                     while scan < self.input.len() {
-                        if self.input[scan] == ']' {
+                        let Some(ch) = self.char_at_byte(scan) else {
+                            break;
+                        };
+                        if ch == ']' {
                             looks_like_ident = scan > self.pos;
                             break;
                         }
-                        if self.input[scan] == ',' || self.input[scan] == '\n' {
+                        if ch == ',' || ch == '\n' {
                             break;
                         }
-                        scan += 1;
+                        scan += ch.len_utf8();
                     }
                 }
                 if looks_like_ident {
@@ -661,10 +667,7 @@ impl Tokenizer {
     }
 
     fn starts_with(&self, needle: &str) -> bool {
-        needle
-            .chars()
-            .enumerate()
-            .all(|(i, c)| self.peek_at(i) == Some(c))
+        self.input[self.pos..].starts_with(needle)
     }
 
     fn read_string(
@@ -752,15 +755,21 @@ impl Tokenizer {
             && self.peek().is_some_and(|c| c == 'b' || c == 'B')
         {
             let mut scan = self.pos + 1;
-            while self.input.get(scan).is_some_and(|c| *c == '0' || *c == '1') {
+            while self
+                .input
+                .as_bytes()
+                .get(scan)
+                .is_some_and(|c| *c == b'0' || *c == b'1')
+            {
                 scan += 1;
             }
 
             let has_bits = scan > self.pos + 1;
             let has_invalid_suffix = self
                 .input
+                .as_bytes()
                 .get(scan)
-                .is_some_and(|c| c.is_ascii_alphanumeric() || *c == '_');
+                .is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_');
 
             if !has_bits || has_invalid_suffix {
                 let mut ident = String::from("0");

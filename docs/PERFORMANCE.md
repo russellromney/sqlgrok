@@ -193,24 +193,26 @@ Current allocation-profile snapshot, using the checked-in 8-case workloads with
 
 | Workload | Allocated | Allocations | Heaviest checked-in case |
 | --- | ---: | ---: | --- |
-| MySQL -> SQLite | 6.91 KiB/op | 92.38 allocs/op | `mysql-if-cast-div` at 13.03 KiB/op |
-| Postgres -> SQLite | 6.43 KiB/op | 88.00 allocs/op | `postgres-distinct-on` at 10.81 KiB/op |
-| SQLite -> SQLite | 6.35 KiB/op | 70.50 allocs/op | `sqlite-cte` at 14.96 KiB/op |
+| MySQL -> SQLite | 6.32 KiB/op | 88.38 allocs/op | `mysql-if-cast-div` at 12.44 KiB/op |
+| Postgres -> SQLite | 5.77 KiB/op | 84.00 allocs/op | `postgres-distinct-on` at 9.97 KiB/op |
+| SQLite -> SQLite | 5.75 KiB/op | 66.38 allocs/op | `sqlite-cte` at 14.34 KiB/op |
 
 Example phase read on the current heaviest MySQL row, `mysql-if-cast-div`:
 
 | Phase | Allocated | Allocations |
 | --- | ---: | ---: |
-| tokenize | 3.61 KiB/op | 30 allocs/op |
-| parse | 6.52 KiB/op | 79 allocs/op |
+| tokenize | 3.10 KiB/op | 27 allocs/op |
+| parse | 5.93 KiB/op | 75 allocs/op |
 | transform | 2.11 KiB/op | 26 allocs/op |
 | generate | 0.35 KiB/op | 10 allocs/op |
-| transpile | 13.03 KiB/op | 143 allocs/op |
+| transpile | 12.44 KiB/op | 139 allocs/op |
 
 That confirms the in-place dialect transform path removed the worst expression
 clone pressure. A follow-up parser pass removed uppercase-string allocation from
 context keyword checks, cutting full-transpile allocation counts across all
-three priority workloads.
+three priority workloads. The tokenizer and parser now borrow the source SQL
+instead of copying the whole input into a `Vec<char>` and parser-owned `String`;
+the next memory frontier is token/AST value ownership rather than cursor setup.
 
 Current Postgres-to-SQLite per-case PyO3 medians:
 

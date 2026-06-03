@@ -46,6 +46,10 @@ this file records what landed.
 - Cleared the local format/strict-Clippy blockers and preserved raw
   SQLite-targeted top-level `PIVOT` / bare Postgres `ALTER TABLE ... SET`
   statements so the focused transpile suite is green again.
+- Removed whole-input copies from the tokenizer and parser by making both
+  borrow the source SQL during parsing; refreshed full-transpile allocation
+  reports now show MySQL/Postgres/SQLite priority lanes at
+  `6.32`/`5.77`/`5.75` KiB per operation.
 
 ### Public Documentation Cleanup
 
