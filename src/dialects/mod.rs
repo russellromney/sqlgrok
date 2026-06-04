@@ -4689,12 +4689,8 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
         "SPLIT_PART" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
             "SPLIT_PART".to_string()
         }
-        "BOOL_AND" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
-            "MIN".to_string()
-        }
-        "BOOL_OR" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
-            "MAX".to_string()
-        }
+        "BOOL_AND" | "LOGICAL_AND" if matches!(target, Dialect::Sqlite) => "MIN".to_string(),
+        "BOOL_OR" | "LOGICAL_OR" if matches!(target, Dialect::Sqlite) => "MAX".to_string(),
 
         // ── BIT aggregate functions ─────────────────────────────────────
         "BIT_AND"
