@@ -7248,6 +7248,17 @@ impl<'a> Parser<'a> {
         name: String,
         name_position: usize,
     ) -> Result<Expr> {
+        // Read-side canonicalization: normalize a source-dialect function
+        // spelling into the neutral name the AST carries; the generator renders
+        // it per target (mirror of rules::rename_function). Safe now that the
+        // generator renders on every path, including identity transpiles.
+        let name = match crate::dialects::rules::canonicalize_function(
+            self.dialect,
+            &name.to_ascii_uppercase(),
+        ) {
+            Some(canonical) => canonical.to_string(),
+            None => name,
+        };
         if matches!(
             name.to_uppercase().as_str(),
             "MAKE_INTERVAL" | "XMLELEMENT" | "OVERLAY"

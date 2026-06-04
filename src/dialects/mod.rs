@@ -4683,32 +4683,11 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
 
         // Source-independent sqlite renames live in `rules::rename_function`
         // (consulted at the top of this fn). CHR->CHAR moved there; ASCII and
-        // SPLIT_PART were source-gated self-maps (no-ops vs the identity
-        // fallthrough) and are dropped. Genuinely source-dependent renames
-        // (BIT_*) remain below pending read-side parser canonicalization.
-
-        // ── BIT aggregate functions ─────────────────────────────────────
-        "BIT_AND"
-            if matches!(target, Dialect::Sqlite)
-                && (is_mysql_family(source) || is_postgres_family(source)) =>
-        {
-            "BITWISE_AND_AGG".to_string()
-        }
-        "BIT_OR"
-            if matches!(target, Dialect::Sqlite)
-                && (is_mysql_family(source) || is_postgres_family(source)) =>
-        {
-            "BITWISE_OR_AGG".to_string()
-        }
-        "BIT_XOR"
-            if matches!(target, Dialect::Sqlite)
-                && (is_mysql_family(source) || is_postgres_family(source)) =>
-        {
-            "BITWISE_XOR_AGG".to_string()
-        }
-        "BIT_COUNT" if matches!(target, Dialect::Sqlite) && is_mysql_family(source) => {
-            "BITWISE_COUNT".to_string()
-        }
+        // SPLIT_PART were source-gated self-maps (no-ops) and dropped. The
+        // BIT_* aggregates are the first true Phase 2 read-normalization:
+        // canonicalized read-side (parser, rules::canonicalize_function) and
+        // rendered per target by rules::rename_function (write inverse). The
+        // old source==X && target==Y arms here are gone.
 
         // ── UUID functions ──────────────────────────────────────────────
         "GEN_RANDOM_UUID" if matches!(target, Dialect::Sqlite) => "UUID".to_string(),

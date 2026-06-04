@@ -14,12 +14,56 @@
 
 use crate::dialects::Dialect;
 
-/// Map a function name to its target-dialect spelling. `upper_name` must
-/// already be uppercased by the caller. Returns `None` when no rename applies
-/// (the caller keeps the original name).
+/// Read-side: canonicalize a *source-dialect* function spelling into the
+/// neutral name the AST carries, so the generator alone (via `rename_function`)
+/// can render it for any target on every path (incl. identity). The parser
+/// consults this when building a function node. `upper_name` must be uppercased.
+///
+/// Symmetric mirror of `rename_function`: read normalizes IN, write renders OUT.
+/// Together they replace the old `if source==X && target==Y` transform rules.
+pub(crate) fn canonicalize_function(source: Dialect, upper_name: &str) -> Option<&'static str> {
+    match source {
+        Dialect::Mysql => match upper_name {
+            "BIT_AND" => Some("BITWISE_AND_AGG"),
+            "BIT_OR" => Some("BITWISE_OR_AGG"),
+            "BIT_XOR" => Some("BITWISE_XOR_AGG"),
+            "BIT_COUNT" => Some("BITWISE_COUNT"),
+            _ => None,
+        },
+        Dialect::Postgres => match upper_name {
+            "BIT_AND" => Some("BITWISE_AND_AGG"),
+            "BIT_OR" => Some("BITWISE_OR_AGG"),
+            "BIT_XOR" => Some("BITWISE_XOR_AGG"),
+            // Postgres BIT_COUNT is its own canonical (renders BIT_COUNT
+            // everywhere); only MySQL's BIT_COUNT canonicalizes.
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// Map a (canonical, uppercased) function name to its target-dialect spelling.
+/// Returns `None` when no rename applies (caller keeps the name).
 pub(crate) fn rename_function(target: Dialect, upper_name: &str) -> Option<&'static str> {
     match target {
         Dialect::Sqlite => rename_function_sqlite(upper_name),
+        // Write-side inverse of `canonicalize_function`: render the neutral
+        // bitwise-aggregate names back to each dialect's own spelling.
+        Dialect::Mysql => match upper_name {
+            "BITWISE_AND_AGG" => Some("BIT_AND"),
+            "BITWISE_OR_AGG" => Some("BIT_OR"),
+            "BITWISE_XOR_AGG" => Some("BIT_XOR"),
+            "BITWISE_COUNT" => Some("BIT_COUNT"),
+            _ => None,
+        },
+        Dialect::Postgres => match upper_name {
+            "BITWISE_AND_AGG" => Some("BIT_AND"),
+            "BITWISE_OR_AGG" => Some("BIT_OR"),
+            "BITWISE_XOR_AGG" => Some("BIT_XOR"),
+            // canonical BITWISE_COUNT (from MySQL) renders BITWISE_COUNT in
+            // postgres; postgres's own BIT_COUNT was never canonicalized.
+            _ => None,
+        },
         _ => None,
     }
 }
