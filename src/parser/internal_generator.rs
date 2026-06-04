@@ -6,8 +6,8 @@
 use crate::ast::{BinaryOperator, QuoteStyle};
 use crate::dialects::Dialect;
 use crate::parser::internal_ast::{
-    InternalExpr, InternalOrderBy, InternalSelect, InternalSelectItem, InternalStatement,
-    InternalTableRef,
+    InternalCte, InternalExpr, InternalOrderBy, InternalSelect, InternalSelectItem,
+    InternalStatement, InternalTableRef, InternalWindowSpec,
 };
 use crate::parser::text::SqlText;
 
@@ -32,21 +32,35 @@ impl InternalGenerator {
     fn gen_statement(&mut self, statement: &InternalStatement<'_>) -> Option<()> {
         match statement {
             InternalStatement::Select(select) => self.gen_select(select),
+            InternalStatement::RawIdentity(sql) => {
+                self.write_text(sql);
+                Some(())
+            }
         }
     }
 
     fn gen_select(&mut self, select: &InternalSelect<'_>) -> Option<()> {
+        if !select.ctes.is_empty() {
+            self.gen_ctes(&select.ctes)?;
+            self.write(" ");
+        }
         self.write_keyword("SELECT");
         if !select.columns.is_empty() {
             self.write(" ");
             self.gen_select_items(&select.columns)?;
         }
 
-        if let Some(table) = &select.from {
+        if let Some((first, rest)) = select.from.split_first() {
             self.write(" ");
             self.write_keyword("FROM");
             self.write(" ");
-            self.gen_table_ref(table);
+            self.gen_table_ref(first);
+            for table in rest {
+                self.write(" ");
+                self.write_keyword("CROSS JOIN");
+                self.write(" ");
+                self.gen_table_ref(table);
+            }
         }
 
         if let Some(expr) = &select.where_clause {
@@ -82,6 +96,22 @@ impl InternalGenerator {
             self.gen_expr(offset)?;
         }
 
+        Some(())
+    }
+
+    fn gen_ctes(&mut self, ctes: &[InternalCte<'_>]) -> Option<()> {
+        self.write_keyword("WITH ");
+        for (index, cte) in ctes.iter().enumerate() {
+            if index > 0 {
+                self.write(", ");
+            }
+            self.write_quoted(&cte.name, cte.name_quote_style);
+            self.write(" ");
+            self.write_keyword("AS ");
+            self.write("(");
+            self.gen_statement(&cte.query)?;
+            self.write(")");
+        }
         Some(())
     }
 
@@ -181,6 +211,7 @@ impl InternalGenerator {
                 name,
                 args,
                 distinct,
+                over,
             } => {
                 self.write_text(name);
                 self.write("(");
@@ -194,6 +225,9 @@ impl InternalGenerator {
                     self.gen_expr(arg)?;
                 }
                 self.write(")");
+                if let Some(over) = over {
+                    self.gen_window_spec(over)?;
+                }
             }
             InternalExpr::BinaryOp { left, op, right } => {
                 self.gen_expr(left)?;
@@ -202,6 +236,27 @@ impl InternalGenerator {
             }
             InternalExpr::Cast { .. } => return None,
         }
+        Some(())
+    }
+
+    fn gen_window_spec(&mut self, spec: &InternalWindowSpec<'_>) -> Option<()> {
+        self.write(" ");
+        self.write_keyword("OVER");
+        self.write(" (");
+        if !spec.partition_by.is_empty() {
+            self.write_keyword("PARTITION BY");
+            self.write(" ");
+            self.gen_exprs(&spec.partition_by)?;
+        }
+        if !spec.order_by.is_empty() {
+            if !spec.partition_by.is_empty() {
+                self.write(" ");
+            }
+            self.write_keyword("ORDER BY");
+            self.write(" ");
+            self.gen_order_by_items(&spec.order_by)?;
+        }
+        self.write(")");
         Some(())
     }
 
@@ -283,12 +338,25 @@ mod tests {
     use crate::generator::generate;
     use crate::parser::internal_parser::parse_internal;
     use crate::parser::parse;
+    use crate::transpile;
 
     fn assert_internal_generator_matches_public(sql: &str, read: Dialect, write: Dialect) {
         let internal = parse_internal(sql, read).unwrap().unwrap();
         let internal_sql = generate_internal(&internal, write).unwrap();
         let public = parse(sql, read).unwrap();
         let public_sql = generate(&public, write);
+
+        assert_eq!(internal_sql, public_sql);
+    }
+
+    fn assert_internal_generator_matches_public_transpile(
+        sql: &str,
+        read: Dialect,
+        write: Dialect,
+    ) {
+        let internal = parse_internal(sql, read).unwrap().unwrap();
+        let internal_sql = generate_internal(&internal, write).unwrap();
+        let public_sql = transpile(sql, read, write).unwrap();
 
         assert_eq!(internal_sql, public_sql);
     }
@@ -318,7 +386,8 @@ mod tests {
 
     #[test]
     fn returns_none_for_unsupported_internal_shape() {
-        let statement = InternalStatement::Select(InternalSelect {
+        let statement = InternalStatement::Select(Box::new(InternalSelect {
+            ctes: vec![],
             columns: vec![InternalSelectItem::Expr {
                 expr: InternalExpr::Cast {
                     expr: Box::new(InternalExpr::Number(SqlText::borrowed("1"))),
@@ -327,13 +396,13 @@ mod tests {
                 alias: None,
                 alias_quote_style: QuoteStyle::None,
             }],
-            from: None,
+            from: vec![],
             where_clause: None,
             group_by: vec![],
             order_by: vec![],
             limit: None,
             offset: None,
-        });
+        }));
 
         assert_eq!(generate_internal(&statement, Dialect::Ansi), None);
     }
@@ -342,6 +411,24 @@ mod tests {
     fn generates_group_by_and_offset_like_public_generator() {
         assert_internal_generator_matches_public(
             "SELECT a, COUNT(name) FROM t GROUP BY a ORDER BY a ASC LIMIT 10 OFFSET 5",
+            Dialect::Sqlite,
+            Dialect::Sqlite,
+        );
+    }
+
+    #[test]
+    fn generates_cte_and_cross_join_like_public_generator() {
+        assert_internal_generator_matches_public_transpile(
+            "WITH a AS (SELECT 1 AS x), b AS (SELECT 2 AS y) SELECT a.x + b.y FROM a, b",
+            Dialect::Sqlite,
+            Dialect::Sqlite,
+        );
+    }
+
+    #[test]
+    fn generates_simple_window_like_public_generator() {
+        assert_internal_generator_matches_public(
+            "SELECT user_id, ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY created_at) FROM events",
             Dialect::Sqlite,
             Dialect::Sqlite,
         );

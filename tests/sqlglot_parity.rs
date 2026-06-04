@@ -5,7 +5,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sqlgrok::{Dialect, transpile};
 
 #[derive(Debug, Deserialize)]
@@ -28,8 +28,17 @@ struct ParityCase {
     note: Option<String>,
 }
 
+#[derive(Debug, Serialize)]
+struct PythonOracleRequest<'a> {
+    id: &'a str,
+    sql: &'a str,
+    read: &'a str,
+    write: &'a str,
+}
+
 #[derive(Debug, Deserialize)]
-struct PythonOracle {
+struct PythonOracleResponse {
+    id: String,
     ok: bool,
     sql: Option<String>,
     error: Option<String>,
@@ -60,6 +69,7 @@ fn sqlglot_python_curated_parity() {
         "curated parity corpus should not be empty"
     );
 
+    let mut selected_cases = Vec::new();
     let mut summary = ParitySummary::default();
     for case in cases {
         if !filters.matches(&case) {
@@ -82,59 +92,7 @@ fn sqlglot_python_curated_parity() {
             continue;
         }
 
-        let python = python_transpile(&sqlglot_path, &case)
-            .unwrap_or_else(|err| panic!("{}: Python SQLGlot oracle failed: {err}", case.id));
-        assert!(
-            python.ok,
-            "{}: Python SQLGlot returned error: {}",
-            case.id,
-            python.error.unwrap_or_default()
-        );
-        let expected = python.sql.expect("oracle success should include SQL");
-
-        let read = Dialect::from_str(&case.read)
-            .unwrap_or_else(|| panic!("{}: unknown read dialect {}", case.id, case.read));
-        let write = Dialect::from_str(&case.write)
-            .unwrap_or_else(|| panic!("{}: unknown write dialect {}", case.id, case.write));
-        let rust = transpile(&case.sql, read, write)
-            .unwrap_or_else(|err| panic!("{}: sqlgrok failed: {err}", case.id));
-
-        summary.checked += 1;
-
-        if let Some(accepted) = &case.accepted_rust {
-            if rust != *accepted {
-                panic!(
-                    "{}: known-divergence output changed{}\nsource: {}\nread: {}\nwrite: {}\nsql: {}\nexpected accepted Rust: {}\nactual Rust: {}",
-                    case.id,
-                    case.note
-                        .as_deref()
-                        .map(|note| format!(" ({note})"))
-                        .unwrap_or_default(),
-                    case.source.as_deref().unwrap_or("<unspecified>"),
-                    case.read,
-                    case.write,
-                    case.sql,
-                    accepted,
-                    rust
-                );
-            }
-            summary.accepted_divergences += 1;
-        } else {
-            if rust != expected {
-                panic!(
-                    "{}: sqlgrok output differs from SQLGlot\nsource: {}\nread: {}\nwrite: {}\ntags: {}\nsql: {}\npython SQLGlot: {}\nsqlgrok: {}",
-                    case.id,
-                    case.source.as_deref().unwrap_or("<unspecified>"),
-                    case.read,
-                    case.write,
-                    case.tags.join(","),
-                    case.sql,
-                    expected,
-                    rust
-                );
-            }
-            summary.exact_matches += 1;
-        }
+        selected_cases.push(case);
     }
 
     assert!(
@@ -142,6 +100,74 @@ fn sqlglot_python_curated_parity() {
         "no SQLGlot parity cases matched filters: {:?}",
         filters
     );
+
+    if !selected_cases.is_empty() {
+        let oracle = python_transpile_many(&sqlglot_path, &selected_cases)
+            .unwrap_or_else(|err| panic!("Python SQLGlot oracle failed: {err}"));
+        assert_eq!(
+            oracle.len(),
+            selected_cases.len(),
+            "Python SQLGlot oracle should return one result per selected case"
+        );
+
+        for (case, python) in selected_cases.iter().zip(oracle) {
+            assert_eq!(
+                python.id, case.id,
+                "Python SQLGlot oracle response order changed"
+            );
+            assert!(
+                python.ok,
+                "{}: Python SQLGlot returned error: {}",
+                case.id,
+                python.error.unwrap_or_default()
+            );
+            let expected = python.sql.expect("oracle success should include SQL");
+
+            let read = Dialect::from_str(&case.read)
+                .unwrap_or_else(|| panic!("{}: unknown read dialect {}", case.id, case.read));
+            let write = Dialect::from_str(&case.write)
+                .unwrap_or_else(|| panic!("{}: unknown write dialect {}", case.id, case.write));
+            let rust = transpile(&case.sql, read, write)
+                .unwrap_or_else(|err| panic!("{}: sqlgrok failed: {err}", case.id));
+
+            summary.checked += 1;
+
+            if let Some(accepted) = &case.accepted_rust {
+                if rust != *accepted {
+                    panic!(
+                        "{}: known-divergence output changed{}\nsource: {}\nread: {}\nwrite: {}\nsql: {}\nexpected accepted Rust: {}\nactual Rust: {}",
+                        case.id,
+                        case.note
+                            .as_deref()
+                            .map(|note| format!(" ({note})"))
+                            .unwrap_or_default(),
+                        case.source.as_deref().unwrap_or("<unspecified>"),
+                        case.read,
+                        case.write,
+                        case.sql,
+                        accepted,
+                        rust
+                    );
+                }
+                summary.accepted_divergences += 1;
+            } else {
+                if rust != expected {
+                    panic!(
+                        "{}: sqlgrok output differs from SQLGlot\nsource: {}\nread: {}\nwrite: {}\ntags: {}\nsql: {}\npython SQLGlot: {}\nsqlgrok: {}",
+                        case.id,
+                        case.source.as_deref().unwrap_or("<unspecified>"),
+                        case.read,
+                        case.write,
+                        case.tags.join(","),
+                        case.sql,
+                        expected,
+                        rust
+                    );
+                }
+                summary.exact_matches += 1;
+            }
+        }
+    }
 
     eprintln!(
         "SQLGlot parity summary: selected={}, checked={}, exact_matches={}, accepted_divergences={}, skipped={}",
@@ -279,29 +305,39 @@ fn python_sqlglot_path() -> Option<PathBuf> {
     sibling.exists().then_some(sibling)
 }
 
-fn python_transpile(path: &PathBuf, case: &ParityCase) -> Result<PythonOracle, String> {
+fn python_transpile_many(
+    path: &PathBuf,
+    cases: &[ParityCase],
+) -> Result<Vec<PythonOracleResponse>, String> {
     let script = r#"
 import json
 import sys
 
 import sqlglot
 
-payload = json.load(sys.stdin)
-sql = payload["sql"]
-read = payload["read"]
-write = payload["write"]
-try:
-    out = sqlglot.transpile(sql, read=read, write=write)[0]
-    print(json.dumps({"ok": True, "sql": out}))
-except Exception as exc:
-    print(json.dumps({"ok": False, "error": str(exc)}))
+payloads = json.load(sys.stdin)
+results = []
+for payload in payloads:
+    sql = payload["sql"]
+    read = payload["read"]
+    write = payload["write"]
+    try:
+        out = sqlglot.transpile(sql, read=read, write=write)[0]
+        results.append({"id": payload["id"], "ok": True, "sql": out})
+    except Exception as exc:
+        results.append({"id": payload["id"], "ok": False, "error": str(exc)})
+print(json.dumps(results))
 "#;
 
-    let payload = serde_json::json!({
-        "sql": case.sql,
-        "read": case.read,
-        "write": case.write,
-    });
+    let payload = cases
+        .iter()
+        .map(|case| PythonOracleRequest {
+            id: &case.id,
+            sql: &case.sql,
+            read: &case.read,
+            write: &case.write,
+        })
+        .collect::<Vec<_>>();
     let mut child = Command::new("python3")
         .arg("-c")
         .arg(script)
@@ -317,7 +353,7 @@ except Exception as exc:
             return Err("failed to open Python SQLGlot oracle stdin".to_string());
         };
         stdin
-            .write_all(payload.to_string().as_bytes())
+            .write_all(serde_json::to_string(&payload).unwrap().as_bytes())
             .map_err(|err| err.to_string())?;
     }
 

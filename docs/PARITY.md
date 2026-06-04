@@ -19,7 +19,7 @@ sqlgrok has five testing layers:
    regression coverage. These prove local behavior, but they are not the full
    SQLGlot suite.
 2. **Curated parity regression corpus**: `tests/sqlglot_parity.rs` loads
-   `parity/cases/*.jsonl`, calls Python SQLGlot for each source SQL, and
+   `parity/cases/*.jsonl`, calls Python SQLGlot as a batched oracle, and
    requires sqlgrok to match exactly unless a row explicitly documents a known
    divergence. This is a reviewable bug-locking corpus.
 3. **SQLGlot suite bridge**: the primary parity layer. It runs or adapts Python

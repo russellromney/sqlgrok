@@ -480,4 +480,25 @@ mod tests {
         assert_eq!(status, InternalFastPathStatus::Used);
         assert_eq!(output.as_deref(), Some("SELECT a FROM t"));
     }
+
+    #[test]
+    fn internal_fast_guarded_status_covers_sqlite_identity_workload() {
+        for sql in [
+            "SELECT a, b FROM t WHERE a > 10 ORDER BY b DESC LIMIT 10 OFFSET 5",
+            "SELECT JSON_TYPE(data, '$.k') FROM events",
+            "CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE, created_at TEXT DEFAULT CURRENT_TIMESTAMP)",
+            "INSERT OR IGNORE INTO users (id, email) VALUES (1, 'a@example.com')",
+            "SELECT user_id, ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY created_at) FROM events",
+            "WITH a AS (SELECT 1 AS x), b AS (SELECT 2 AS y) SELECT a.x + b.y FROM a, b",
+            "SELECT COUNT(DISTINCT name) FROM users GROUP BY account_id",
+            "ALTER TABLE users ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP",
+        ] {
+            let (status, output) =
+                transpile_internal_fast_guarded_status(sql, Dialect::Sqlite, Dialect::Sqlite)
+                    .unwrap();
+
+            assert_eq!(status, InternalFastPathStatus::Used, "{sql}");
+            assert!(output.is_some(), "{sql}");
+        }
+    }
 }

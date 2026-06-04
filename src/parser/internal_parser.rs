@@ -7,8 +7,8 @@ use crate::ast::{BinaryOperator, QuoteStyle};
 use crate::dialects::Dialect;
 use crate::errors::{Result, SqlglotError};
 use crate::parser::internal_ast::{
-    InternalExpr, InternalOrderBy, InternalSelect, InternalSelectItem, InternalStatement,
-    InternalTableRef,
+    InternalCte, InternalExpr, InternalOrderBy, InternalSelect, InternalSelectItem,
+    InternalStatement, InternalTableRef, InternalWindowSpec,
 };
 use crate::parser::text::SqlText;
 use crate::tokens::{Token, TokenType, Tokenizer};
@@ -18,6 +18,7 @@ pub(crate) fn parse_internal(sql: &str, dialect: Dialect) -> Result<Option<Inter
     let tokens = tokenizer.tokenize()?;
     let mut parser = InternalParser {
         sql,
+        dialect,
         tokens,
         pos: 0,
     };
@@ -35,25 +36,54 @@ const INTERNAL_UNSUPPORTED_PREFIX: &str = "internal parser fallback:";
 
 struct InternalParser<'sql> {
     sql: &'sql str,
+    dialect: Dialect,
     tokens: Vec<Token>,
     pos: usize,
 }
 
 impl<'sql> InternalParser<'sql> {
     fn parse_statement(&mut self) -> Result<Option<InternalStatement<'sql>>> {
-        if !self.match_token(TokenType::Select) {
-            return Ok(None);
+        if self.match_token(TokenType::With) {
+            return self.parse_with_statement().map(Some);
         }
+        if self.match_token(TokenType::Select) {
+            return self.parse_select_statement(vec![]).map(Some);
+        }
+        if self.can_parse_raw_identity_statement() {
+            return Ok(Some(InternalStatement::RawIdentity(SqlText::borrowed(
+                self.sql.trim(),
+            ))));
+        }
+        Ok(None)
+    }
 
+    fn parse_with_statement(&mut self) -> Result<InternalStatement<'sql>> {
+        let ctes = self.parse_ctes()?;
+        self.expect(TokenType::Select)?;
+        self.parse_select_statement(ctes)
+    }
+
+    fn parse_select_statement(
+        &mut self,
+        ctes: Vec<InternalCte<'sql>>,
+    ) -> Result<InternalStatement<'sql>> {
+        self.parse_select_statement_with_options(ctes, true)
+    }
+
+    fn parse_select_statement_with_options(
+        &mut self,
+        ctes: Vec<InternalCte<'sql>>,
+        require_eof: bool,
+    ) -> Result<InternalStatement<'sql>> {
         let columns = self.parse_select_items()?;
         let from = if self.match_token(TokenType::From) {
-            Some(self.parse_table_ref()?)
+            self.parse_table_refs()?
         } else {
-            None
+            vec![]
         };
 
         if self.peek_is_join_start() {
-            return Ok(None);
+            return self.unsupported("joins");
         }
 
         let where_clause = if self.match_token(TokenType::Where) {
@@ -88,12 +118,17 @@ impl<'sql> InternalParser<'sql> {
             None
         };
 
-        self.consume_optional_semicolon();
-        if !self.is_eof() {
-            return Ok(None);
+        if require_eof {
+            self.consume_optional_semicolon();
+            if !self.is_eof() {
+                return self.unsupported("trailing tokens");
+            }
+        } else if self.peek_type() != &TokenType::RParen {
+            return self.unsupported("nested select trailing tokens");
         }
 
-        Ok(Some(InternalStatement::Select(InternalSelect {
+        Ok(InternalStatement::Select(Box::new(InternalSelect {
+            ctes,
             columns,
             from,
             where_clause,
@@ -102,6 +137,30 @@ impl<'sql> InternalParser<'sql> {
             limit,
             offset,
         })))
+    }
+
+    fn parse_ctes(&mut self) -> Result<Vec<InternalCte<'sql>>> {
+        let mut ctes = vec![self.parse_cte()?];
+        while self.match_token(TokenType::Comma) {
+            ctes.push(self.parse_cte()?);
+        }
+        Ok(ctes)
+    }
+
+    fn parse_cte(&mut self) -> Result<InternalCte<'sql>> {
+        let name = self.expect_identifier_like()?;
+        let name_quote_style = quote_style_from_char(self.token_at(name).quote_char);
+        let name = self.token_text_at(name);
+        self.expect(TokenType::As)?;
+        self.expect(TokenType::LParen)?;
+        self.expect(TokenType::Select)?;
+        let query = self.parse_select_statement_with_options(vec![], false)?;
+        self.expect(TokenType::RParen)?;
+        Ok(InternalCte {
+            name,
+            name_quote_style,
+            query: Box::new(query),
+        })
     }
 
     fn parse_select_items(&mut self) -> Result<Vec<InternalSelectItem<'sql>>> {
@@ -165,6 +224,14 @@ impl<'sql> InternalParser<'sql> {
             name_quote_style,
             alias_quote_style,
         })
+    }
+
+    fn parse_table_refs(&mut self) -> Result<Vec<InternalTableRef<'sql>>> {
+        let mut tables = vec![self.parse_table_ref()?];
+        while self.match_token(TokenType::Comma) {
+            tables.push(self.parse_table_ref()?);
+        }
+        Ok(tables)
     }
 
     fn parse_order_by_items(&mut self) -> Result<Vec<InternalOrderBy<'sql>>> {
@@ -239,10 +306,16 @@ impl<'sql> InternalParser<'sql> {
 
         if self.match_token(TokenType::LParen) {
             let (distinct, args) = self.parse_function_args()?;
+            let over = if self.match_token(TokenType::Over) {
+                Some(self.parse_window_spec()?)
+            } else {
+                None
+            };
             return Ok(InternalExpr::Function {
                 name: first_name,
                 args,
                 distinct,
+                over,
             });
         }
 
@@ -291,6 +364,27 @@ impl<'sql> InternalParser<'sql> {
             items.push(parse_item(self)?);
         }
         Ok(items)
+    }
+
+    fn parse_window_spec(&mut self) -> Result<InternalWindowSpec<'sql>> {
+        self.expect(TokenType::LParen)?;
+        let partition_by = if self.match_token(TokenType::Partition) {
+            self.expect(TokenType::By)?;
+            self.parse_expr_list()?
+        } else {
+            vec![]
+        };
+        let order_by = if self.match_token(TokenType::Order) {
+            self.expect(TokenType::By)?;
+            self.parse_order_by_items()?
+        } else {
+            vec![]
+        };
+        self.expect(TokenType::RParen)?;
+        Ok(InternalWindowSpec {
+            partition_by,
+            order_by,
+        })
     }
 
     fn peek_binary_operator(&self) -> Option<BinaryOperator> {
@@ -416,6 +510,14 @@ impl<'sql> InternalParser<'sql> {
             SqlText::owned(token.value.clone())
         }
     }
+
+    fn can_parse_raw_identity_statement(&self) -> bool {
+        self.dialect == Dialect::Sqlite
+            && matches!(
+                self.peek_type(),
+                TokenType::Create | TokenType::Insert | TokenType::Alter
+            )
+    }
 }
 
 fn tokenizer_for_dialect(sql: &str, dialect: Dialect) -> Tokenizer<'_> {
@@ -449,6 +551,7 @@ mod tests {
     use super::*;
     use crate::generator::generate;
     use crate::parser::{generate_internal, parse};
+    use crate::transpile;
 
     fn assert_internal_matches_public(sql: &str, dialect: Dialect) {
         let internal = parse_internal(sql, dialect).unwrap().unwrap().into_public();
@@ -462,6 +565,16 @@ mod tests {
         let internal = parse_internal(sql, dialect).unwrap().unwrap();
         let public = parse(sql, dialect).unwrap();
         let public_sql = generate(&public, dialect);
+
+        assert_eq!(
+            generate_internal(&internal, dialect).as_deref(),
+            Some(public_sql.as_str())
+        );
+    }
+
+    fn assert_internal_transpiles_like_public(sql: &str, dialect: Dialect) {
+        let internal = parse_internal(sql, dialect).unwrap().unwrap();
+        let public_sql = transpile(sql, dialect, dialect).unwrap();
 
         assert_eq!(
             generate_internal(&internal, dialect).as_deref(),
@@ -529,8 +642,44 @@ mod tests {
         };
         assert!(value.is_borrowed());
 
-        let table = select.from.unwrap();
+        let table = select.from.first().unwrap();
         assert!(table.name.is_borrowed());
+    }
+
+    #[test]
+    fn parses_cte_with_comma_from_like_public_generator() {
+        assert_internal_transpiles_like_public(
+            "WITH a AS (SELECT 1 AS x), b AS (SELECT 2 AS y) SELECT a.x + b.y FROM a, b",
+            Dialect::Sqlite,
+        );
+    }
+
+    #[test]
+    fn parses_simple_window_over_partition_order() {
+        assert_internal_generates_like_public(
+            "SELECT user_id, ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY created_at) FROM events",
+            Dialect::Sqlite,
+        );
+    }
+
+    #[test]
+    fn parses_sqlite_raw_identity_statements() {
+        for sql in [
+            "CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE, created_at TEXT DEFAULT CURRENT_TIMESTAMP)",
+            "INSERT OR IGNORE INTO users (id, email) VALUES (1, 'a@example.com')",
+            "ALTER TABLE users ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP",
+        ] {
+            assert_internal_generates_like_public(sql, Dialect::Sqlite);
+        }
+    }
+
+    #[test]
+    fn raw_identity_statements_are_sqlite_only() {
+        assert!(
+            parse_internal("CREATE TABLE t (a INT)", Dialect::Postgres)
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[test]

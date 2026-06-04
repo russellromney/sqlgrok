@@ -285,25 +285,34 @@ Coverage report from
 
 | Status | Count |
 | --- | ---: |
-| `used` | 3 |
-| `parse-declined` | 5 |
+| `used` | 8 |
+| `parse-declined` | 0 |
 | `output-mismatch` | 0 |
 
-The supported rows are the current simple SELECT, JSON function, and
-`COUNT(DISTINCT ...)` SQLite identity cases. DDL, insert, window, CTE, and alter
-table rows still deliberately decline.
+The supported rows now cover the whole current SQLite identity workload: simple
+SELECT, JSON function, DDL raw identity, `INSERT OR IGNORE`, simple window
+function, CTE with comma-from normalization, `COUNT(DISTINCT ...)`, and
+`ALTER TABLE`.
 
 | Case | Median-ish result |
 | --- | ---: |
-| Public transpile, all 8 rows | ~94.3 us |
-| Public transpile, same 3 supported rows | ~27.8 us |
-| No-oracle internal path, same 3 supported rows | ~11.7 us |
-| Guarded status, all 8 rows | ~110.9 us |
+| Public transpile, all 8 rows | ~68.0 us |
+| Public transpile, same 8 supported rows | ~38.5 us |
+| No-oracle internal path, same 8 supported rows | ~19.6 us |
+| Guarded status, all 8 rows | ~62.3 us |
 
 The supported-row comparison is the fair speed signal: the internal no-oracle
-path is about 2.4x faster for the currently covered rows in this diagnostic
-run. The guarded path is intentionally slower because it computes public output
-too; it is coverage/correctness instrumentation, not the production path.
+path is about 2x faster for the currently covered rows in this diagnostic
+run. The two public rows measure the same 8-case set and differ only by
+Criterion noise/setup; use them as rough diagnostics, not publication-grade
+numbers. The guarded path is intentionally slower because it computes public
+output too; it is coverage/correctness instrumentation, not the production path.
+
+Curated SQLGlot parity also now uses one batched Python oracle process per run.
+The explicit `SQLGLOT_PYTHON_PATH=/Users/russellromney/Documents/Github/sqlglot
+cargo test --features cli --test sqlglot_parity -- --nocapture` run checked
+`968/968` cases in under `3s` of test time after compilation, down from
+several minutes with one Python subprocess per row.
 
 The next real optimization targets are parser/token allocation and the
 multi-CTE/full-transpile path. Generation is generally sub-microsecond in these

@@ -82,6 +82,12 @@ this file records what landed.
   `DISTINCT` function-argument support; added fast-path status reporting and a
   SQLite identity workload benchmark that compares public and internal paths on
   the same supported rows.
+- Batched the curated SQLGlot Python oracle so the `968`-row parity corpus runs
+  in single-digit seconds of test time instead of several minutes of per-row
+  Python subprocesses.
+- Expanded the internal fast SQLite identity workload from `3/8` to `8/8`
+  guarded matches with simple CTE, comma-from normalization, simple window
+  `OVER`, and SQLite-only raw identity carriers for DDL/INSERT/ALTER rows.
 
 ### Public Documentation Cleanup
 

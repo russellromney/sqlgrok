@@ -4,25 +4,34 @@
 )]
 
 use crate::ast::{
-    BinaryOperator, DataType, Expr, FromClause, OrderByItem, QuoteStyle, SelectItem,
-    SelectStatement, Statement, TableRef, TableSource,
+    BinaryOperator, Cte, DataType, Expr, FromClause, JoinClause, JoinType, OrderByItem, QuoteStyle,
+    SelectItem, SelectStatement, Statement, TableRef, TableSource, WindowSpec,
 };
 use crate::parser::text::SqlText;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum InternalStatement<'sql> {
-    Select(InternalSelect<'sql>),
+    Select(Box<InternalSelect<'sql>>),
+    RawIdentity(SqlText<'sql>),
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct InternalSelect<'sql> {
+    pub(crate) ctes: Vec<InternalCte<'sql>>,
     pub(crate) columns: Vec<InternalSelectItem<'sql>>,
-    pub(crate) from: Option<InternalTableRef<'sql>>,
+    pub(crate) from: Vec<InternalTableRef<'sql>>,
     pub(crate) where_clause: Option<InternalExpr<'sql>>,
     pub(crate) group_by: Vec<InternalExpr<'sql>>,
     pub(crate) order_by: Vec<InternalOrderBy<'sql>>,
     pub(crate) limit: Option<InternalExpr<'sql>>,
     pub(crate) offset: Option<InternalExpr<'sql>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct InternalCte<'sql> {
+    pub(crate) name: SqlText<'sql>,
+    pub(crate) name_quote_style: QuoteStyle,
+    pub(crate) query: Box<InternalStatement<'sql>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -67,6 +76,7 @@ pub(crate) enum InternalExpr<'sql> {
         name: SqlText<'sql>,
         args: Vec<InternalExpr<'sql>>,
         distinct: bool,
+        over: Option<InternalWindowSpec<'sql>>,
     },
     BinaryOp {
         left: Box<InternalExpr<'sql>>,
@@ -79,19 +89,34 @@ pub(crate) enum InternalExpr<'sql> {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(crate) struct InternalWindowSpec<'sql> {
+    pub(crate) partition_by: Vec<InternalExpr<'sql>>,
+    pub(crate) order_by: Vec<InternalOrderBy<'sql>>,
+}
+
 impl<'sql> InternalStatement<'sql> {
     pub(crate) fn into_public(self) -> Statement {
         match self {
             Self::Select(select) => Statement::Select(select.into_public()),
+            Self::RawIdentity(sql) => Statement::Raw(crate::ast::RawStatement {
+                comments: vec![],
+                sql: sql.into_owned(),
+            }),
         }
     }
 }
 
 impl<'sql> InternalSelect<'sql> {
     pub(crate) fn into_public(self) -> SelectStatement {
+        let mut from = self.from.into_iter();
         SelectStatement {
             comments: vec![],
-            ctes: vec![],
+            ctes: self
+                .ctes
+                .into_iter()
+                .map(InternalCte::into_public)
+                .collect(),
             distinct: false,
             distinct_on: vec![],
             top: None,
@@ -100,10 +125,17 @@ impl<'sql> InternalSelect<'sql> {
                 .into_iter()
                 .map(InternalSelectItem::into_public)
                 .collect(),
-            from: self.from.map(|table| FromClause {
+            from: from.next().map(|table| FromClause {
                 source: TableSource::Table(table.into_public()),
             }),
-            joins: vec![],
+            joins: from
+                .map(|table| JoinClause {
+                    join_type: JoinType::Cross,
+                    table: TableSource::Table(table.into_public()),
+                    on: None,
+                    using: vec![],
+                })
+                .collect(),
             where_clause: self.where_clause.map(InternalExpr::into_public),
             group_by: self
                 .group_by
@@ -123,6 +155,19 @@ impl<'sql> InternalSelect<'sql> {
             qualify: None,
             window_definitions: vec![],
             lock: None,
+        }
+    }
+}
+
+impl<'sql> InternalCte<'sql> {
+    fn into_public(self) -> Cte {
+        Cte {
+            name: self.name.into_owned(),
+            name_quote_style: self.name_quote_style,
+            columns: vec![],
+            query: Box::new(self.query.into_public()),
+            materialized: None,
+            recursive: false,
         }
     }
 }
@@ -190,12 +235,13 @@ impl<'sql> InternalExpr<'sql> {
                 name,
                 args,
                 distinct,
+                over,
             } => Expr::Function {
                 name: name.into_owned(),
                 args: args.into_iter().map(Self::into_public).collect(),
                 distinct,
                 filter: None,
-                over: None,
+                over: over.map(InternalWindowSpec::into_public),
             },
             Self::BinaryOp { left, op, right } => Expr::BinaryOp {
                 left: Box::new(left.into_public()),
@@ -210,6 +256,25 @@ impl<'sql> InternalExpr<'sql> {
     }
 }
 
+impl<'sql> InternalWindowSpec<'sql> {
+    fn into_public(self) -> WindowSpec {
+        WindowSpec {
+            window_ref: None,
+            partition_by: self
+                .partition_by
+                .into_iter()
+                .map(InternalExpr::into_public)
+                .collect(),
+            order_by: self
+                .order_by
+                .into_iter()
+                .map(InternalOrderBy::into_public)
+                .collect(),
+            frame: None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -219,7 +284,8 @@ mod tests {
 
     #[test]
     fn internal_select_subset_converts_to_public_ast() {
-        let internal = InternalStatement::Select(InternalSelect {
+        let internal = InternalStatement::Select(Box::new(InternalSelect {
+            ctes: vec![],
             columns: vec![
                 InternalSelectItem::Expr {
                     expr: InternalExpr::Column {
@@ -244,17 +310,18 @@ mod tests {
                             InternalExpr::Number(SqlText::borrowed("0")),
                         ],
                         distinct: false,
+                        over: None,
                     },
                     alias: None,
                     alias_quote_style: QuoteStyle::None,
                 },
             ],
-            from: Some(InternalTableRef {
+            from: vec![InternalTableRef {
                 name: SqlText::borrowed("tbl"),
                 alias: Some(SqlText::borrowed("t")),
                 name_quote_style: QuoteStyle::None,
                 alias_quote_style: QuoteStyle::None,
-            }),
+            }],
             where_clause: Some(InternalExpr::BinaryOp {
                 left: Box::new(InternalExpr::Column {
                     table: Some(SqlText::borrowed("t")),
@@ -279,7 +346,7 @@ mod tests {
             }],
             limit: Some(InternalExpr::Number(SqlText::borrowed("5"))),
             offset: None,
-        });
+        }));
 
         let public = internal.into_public();
         let expected = parse(

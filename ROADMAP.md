@@ -286,18 +286,21 @@ Current status: steps 1 and 2 are landed. Step 3 has started with a private
 token-driven `parse_internal(sql, dialect)` for a narrow SELECT subset covering
 simple select items, wildcard items, table aliases, decoded string literals,
 borrowed identifiers/numbers, function calls, one simple binary predicate,
-WHERE, GROUP BY, ORDER BY, LIMIT, OFFSET, and `DISTINCT` function arguments. It
-intentionally falls back for joins, CTEs, windows, DDL/DML, qualified wildcards,
-and operator-precedence chains. Step 4 has started with a private
-`generate_internal(...)` for the same subset, a guarded internal transpile
-experiment, a no-oracle `transpile_internal_fast_experiment(...)` for
-conservative identity SELECT cases, and a status report binary that classifies
+WHERE, GROUP BY, ORDER BY, LIMIT, OFFSET, `DISTINCT` function arguments, simple
+window `OVER` specs, simple CTEs, and comma-from normalization. It also has a
+SQLite-only raw identity carrier for the current DDL/INSERT/ALTER benchmark
+rows. It intentionally falls back for non-SQLite raw statements, explicit joins,
+deeper windows, qualified wildcards, and operator-precedence chains. Step 4 has
+started with a private `generate_internal(...)` for the same subset, a guarded
+internal transpile experiment, a no-oracle `transpile_internal_fast_experiment(...)`
+for conservative identity cases, and a status report binary that classifies
 internal fast-path coverage. The no-oracle path is deliberately limited to
 dialect identity pairs and rejects pseudo-columns that the public generator
-canonicalizes. The current SQLite identity workload report covers 3 of 8 rows
+canonicalizes. The current SQLite identity workload report covers 8 of 8 rows
 with 0 guarded output mismatches; the supported-row Criterion comparison shows a
-diagnostic ~2.4x speedup for those rows. Public `transpile()` remains unchanged
-until internal coverage broadens and the guarded reports stay clean.
+diagnostic ~2x speedup for those rows. Public `transpile()` remains unchanged
+until internal coverage broadens beyond this benchmark slice and the guarded
+reports stay clean.
 
 Expected benefit:
 
