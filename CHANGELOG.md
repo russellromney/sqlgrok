@@ -65,6 +65,10 @@ this file records what landed.
 - Added the first private internal AST subset for SELECT/function/literal/table
   shapes with conversion tests that prove internal nodes generate the same SQL
   as the current public AST path.
+- Added the first private token-driven `parse_internal` SELECT slice, including
+  borrowed identifier/number coverage, decoded string ownership, public-parser
+  equivalence tests, and explicit fallback tests for joins, grouping, qualified
+  wildcards, and operator-precedence chains.
 
 ### Public Documentation Cleanup
 

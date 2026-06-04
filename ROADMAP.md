@@ -282,11 +282,14 @@ Execution plan:
    and remove fallbacks only after SQLGlot parity and focused Rust tests stay
    green.
 
-Current status: step 1 is landed. Step 2 has started with a private
-conversion-only internal AST subset for SELECT expressions, table references,
-ORDER BY, LIMIT, functions, binary operations, and casts. It is not wired into
-`transpile()` yet; tests prove internal nodes convert to the same public AST and
-generated SQL as the current parser path.
+Current status: steps 1 and 2 are landed. Step 3 has started with a private
+token-driven `parse_internal(sql, dialect)` for a narrow SELECT subset covering
+simple select items, wildcard items, table aliases, decoded string literals,
+borrowed identifiers/numbers, function calls, one simple binary predicate,
+WHERE, ORDER BY, and LIMIT. It intentionally falls back for joins, grouping,
+qualified wildcards, and operator-precedence chains. It is not wired into
+`transpile()` yet; tests prove supported internal parses convert to the same
+public AST and generated SQL as the current parser path.
 
 Expected benefit:
 

@@ -20,6 +20,11 @@ impl<'sql> SqlText<'sql> {
         self.0.as_ref()
     }
 
+    #[cfg(test)]
+    pub(crate) fn is_borrowed(&self) -> bool {
+        matches!(self.0, Cow::Borrowed(_))
+    }
+
     pub(crate) fn into_owned(self) -> String {
         self.0.into_owned()
     }
@@ -47,6 +52,7 @@ mod tests {
         let text = SqlText::borrowed(source);
 
         assert_eq!(text.as_str(), "identifier");
+        assert!(text.is_borrowed());
         assert_eq!(text.into_owned(), "identifier");
     }
 
@@ -55,6 +61,7 @@ mod tests {
         let text = SqlText::owned("CURRENT_TIMESTAMP".to_string());
 
         assert_eq!(text.as_str(), "CURRENT_TIMESTAMP");
+        assert!(!text.is_borrowed());
         assert_eq!(text.into_owned(), "CURRENT_TIMESTAMP");
     }
 }
