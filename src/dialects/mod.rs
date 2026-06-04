@@ -4606,7 +4606,7 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
             }
         }
         "LENGTH" if is_tsql_family(target) => "LEN".to_string(),
-        "ANY_VALUE" if matches!(target, Dialect::Sqlite) => "MAX".to_string(),
+        // ANY_VALUE -> MAX (sqlite) moved to rules::rename_function.
 
         // ── SUBSTR / SUBSTRING ───────────────────────────────────────────
         "SUBSTR" => {
@@ -4689,8 +4689,7 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
         // rendered per target by rules::rename_function (write inverse). The
         // old source==X && target==Y arms here are gone.
 
-        // ── UUID functions ──────────────────────────────────────────────
-        "GEN_RANDOM_UUID" if matches!(target, Dialect::Sqlite) => "UUID".to_string(),
+        // GEN_RANDOM_UUID -> UUID (sqlite) moved to rules::rename_function.
 
         // Everything else – preserve original name
         _ => name.to_string(),

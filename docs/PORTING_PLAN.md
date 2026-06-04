@@ -125,10 +125,22 @@ Each step ratcheted on the forced suite across all lanes (now including
     perf fast path which also handles identity.
   - **Phase 1.5 status:** function-name rendering moved into the generator
     (`Expr::Function` emission consults `rules::rename_function(target)`),
-    verified zero-movement and identity-safe. Remaining Phase 1.5: move
-    *type* rendering and the rest of `map_function_name_for_source`'s
-    target-only arms (NOW, LENGTH, ANY_VALUE, ...) into the generator too,
-    then read-side canonicalization (Phase 2) is unblocked.
+    verified zero-movement and identity-safe. The verified-correct sqlite
+    renames (ANY_VALUE->MAX, GEN_RANDOM_UUID->UUID) have moved too.
+  - **Finding (2026-06): the multi-target renames in
+    `map_function_name_for_source` (NOW, LEN/LENGTH, SUBSTR/SUBSTRING,
+    IFNULL/ISNULL, NVL, RANDOM/RAND) DIVERGE from SQLGlot for identity** and
+    cannot be pure-relocated. The transform's identity short-circuit
+    (`from==to && !sqlite`) hides the divergence today. Examples (read==write
+    vs SQLGlot): mysql `LEN`->our `LENGTH` but SQLGlot `CHAR_LENGTH`; mysql
+    `SUBSTR`->our `SUBSTR` but SQLGlot `SUBSTRING`; mysql `IFNULL`->our
+    `IFNULL` but SQLGlot `COALESCE`; postgres `NOW`->our `NOW` but SQLGlot
+    `CURRENT_TIMESTAMP`. So moving these to the always-run generator would
+    EXPOSE latent bugs. They must be ported faithfully against SQLGlot's
+    per-dialect `TRANSFORMS` (Phase 4 work, per function family) rather than
+    relocated. Doing so also lifts `write=postgres`/`write=mysql`. The
+    sqlite-target renames are safe to move because sqlite identity is not
+    short-circuited and those renames already match SQLGlot.
 - **Phase 3 — delete the transform layer** and the `(source, target)`
   signature. `transpile = generate(parse(read), write)`.
 - **Phase 4 — port SQLGlot's per-target tables** to backfill thin generators;

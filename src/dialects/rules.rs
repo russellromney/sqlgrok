@@ -120,6 +120,8 @@ fn rename_function_sqlite(upper_name: &str) -> Option<&'static str> {
         "STRING_AGG" => "GROUP_CONCAT",
         "STRPOS" => "INSTR",
         "CHR" => "CHAR",
+        "ANY_VALUE" => "MAX",
+        "GEN_RANDOM_UUID" => "UUID",
         "BOOL_AND" | "LOGICAL_AND" => "MIN",
         "BOOL_OR" | "LOGICAL_OR" => "MAX",
         _ => return None,
