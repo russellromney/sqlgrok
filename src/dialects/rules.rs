@@ -24,6 +24,36 @@ pub(crate) fn rename_function(target: Dialect, upper_name: &str) -> Option<&'sta
     }
 }
 
+/// Map a canonical (uppercased) type name to its target-dialect spelling.
+/// Covers only pure name→name mappings; parametric forms like `INT(10)` or
+/// `VARCHAR(MAX)` (which preserve a `(...)` suffix) are handled by the caller.
+/// Returns `None` when no rename applies.
+pub(crate) fn map_type(target: Dialect, upper_name: &str) -> Option<&'static str> {
+    match target {
+        Dialect::Sqlite => map_type_sqlite(upper_name),
+        _ => None,
+    }
+}
+
+fn map_type_sqlite(upper_name: &str) -> Option<&'static str> {
+    let mapped = match upper_name {
+        "NUMBER" | "FLOAT4" => "REAL",
+        "INT4" | "INT1" | "MEDIUMINT" | "INT8" | "INT16" | "INT32" | "INT64" => "INTEGER",
+        "HUGEINT" => "INT128",
+        "UHUGEINT" => "UINT128",
+        "INT128" => "INT128",
+        "INT256" => "INT256",
+        "UINT128" => "UINT128",
+        "UINT256" => "UINT256",
+        "BIGNUMERIC" => "BIGDECIMAL",
+        "TIMESTAMP_NTZ" => "TIMESTAMPNTZ",
+        "TIMESTAMP_LTZ" => "TIMESTAMPLTZ",
+        "TIMESTAMP_TZ" => "TIMESTAMPTZ",
+        _ => return None,
+    };
+    Some(mapped)
+}
+
 fn rename_function_sqlite(upper_name: &str) -> Option<&'static str> {
     let rename = match upper_name {
         "ARRAY_JOIN" => "ARRAY_TO_STRING",

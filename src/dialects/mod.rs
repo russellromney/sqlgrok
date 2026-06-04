@@ -4734,26 +4734,11 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
 /// Source-independent Unknown-type-name normalizations applied for the
 /// sqlite target (used both at top level and when recursing into the
 /// element types of ARRAY/MAP/STRUCT/TUPLE). Returns the rewritten name.
-fn normalize_unknown_sqlite_type_name(name: &str) -> Option<String> {
-    let upper = name.to_ascii_uppercase();
-    match upper.as_str() {
-        "NUMBER" | "FLOAT4" => Some("REAL".to_string()),
-        "INT4" | "INT1" | "MEDIUMINT" | "INT8" | "INT16" | "INT32" | "INT64" => {
-            Some("INTEGER".to_string())
-        }
-        "HUGEINT" => Some("INT128".to_string()),
-        "UHUGEINT" => Some("UINT128".to_string()),
-        "INT128" | "INT256" | "UINT128" | "UINT256" => Some(upper),
-        _ => None,
-    }
-}
-
 pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
     if let DataType::Unknown(name) = &dt
-        && matches!(target, Dialect::Sqlite)
-        && let Some(mapped) = normalize_unknown_sqlite_type_name(name)
+        && let Some(mapped) = rules::map_type(target, &name.to_ascii_uppercase())
     {
-        return DataType::Unknown(mapped);
+        return DataType::Unknown(mapped.to_string());
     }
     match (dt, target) {
         (
@@ -4908,13 +4893,8 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
     if let DataType::Unknown(name) = &dt {
         if matches!(target, Dialect::Sqlite) {
             let upper = name.to_ascii_uppercase();
-            let mapped = match upper.as_str() {
-                "NUMBER" | "FLOAT4" => Some("REAL".to_string()),
-                "INT4" | "INT1" | "MEDIUMINT" => Some("INTEGER".to_string()),
-                "HUGEINT" => Some("INT128".to_string()),
-                "UHUGEINT" => Some("UINT128".to_string()),
-                _ => None,
-            };
+            // Pure name→name mappings are data in `rules::map_type`.
+            let mapped = rules::map_type(target, &upper).map(str::to_string);
             // Signed integer types carrying a MySQL display width
             // (INT(10), BIGINT(10), TINYINT(1), ...) all fold to
             // INTEGER(width) for sqlite.
@@ -5058,36 +5038,9 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
         {
             DataType::Blob
         }
-        (DataType::Unknown(name), _, Dialect::Sqlite)
-            if matches!(
-                name.to_ascii_uppercase().as_str(),
-                "INT8" | "INT16" | "INT32" | "INT64"
-            ) =>
-        {
-            DataType::Unknown("INTEGER".to_string())
-        }
-        // 128/256-bit (un)signed integers are kept, normalized to uppercase.
-        (DataType::Unknown(name), _, Dialect::Sqlite)
-            if matches!(
-                name.to_ascii_uppercase().as_str(),
-                "INT128" | "INT256" | "UINT128" | "UINT256"
-            ) =>
-        {
-            DataType::Unknown(name.to_ascii_uppercase())
-        }
-        (DataType::Unknown(name), _, Dialect::Sqlite)
-            if name.eq_ignore_ascii_case("BIGNUMERIC") =>
-        {
-            DataType::Unknown("BIGDECIMAL".to_string())
-        }
-        (DataType::Unknown(name), _, Dialect::Sqlite)
-            if matches!(
-                name.to_ascii_uppercase().as_str(),
-                "TIMESTAMP_NTZ" | "TIMESTAMP_LTZ" | "TIMESTAMP_TZ"
-            ) =>
-        {
-            DataType::Unknown(name.replace('_', ""))
-        }
+        // Pure name→name sqlite type mappings (INT8..64, INT128/256,
+        // BIGNUMERIC, TIMESTAMP_*TZ, ...) are data in `rules::map_type`,
+        // consulted at the top of this fn and inside map_data_type.
         _ => map_data_type(dt, target),
     }
 }
