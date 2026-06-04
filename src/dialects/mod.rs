@@ -616,6 +616,21 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             if matches!(target, Dialect::Sqlite) {
                 raw.sql = normalize_postgres_copy_raw(&raw.sql);
             }
+            // INSERT INTO [TABLE] FUNCTION <name>(...) — drop the TABLE
+            // keyword and uppercase the table-function name.
+            if matches!(target, Dialect::Sqlite) {
+                raw.sql = normalize_insert_into_function(&raw.sql);
+            }
+            // SQLite can't represent a DuckDB-style PIVOT/UNPIVOT statement;
+            // SQLGlot drops it entirely. (Only fires when the statement fell
+            // through to a raw passthrough; parsed pivots are handled in the
+            // table-source path.)
+            if matches!(target, Dialect::Sqlite) {
+                let trimmed = raw.sql.trim_start().to_ascii_uppercase();
+                if trimmed.starts_with("PIVOT ") || trimmed.starts_with("UNPIVOT ") {
+                    raw.sql = String::new();
+                }
+            }
             // Python SQLGlot drops SHOW statements that the mysql parser
             // recognizes (TABLES, DATABASES, INDEX, COLUMNS, CREATE *,
             // VARIABLES, etc.) but preserves unrecognized SHOW forms
@@ -801,6 +816,38 @@ fn normalize_postgres_copy_raw(sql: &str) -> String {
     } else {
         sql.to_string()
     }
+}
+
+/// `INSERT INTO [TABLE] FUNCTION <name>(...)` drops the optional TABLE
+/// keyword and uppercases the table-function name for the sqlite target.
+fn normalize_insert_into_function(sql: &str) -> String {
+    let upper = sql.to_ascii_uppercase();
+    let trimmed_upper = upper.trim_start();
+    if !trimmed_upper.starts_with("INSERT INTO ") {
+        return sql.to_string();
+    }
+    let lead = sql.len() - sql.trim_start().len();
+    let after_into = lead + "INSERT INTO ".len();
+    let mut rest = &sql[after_into..];
+    let mut out = sql[..after_into].to_string();
+    // Optional TABLE keyword before FUNCTION.
+    if rest.trim_start().to_ascii_uppercase().starts_with("TABLE ") {
+        let r = rest.trim_start();
+        rest = &r["TABLE ".len()..];
+    }
+    let rest_trim = rest.trim_start();
+    if !rest_trim.to_ascii_uppercase().starts_with("FUNCTION ") {
+        return sql.to_string();
+    }
+    out.push_str("FUNCTION ");
+    let after_fn = &rest_trim["FUNCTION ".len()..];
+    // Uppercase the function name (up to the opening paren / whitespace).
+    let name_end = after_fn
+        .find(|c: char| c == '(' || c.is_whitespace())
+        .unwrap_or(after_fn.len());
+    out.push_str(&after_fn[..name_end].to_ascii_uppercase());
+    out.push_str(&after_fn[name_end..]);
+    out
 }
 
 fn normalize_postgres_sqlite_raw_table_source(source: &mut TableSource) {
