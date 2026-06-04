@@ -5035,10 +5035,19 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
         (DataType::Unknown(name), _, Dialect::Sqlite)
             if matches!(
                 name.to_ascii_uppercase().as_str(),
-                "INT8" | "INT16" | "INT32" | "INT64" | "INT128" | "INT256"
+                "INT8" | "INT16" | "INT32" | "INT64"
             ) =>
         {
             DataType::Unknown("INTEGER".to_string())
+        }
+        // 128/256-bit (un)signed integers are kept, normalized to uppercase.
+        (DataType::Unknown(name), _, Dialect::Sqlite)
+            if matches!(
+                name.to_ascii_uppercase().as_str(),
+                "INT128" | "INT256" | "UINT128" | "UINT256"
+            ) =>
+        {
+            DataType::Unknown(name.to_ascii_uppercase())
         }
         (DataType::Unknown(name), _, Dialect::Sqlite)
             if name.eq_ignore_ascii_case("BIGNUMERIC") =>
