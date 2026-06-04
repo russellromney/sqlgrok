@@ -4307,7 +4307,17 @@ impl<'a> Parser<'a> {
                     auto_increment_from_identity = true;
                 }
             } else if self.match_token(TokenType::Collate) {
-                collation = Some(self.expect_name()?);
+                let (coll, qs) = self.expect_name_with_quote()?;
+                collation = Some(match qs {
+                    // MySQL: a double-quoted collation is a string literal.
+                    QuoteStyle::DoubleQuote if matches!(self.dialect, Dialect::Mysql) => {
+                        format!("'{}'", coll.replace('\'', "''"))
+                    }
+                    QuoteStyle::DoubleQuote => {
+                        format!("\"{}\"", coll.replace('"', "\"\""))
+                    }
+                    _ => coll,
+                });
             } else if self.match_token(TokenType::Comment) {
                 let tok = self.expect(TokenType::String)?;
                 comment = Some(tok.value);
@@ -5005,6 +5015,10 @@ impl<'a> Parser<'a> {
         if self.match_token(TokenType::Collate) {
             let (collation, quote_style) = self.expect_name_with_quote()?;
             let collation = match quote_style {
+                // In MySQL a double-quoted collation is a string literal.
+                QuoteStyle::DoubleQuote if matches!(self.dialect, Dialect::Mysql) => {
+                    format!("'{}'", collation.replace('\'', "''"))
+                }
                 QuoteStyle::DoubleQuote => format!("\"{}\"", collation.replace('"', "\"\"")),
                 _ => collation,
             };
