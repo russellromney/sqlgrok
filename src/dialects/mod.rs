@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::ast::*;
 
 pub mod plugin;
+pub(crate) mod rules;
 pub mod time;
 
 /// Supported SQL dialects.
@@ -4546,6 +4547,11 @@ pub(crate) fn map_function_name(name: &str, target: Dialect) -> String {
 
 fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) -> String {
     let upper = name.to_uppercase();
+    // Target-only renames live as data in `rules` (shared, zero-alloc, and the
+    // shape SQLGlot's dicts port into). Source-dependent renames remain below.
+    if let Some(renamed) = rules::rename_function(target, &upper) {
+        return renamed.to_string();
+    }
     match upper.as_str() {
         // ── NOW / CURRENT_TIMESTAMP / GETDATE ────────────────────────────
         "NOW" => {
@@ -4677,30 +4683,8 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
             }
         }
 
-        // ── Source-independent function renames for the sqlite target ───
-        "ARRAY_JOIN" if matches!(target, Dialect::Sqlite) => "ARRAY_TO_STRING".to_string(),
-        "ARRAY_INTERSECTION" if matches!(target, Dialect::Sqlite) => "ARRAY_INTERSECT".to_string(),
-        "STARTSWITH" if matches!(target, Dialect::Sqlite) => "STARTS_WITH".to_string(),
-        "YEAROFWEEK" if matches!(target, Dialect::Sqlite) => "YEAR_OF_WEEK".to_string(),
-        "YEAROFWEEKISO" if matches!(target, Dialect::Sqlite) => "YEAR_OF_WEEK_ISO".to_string(),
-        "LEVENSHTEIN" if matches!(target, Dialect::Sqlite) => "EDITDIST3".to_string(),
-        "ARRAY_FILTER" if matches!(target, Dialect::Sqlite) => "FILTER".to_string(),
-        "FARMFINGERPRINT64" if matches!(target, Dialect::Sqlite) => "FARM_FINGERPRINT".to_string(),
-        "LEFTPAD" if matches!(target, Dialect::Sqlite) => "LPAD".to_string(),
-        "RIGHTPAD" if matches!(target, Dialect::Sqlite) => "RPAD".to_string(),
-        "GET_BIT" if matches!(target, Dialect::Sqlite) => "GETBIT".to_string(),
-        "SIGNUM" if matches!(target, Dialect::Sqlite) => "SIGN".to_string(),
-        "STDEV" if matches!(target, Dialect::Sqlite) => "STDDEV".to_string(),
-        "ST_MAKEPOINT" if matches!(target, Dialect::Sqlite) => "ST_POINT".to_string(),
-        "ARGMAX" if matches!(target, Dialect::Sqlite) => "ARG_MAX".to_string(),
-        "ARGMIN" if matches!(target, Dialect::Sqlite) => "ARG_MIN".to_string(),
-        "APPROX_COUNT_DISTINCT" if matches!(target, Dialect::Sqlite) => {
-            "APPROX_DISTINCT".to_string()
-        }
-
-        // ── STRING_AGG / GROUP_CONCAT ───────────────────────────────────
-        "STRING_AGG" if matches!(target, Dialect::Sqlite) => "GROUP_CONCAT".to_string(),
-        "STRPOS" if matches!(target, Dialect::Sqlite) => "INSTR".to_string(),
+        // Source-independent sqlite renames now live in `rules::rename_function`
+        // (consulted at the top of this fn). Source-dependent renames remain.
         "CHR" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
             "CHAR".to_string()
         }
@@ -4710,8 +4694,6 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
         "SPLIT_PART" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
             "SPLIT_PART".to_string()
         }
-        "BOOL_AND" | "LOGICAL_AND" if matches!(target, Dialect::Sqlite) => "MIN".to_string(),
-        "BOOL_OR" | "LOGICAL_OR" if matches!(target, Dialect::Sqlite) => "MAX".to_string(),
 
         // ── BIT aggregate functions ─────────────────────────────────────
         "BIT_AND"
