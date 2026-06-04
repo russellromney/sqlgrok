@@ -1872,6 +1872,23 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 let position = new_args[2].clone();
                 return sqlite_instr_with_position(haystack, needle, position);
             }
+            // STRPOS(haystack, needle, occurrence) — the 3-arg form lowers to
+            // the SUBSTRING/offset IIF like STR_POSITION (the occurrence arg
+            // is used as the search start). The 2-arg form is handled by the
+            // STRPOS -> INSTR name mapping elsewhere.
+            if matches!(target, Dialect::Sqlite)
+                && name.eq_ignore_ascii_case("STRPOS")
+                && !distinct
+                && filter.is_none()
+                && over.is_none()
+                && new_args.len() == 3
+            {
+                return sqlite_instr_with_position(
+                    new_args[0].clone(),
+                    new_args[1].clone(),
+                    new_args[2].clone(),
+                );
+            }
             if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("STR_POSITION")
                 && !distinct

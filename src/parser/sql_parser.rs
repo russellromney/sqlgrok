@@ -7441,7 +7441,17 @@ impl<'a> Parser<'a> {
         self.expect(TokenType::As)?;
         let data_type = self.parse_data_type()?;
         if self.match_keyword("FORMAT") && self.peek_type() != &TokenType::RParen {
-            let format = self.parse_primary()?;
+            let mut format = self.parse_primary()?;
+            // `FORMAT ('YYYY')` parses the value as a parenthesized expr;
+            // unwrap a single nested string literal so it's treated as the
+            // bare format string.
+            while let Expr::Nested(inner) = &format {
+                if matches!(inner.as_ref(), Expr::StringLiteral(_)) {
+                    format = (**inner).clone();
+                } else {
+                    break;
+                }
+            }
             if self.match_keyword("AT") {
                 self.expect(TokenType::Time)?;
                 self.expect_keyword("ZONE")?;
