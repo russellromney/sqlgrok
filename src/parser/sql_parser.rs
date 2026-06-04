@@ -1,6 +1,7 @@
 use crate::ast::*;
 use crate::dialects::Dialect;
 use crate::errors::{Result, SqlglotError};
+use crate::parser::text::SqlText;
 use crate::tokens::{Token, TokenType, Tokenizer};
 
 /// Convert a token's `quote_char` into a `QuoteStyle`.
@@ -996,16 +997,16 @@ impl<'a> Parser<'a> {
         self.char_pos_to_byte(end)
     }
 
-    fn token_text_owned(&self, token: &Token) -> String {
+    fn token_text<'token>(&'token self, token: &'token Token) -> SqlText<'token> {
         let start = self.char_pos_to_byte(token.position);
         let end = self.token_end_byte(token);
         self.sql
             .get(start..end)
-            .map_or_else(|| token.value.clone(), ToOwned::to_owned)
+            .map_or_else(|| SqlText::owned(token.value.clone()), SqlText::borrowed)
     }
 
     fn advance_text_owned(&mut self) -> String {
-        let text = self.token_text_owned(self.peek());
+        let text = self.token_text(self.peek()).into_owned();
         self.advance();
         text
     }

@@ -261,6 +261,37 @@ parse/transpile allocation. Candidate designs are a string interner, parse-local
 arena, or borrowed internal AST that is converted to owned only at API
 boundaries.
 
+Execution plan:
+
+1. Add a private internal text type, `SqlText<'sql>`, backed by borrowed source
+   slices or owned rewrite strings. Use it first in parser/raw reconstruction
+   helpers so the abstraction is exercised without changing public AST shapes.
+2. Add a private internal AST subset for the hot transpile surface: SELECT,
+   columns, aliases, literals, function calls, binary operations, casts, WHERE,
+   ORDER BY, LIMIT, and the DDL shapes present in benchmark workloads.
+3. Build `parse_internal(sql, dialect)` for that subset. It should borrow source
+   text when semantic text equals the source slice, allocate only for decoded
+   literals or normalized identifiers, and fall back to the current public parser
+   for unsupported shapes during bring-up.
+4. Add internal transform and generator paths so covered `transpile()` calls can
+   run `parse_internal -> transform_internal -> generate_internal` without
+   converting through the public owned AST. Output must match the current public
+   path byte-for-byte before the internal path is enabled for a case.
+5. Ratchet coverage by report bucket and benchmark case. Track which cases are
+   fully internal versus fallback, gate internal output against the public path,
+   and remove fallbacks only after SQLGlot parity and focused Rust tests stay
+   green.
+
+Expected benefit:
+
+- Lower single-call allocation and latency for Rust, C ABI, PyO3, Node, Ruby,
+  and Go bindings.
+- Public `parse()` remains owned, serde-friendly, and lifetime-free.
+- Hot `transpile()` can avoid allocating public AST strings that callers never
+  inspect.
+- Scoped allocation reports should move pressure out of parse; if they do not,
+  the internal path is not earning its complexity.
+
 Acceptance:
 
 - Public AST/serde API remains stable or changes behind a clearly named

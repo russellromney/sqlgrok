@@ -1,4 +1,5 @@
 mod sql_parser;
+mod text;
 
 pub use sql_parser::Parser;
 

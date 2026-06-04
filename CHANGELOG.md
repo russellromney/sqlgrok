@@ -59,6 +59,9 @@ this file records what landed.
   after parse. Refreshed reports show MySQL/Postgres/SQLite priority lanes at
   `5.56`/`5.01`/`4.83` KiB per operation and expose parse as the dominant
   remaining allocation scope.
+- Documented the borrowed/internal AST execution plan and added the first
+  private parser `SqlText` abstraction for borrowed-or-owned SQL text, wiring it
+  into span-based raw token reconstruction without changing public AST shapes.
 
 ### Public Documentation Cleanup
 
