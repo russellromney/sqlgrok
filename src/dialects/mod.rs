@@ -4689,6 +4689,14 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
         "LEFTPAD" if matches!(target, Dialect::Sqlite) => "LPAD".to_string(),
         "RIGHTPAD" if matches!(target, Dialect::Sqlite) => "RPAD".to_string(),
         "GET_BIT" if matches!(target, Dialect::Sqlite) => "GETBIT".to_string(),
+        "SIGNUM" if matches!(target, Dialect::Sqlite) => "SIGN".to_string(),
+        "STDEV" if matches!(target, Dialect::Sqlite) => "STDDEV".to_string(),
+        "ST_MAKEPOINT" if matches!(target, Dialect::Sqlite) => "ST_POINT".to_string(),
+        "ARGMAX" if matches!(target, Dialect::Sqlite) => "ARG_MAX".to_string(),
+        "ARGMIN" if matches!(target, Dialect::Sqlite) => "ARG_MIN".to_string(),
+        "APPROX_COUNT_DISTINCT" if matches!(target, Dialect::Sqlite) => {
+            "APPROX_DISTINCT".to_string()
+        }
 
         // ── STRING_AGG / GROUP_CONCAT ───────────────────────────────────
         "STRING_AGG" if matches!(target, Dialect::Sqlite) => "GROUP_CONCAT".to_string(),
