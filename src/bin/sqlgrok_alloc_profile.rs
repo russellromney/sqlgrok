@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
-use sqlgrok::{Dialect, dialects, generate, parse, tokens::Tokenizer, transpile};
+use sqlgrok::{Dialect, dialects, generate, parse, tokens::Tokenizer};
 
 struct CountingAllocator;
 
@@ -15,12 +15,25 @@ static DEALLOCATED_BYTES: AtomicU64 = AtomicU64::new(0);
 static ALLOCATIONS: AtomicU64 = AtomicU64::new(0);
 static DEALLOCATIONS: AtomicU64 = AtomicU64::new(0);
 
+const SCOPE_COUNT: usize = 6;
+const SCOPE_UNSCOPED: usize = 0;
+const SCOPE_TOKENIZE: usize = 1;
+const SCOPE_PARSE: usize = 2;
+const SCOPE_TRANSFORM: usize = 3;
+const SCOPE_GENERATE: usize = 4;
+const SCOPE_PREPARE: usize = 5;
+
+static CURRENT_SCOPE: AtomicU64 = AtomicU64::new(SCOPE_UNSCOPED as u64);
+static SCOPE_ALLOCATED_BYTES: [AtomicU64; SCOPE_COUNT] = [const { AtomicU64::new(0) }; SCOPE_COUNT];
+static SCOPE_ALLOCATIONS: [AtomicU64; SCOPE_COUNT] = [const { AtomicU64::new(0) }; SCOPE_COUNT];
+
 unsafe impl GlobalAlloc for CountingAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let ptr = unsafe { System.alloc(layout) };
         if !ptr.is_null() {
             ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
             ALLOCATED_BYTES.fetch_add(layout.size() as u64, Ordering::Relaxed);
+            record_scope_allocation(layout.size() as u64);
         }
         ptr
     }
@@ -38,6 +51,7 @@ unsafe impl GlobalAlloc for CountingAllocator {
             DEALLOCATED_BYTES.fetch_add(old_layout.size() as u64, Ordering::Relaxed);
             ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
             ALLOCATED_BYTES.fetch_add(new_size as u64, Ordering::Relaxed);
+            record_scope_allocation(new_size as u64);
         }
         new_ptr
     }
@@ -102,6 +116,15 @@ struct AllocationStats {
 }
 
 #[derive(Debug, Clone, Serialize)]
+struct ScopeStats {
+    name: &'static str,
+    allocated_bytes: u64,
+    allocations: u64,
+    bytes_per_op: f64,
+    allocations_per_op: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
 struct AllocationCaseProfile {
     id: String,
     read: String,
@@ -110,6 +133,13 @@ struct AllocationCaseProfile {
     tags: Vec<String>,
     feature: String,
     stats: AllocationStats,
+    scopes: Vec<ScopeStats>,
+}
+
+#[derive(Debug, Clone)]
+struct ProfileResult {
+    stats: AllocationStats,
+    scopes: Vec<ScopeStats>,
 }
 
 fn main() {
@@ -337,6 +367,13 @@ fn reset_allocation_counters() {
     DEALLOCATED_BYTES.store(0, Ordering::Relaxed);
     ALLOCATIONS.store(0, Ordering::Relaxed);
     DEALLOCATIONS.store(0, Ordering::Relaxed);
+    CURRENT_SCOPE.store(SCOPE_UNSCOPED as u64, Ordering::Relaxed);
+    for counter in &SCOPE_ALLOCATED_BYTES {
+        counter.store(0, Ordering::Relaxed);
+    }
+    for counter in &SCOPE_ALLOCATIONS {
+        counter.store(0, Ordering::Relaxed);
+    }
 }
 
 fn allocation_counters() -> AllocationCounters {
@@ -348,13 +385,71 @@ fn allocation_counters() -> AllocationCounters {
     }
 }
 
+fn record_scope_allocation(bytes: u64) {
+    let scope = CURRENT_SCOPE.load(Ordering::Relaxed) as usize;
+    if scope < SCOPE_COUNT {
+        SCOPE_ALLOCATED_BYTES[scope].fetch_add(bytes, Ordering::Relaxed);
+        SCOPE_ALLOCATIONS[scope].fetch_add(1, Ordering::Relaxed);
+    }
+}
+
+struct ScopeGuard {
+    previous: u64,
+}
+
+impl ScopeGuard {
+    fn enter(scope: usize) -> Self {
+        let previous = CURRENT_SCOPE.swap(scope as u64, Ordering::Relaxed);
+        Self { previous }
+    }
+}
+
+impl Drop for ScopeGuard {
+    fn drop(&mut self) {
+        CURRENT_SCOPE.store(self.previous, Ordering::Relaxed);
+    }
+}
+
+fn scoped<T>(scope: usize, f: impl FnOnce() -> T) -> T {
+    let _guard = ScopeGuard::enter(scope);
+    f()
+}
+
+fn scope_name(scope: usize) -> &'static str {
+    match scope {
+        SCOPE_UNSCOPED => "unscoped",
+        SCOPE_TOKENIZE => "tokenize",
+        SCOPE_PARSE => "parse",
+        SCOPE_TRANSFORM => "transform",
+        SCOPE_GENERATE => "generate",
+        SCOPE_PREPARE => "prepare",
+        _ => "unknown",
+    }
+}
+
+fn scope_stats(operations: usize) -> Vec<ScopeStats> {
+    (0..SCOPE_COUNT)
+        .filter_map(|scope| {
+            let allocated_bytes = SCOPE_ALLOCATED_BYTES[scope].load(Ordering::Relaxed);
+            let allocations = SCOPE_ALLOCATIONS[scope].load(Ordering::Relaxed);
+            (allocated_bytes > 0 || allocations > 0).then(|| ScopeStats {
+                name: scope_name(scope),
+                allocated_bytes,
+                allocations,
+                bytes_per_op: allocated_bytes as f64 / operations as f64,
+                allocations_per_op: allocations as f64 / operations as f64,
+            })
+        })
+        .collect()
+}
+
 fn profile_allocation_cases(
     cases: &[BenchCase],
     phase: AllocationPhase,
     iterations: usize,
     warmup: usize,
     label: &str,
-) -> Result<AllocationStats, String> {
+) -> Result<ProfileResult, String> {
     let dialects = bench_case_dialects(cases)?;
     let prepared = PreparedCases::new(cases, &dialects, phase)?;
     let mut checksum = 0usize;
@@ -380,8 +475,12 @@ fn profile_allocation_cases(
             );
         }
     }
+    let operations = iterations * cases.len();
     let counters = allocation_counters();
-    allocation_stats_from_counters(counters, iterations * cases.len(), checksum, label)
+    Ok(ProfileResult {
+        stats: allocation_stats_from_counters(counters, operations, checksum, label)?,
+        scopes: scope_stats(operations),
+    })
 }
 
 enum PreparedCases {
@@ -420,7 +519,7 @@ impl PreparedCases {
                         let ast = parse(&case.sql, *read).map_err(|err| {
                             format!("{}: allocation prepare parse failed: {err}", case.id)
                         })?;
-                        Ok(dialects::transform(&ast, *read, *write))
+                        Ok(dialects::transform_owned(ast, *read, *write))
                     })
                     .collect::<Result<Vec<_>, String>>()?;
                 Ok(Self::Transformed(transformed))
@@ -440,13 +539,16 @@ fn run_phase_operation(
     let (read, write) = dialects[index];
     match phase {
         AllocationPhase::Tokenize => {
-            let mut tokenizer = Tokenizer::new(std::hint::black_box(&case.sql));
-            let tokens = tokenizer.tokenize().map_err(|err| err.to_string())?;
+            let tokens = scoped(SCOPE_TOKENIZE, || {
+                let mut tokenizer = Tokenizer::new(std::hint::black_box(&case.sql));
+                tokenizer.tokenize().map_err(|err| err.to_string())
+            })?;
             Ok(tokens.len())
         }
         AllocationPhase::Parse => {
-            let ast =
-                parse(std::hint::black_box(&case.sql), read).map_err(|err| err.to_string())?;
+            let ast = scoped(SCOPE_PARSE, || {
+                parse(std::hint::black_box(&case.sql), read).map_err(|err| err.to_string())
+            })?;
             let marker = (&ast as *const _) as usize;
             std::hint::black_box(&ast);
             Ok(marker & 0xff)
@@ -455,8 +557,9 @@ fn run_phase_operation(
             let PreparedCases::Parsed(parsed) = prepared else {
                 return Err("transform phase missing prepared parsed ASTs".to_string());
             };
-            let transformed =
-                dialects::transform(std::hint::black_box(&parsed[index]), read, write);
+            let transformed = scoped(SCOPE_TRANSFORM, || {
+                dialects::transform(std::hint::black_box(&parsed[index]), read, write)
+            });
             let marker = (&transformed as *const _) as usize;
             std::hint::black_box(&transformed);
             Ok(marker & 0xff)
@@ -465,12 +568,19 @@ fn run_phase_operation(
             let PreparedCases::Transformed(transformed) = prepared else {
                 return Err("generate phase missing prepared transformed ASTs".to_string());
             };
-            let output = generate(std::hint::black_box(&transformed[index]), write);
+            let output = scoped(SCOPE_GENERATE, || {
+                generate(std::hint::black_box(&transformed[index]), write)
+            });
             Ok(output.len())
         }
         AllocationPhase::Transpile => {
-            let output = transpile(std::hint::black_box(&case.sql), read, write)
-                .map_err(|err| err.to_string())?;
+            let ast = scoped(SCOPE_PARSE, || {
+                parse(std::hint::black_box(&case.sql), read).map_err(|err| err.to_string())
+            })?;
+            let transformed = scoped(SCOPE_TRANSFORM, || {
+                dialects::transform_owned(ast, read, write)
+            });
+            let output = scoped(SCOPE_GENERATE, || generate(&transformed, write));
             Ok(output.len())
         }
     }
@@ -508,7 +618,7 @@ fn profile_allocation_cases_individually(
 ) -> Result<Vec<AllocationCaseProfile>, String> {
     let mut rows = Vec::with_capacity(cases.len());
     for case in cases {
-        let stats = profile_allocation_cases(
+        let result = profile_allocation_cases(
             std::slice::from_ref(case),
             phase,
             iterations,
@@ -522,7 +632,8 @@ fn profile_allocation_cases_individually(
             sql: case.sql.clone(),
             tags: case.tags.clone(),
             feature: case.feature.clone(),
-            stats,
+            stats: result.stats,
+            scopes: result.scopes,
         });
     }
     Ok(rows)
@@ -531,7 +642,7 @@ fn profile_allocation_cases_individually(
 fn render_report(
     args: &Args,
     cases: &[BenchCase],
-    aggregate: &AllocationStats,
+    aggregate: &ProfileResult,
     per_case: Option<&[AllocationCaseProfile]>,
 ) -> String {
     let mut out = String::new();
@@ -549,20 +660,23 @@ fn render_report(
         "- Warmup iterations per case: `{}`\n",
         args.warmup
     ));
-    out.push_str(&format!("- Operations: `{}`\n", aggregate.operations));
-    out.push_str(&format!("- Output checksum: `{}`\n", aggregate.checksum));
+    out.push_str(&format!("- Operations: `{}`\n", aggregate.stats.operations));
+    out.push_str(&format!(
+        "- Output checksum: `{}`\n",
+        aggregate.stats.checksum
+    ));
     out.push_str(&format!(
         "- Allocated: `{:.2} KiB/op` across `{:.2}` allocations/op\n",
-        aggregate.bytes_per_op / 1024.0,
-        aggregate.allocations_per_op
+        aggregate.stats.bytes_per_op / 1024.0,
+        aggregate.stats.allocations_per_op
     ));
     out.push_str(&format!(
         "- Total allocated: `{:.2} MiB`\n",
-        aggregate.allocated_bytes as f64 / (1024.0 * 1024.0)
+        aggregate.stats.allocated_bytes as f64 / (1024.0 * 1024.0)
     ));
     out.push_str(&format!(
         "- Net bytes after drops: `{}`\n\n",
-        aggregate.net_bytes
+        aggregate.stats.net_bytes
     ));
 
     out.push_str("## Notes\n\n");
@@ -580,6 +694,23 @@ fn render_report(
     out.push_str(
         "- The counting allocator lives only in this helper binary, so normal `xtask bench-sqlglot` timing is not perturbed.\n\n",
     );
+
+    if !aggregate.scopes.is_empty() {
+        let mut rows = aggregate.scopes.iter().collect::<Vec<_>>();
+        rows.sort_by(|left, right| right.bytes_per_op.total_cmp(&left.bytes_per_op));
+        out.push_str("## Scoped Allocation Breakdown\n\n");
+        out.push_str("| scope | KiB/op | allocations/op |\n");
+        out.push_str("| --- | ---: | ---: |\n");
+        for row in rows {
+            out.push_str(&format!(
+                "| `{}` | {:.2} | {:.2} |\n",
+                row.name,
+                row.bytes_per_op / 1024.0,
+                row.allocations_per_op
+            ));
+        }
+        out.push('\n');
+    }
 
     if let Some(per_case) = per_case {
         let mut rows = per_case.iter().collect::<Vec<_>>();
@@ -630,7 +761,7 @@ fn render_report(
 fn render_json(
     args: &Args,
     cases: &[BenchCase],
-    aggregate: &AllocationStats,
+    aggregate: &ProfileResult,
     per_case: Option<&[AllocationCaseProfile]>,
 ) -> Result<String, String> {
     let report = serde_json::json!({
@@ -640,7 +771,8 @@ fn render_json(
         "case_count": cases.len(),
         "iterations": args.iterations,
         "warmup": args.warmup,
-        "aggregate": aggregate,
+        "aggregate": aggregate.stats,
+        "scopes": aggregate.scopes,
         "per_case": per_case,
     });
     serde_json::to_string_pretty(&report)

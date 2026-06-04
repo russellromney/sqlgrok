@@ -591,12 +591,11 @@ impl<'a> Parser<'a> {
     /// Like `expect_name` but also returns the quote style of the token.
     fn expect_name_with_quote(&mut self) -> Result<(String, QuoteStyle)> {
         if self.is_name_token() {
-            let token = self.advance().clone();
-            let qs = quote_style_from_char(token.quote_char);
-            return Ok((token.value.clone(), qs));
+            let token = self.advance();
+            return Ok((token.value.clone(), quote_style_from_char(token.quote_char)));
         }
         // Also accept any keyword-like identifier
-        let token = self.peek().clone();
+        let token = self.peek();
         if matches!(
             token.token_type,
             TokenType::Identifier
@@ -628,9 +627,8 @@ impl<'a> Parser<'a> {
                 | TokenType::Map
                 | TokenType::Struct
         ) {
-            let t = self.advance().clone();
-            let qs = quote_style_from_char(t.quote_char);
-            Ok((t.value.clone(), qs))
+            let token = self.advance();
+            Ok((token.value.clone(), quote_style_from_char(token.quote_char)))
         } else {
             Err(SqlglotError::ParserError {
                 message: format!(
@@ -1788,8 +1786,8 @@ impl<'a> Parser<'a> {
                 return Ok(None);
             }
             if token.quote_char != '\0' || !is_reserved_implicit_alias_keyword(&token.value) {
-                let alias = token.value.clone();
                 let qs = quote_style_from_char(token.quote_char);
+                let alias = token.value.clone();
                 self.advance();
                 return Ok(Some((alias, qs)));
             }
@@ -1802,10 +1800,12 @@ impl<'a> Parser<'a> {
             return self.expect_name_with_quote();
         }
 
-        let token = self.peek().clone();
+        let token = self.peek();
         if is_identifier_like(&token.value) {
+            let value = token.value.clone();
+            let qs = quote_style_from_char(token.quote_char);
             self.advance();
-            return Ok((token.value.clone(), quote_style_from_char(token.quote_char)));
+            return Ok((value, qs));
         }
 
         Err(SqlglotError::ParserError {

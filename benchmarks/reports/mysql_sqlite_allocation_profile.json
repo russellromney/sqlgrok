@@ -1,12 +1,12 @@
 {
   "aggregate": {
-    "allocated_bytes": 53853000,
-    "allocations": 707000,
-    "allocations_per_op": 88.375,
-    "bytes_per_op": 6731.625,
+    "allocated_bytes": 45538000,
+    "allocations": 609000,
+    "allocations_per_op": 76.125,
+    "bytes_per_op": 5692.25,
     "checksum": 586000,
-    "deallocated_bytes": 53853000,
-    "deallocations": 707000,
+    "deallocated_bytes": 45538000,
+    "deallocations": 609000,
     "net_bytes": 0,
     "operations": 8000
   },
@@ -108,15 +108,38 @@
       "feature": "aggregate",
       "id": "mysql-group-concat-order-separator",
       "read": "mysql",
+      "scopes": [
+        {
+          "allocated_bytes": 2682000,
+          "allocations": 44000,
+          "allocations_per_op": 44.0,
+          "bytes_per_op": 2682.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 558000,
+          "allocations": 20000,
+          "allocations_per_op": 20.0,
+          "bytes_per_op": 558.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 138000,
+          "allocations": 9000,
+          "allocations_per_op": 9.0,
+          "bytes_per_op": 138.0,
+          "name": "generate"
+        }
+      ],
       "sql": "SELECT GROUP_CONCAT(v ORDER BY v SEPARATOR '|') FROM gc",
       "stats": {
-        "allocated_bytes": 3956000,
-        "allocations": 80000,
-        "allocations_per_op": 80.0,
-        "bytes_per_op": 3956.0,
+        "allocated_bytes": 3378000,
+        "allocations": 73000,
+        "allocations_per_op": 73.0,
+        "bytes_per_op": 3378.0,
         "checksum": 35000,
-        "deallocated_bytes": 3956000,
-        "deallocations": 80000,
+        "deallocated_bytes": 3378000,
+        "deallocations": 73000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -130,15 +153,38 @@
       "feature": "json",
       "id": "mysql-json-extract-key",
       "read": "mysql",
+      "scopes": [
+        {
+          "allocated_bytes": 3299000,
+          "allocations": 49000,
+          "allocations_per_op": 49.0,
+          "bytes_per_op": 3299.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 2122000,
+          "allocations": 16000,
+          "allocations_per_op": 16.0,
+          "bytes_per_op": 2122.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 177000,
+          "allocations": 9000,
+          "allocations_per_op": 9.0,
+          "bytes_per_op": 177.0,
+          "name": "generate"
+        }
+      ],
       "sql": "SELECT JSON_EXTRACT(data, '$.k') FROM events WHERE id = 1",
       "stats": {
-        "allocated_bytes": 6532000,
-        "allocations": 85000,
-        "allocations_per_op": 85.0,
-        "bytes_per_op": 6532.0,
+        "allocated_bytes": 5598000,
+        "allocations": 74000,
+        "allocations_per_op": 74.0,
+        "bytes_per_op": 5598.0,
         "checksum": 45000,
-        "deallocated_bytes": 6532000,
-        "deallocations": 85000,
+        "deallocated_bytes": 5598000,
+        "deallocations": 74000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -152,15 +198,38 @@
       "feature": "limit",
       "id": "mysql-limit-offset-comma",
       "read": "mysql",
+      "scopes": [
+        {
+          "allocated_bytes": 4975000,
+          "allocations": 49000,
+          "allocations_per_op": 49.0,
+          "bytes_per_op": 4975.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 1062000,
+          "allocations": 11000,
+          "allocations_per_op": 11.0,
+          "bytes_per_op": 1062.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 317000,
+          "allocations": 10000,
+          "allocations_per_op": 10.0,
+          "bytes_per_op": 317.0,
+          "name": "generate"
+        }
+      ],
       "sql": "SELECT a, b FROM t WHERE a > 10 ORDER BY b DESC LIMIT 5, 10",
       "stats": {
-        "allocated_bytes": 7317000,
-        "allocations": 83000,
-        "allocations_per_op": 83.0,
-        "bytes_per_op": 7317.0,
+        "allocated_bytes": 6354000,
+        "allocations": 70000,
+        "allocations_per_op": 70.0,
+        "bytes_per_op": 6354.0,
         "checksum": 65000,
-        "deallocated_bytes": 7317000,
-        "deallocations": 83000,
+        "deallocated_bytes": 6354000,
+        "deallocations": 70000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -174,15 +243,38 @@
       "feature": "datetime",
       "id": "mysql-date-format",
       "read": "mysql",
+      "scopes": [
+        {
+          "allocated_bytes": 2537000,
+          "allocations": 36000,
+          "allocations_per_op": 36.0,
+          "bytes_per_op": 2537.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 927000,
+          "allocations": 26000,
+          "allocations_per_op": 26.0,
+          "bytes_per_op": 927.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 188000,
+          "allocations": 7000,
+          "allocations_per_op": 7.0,
+          "bytes_per_op": 188.0,
+          "name": "generate"
+        }
+      ],
       "sql": "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') FROM users",
       "stats": {
-        "allocated_bytes": 4251000,
-        "allocations": 76000,
-        "allocations_per_op": 76.0,
-        "bytes_per_op": 4251.0,
+        "allocated_bytes": 3652000,
+        "allocations": 69000,
+        "allocations_per_op": 69.0,
+        "bytes_per_op": 3652.0,
         "checksum": 50000,
-        "deallocated_bytes": 4251000,
-        "deallocations": 76000,
+        "deallocated_bytes": 3652000,
+        "deallocations": 69000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -196,15 +288,38 @@
       "feature": "expression",
       "id": "mysql-if-cast-div",
       "read": "mysql",
+      "scopes": [
+        {
+          "allocated_bytes": 6493000,
+          "allocations": 74000,
+          "allocations_per_op": 74.0,
+          "bytes_per_op": 6493.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 4104000,
+          "allocations": 34000,
+          "allocations_per_op": 34.0,
+          "bytes_per_op": 4104.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 361000,
+          "allocations": 10000,
+          "allocations_per_op": 10.0,
+          "bytes_per_op": 361.0,
+          "name": "generate"
+        }
+      ],
       "sql": "SELECT IF(a > 0, CAST(a AS SIGNED INTEGER), 7 DIV 2), x / y FROM metrics",
       "stats": {
-        "allocated_bytes": 13169000,
-        "allocations": 139000,
-        "allocations_per_op": 139.0,
-        "bytes_per_op": 13169.0,
+        "allocated_bytes": 10958000,
+        "allocations": 118000,
+        "allocations_per_op": 118.0,
+        "bytes_per_op": 10958.0,
         "checksum": 109000,
-        "deallocated_bytes": 13169000,
-        "deallocations": 139000,
+        "deallocated_bytes": 10958000,
+        "deallocations": 118000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -218,15 +333,31 @@
       "feature": "ddl",
       "id": "mysql-insert-ignore",
       "read": "mysql",
+      "scopes": [
+        {
+          "allocated_bytes": 2249000,
+          "allocations": 31000,
+          "allocations_per_op": 31.0,
+          "bytes_per_op": 2249.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 243000,
+          "allocations": 6000,
+          "allocations_per_op": 6.0,
+          "bytes_per_op": 243.0,
+          "name": "generate"
+        }
+      ],
       "sql": "INSERT IGNORE INTO users (id, email) VALUES (1, 'a@example.com')",
       "stats": {
-        "allocated_bytes": 2954000,
-        "allocations": 48000,
-        "allocations_per_op": 48.0,
-        "bytes_per_op": 2954.0,
+        "allocated_bytes": 2492000,
+        "allocations": 37000,
+        "allocations_per_op": 37.0,
+        "bytes_per_op": 2492.0,
         "checksum": 67000,
-        "deallocated_bytes": 2954000,
-        "deallocations": 48000,
+        "deallocated_bytes": 2492000,
+        "deallocations": 37000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -240,15 +371,38 @@
       "feature": "ddl",
       "id": "mysql-on-duplicate-key",
       "read": "mysql",
+      "scopes": [
+        {
+          "allocated_bytes": 4133000,
+          "allocations": 62000,
+          "allocations_per_op": 62.0,
+          "bytes_per_op": 4133.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 96000,
+          "allocations": 16000,
+          "allocations_per_op": 16.0,
+          "bytes_per_op": 96.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 524000,
+          "allocations": 12000,
+          "allocations_per_op": 12.0,
+          "bytes_per_op": 524.0,
+          "name": "generate"
+        }
+      ],
       "sql": "INSERT INTO users (id, email) VALUES (1, 'a@example.com') ON DUPLICATE KEY UPDATE email = VALUES(email)",
       "stats": {
-        "allocated_bytes": 5612000,
-        "allocations": 107000,
-        "allocations_per_op": 107.0,
-        "bytes_per_op": 5612.0,
+        "allocated_bytes": 4753000,
+        "allocations": 90000,
+        "allocations_per_op": 90.0,
+        "bytes_per_op": 4753.0,
         "checksum": 107000,
-        "deallocated_bytes": 5612000,
-        "deallocations": 107000,
+        "deallocated_bytes": 4753000,
+        "deallocations": 90000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -262,15 +416,38 @@
       "feature": "ddl",
       "id": "mysql-computed-column",
       "read": "mysql",
+      "scopes": [
+        {
+          "allocated_bytes": 7785000,
+          "allocations": 67000,
+          "allocations_per_op": 67.0,
+          "bytes_per_op": 7785.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 207000,
+          "allocations": 4000,
+          "allocations_per_op": 4.0,
+          "bytes_per_op": 207.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 361000,
+          "allocations": 7000,
+          "allocations_per_op": 7.0,
+          "bytes_per_op": 361.0,
+          "name": "generate"
+        }
+      ],
       "sql": "CREATE TABLE users (id INT PRIMARY KEY, email VARCHAR(255), email_lc VARCHAR(255) AS (LOWER(email)) STORED)",
       "stats": {
-        "allocated_bytes": 10062000,
-        "allocations": 89000,
-        "allocations_per_op": 89.0,
-        "bytes_per_op": 10062.0,
+        "allocated_bytes": 8353000,
+        "allocations": 78000,
+        "allocations_per_op": 78.0,
+        "bytes_per_op": 8353.0,
         "checksum": 108000,
-        "deallocated_bytes": 10062000,
-        "deallocations": 89000,
+        "deallocated_bytes": 8353000,
+        "deallocations": 78000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -282,5 +459,28 @@
     }
   ],
   "phase": "transpile",
+  "scopes": [
+    {
+      "allocated_bytes": 34153000,
+      "allocations": 412000,
+      "allocations_per_op": 51.5,
+      "bytes_per_op": 4269.125,
+      "name": "parse"
+    },
+    {
+      "allocated_bytes": 9076000,
+      "allocations": 127000,
+      "allocations_per_op": 15.875,
+      "bytes_per_op": 1134.5,
+      "name": "transform"
+    },
+    {
+      "allocated_bytes": 2309000,
+      "allocations": 70000,
+      "allocations_per_op": 8.75,
+      "bytes_per_op": 288.625,
+      "name": "generate"
+    }
+  ],
   "warmup": 100
 }

@@ -151,7 +151,7 @@ pub fn transpile(
     write_dialect: Dialect,
 ) -> errors::Result<String> {
     let ast = parse(sql, read_dialect)?;
-    let transformed = dialects::transform(&ast, read_dialect, write_dialect);
+    let transformed = dialects::transform_owned(ast, read_dialect, write_dialect);
     Ok(generate(&transformed, write_dialect))
 }
 
@@ -168,8 +168,8 @@ pub fn transpile_statements(
 ) -> errors::Result<Vec<String>> {
     let stmts = parser::parse_statements(sql, read_dialect)?;
     let mut results = Vec::with_capacity(stmts.len());
-    for stmt in &stmts {
-        let transformed = dialects::transform(stmt, read_dialect, write_dialect);
+    for stmt in stmts {
+        let transformed = dialects::transform_owned(stmt, read_dialect, write_dialect);
         results.push(generate(&transformed, write_dialect));
     }
     Ok(results)
@@ -187,8 +187,8 @@ pub fn transpile_statements_pretty(
 ) -> errors::Result<Vec<String>> {
     let stmts = parser::parse_statements(sql, read_dialect)?;
     let mut results = Vec::with_capacity(stmts.len());
-    for stmt in &stmts {
-        let transformed = dialects::transform(stmt, read_dialect, write_dialect);
+    for stmt in stmts {
+        let transformed = dialects::transform_owned(stmt, read_dialect, write_dialect);
         results.push(generate_pretty(&transformed, write_dialect));
     }
     Ok(results)
@@ -253,6 +253,6 @@ pub fn transpile_with_comments(
     write_dialect: Dialect,
 ) -> errors::Result<String> {
     let ast = parse_with_comments(sql, read_dialect)?;
-    let transformed = dialects::transform(&ast, read_dialect, write_dialect);
+    let transformed = dialects::transform_owned(ast, read_dialect, write_dialect);
     Ok(generate(&transformed, write_dialect))
 }

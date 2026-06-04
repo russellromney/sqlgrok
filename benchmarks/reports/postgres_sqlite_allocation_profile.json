@@ -1,12 +1,12 @@
 {
   "aggregate": {
-    "allocated_bytes": 48611000,
-    "allocations": 672000,
-    "allocations_per_op": 84.0,
-    "bytes_per_op": 6076.375,
+    "allocated_bytes": 41080000,
+    "allocations": 600000,
+    "allocations_per_op": 75.0,
+    "bytes_per_op": 5135.0,
     "checksum": 834000,
-    "deallocated_bytes": 48611000,
-    "deallocations": 672000,
+    "deallocated_bytes": 41080000,
+    "deallocations": 600000,
     "net_bytes": 0,
     "operations": 8000
   },
@@ -108,15 +108,38 @@
       "feature": "rewrite",
       "id": "postgres-distinct-on",
       "read": "postgres",
+      "scopes": [
+        {
+          "allocated_bytes": 3967000,
+          "allocations": 54000,
+          "allocations_per_op": 54.0,
+          "bytes_per_op": 3967.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 4551000,
+          "allocations": 35000,
+          "allocations_per_op": 35.0,
+          "bytes_per_op": 4551.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 870000,
+          "allocations": 15000,
+          "allocations_per_op": 15.0,
+          "bytes_per_op": 870.0,
+          "name": "generate"
+        }
+      ],
       "sql": "SELECT DISTINCT ON (account_id) account_id, created_at FROM events ORDER BY account_id, created_at DESC",
       "stats": {
-        "allocated_bytes": 10410000,
-        "allocations": 114000,
-        "allocations_per_op": 114.0,
-        "bytes_per_op": 10410.0,
+        "allocated_bytes": 9388000,
+        "allocations": 104000,
+        "allocations_per_op": 104.0,
+        "bytes_per_op": 9388.0,
         "checksum": 254000,
-        "deallocated_bytes": 10410000,
-        "deallocations": 114000,
+        "deallocated_bytes": 9388000,
+        "deallocations": 104000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -130,15 +153,38 @@
       "feature": "json",
       "id": "postgres-json-path-text",
       "read": "postgres",
+      "scopes": [
+        {
+          "allocated_bytes": 2861000,
+          "allocations": 37000,
+          "allocations_per_op": 37.0,
+          "bytes_per_op": 2861.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 2545000,
+          "allocations": 37000,
+          "allocations_per_op": 37.0,
+          "bytes_per_op": 2545.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 413000,
+          "allocations": 14000,
+          "allocations_per_op": 14.0,
+          "bytes_per_op": 413.0,
+          "name": "generate"
+        }
+      ],
       "sql": "SELECT payload #>> '{customer,0,name}' FROM events WHERE payload ->> 'kind' = 'signup'",
       "stats": {
-        "allocated_bytes": 7156000,
-        "allocations": 102000,
-        "allocations_per_op": 102.0,
-        "bytes_per_op": 7156.0,
+        "allocated_bytes": 5819000,
+        "allocations": 88000,
+        "allocations_per_op": 88.0,
+        "bytes_per_op": 5819.0,
         "checksum": 107000,
-        "deallocated_bytes": 7156000,
-        "deallocations": 102000,
+        "deallocated_bytes": 5819000,
+        "deallocations": 88000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -152,15 +198,38 @@
       "feature": "datetime",
       "id": "postgres-extract-date-trunc",
       "read": "postgres",
+      "scopes": [
+        {
+          "allocated_bytes": 4675000,
+          "allocations": 68000,
+          "allocations_per_op": 68.0,
+          "bytes_per_op": 4675.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 1256000,
+          "allocations": 10000,
+          "allocations_per_op": 10.0,
+          "bytes_per_op": 1256.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 379000,
+          "allocations": 13000,
+          "allocations_per_op": 13.0,
+          "bytes_per_op": 379.0,
+          "name": "generate"
+        }
+      ],
       "sql": "SELECT EXTRACT(YEAR FROM CAST(created_at AS DATE)), DATE_TRUNC('month', created_at) FROM events",
       "stats": {
-        "allocated_bytes": 7286000,
-        "allocations": 99000,
-        "allocations_per_op": 99.0,
-        "bytes_per_op": 7286.0,
+        "allocated_bytes": 6310000,
+        "allocations": 91000,
+        "allocations_per_op": 91.0,
+        "bytes_per_op": 6310.0,
         "checksum": 90000,
-        "deallocated_bytes": 7286000,
-        "deallocations": 99000,
+        "deallocated_bytes": 6310000,
+        "deallocations": 91000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -174,15 +243,38 @@
       "feature": "grouping",
       "id": "postgres-rollup",
       "read": "postgres",
+      "scopes": [
+        {
+          "allocated_bytes": 4199000,
+          "allocations": 66000,
+          "allocations_per_op": 66.0,
+          "bytes_per_op": 4199.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 913000,
+          "allocations": 9000,
+          "allocations_per_op": 9.0,
+          "bytes_per_op": 913.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 362000,
+          "allocations": 11000,
+          "allocations_per_op": 11.0,
+          "bytes_per_op": 362.0,
+          "name": "generate"
+        }
+      ],
       "sql": "SELECT region, product, SUM(revenue) FROM sales GROUP BY ROLLUP(region, product)",
       "stats": {
-        "allocated_bytes": 6845000,
-        "allocations": 97000,
-        "allocations_per_op": 97.0,
-        "bytes_per_op": 6845.0,
+        "allocated_bytes": 5474000,
+        "allocations": 86000,
+        "allocations_per_op": 86.0,
+        "bytes_per_op": 5474.0,
         "checksum": 81000,
-        "deallocated_bytes": 6845000,
-        "deallocations": 97000,
+        "deallocated_bytes": 5474000,
+        "deallocations": 86000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -196,15 +288,38 @@
       "feature": "window",
       "id": "postgres-window-nulls",
       "read": "postgres",
+      "scopes": [
+        {
+          "allocated_bytes": 3747000,
+          "allocations": 54000,
+          "allocations_per_op": 54.0,
+          "bytes_per_op": 3747.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 387000,
+          "allocations": 5000,
+          "allocations_per_op": 5.0,
+          "bytes_per_op": 387.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 377000,
+          "allocations": 9000,
+          "allocations_per_op": 9.0,
+          "bytes_per_op": 377.0,
+          "name": "generate"
+        }
+      ],
       "sql": "SELECT user_id, ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY created_at) FROM events",
       "stats": {
-        "allocated_bytes": 5326000,
-        "allocations": 76000,
-        "allocations_per_op": 76.0,
-        "bytes_per_op": 5326.0,
+        "allocated_bytes": 4511000,
+        "allocations": 68000,
+        "allocations_per_op": 68.0,
+        "bytes_per_op": 4511.0,
         "checksum": 102000,
-        "deallocated_bytes": 5326000,
-        "deallocations": 76000,
+        "deallocated_bytes": 4511000,
+        "deallocations": 68000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -218,15 +333,38 @@
       "feature": "limit",
       "id": "postgres-offset-only",
       "read": "postgres",
+      "scopes": [
+        {
+          "allocated_bytes": 1428000,
+          "allocations": 18000,
+          "allocations_per_op": 18.0,
+          "bytes_per_op": 1428.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 1000,
+          "allocations": 1000,
+          "allocations_per_op": 1.0,
+          "bytes_per_op": 1.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 155000,
+          "allocations": 6000,
+          "allocations_per_op": 6.0,
+          "bytes_per_op": 155.0,
+          "name": "generate"
+        }
+      ],
       "sql": "SELECT x FROM y OFFSET 10",
       "stats": {
-        "allocated_bytes": 1797000,
-        "allocations": 30000,
-        "allocations_per_op": 30.0,
-        "bytes_per_op": 1797.0,
+        "allocated_bytes": 1584000,
+        "allocations": 25000,
+        "allocations_per_op": 25.0,
+        "bytes_per_op": 1584.0,
         "checksum": 34000,
-        "deallocated_bytes": 1797000,
-        "deallocations": 30000,
+        "deallocated_bytes": 1584000,
+        "deallocations": 25000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -240,15 +378,38 @@
       "feature": "ddl",
       "id": "postgres-identity-column",
       "read": "postgres",
+      "scopes": [
+        {
+          "allocated_bytes": 3976000,
+          "allocations": 48000,
+          "allocations_per_op": 48.0,
+          "bytes_per_op": 3976.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 24000,
+          "allocations": 2000,
+          "allocations_per_op": 2.0,
+          "bytes_per_op": 24.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 387000,
+          "allocations": 8000,
+          "allocations_per_op": 8.0,
+          "bytes_per_op": 387.0,
+          "name": "generate"
+        }
+      ],
       "sql": "CREATE TABLE users (id INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY, created_at TIMESTAMP DEFAULT now())",
       "stats": {
-        "allocated_bytes": 5413000,
-        "allocations": 65000,
-        "allocations_per_op": 65.0,
-        "bytes_per_op": 5413.0,
+        "allocated_bytes": 4387000,
+        "allocations": 58000,
+        "allocations_per_op": 58.0,
+        "bytes_per_op": 4387.0,
         "checksum": 105000,
-        "deallocated_bytes": 5413000,
-        "deallocations": 65000,
+        "deallocated_bytes": 4387000,
+        "deallocations": 58000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -262,15 +423,38 @@
       "feature": "aggregate",
       "id": "postgres-string-agg",
       "read": "postgres",
+      "scopes": [
+        {
+          "allocated_bytes": 2795000,
+          "allocations": 46000,
+          "allocations_per_op": 46.0,
+          "bytes_per_op": 2795.0,
+          "name": "parse"
+        },
+        {
+          "allocated_bytes": 559000,
+          "allocations": 23000,
+          "allocations_per_op": 23.0,
+          "bytes_per_op": 559.0,
+          "name": "transform"
+        },
+        {
+          "allocated_bytes": 253000,
+          "allocations": 11000,
+          "allocations_per_op": 11.0,
+          "bytes_per_op": 253.0,
+          "name": "generate"
+        }
+      ],
       "sql": "SELECT string_agg(name, ',') FROM users GROUP BY account_id",
       "stats": {
-        "allocated_bytes": 4378000,
-        "allocations": 89000,
-        "allocations_per_op": 89.0,
-        "bytes_per_op": 4378.0,
+        "allocated_bytes": 3607000,
+        "allocations": 80000,
+        "allocations_per_op": 80.0,
+        "bytes_per_op": 3607.0,
         "checksum": 61000,
-        "deallocated_bytes": 4378000,
-        "deallocations": 89000,
+        "deallocated_bytes": 3607000,
+        "deallocations": 80000,
         "net_bytes": 0,
         "operations": 1000
       },
@@ -282,5 +466,28 @@
     }
   ],
   "phase": "transpile",
+  "scopes": [
+    {
+      "allocated_bytes": 27648000,
+      "allocations": 391000,
+      "allocations_per_op": 48.875,
+      "bytes_per_op": 3456.0,
+      "name": "parse"
+    },
+    {
+      "allocated_bytes": 10236000,
+      "allocations": 122000,
+      "allocations_per_op": 15.25,
+      "bytes_per_op": 1279.5,
+      "name": "transform"
+    },
+    {
+      "allocated_bytes": 3196000,
+      "allocations": 87000,
+      "allocations_per_op": 10.875,
+      "bytes_per_op": 399.5,
+      "name": "generate"
+    }
+  ],
   "warmup": 100
 }

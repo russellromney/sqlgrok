@@ -11,8 +11,8 @@ Counts allocations in a dedicated helper binary while repeatedly measuring the `
 - Warmup iterations per case: `100`
 - Operations: `8000`
 - Output checksum: `834000`
-- Allocated: `5.93 KiB/op` across `84.00` allocations/op
-- Total allocated: `46.36 MiB`
+- Allocated: `5.01 KiB/op` across `75.00` allocations/op
+- Total allocated: `39.18 MiB`
 - Net bytes after drops: `0`
 
 ## Notes
@@ -21,18 +21,26 @@ Counts allocations in a dedicated helper binary while repeatedly measuring the `
 - Counts include the output `String`, because normal callers also receive that allocation.
 - The counting allocator lives only in this helper binary, so normal `xtask bench-sqlglot` timing is not perturbed.
 
+## Scoped Allocation Breakdown
+
+| scope | KiB/op | allocations/op |
+| --- | ---: | ---: |
+| `parse` | 3.38 | 48.88 |
+| `transform` | 1.25 | 15.25 |
+| `generate` | 0.39 | 10.88 |
+
 ## Per-Case Breakdown
 
 | id | KiB/op | allocations/op | net bytes/op | tags |
 | --- | ---: | ---: | ---: | --- |
-| `postgres-distinct-on` | 10.17 | 114.00 | 0.00 | `rewrite,orm` |
-| `postgres-extract-date-trunc` | 7.12 | 99.00 | 0.00 | `datetime,function` |
-| `postgres-json-path-text` | 6.99 | 102.00 | 0.00 | `json,orm` |
-| `postgres-rollup` | 6.68 | 97.00 | 0.00 | `grouping,analytics` |
-| `postgres-identity-column` | 5.29 | 65.00 | 0.00 | `ddl,migration` |
-| `postgres-window-nulls` | 5.20 | 76.00 | 0.00 | `window,orm` |
-| `postgres-string-agg` | 4.28 | 89.00 | 0.00 | `aggregate,orm` |
-| `postgres-offset-only` | 1.75 | 30.00 | 0.00 | `limit,orm` |
+| `postgres-distinct-on` | 9.17 | 104.00 | 0.00 | `rewrite,orm` |
+| `postgres-extract-date-trunc` | 6.16 | 91.00 | 0.00 | `datetime,function` |
+| `postgres-json-path-text` | 5.68 | 88.00 | 0.00 | `json,orm` |
+| `postgres-rollup` | 5.35 | 86.00 | 0.00 | `grouping,analytics` |
+| `postgres-window-nulls` | 4.41 | 68.00 | 0.00 | `window,orm` |
+| `postgres-identity-column` | 4.28 | 58.00 | 0.00 | `ddl,migration` |
+| `postgres-string-agg` | 3.52 | 80.00 | 0.00 | `aggregate,orm` |
+| `postgres-offset-only` | 1.55 | 25.00 | 0.00 | `limit,orm` |
 
 ## Workload
 

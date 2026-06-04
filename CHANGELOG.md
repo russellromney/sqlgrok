@@ -54,6 +54,11 @@ this file records what landed.
   text without relying on decoded token values. A hostile review kept public
   punctuation token values intact; spans are now correctness infrastructure for
   raw SQL and future borrowed-token work rather than a public-token API break.
+- Added scoped allocation breakdowns to `sqlgrok_alloc_profile` and moved the
+  hot transpile path to an owned dialect transform, avoiding a whole-AST clone
+  after parse. Refreshed reports show MySQL/Postgres/SQLite priority lanes at
+  `5.56`/`5.01`/`4.83` KiB per operation and expose parse as the dominant
+  remaining allocation scope.
 
 ### Public Documentation Cleanup
 

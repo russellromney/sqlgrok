@@ -11,8 +11,8 @@ Counts allocations in a dedicated helper binary while repeatedly measuring the `
 - Warmup iterations per case: `100`
 - Operations: `8000`
 - Output checksum: `586000`
-- Allocated: `6.57 KiB/op` across `88.38` allocations/op
-- Total allocated: `51.36 MiB`
+- Allocated: `5.56 KiB/op` across `76.12` allocations/op
+- Total allocated: `43.43 MiB`
 - Net bytes after drops: `0`
 
 ## Notes
@@ -21,18 +21,26 @@ Counts allocations in a dedicated helper binary while repeatedly measuring the `
 - Counts include the output `String`, because normal callers also receive that allocation.
 - The counting allocator lives only in this helper binary, so normal `xtask bench-sqlglot` timing is not perturbed.
 
+## Scoped Allocation Breakdown
+
+| scope | KiB/op | allocations/op |
+| --- | ---: | ---: |
+| `parse` | 4.17 | 51.50 |
+| `transform` | 1.11 | 15.88 |
+| `generate` | 0.28 | 8.75 |
+
 ## Per-Case Breakdown
 
 | id | KiB/op | allocations/op | net bytes/op | tags |
 | --- | ---: | ---: | ---: | --- |
-| `mysql-if-cast-div` | 12.86 | 139.00 | 0.00 | `expression,function` |
-| `mysql-computed-column` | 9.83 | 89.00 | 0.00 | `ddl,migration` |
-| `mysql-limit-offset-comma` | 7.15 | 83.00 | 0.00 | `limit,orm` |
-| `mysql-json-extract-key` | 6.38 | 85.00 | 0.00 | `json,orm` |
-| `mysql-on-duplicate-key` | 5.48 | 107.00 | 0.00 | `ddl,orm` |
-| `mysql-date-format` | 4.15 | 76.00 | 0.00 | `datetime,function` |
-| `mysql-group-concat-order-separator` | 3.86 | 80.00 | 0.00 | `aggregate,orm` |
-| `mysql-insert-ignore` | 2.88 | 48.00 | 0.00 | `ddl,orm` |
+| `mysql-if-cast-div` | 10.70 | 118.00 | 0.00 | `expression,function` |
+| `mysql-computed-column` | 8.16 | 78.00 | 0.00 | `ddl,migration` |
+| `mysql-limit-offset-comma` | 6.21 | 70.00 | 0.00 | `limit,orm` |
+| `mysql-json-extract-key` | 5.47 | 74.00 | 0.00 | `json,orm` |
+| `mysql-on-duplicate-key` | 4.64 | 90.00 | 0.00 | `ddl,orm` |
+| `mysql-date-format` | 3.57 | 69.00 | 0.00 | `datetime,function` |
+| `mysql-group-concat-order-separator` | 3.30 | 73.00 | 0.00 | `aggregate,orm` |
+| `mysql-insert-ignore` | 2.43 | 37.00 | 0.00 | `ddl,orm` |
 
 ## Workload
 

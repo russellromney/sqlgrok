@@ -193,9 +193,17 @@ Current allocation-profile snapshot, using the checked-in 8-case workloads with
 
 | Workload | Allocated | Allocations | Heaviest checked-in case |
 | --- | ---: | ---: | --- |
-| MySQL -> SQLite | 6.57 KiB/op | 88.38 allocs/op | `mysql-if-cast-div` at 12.86 KiB/op |
-| Postgres -> SQLite | 5.93 KiB/op | 84.00 allocs/op | `postgres-distinct-on` at 10.17 KiB/op |
-| SQLite -> SQLite | 5.98 KiB/op | 66.38 allocs/op | `sqlite-cte` at 14.76 KiB/op |
+| MySQL -> SQLite | 5.56 KiB/op | 76.12 allocs/op | `mysql-if-cast-div` at 10.70 KiB/op |
+| Postgres -> SQLite | 5.01 KiB/op | 75.00 allocs/op | `postgres-distinct-on` at 8.47 KiB/op |
+| SQLite -> SQLite | 4.83 KiB/op | 56.25 allocs/op | `sqlite-cte` at 12.70 KiB/op |
+
+Current full-transpile scoped allocation breakdown:
+
+| Workload | Parse | Transform | Generate |
+| --- | ---: | ---: | ---: |
+| MySQL -> SQLite | 4.17 KiB / 51.50 allocs | 1.11 KiB / 15.88 allocs | 0.28 KiB / 8.75 allocs |
+| Postgres -> SQLite | 3.38 KiB / 48.88 allocs | 1.25 KiB / 15.25 allocs | 0.39 KiB / 10.88 allocs |
+| SQLite -> SQLite | 4.08 KiB / 42.12 allocs | 0.48 KiB / 6.75 allocs | 0.27 KiB / 7.38 allocs |
 
 Example phase read on the current heaviest MySQL row, `mysql-if-cast-div`:
 
@@ -212,11 +220,11 @@ clone pressure. Follow-up parser passes removed uppercase-string allocation from
 context keyword checks and made the tokenizer/parser borrow the source SQL
 instead of copying it. Token byte spans now let parser raw carriers reconstruct
 source text without relying on decoded token values, while public punctuation
-token values remain intact for tokenizer API compatibility. Bytes per operation
-ticked up slightly because tokens now carry end spans; allocation counts stayed
-flat after preserving punctuation values. The next memory frontier is a safe
-borrowed/internal token or AST string-ownership design, not cursor setup or
-generator output growth.
+token values remain intact for tokenizer API compatibility. The public
+`transpile` path now consumes the parsed AST with an owned dialect transform,
+avoiding a whole-tree clone before mutation. Scoped allocation reports show
+parse as the dominant remaining frontier, followed by narrower expression
+rewrite allocation in transform; generation is not currently the bottleneck.
 
 Current Postgres-to-SQLite per-case PyO3 medians:
 

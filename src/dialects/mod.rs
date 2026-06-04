@@ -302,10 +302,20 @@ pub(crate) fn supports_ilike_builtin(d: Dialect) -> bool {
 /// - ILIKE → LIKE with LOWER() wrapping for dialects that don't support ILIKE
 #[must_use]
 pub fn transform(statement: &Statement, from: Dialect, to: Dialect) -> Statement {
+    transform_owned(statement.clone(), from, to)
+}
+
+/// Transform an owned statement from one dialect to another.
+///
+/// This is the hot path for `transpile`: parsing already returns an owned AST,
+/// so callers that do not need to preserve the original statement can avoid a
+/// whole-AST clone before dialect rewrites mutate the tree.
+#[must_use]
+pub fn transform_owned(statement: Statement, from: Dialect, to: Dialect) -> Statement {
     if from == to && !matches!(from, Dialect::Sqlite) {
-        return statement.clone();
+        return statement;
     }
-    let mut stmt = statement.clone();
+    let mut stmt = statement;
     transform_statement(&mut stmt, from, to);
     stmt
 }
@@ -1318,7 +1328,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             filter,
             over,
         } => {
-            let new_args: Vec<Expr> = args
+            let mut new_args: Vec<Expr> = args
                 .into_iter()
                 .map(|a| transform_expr(a, source, target))
                 .collect();
@@ -1329,11 +1339,14 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && over.is_none()
                 && matches!(new_args.len(), 2 | 3)
             {
+                let pattern = new_args.remove(0);
+                let expr = new_args.remove(0);
+                let escape = new_args.pop();
                 return Expr::Like {
-                    expr: Box::new(new_args[1].clone()),
-                    pattern: Box::new(new_args[0].clone()),
+                    expr: Box::new(expr),
+                    pattern: Box::new(pattern),
                     negated: false,
-                    escape: new_args.get(2).cloned().map(Box::new),
+                    escape: escape.map(Box::new),
                 };
             }
             if matches!(target, Dialect::Sqlite)
@@ -1343,10 +1356,12 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && over.is_none()
                 && new_args.len() >= 2
             {
+                let right = new_args.remove(0);
+                let left = new_args.remove(0);
                 return Expr::BinaryOp {
-                    left: Box::new(new_args[1].clone()),
+                    left: Box::new(left),
                     op: BinaryOperator::Glob,
-                    right: Box::new(new_args[0].clone()),
+                    right: Box::new(right),
                 };
             }
             if matches!(target, Dialect::Sqlite)
@@ -1356,10 +1371,11 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && over.is_none()
                 && new_args.len() == 1
             {
+                let format = new_args.remove(0);
                 return Expr::Function {
                     name,
                     args: vec![
-                        new_args[0].clone(),
+                        format,
                         Expr::Column {
                             table: None,
                             name: "CURRENT_TIMESTAMP".to_string(),
@@ -1395,10 +1411,12 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && over.is_none()
                 && new_args.len() == 2
             {
+                let expr = new_args.remove(0);
+                let prefix = new_args.remove(0);
                 return Expr::Like {
-                    expr: Box::new(new_args[0].clone()),
+                    expr: Box::new(expr),
                     pattern: Box::new(Expr::BinaryOp {
-                        left: Box::new(new_args[1].clone()),
+                        left: Box::new(prefix),
                         op: BinaryOperator::Concat,
                         right: Box::new(Expr::StringLiteral("%".to_string())),
                     }),
