@@ -4728,7 +4728,30 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Map data types between dialects.
+/// Source-independent Unknown-type-name normalizations applied for the
+/// sqlite target (used both at top level and when recursing into the
+/// element types of ARRAY/MAP/STRUCT/TUPLE). Returns the rewritten name.
+fn normalize_unknown_sqlite_type_name(name: &str) -> Option<String> {
+    let upper = name.to_ascii_uppercase();
+    match upper.as_str() {
+        "NUMBER" | "FLOAT4" => Some("REAL".to_string()),
+        "INT4" | "INT1" | "MEDIUMINT" | "INT8" | "INT16" | "INT32" | "INT64" => {
+            Some("INTEGER".to_string())
+        }
+        "HUGEINT" => Some("INT128".to_string()),
+        "UHUGEINT" => Some("UINT128".to_string()),
+        "INT128" | "INT256" | "UINT128" | "UINT256" => Some(upper),
+        _ => None,
+    }
+}
+
 pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
+    if let DataType::Unknown(name) = &dt
+        && matches!(target, Dialect::Sqlite)
+        && let Some(mapped) = normalize_unknown_sqlite_type_name(name)
+    {
+        return DataType::Unknown(mapped);
+    }
     match (dt, target) {
         (
             DataType::Collate {
