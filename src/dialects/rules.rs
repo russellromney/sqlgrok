@@ -22,6 +22,16 @@ use crate::dialects::Dialect;
 /// Symmetric mirror of `rename_function`: read normalizes IN, write renders OUT.
 /// Together they replace the old `if source==X && target==Y` transform rules.
 pub(crate) fn canonicalize_function(source: Dialect, upper_name: &str) -> Option<&'static str> {
+    // Source-independent canonicalizations: normalize to one neutral name for
+    // every source (and render as that name in every target).
+    match upper_name {
+        // IFNULL is COALESCE in every dialect, including oracle (verified
+        // across the full read x write matrix against SQLGlot). NVL is NOT
+        // here: oracle renders it back to NVL, which a string canonical can't
+        // distinguish from a true COALESCE — it stays a transform-layer rule.
+        "IFNULL" => return Some("COALESCE"),
+        _ => {}
+    }
     match source {
         Dialect::Mysql => match upper_name {
             "BIT_AND" => Some("BITWISE_AND_AGG"),

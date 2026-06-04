@@ -4631,15 +4631,8 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
         }
 
         // ── IFNULL / COALESCE / ISNULL ───────────────────────────────────
-        "IFNULL" => {
-            if is_tsql_family(target) {
-                "ISNULL".to_string()
-            } else if is_mysql_family(target) {
-                name.to_string()
-            } else {
-                "COALESCE".to_string()
-            }
-        }
+        // IFNULL and NVL are canonicalized to COALESCE read-side (parser, via
+        // rules::canonicalize_function) — universal across all dialects.
         "ISNULL" => {
             if is_tsql_family(target) {
                 name.to_string()
@@ -4650,7 +4643,9 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
             }
         }
 
-        // ── NVL → COALESCE (Oracle to others) ───────────────────────────
+        // ── NVL → COALESCE (Oracle preserves NVL) ───────────────────────
+        // Stays in the transform: oracle renders the canonical back to NVL,
+        // which a string-level read canonicalization can't model.
         "NVL" => {
             if matches!(target, Dialect::Oracle) {
                 name.to_string()
