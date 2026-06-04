@@ -4677,6 +4677,19 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
             }
         }
 
+        // ── Source-independent function renames for the sqlite target ───
+        "ARRAY_JOIN" if matches!(target, Dialect::Sqlite) => "ARRAY_TO_STRING".to_string(),
+        "ARRAY_INTERSECTION" if matches!(target, Dialect::Sqlite) => "ARRAY_INTERSECT".to_string(),
+        "STARTSWITH" if matches!(target, Dialect::Sqlite) => "STARTS_WITH".to_string(),
+        "YEAROFWEEK" if matches!(target, Dialect::Sqlite) => "YEAR_OF_WEEK".to_string(),
+        "YEAROFWEEKISO" if matches!(target, Dialect::Sqlite) => "YEAR_OF_WEEK_ISO".to_string(),
+        "LEVENSHTEIN" if matches!(target, Dialect::Sqlite) => "EDITDIST3".to_string(),
+        "ARRAY_FILTER" if matches!(target, Dialect::Sqlite) => "FILTER".to_string(),
+        "FARMFINGERPRINT64" if matches!(target, Dialect::Sqlite) => "FARM_FINGERPRINT".to_string(),
+        "LEFTPAD" if matches!(target, Dialect::Sqlite) => "LPAD".to_string(),
+        "RIGHTPAD" if matches!(target, Dialect::Sqlite) => "RPAD".to_string(),
+        "GET_BIT" if matches!(target, Dialect::Sqlite) => "GETBIT".to_string(),
+
         // ── STRING_AGG / GROUP_CONCAT ───────────────────────────────────
         "STRING_AGG" if matches!(target, Dialect::Sqlite) => "GROUP_CONCAT".to_string(),
         "STRPOS" if matches!(target, Dialect::Sqlite) => "INSTR".to_string(),
