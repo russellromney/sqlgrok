@@ -19,8 +19,10 @@ pub(crate) struct InternalSelect<'sql> {
     pub(crate) columns: Vec<InternalSelectItem<'sql>>,
     pub(crate) from: Option<InternalTableRef<'sql>>,
     pub(crate) where_clause: Option<InternalExpr<'sql>>,
+    pub(crate) group_by: Vec<InternalExpr<'sql>>,
     pub(crate) order_by: Vec<InternalOrderBy<'sql>>,
     pub(crate) limit: Option<InternalExpr<'sql>>,
+    pub(crate) offset: Option<InternalExpr<'sql>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -103,7 +105,11 @@ impl<'sql> InternalSelect<'sql> {
             }),
             joins: vec![],
             where_clause: self.where_clause.map(InternalExpr::into_public),
-            group_by: vec![],
+            group_by: self
+                .group_by
+                .into_iter()
+                .map(InternalExpr::into_public)
+                .collect(),
             having: None,
             order_by: self
                 .order_by
@@ -111,7 +117,7 @@ impl<'sql> InternalSelect<'sql> {
                 .map(InternalOrderBy::into_public)
                 .collect(),
             limit: self.limit.map(InternalExpr::into_public),
-            offset: None,
+            offset: self.offset.map(InternalExpr::into_public),
             limit_by: vec![],
             fetch_first: None,
             qualify: None,
@@ -259,6 +265,7 @@ mod tests {
                 op: BinaryOperator::Gt,
                 right: Box::new(InternalExpr::Number(SqlText::borrowed("10"))),
             }),
+            group_by: vec![],
             order_by: vec![InternalOrderBy {
                 expr: InternalExpr::Column {
                     table: None,
@@ -271,6 +278,7 @@ mod tests {
                 nulls_first: None,
             }],
             limit: Some(InternalExpr::Number(SqlText::borrowed("5"))),
+            offset: None,
         });
 
         let public = internal.into_public();

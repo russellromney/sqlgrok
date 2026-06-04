@@ -78,6 +78,10 @@ this file records what landed.
   identity SELECT cases, an internal identity transform with safety filters for
   public-generator canonicalization, and a Criterion comparison against public
   SQLite identity transpilation.
+- Expanded the internal fast SELECT slice with `GROUP BY`, `OFFSET`, and
+  `DISTINCT` function-argument support; added fast-path status reporting and a
+  SQLite identity workload benchmark that compares public and internal paths on
+  the same supported rows.
 
 ### Public Documentation Cleanup
 

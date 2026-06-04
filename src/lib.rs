@@ -161,6 +161,16 @@ pub(crate) enum InternalTranspileDecision {
     FellBackToPublic,
 }
 
+#[doc(hidden)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InternalFastPathStatus {
+    Used,
+    ParseDeclined,
+    TransformDeclined,
+    GenerateDeclined,
+    OutputMismatch,
+}
+
 #[allow(
     dead_code,
     reason = "private guarded internal transpile experiment is enabled incrementally"
@@ -194,14 +204,51 @@ pub fn transpile_internal_fast_experiment(
     read_dialect: Dialect,
     write_dialect: Dialect,
 ) -> errors::Result<Option<String>> {
+    let (status, output) =
+        transpile_internal_fast_experiment_status(sql, read_dialect, write_dialect)?;
+    Ok(if status == InternalFastPathStatus::Used {
+        output
+    } else {
+        None
+    })
+}
+
+#[doc(hidden)]
+pub fn transpile_internal_fast_experiment_status(
+    sql: &str,
+    read_dialect: Dialect,
+    write_dialect: Dialect,
+) -> errors::Result<(InternalFastPathStatus, Option<String>)> {
     let Some(internal) = parser::parse_internal(sql, read_dialect)? else {
-        return Ok(None);
+        return Ok((InternalFastPathStatus::ParseDeclined, None));
     };
     let Some(transformed) = parser::transform_internal(internal, read_dialect, write_dialect)
     else {
-        return Ok(None);
+        return Ok((InternalFastPathStatus::TransformDeclined, None));
     };
-    Ok(parser::generate_internal(&transformed, write_dialect))
+    let Some(output) = parser::generate_internal(&transformed, write_dialect) else {
+        return Ok((InternalFastPathStatus::GenerateDeclined, None));
+    };
+    Ok((InternalFastPathStatus::Used, Some(output)))
+}
+
+#[doc(hidden)]
+pub fn transpile_internal_fast_guarded_status(
+    sql: &str,
+    read_dialect: Dialect,
+    write_dialect: Dialect,
+) -> errors::Result<(InternalFastPathStatus, Option<String>)> {
+    let public = transpile(sql, read_dialect, write_dialect)?;
+    let (status, output) =
+        transpile_internal_fast_experiment_status(sql, read_dialect, write_dialect)?;
+    if status != InternalFastPathStatus::Used {
+        return Ok((status, output));
+    }
+    if output.as_deref() == Some(public.as_str()) {
+        Ok((InternalFastPathStatus::Used, output))
+    } else {
+        Ok((InternalFastPathStatus::OutputMismatch, output))
+    }
 }
 
 /// Transpile a SQL string, returning multiple statements if the input
@@ -419,5 +466,18 @@ mod tests {
             .unwrap(),
             None
         );
+    }
+
+    #[test]
+    fn internal_fast_guarded_status_reports_used_when_output_matches() {
+        let (status, output) = transpile_internal_fast_guarded_status(
+            "SELECT a FROM t",
+            Dialect::Sqlite,
+            Dialect::Sqlite,
+        )
+        .unwrap();
+
+        assert_eq!(status, InternalFastPathStatus::Used);
+        assert_eq!(output.as_deref(), Some("SELECT a FROM t"));
     }
 }

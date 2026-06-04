@@ -40,8 +40,10 @@ fn identity_safe_select(select: &InternalSelect<'_>) -> bool {
     select.columns.iter().all(identity_safe_select_item)
         && select.from.as_ref().is_none_or(identity_safe_table_ref)
         && select.where_clause.as_ref().is_none_or(identity_safe_expr)
+        && select.group_by.iter().all(identity_safe_expr)
         && select.order_by.iter().all(identity_safe_order_by)
         && select.limit.as_ref().is_none_or(identity_safe_expr)
+        && select.offset.as_ref().is_none_or(identity_safe_expr)
 }
 
 fn identity_safe_select_item(item: &InternalSelectItem<'_>) -> bool {

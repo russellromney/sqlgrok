@@ -1,9 +1,19 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use serde::Deserialize;
 use sqlgrok::{
-    Dialect, TranspileRequest, dialects, generate, parse, tokens::Tokenizer, transpile,
-    transpile_internal_fast_experiment, transpile_many,
+    Dialect, InternalFastPathStatus, TranspileRequest, dialects, generate, parse,
+    tokens::Tokenizer, transpile, transpile_internal_fast_experiment,
+    transpile_internal_fast_guarded_status, transpile_many,
 };
+use std::fs;
 use std::hint::black_box;
+
+#[derive(Debug, Deserialize)]
+struct BenchJsonCase {
+    sql: String,
+    read: String,
+    write: String,
+}
 
 fn bench_parse_simple(c: &mut Criterion) {
     c.bench_function("parse simple SELECT", |b| {
@@ -65,6 +75,88 @@ fn bench_internal_fast_identity(c: &mut Criterion) {
             transpile_internal_fast_experiment(black_box(sql), Dialect::Sqlite, Dialect::Sqlite)
                 .unwrap()
                 .unwrap()
+        })
+    });
+    group.finish();
+}
+
+fn sqlite_identity_cases() -> Vec<(String, Dialect, Dialect)> {
+    let path = format!(
+        "{}/benchmarks/cases/sqlite_sqlite.jsonl",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    fs::read_to_string(path)
+        .unwrap()
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| {
+            let case: BenchJsonCase = serde_json::from_str(line).unwrap();
+            let read = Dialect::from_str(&case.read).unwrap();
+            let write = Dialect::from_str(&case.write).unwrap();
+            (case.sql, read, write)
+        })
+        .collect()
+}
+
+fn bench_internal_fast_sqlite_workload(c: &mut Criterion) {
+    let cases = sqlite_identity_cases();
+    let supported = cases
+        .iter()
+        .filter(|(sql, read, write)| {
+            matches!(
+                transpile_internal_fast_guarded_status(sql, *read, *write)
+                    .unwrap()
+                    .0,
+                InternalFastPathStatus::Used
+            )
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let mut group = c.benchmark_group("internal_fast_sqlite_workload");
+    group.bench_function("public_transpile_all", |b| {
+        b.iter(|| {
+            let mut checksum = 0usize;
+            for (sql, read, write) in black_box(&cases) {
+                checksum = checksum.wrapping_add(transpile(sql, *read, *write).unwrap().len());
+            }
+            checksum
+        })
+    });
+    group.bench_function("public_transpile_supported_only", |b| {
+        b.iter(|| {
+            let mut checksum = 0usize;
+            for (sql, read, write) in black_box(&supported) {
+                checksum = checksum.wrapping_add(transpile(sql, *read, *write).unwrap().len());
+            }
+            checksum
+        })
+    });
+    group.bench_function("internal_fast_supported_only", |b| {
+        b.iter(|| {
+            let mut checksum = 0usize;
+            for (sql, read, write) in black_box(&supported) {
+                checksum = checksum.wrapping_add(
+                    transpile_internal_fast_experiment(sql, *read, *write)
+                        .unwrap()
+                        .unwrap()
+                        .len(),
+                );
+            }
+            checksum
+        })
+    });
+    group.bench_function("guarded_status_all", |b| {
+        b.iter(|| {
+            let mut checksum = 0usize;
+            for (sql, read, write) in black_box(&cases) {
+                let (status, output) =
+                    transpile_internal_fast_guarded_status(sql, *read, *write).unwrap();
+                checksum = checksum
+                    .wrapping_add(status as usize)
+                    .wrapping_add(output.as_ref().map_or(0, String::len));
+            }
+            checksum
         })
     });
     group.finish();
@@ -160,6 +252,7 @@ criterion_group!(
     bench_roundtrip,
     bench_transpile,
     bench_internal_fast_identity,
+    bench_internal_fast_sqlite_workload,
     bench_priority_phases,
     bench_transpile_many
 );

@@ -56,6 +56,13 @@ impl InternalGenerator {
             self.gen_expr(expr)?;
         }
 
+        if !select.group_by.is_empty() {
+            self.write(" ");
+            self.write_keyword("GROUP BY");
+            self.write(" ");
+            self.gen_exprs(&select.group_by)?;
+        }
+
         if !select.order_by.is_empty() {
             self.write(" ");
             self.write_keyword("ORDER BY");
@@ -67,6 +74,12 @@ impl InternalGenerator {
             self.write(" ");
             self.write_keyword("LIMIT ");
             self.gen_expr(limit)?;
+        }
+
+        if let Some(offset) = &select.offset {
+            self.write(" ");
+            self.write_keyword("OFFSET ");
+            self.gen_expr(offset)?;
         }
 
         Some(())
@@ -128,6 +141,16 @@ impl InternalGenerator {
                     "NULLS LAST"
                 });
             }
+        }
+        Some(())
+    }
+
+    fn gen_exprs(&mut self, exprs: &[InternalExpr<'_>]) -> Option<()> {
+        for (index, expr) in exprs.iter().enumerate() {
+            if index > 0 {
+                self.write(", ");
+            }
+            self.gen_expr(expr)?;
         }
         Some(())
     }
@@ -306,10 +329,21 @@ mod tests {
             }],
             from: None,
             where_clause: None,
+            group_by: vec![],
             order_by: vec![],
             limit: None,
+            offset: None,
         });
 
         assert_eq!(generate_internal(&statement, Dialect::Ansi), None);
+    }
+
+    #[test]
+    fn generates_group_by_and_offset_like_public_generator() {
+        assert_internal_generator_matches_public(
+            "SELECT a, COUNT(name) FROM t GROUP BY a ORDER BY a ASC LIMIT 10 OFFSET 5",
+            Dialect::Sqlite,
+            Dialect::Sqlite,
+        );
     }
 }

@@ -286,15 +286,18 @@ Current status: steps 1 and 2 are landed. Step 3 has started with a private
 token-driven `parse_internal(sql, dialect)` for a narrow SELECT subset covering
 simple select items, wildcard items, table aliases, decoded string literals,
 borrowed identifiers/numbers, function calls, one simple binary predicate,
-WHERE, ORDER BY, and LIMIT. It intentionally falls back for joins, grouping,
-qualified wildcards, and operator-precedence chains. Step 4 has started with a
-private `generate_internal(...)` for the same subset, a guarded internal
-transpile experiment, and a no-oracle `transpile_internal_fast_experiment(...)`
-for conservative identity SELECT cases. The no-oracle path is deliberately
-limited to dialect identity pairs and rejects pseudo-columns that the public
-generator canonicalizes. A short Criterion run showed the current path is
-measurable but not yet a clear performance win, so public `transpile()` remains
-unchanged until internal coverage and parser/generator overhead improve.
+WHERE, GROUP BY, ORDER BY, LIMIT, OFFSET, and `DISTINCT` function arguments. It
+intentionally falls back for joins, CTEs, windows, DDL/DML, qualified wildcards,
+and operator-precedence chains. Step 4 has started with a private
+`generate_internal(...)` for the same subset, a guarded internal transpile
+experiment, a no-oracle `transpile_internal_fast_experiment(...)` for
+conservative identity SELECT cases, and a status report binary that classifies
+internal fast-path coverage. The no-oracle path is deliberately limited to
+dialect identity pairs and rejects pseudo-columns that the public generator
+canonicalizes. The current SQLite identity workload report covers 3 of 8 rows
+with 0 guarded output mismatches; the supported-row Criterion comparison shows a
+diagnostic ~2.4x speedup for those rows. Public `transpile()` remains unchanged
+until internal coverage broadens and the guarded reports stay clean.
 
 Expected benefit:
 

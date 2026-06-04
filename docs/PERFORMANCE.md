@@ -265,7 +265,7 @@ Short Criterion phase run highlights:
 | SQLite multi-CTE transpile | ~30.7 us |
 | `transpile_many` priority cases | ~65.2 us for 4 cases |
 
-Internal fast-path experiment, short Criterion run with
+Initial internal fast-path experiment, short Criterion run with
 `cargo bench --bench parser_bench internal_fast_identity -- --sample-size 20 --warm-up-time 1 --measurement-time 2`:
 
 | Case | Median-ish result |
@@ -274,9 +274,36 @@ Internal fast-path experiment, short Criterion run with
 | No-oracle internal SQLite identity transpile | ~10.9 us |
 
 Criterion reported no statistically meaningful difference in that short run.
-This means the first safe internal path is useful as a measurement harness, but
-not ready to replace public `transpile()`. The next internal-path work should
-reduce parser/generator overhead and widen coverage before claiming speedup.
+That first toy case proved the measurement harness, but did not justify routing
+real calls through the internal path.
+
+Expanded internal fast-path experiment, short Criterion run with
+`cargo bench --bench parser_bench internal_fast_sqlite_workload -- --sample-size 20 --warm-up-time 1 --measurement-time 2`:
+
+Coverage report from
+`cargo run --features cli --bin sqlgrok_internal_fast_report -- --guarded benchmarks/cases/sqlite_sqlite.jsonl`:
+
+| Status | Count |
+| --- | ---: |
+| `used` | 3 |
+| `parse-declined` | 5 |
+| `output-mismatch` | 0 |
+
+The supported rows are the current simple SELECT, JSON function, and
+`COUNT(DISTINCT ...)` SQLite identity cases. DDL, insert, window, CTE, and alter
+table rows still deliberately decline.
+
+| Case | Median-ish result |
+| --- | ---: |
+| Public transpile, all 8 rows | ~94.3 us |
+| Public transpile, same 3 supported rows | ~27.8 us |
+| No-oracle internal path, same 3 supported rows | ~11.7 us |
+| Guarded status, all 8 rows | ~110.9 us |
+
+The supported-row comparison is the fair speed signal: the internal no-oracle
+path is about 2.4x faster for the currently covered rows in this diagnostic
+run. The guarded path is intentionally slower because it computes public output
+too; it is coverage/correctness instrumentation, not the production path.
 
 The next real optimization targets are parser/token allocation and the
 multi-CTE/full-transpile path. Generation is generally sub-microsecond in these

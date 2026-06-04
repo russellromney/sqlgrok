@@ -62,6 +62,13 @@ impl<'sql> InternalParser<'sql> {
             None
         };
 
+        let group_by = if self.match_token(TokenType::Group) {
+            self.expect(TokenType::By)?;
+            self.parse_expr_list()?
+        } else {
+            vec![]
+        };
+
         let order_by = if self.match_token(TokenType::Order) {
             self.expect(TokenType::By)?;
             self.parse_order_by_items()?
@@ -70,6 +77,12 @@ impl<'sql> InternalParser<'sql> {
         };
 
         let limit = if self.match_token(TokenType::Limit) {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
+
+        let offset = if self.match_token(TokenType::Offset) {
             Some(self.parse_expr()?)
         } else {
             None
@@ -84,8 +97,10 @@ impl<'sql> InternalParser<'sql> {
             columns,
             from,
             where_clause,
+            group_by,
             order_by,
             limit,
+            offset,
         })))
     }
 
@@ -153,11 +168,7 @@ impl<'sql> InternalParser<'sql> {
     }
 
     fn parse_order_by_items(&mut self) -> Result<Vec<InternalOrderBy<'sql>>> {
-        let mut items = vec![self.parse_order_by_item()?];
-        while self.match_token(TokenType::Comma) {
-            items.push(self.parse_order_by_item()?);
-        }
-        Ok(items)
+        self.parse_comma_list(Self::parse_order_by_item)
     }
 
     fn parse_order_by_item(&mut self) -> Result<InternalOrderBy<'sql>> {
@@ -227,11 +238,11 @@ impl<'sql> InternalParser<'sql> {
         let first_quote_style = quote_style_from_char(self.token_at(token).quote_char);
 
         if self.match_token(TokenType::LParen) {
-            let args = self.parse_function_args()?;
+            let (distinct, args) = self.parse_function_args()?;
             return Ok(InternalExpr::Function {
                 name: first_name,
                 args,
-                distinct: false,
+                distinct,
             });
         }
 
@@ -256,17 +267,30 @@ impl<'sql> InternalParser<'sql> {
         })
     }
 
-    fn parse_function_args(&mut self) -> Result<Vec<InternalExpr<'sql>>> {
+    fn parse_function_args(&mut self) -> Result<(bool, Vec<InternalExpr<'sql>>)> {
         if self.match_token(TokenType::RParen) {
-            return Ok(vec![]);
+            return Ok((false, vec![]));
         }
 
+        let distinct = self.match_token(TokenType::Distinct);
         let mut args = vec![self.parse_expr()?];
         while self.match_token(TokenType::Comma) {
             args.push(self.parse_expr()?);
         }
         self.expect(TokenType::RParen)?;
-        Ok(args)
+        Ok((distinct, args))
+    }
+
+    fn parse_expr_list(&mut self) -> Result<Vec<InternalExpr<'sql>>> {
+        self.parse_comma_list(Self::parse_expr)
+    }
+
+    fn parse_comma_list<T>(&mut self, parse_item: fn(&mut Self) -> Result<T>) -> Result<Vec<T>> {
+        let mut items = vec![parse_item(self)?];
+        while self.match_token(TokenType::Comma) {
+            items.push(parse_item(self)?);
+        }
+        Ok(items)
     }
 
     fn peek_binary_operator(&self) -> Option<BinaryOperator> {
@@ -424,7 +448,7 @@ fn quote_style_from_char(c: char) -> QuoteStyle {
 mod tests {
     use super::*;
     use crate::generator::generate;
-    use crate::parser::parse;
+    use crate::parser::{generate_internal, parse};
 
     fn assert_internal_matches_public(sql: &str, dialect: Dialect) {
         let internal = parse_internal(sql, dialect).unwrap().unwrap().into_public();
@@ -432,6 +456,17 @@ mod tests {
 
         assert_eq!(internal, public);
         assert_eq!(generate(&internal, dialect), generate(&public, dialect));
+    }
+
+    fn assert_internal_generates_like_public(sql: &str, dialect: Dialect) {
+        let internal = parse_internal(sql, dialect).unwrap().unwrap();
+        let public = parse(sql, dialect).unwrap();
+        let public_sql = generate(&public, dialect);
+
+        assert_eq!(
+            generate_internal(&internal, dialect).as_deref(),
+            Some(public_sql.as_str())
+        );
     }
 
     #[test]
@@ -444,6 +479,22 @@ mod tests {
         assert_internal_matches_public(
             "SELECT t.a AS a1, COALESCE(b, 0) FROM tbl AS t WHERE t.a > 10 ORDER BY a1 DESC LIMIT 5",
             Dialect::Ansi,
+        );
+    }
+
+    #[test]
+    fn parses_group_by_limit_offset_and_explicit_asc() {
+        assert_internal_matches_public(
+            "SELECT a, name FROM t WHERE a > 1 GROUP BY a, name ORDER BY a ASC LIMIT 10 OFFSET 5",
+            Dialect::Sqlite,
+        );
+    }
+
+    #[test]
+    fn parses_count_distinct_group_by() {
+        assert_internal_generates_like_public(
+            "SELECT COUNT(DISTINCT name) FROM users GROUP BY account_id",
+            Dialect::Sqlite,
         );
     }
 
@@ -511,12 +562,8 @@ mod tests {
     }
 
     #[test]
-    fn falls_back_for_group_by() {
-        assert!(
-            parse_internal("SELECT a FROM t GROUP BY a", Dialect::Ansi)
-                .unwrap()
-                .is_none()
-        );
+    fn parses_group_by() {
+        assert_internal_matches_public("SELECT a FROM t GROUP BY a", Dialect::Ansi);
     }
 
     #[test]
