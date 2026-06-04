@@ -75,6 +75,7 @@ fn rename_function_sqlite(upper_name: &str) -> Option<&'static str> {
         "APPROX_COUNT_DISTINCT" => "APPROX_DISTINCT",
         "STRING_AGG" => "GROUP_CONCAT",
         "STRPOS" => "INSTR",
+        "CHR" => "CHAR",
         "BOOL_AND" | "LOGICAL_AND" => "MIN",
         "BOOL_OR" | "LOGICAL_OR" => "MAX",
         _ => return None,

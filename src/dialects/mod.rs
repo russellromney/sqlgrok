@@ -4683,17 +4683,11 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
             }
         }
 
-        // Source-independent sqlite renames now live in `rules::rename_function`
-        // (consulted at the top of this fn). Source-dependent renames remain.
-        "CHR" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
-            "CHAR".to_string()
-        }
-        "ASCII" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
-            "ASCII".to_string()
-        }
-        "SPLIT_PART" if is_postgres_family(source) && matches!(target, Dialect::Sqlite) => {
-            "SPLIT_PART".to_string()
-        }
+        // Source-independent sqlite renames live in `rules::rename_function`
+        // (consulted at the top of this fn). CHR->CHAR moved there; ASCII and
+        // SPLIT_PART were source-gated self-maps (no-ops vs the identity
+        // fallthrough) and are dropped. Genuinely source-dependent renames
+        // (BIT_*) remain below pending read-side parser canonicalization.
 
         // ── BIT aggregate functions ─────────────────────────────────────
         "BIT_AND"
