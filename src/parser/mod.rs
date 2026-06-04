@@ -1,3 +1,4 @@
+mod internal_ast;
 mod sql_parser;
 mod text;
 

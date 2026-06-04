@@ -62,6 +62,9 @@ this file records what landed.
 - Documented the borrowed/internal AST execution plan and added the first
   private parser `SqlText` abstraction for borrowed-or-owned SQL text, wiring it
   into span-based raw token reconstruction without changing public AST shapes.
+- Added the first private internal AST subset for SELECT/function/literal/table
+  shapes with conversion tests that prove internal nodes generate the same SQL
+  as the current public AST path.
 
 ### Public Documentation Cleanup
 

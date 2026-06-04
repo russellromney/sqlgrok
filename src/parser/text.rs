@@ -14,7 +14,8 @@ impl<'sql> SqlText<'sql> {
         Self(Cow::Owned(text))
     }
 
-    #[cfg(test)]
+    // Used by the private internal AST/parser path as coverage expands.
+    #[allow(dead_code)]
     pub(crate) fn as_str(&self) -> &str {
         self.0.as_ref()
     }
@@ -30,7 +31,7 @@ impl<'sql> From<&'sql str> for SqlText<'sql> {
     }
 }
 
-impl From<String> for SqlText<'static> {
+impl<'sql> From<String> for SqlText<'sql> {
     fn from(value: String) -> Self {
         Self::owned(value)
     }

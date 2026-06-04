@@ -282,6 +282,12 @@ Execution plan:
    and remove fallbacks only after SQLGlot parity and focused Rust tests stay
    green.
 
+Current status: step 1 is landed. Step 2 has started with a private
+conversion-only internal AST subset for SELECT expressions, table references,
+ORDER BY, LIMIT, functions, binary operations, and casts. It is not wired into
+`transpile()` yet; tests prove internal nodes convert to the same public AST and
+generated SQL as the current parser path.
+
 Expected benefit:
 
 - Lower single-call allocation and latency for Rust, C ABI, PyO3, Node, Ruby,
