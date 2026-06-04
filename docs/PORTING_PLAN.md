@@ -107,6 +107,22 @@ Each step ratcheted on the forced suite across all lanes (now including
 - **Phase 2 — move the 69 source branches into the parser** as canonical-AST
   normalizations. Each is a silent-wrong risk → parser change + suite check.
   Concentrated in `transform_expr`.
+  - **Prerequisite discovered (2026-06):** read-side canonicalization at parse
+    time is *unsafe until function/type rendering moves into the generator*.
+    `transform_owned` has an identity short-circuit
+    (`if from == to && !sqlite { return statement }`), and function rendering
+    currently lives in `transform_expr` (`map_function_name_for_source` call).
+    So if the parser canonicalizes a source spelling to a neutral name (e.g.
+    mysql `BIT_AND` → `BITWISE_AND_AGG`), an identity transpile (mysql→mysql)
+    skips the transform and leaks the neutral name. Proven by a reverted
+    `BIT_*` spike: cross-dialect was correct, both identity cases regressed.
+    **Therefore Phase 2 must be preceded by Phase 1.5: relocate function (and
+    type) rendering from `transform_expr` into the generator**, which always
+    runs. The `rules::rename_function`/`map_type` tables already exist; only
+    the *call site* must move (transform → generator). Mind that making the
+    generator always render will change identity-transpile output for any name
+    currently left raw — verify against the suite, and reconcile with the
+    perf fast path which also handles identity.
 - **Phase 3 — delete the transform layer** and the `(source, target)`
   signature. `transpile = generate(parse(read), write)`.
 - **Phase 4 — port SQLGlot's per-target tables** to backfill thin generators;
