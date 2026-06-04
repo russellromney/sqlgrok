@@ -123,6 +123,12 @@ Each step ratcheted on the forced suite across all lanes (now including
     generator always render will change identity-transpile output for any name
     currently left raw — verify against the suite, and reconcile with the
     perf fast path which also handles identity.
+  - **Phase 1.5 status:** function-name rendering moved into the generator
+    (`Expr::Function` emission consults `rules::rename_function(target)`),
+    verified zero-movement and identity-safe. Remaining Phase 1.5: move
+    *type* rendering and the rest of `map_function_name_for_source`'s
+    target-only arms (NOW, LENGTH, ANY_VALUE, ...) into the generator too,
+    then read-side canonicalization (Phase 2) is unblocked.
 - **Phase 3 — delete the transform layer** and the `(source, target)`
   signature. `transpile = generate(parse(read), write)`.
 - **Phase 4 — port SQLGlot's per-target tables** to backfill thin generators;

@@ -2414,6 +2414,14 @@ impl Generator {
                 filter,
                 over,
             } => {
+                // Write-side: render the (canonical) function name to this
+                // target's spelling. Lives here in the generator so it ALWAYS
+                // runs, including identity transpiles (which skip the transform
+                // layer). Functions not in the table get None -> unchanged.
+                let rendered_name = self
+                    .dialect
+                    .and_then(|d| crate::dialects::rules::rename_function(d, &name.to_ascii_uppercase()));
+                let name: &str = rendered_name.unwrap_or(name);
                 if name.eq_ignore_ascii_case("__RAW_EXPR__")
                     && args.len() == 1
                     && let Expr::StringLiteral(raw_sql) = &args[0]

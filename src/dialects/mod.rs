@@ -4547,11 +4547,9 @@ pub(crate) fn map_function_name(name: &str, target: Dialect) -> String {
 
 fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) -> String {
     let upper = name.to_uppercase();
-    // Target-only renames live as data in `rules` (shared, zero-alloc, and the
-    // shape SQLGlot's dicts port into). Source-dependent renames remain below.
-    if let Some(renamed) = rules::rename_function(target, &upper) {
-        return renamed.to_string();
-    }
+    // The `rules::rename_function` table is now applied by the generator (so it
+    // runs on identity transpiles too); only the renames still living in this
+    // match below are applied here. See docs/PORTING_PLAN.md (Phase 1.5).
     match upper.as_str() {
         // ── NOW / CURRENT_TIMESTAMP / GETDATE ────────────────────────────
         "NOW" => {
