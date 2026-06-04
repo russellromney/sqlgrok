@@ -69,6 +69,11 @@ this file records what landed.
   borrowed identifier/number coverage, decoded string ownership, public-parser
   equivalence tests, and explicit fallback tests for joins, grouping, qualified
   wildcards, and operator-precedence chains.
+- Added a private internal SELECT generator for the same subset, byte-for-byte
+  generator parity tests against the public generator, unsupported-shape
+  fallback behavior instead of panics, and a guarded internal transpile
+  experiment that only uses internal output when it exactly matches the public
+  pipeline.
 
 ### Public Documentation Cleanup
 

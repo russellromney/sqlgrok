@@ -287,9 +287,13 @@ token-driven `parse_internal(sql, dialect)` for a narrow SELECT subset covering
 simple select items, wildcard items, table aliases, decoded string literals,
 borrowed identifiers/numbers, function calls, one simple binary predicate,
 WHERE, ORDER BY, and LIMIT. It intentionally falls back for joins, grouping,
-qualified wildcards, and operator-precedence chains. It is not wired into
-`transpile()` yet; tests prove supported internal parses convert to the same
-public AST and generated SQL as the current parser path.
+qualified wildcards, and operator-precedence chains. Step 4 has started with a
+private `generate_internal(...)` for the same subset and a guarded internal
+transpile experiment. The experiment computes the public pipeline first and
+only returns internal output when it is byte-identical, so it is correctness
+infrastructure rather than a production performance win yet. Public
+`transpile()` is unchanged until internal transform/generate coverage can avoid
+the public owned AST path without output drift.
 
 Expected benefit:
 

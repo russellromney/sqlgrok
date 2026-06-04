@@ -155,6 +155,39 @@ pub fn transpile(
     Ok(generate(&transformed, write_dialect))
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum InternalTranspileDecision {
+    UsedInternal,
+    FellBackToPublic,
+}
+
+#[allow(
+    dead_code,
+    reason = "private guarded internal transpile experiment is enabled incrementally"
+)]
+pub(crate) fn transpile_guarded_internal_experiment(
+    sql: &str,
+    read_dialect: Dialect,
+    write_dialect: Dialect,
+) -> errors::Result<(String, InternalTranspileDecision)> {
+    let ast = parse(sql, read_dialect)?;
+    let transformed = dialects::transform_owned(ast, read_dialect, write_dialect);
+    let public_output = generate(&transformed, write_dialect);
+
+    let Ok(Some(internal)) = parser::parse_internal(sql, read_dialect) else {
+        return Ok((public_output, InternalTranspileDecision::FellBackToPublic));
+    };
+
+    let Some(internal_output) = parser::generate_internal(&internal, write_dialect) else {
+        return Ok((public_output, InternalTranspileDecision::FellBackToPublic));
+    };
+    if internal_output == public_output {
+        Ok((internal_output, InternalTranspileDecision::UsedInternal))
+    } else {
+        Ok((public_output, InternalTranspileDecision::FellBackToPublic))
+    }
+}
+
 /// Transpile a SQL string, returning multiple statements if the input
 /// contains semicolons.
 ///
@@ -255,4 +288,48 @@ pub fn transpile_with_comments(
     let ast = parse_with_comments(sql, read_dialect)?;
     let transformed = dialects::transform_owned(ast, read_dialect, write_dialect);
     Ok(generate(&transformed, write_dialect))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn guarded_internal_transpile_uses_internal_when_output_matches() {
+        let (sql, decision) = transpile_guarded_internal_experiment(
+            "SELECT a FROM t WHERE a > 1 ORDER BY a LIMIT 5",
+            Dialect::Ansi,
+            Dialect::Ansi,
+        )
+        .unwrap();
+
+        assert_eq!(sql, "SELECT a FROM t WHERE a > 1 ORDER BY a LIMIT 5");
+        assert_eq!(decision, InternalTranspileDecision::UsedInternal);
+    }
+
+    #[test]
+    fn guarded_internal_transpile_falls_back_when_transform_changes_output() {
+        let (sql, decision) = transpile_guarded_internal_experiment(
+            "SELECT IFNULL(a, 0) FROM t",
+            Dialect::Mysql,
+            Dialect::Sqlite,
+        )
+        .unwrap();
+
+        assert_eq!(sql, "SELECT COALESCE(a, 0) FROM t");
+        assert_eq!(decision, InternalTranspileDecision::FellBackToPublic);
+    }
+
+    #[test]
+    fn guarded_internal_transpile_falls_back_for_unsupported_internal_shape() {
+        let (sql, decision) = transpile_guarded_internal_experiment(
+            "SELECT a FROM t JOIN u ON t.id = u.id",
+            Dialect::Ansi,
+            Dialect::Ansi,
+        )
+        .unwrap();
+
+        assert_eq!(sql, "SELECT a FROM t JOIN u ON t.id = u.id");
+        assert_eq!(decision, InternalTranspileDecision::FellBackToPublic);
+    }
 }

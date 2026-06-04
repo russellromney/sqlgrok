@@ -14,8 +14,6 @@ impl<'sql> SqlText<'sql> {
         Self(Cow::Owned(text))
     }
 
-    // Used by the private internal AST/parser path as coverage expands.
-    #[allow(dead_code)]
     pub(crate) fn as_str(&self) -> &str {
         self.0.as_ref()
     }
