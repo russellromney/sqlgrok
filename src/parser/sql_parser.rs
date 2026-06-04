@@ -188,6 +188,7 @@ fn apply_unsigned_integer(dt: DataType) -> DataType {
         DataType::BigInt => DataType::Unknown("UBIGINT".to_string()),
         DataType::SmallInt => DataType::Unknown("USMALLINT".to_string()),
         DataType::TinyInt => DataType::Unknown("UTINYINT".to_string()),
+        DataType::Double => DataType::Unknown("UDOUBLE".to_string()),
         DataType::Decimal { precision, scale } | DataType::Numeric { precision, scale } => {
             let mut suffix = String::new();
             if let Some(p) = precision {
@@ -211,6 +212,7 @@ fn apply_unsigned_integer(dt: DataType) -> DataType {
                 "TINYINT" => "UTINYINT",
                 "MEDIUMINT" => "UMEDIUMINT",
                 "DECIMAL" | "NUMERIC" => "UDECIMAL",
+                "DOUBLE" => "UDOUBLE",
                 _ => return DataType::Unknown(name),
             };
             DataType::Unknown(format!("{ubase}{suffix}"))
@@ -4067,13 +4069,15 @@ impl<'a> Parser<'a> {
         if self.match_token(TokenType::Primary) {
             self.expect(TokenType::Key)?;
             self.expect(TokenType::LParen)?;
-            let columns = self.parse_name_list()?;
+            let columns = self.parse_index_column_list()?;
             self.expect(TokenType::RParen)?;
+            self.consume_index_using();
             Ok(TableConstraint::PrimaryKey { name, columns })
         } else if self.match_token(TokenType::Unique) {
             self.expect(TokenType::LParen)?;
-            let columns = self.parse_name_list()?;
+            let columns = self.parse_index_column_list()?;
             self.expect(TokenType::RParen)?;
+            self.consume_index_using();
             Ok(TableConstraint::Unique { name, columns })
         } else if self.match_token(TokenType::Foreign) {
             self.expect(TokenType::Key)?;
@@ -4142,6 +4146,34 @@ impl<'a> Parser<'a> {
             Err(SqlglotError::ParserError {
                 message: "Expected referential action (CASCADE, RESTRICT, SET NULL, SET DEFAULT, NO ACTION)".into(),
             })
+        }
+    }
+
+    /// Parse a comma-separated index column list, dropping MySQL index-prefix
+    /// lengths (`col(16)`) and per-column ASC/DESC.
+    fn parse_index_column_list(&mut self) -> Result<Vec<String>> {
+        let mut columns = Vec::new();
+        loop {
+            let col = self.expect_name()?;
+            // MySQL index-prefix length, e.g. `col(16)` — dropped.
+            if matches!(self.dialect, Dialect::Mysql) && self.peek_type() == &TokenType::LParen {
+                self.advance();
+                let _ = self.match_token(TokenType::Number);
+                self.expect(TokenType::RParen)?;
+            }
+            let _ = self.match_keyword("ASC") || self.match_keyword("DESC");
+            columns.push(col);
+            if !self.match_token(TokenType::Comma) {
+                break;
+            }
+        }
+        Ok(columns)
+    }
+
+    /// Consume a trailing `USING {BTREE|HASH|...}` index method.
+    fn consume_index_using(&mut self) {
+        if self.match_keyword("USING") {
+            self.advance();
         }
     }
 
@@ -4729,7 +4761,12 @@ impl<'a> Parser<'a> {
             TokenType::Double => {
                 self.advance();
                 let _ = self.match_keyword("PRECISION");
-                Ok(DataType::Double)
+                let (p, s) = self.parse_type_params()?;
+                match (p, s) {
+                    (Some(p), Some(s)) => Ok(DataType::Unknown(format!("DOUBLE({p}, {s})"))),
+                    (Some(p), None) => Ok(DataType::Unknown(format!("DOUBLE({p})"))),
+                    _ => Ok(DataType::Double),
+                }
             }
             TokenType::Real => {
                 self.advance();

@@ -4845,6 +4845,10 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
                 if matches!(base, "VARCHAR" | "CHAR") {
                     return DataType::Unknown(format!("TEXT({rest}"));
                 }
+                // DOUBLE(p, s) → REAL(p, s)
+                if base == "DOUBLE" {
+                    return DataType::Unknown(format!("REAL({rest}"));
+                }
             }
             if let Some(m) = mapped {
                 return DataType::Unknown(m);
