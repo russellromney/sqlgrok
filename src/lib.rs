@@ -188,6 +188,22 @@ pub(crate) fn transpile_guarded_internal_experiment(
     }
 }
 
+#[doc(hidden)]
+pub fn transpile_internal_fast_experiment(
+    sql: &str,
+    read_dialect: Dialect,
+    write_dialect: Dialect,
+) -> errors::Result<Option<String>> {
+    let Some(internal) = parser::parse_internal(sql, read_dialect)? else {
+        return Ok(None);
+    };
+    let Some(transformed) = parser::transform_internal(internal, read_dialect, write_dialect)
+    else {
+        return Ok(None);
+    };
+    Ok(parser::generate_internal(&transformed, write_dialect))
+}
+
 /// Transpile a SQL string, returning multiple statements if the input
 /// contains semicolons.
 ///
@@ -331,5 +347,77 @@ mod tests {
 
         assert_eq!(sql, "SELECT a FROM t JOIN u ON t.id = u.id");
         assert_eq!(decision, InternalTranspileDecision::FellBackToPublic);
+    }
+
+    #[test]
+    fn internal_fast_experiment_returns_supported_identity_output_without_oracle() {
+        let sql = transpile_internal_fast_experiment(
+            "SELECT a FROM t WHERE a > 1 ORDER BY a LIMIT 5",
+            Dialect::Sqlite,
+            Dialect::Sqlite,
+        )
+        .unwrap();
+
+        assert_eq!(
+            sql.as_deref(),
+            Some("SELECT a FROM t WHERE a > 1 ORDER BY a LIMIT 5")
+        );
+    }
+
+    #[test]
+    fn internal_fast_experiment_matches_public_output_for_supported_identity_dialects() {
+        for dialect in [
+            Dialect::Ansi,
+            Dialect::Postgres,
+            Dialect::Mysql,
+            Dialect::Sqlite,
+        ] {
+            let sql = "SELECT a, 'x' AS y FROM t AS u WHERE a > 1 ORDER BY y DESC LIMIT 5";
+            let internal = transpile_internal_fast_experiment(sql, dialect, dialect)
+                .unwrap()
+                .unwrap();
+            let public = transpile(sql, dialect, dialect).unwrap();
+
+            assert_eq!(internal, public, "dialect: {dialect}");
+        }
+    }
+
+    #[test]
+    fn internal_fast_experiment_declines_pseudo_columns() {
+        assert_eq!(
+            transpile_internal_fast_experiment(
+                "SELECT current_user FROM t",
+                Dialect::Sqlite,
+                Dialect::Sqlite
+            )
+            .unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn internal_fast_experiment_declines_cross_dialect_rewrites() {
+        assert_eq!(
+            transpile_internal_fast_experiment(
+                "SELECT IFNULL(a, 0) FROM t",
+                Dialect::Mysql,
+                Dialect::Sqlite
+            )
+            .unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn internal_fast_experiment_declines_unsupported_shapes() {
+        assert_eq!(
+            transpile_internal_fast_experiment(
+                "SELECT a FROM t JOIN u ON t.id = u.id",
+                Dialect::Sqlite,
+                Dialect::Sqlite
+            )
+            .unwrap(),
+            None
+        );
     }
 }

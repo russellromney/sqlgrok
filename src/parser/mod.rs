@@ -1,11 +1,13 @@
 mod internal_ast;
 mod internal_generator;
 mod internal_parser;
+mod internal_transform;
 mod sql_parser;
 mod text;
 
 pub(crate) use internal_generator::generate_internal;
 pub(crate) use internal_parser::parse_internal;
+pub(crate) use internal_transform::transform_internal;
 pub use sql_parser::Parser;
 
 use crate::ast::Statement;

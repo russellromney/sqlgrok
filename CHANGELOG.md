@@ -74,6 +74,10 @@ this file records what landed.
   fallback behavior instead of panics, and a guarded internal transpile
   experiment that only uses internal output when it exactly matches the public
   pipeline.
+- Added the first no-oracle internal fast transpile experiment for conservative
+  identity SELECT cases, an internal identity transform with safety filters for
+  public-generator canonicalization, and a Criterion comparison against public
+  SQLite identity transpilation.
 
 ### Public Documentation Cleanup
 

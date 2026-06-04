@@ -1,7 +1,7 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sqlgrok::{
     Dialect, TranspileRequest, dialects, generate, parse, tokens::Tokenizer, transpile,
-    transpile_many,
+    transpile_internal_fast_experiment, transpile_many,
 };
 use std::hint::black_box;
 
@@ -52,6 +52,22 @@ fn bench_transpile(c: &mut Criterion) {
     c.bench_function("transpile Ansi -> Postgres", |b| {
         b.iter(|| transpile(black_box(sql), Dialect::Ansi, Dialect::Postgres).unwrap())
     });
+}
+
+fn bench_internal_fast_identity(c: &mut Criterion) {
+    let sql = "SELECT a, b FROM t WHERE a > 10 ORDER BY b DESC LIMIT 10";
+    let mut group = c.benchmark_group("internal_fast_identity");
+    group.bench_function("public_transpile_sqlite_identity", |b| {
+        b.iter(|| transpile(black_box(sql), Dialect::Sqlite, Dialect::Sqlite).unwrap())
+    });
+    group.bench_function("internal_fast_sqlite_identity", |b| {
+        b.iter(|| {
+            transpile_internal_fast_experiment(black_box(sql), Dialect::Sqlite, Dialect::Sqlite)
+                .unwrap()
+                .unwrap()
+        })
+    });
+    group.finish();
 }
 
 fn phase_cases() -> Vec<(&'static str, &'static str, Dialect, Dialect)> {
@@ -143,6 +159,7 @@ criterion_group!(
     bench_parse_cte,
     bench_roundtrip,
     bench_transpile,
+    bench_internal_fast_identity,
     bench_priority_phases,
     bench_transpile_many
 );

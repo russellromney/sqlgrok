@@ -288,12 +288,13 @@ simple select items, wildcard items, table aliases, decoded string literals,
 borrowed identifiers/numbers, function calls, one simple binary predicate,
 WHERE, ORDER BY, and LIMIT. It intentionally falls back for joins, grouping,
 qualified wildcards, and operator-precedence chains. Step 4 has started with a
-private `generate_internal(...)` for the same subset and a guarded internal
-transpile experiment. The experiment computes the public pipeline first and
-only returns internal output when it is byte-identical, so it is correctness
-infrastructure rather than a production performance win yet. Public
-`transpile()` is unchanged until internal transform/generate coverage can avoid
-the public owned AST path without output drift.
+private `generate_internal(...)` for the same subset, a guarded internal
+transpile experiment, and a no-oracle `transpile_internal_fast_experiment(...)`
+for conservative identity SELECT cases. The no-oracle path is deliberately
+limited to dialect identity pairs and rejects pseudo-columns that the public
+generator canonicalizes. A short Criterion run showed the current path is
+measurable but not yet a clear performance win, so public `transpile()` remains
+unchanged until internal coverage and parser/generator overhead improve.
 
 Expected benefit:
 

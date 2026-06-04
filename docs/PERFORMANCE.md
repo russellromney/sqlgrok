@@ -265,6 +265,19 @@ Short Criterion phase run highlights:
 | SQLite multi-CTE transpile | ~30.7 us |
 | `transpile_many` priority cases | ~65.2 us for 4 cases |
 
+Internal fast-path experiment, short Criterion run with
+`cargo bench --bench parser_bench internal_fast_identity -- --sample-size 20 --warm-up-time 1 --measurement-time 2`:
+
+| Case | Median-ish result |
+| --- | ---: |
+| Public SQLite identity transpile | ~11.5 us |
+| No-oracle internal SQLite identity transpile | ~10.9 us |
+
+Criterion reported no statistically meaningful difference in that short run.
+This means the first safe internal path is useful as a measurement harness, but
+not ready to replace public `transpile()`. The next internal-path work should
+reduce parser/generator overhead and widen coverage before claiming speedup.
+
 The next real optimization targets are parser/token allocation and the
 multi-CTE/full-transpile path. Generation is generally sub-microsecond in these
 priority cases.
