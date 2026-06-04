@@ -7534,7 +7534,10 @@ impl<'a> Parser<'a> {
                 | TokenType::Json
                 | TokenType::Jsonb
         ) || matches!(self.peek_type(), TokenType::Identifier)
-            && matches!(self.peek().value.to_uppercase().as_str(), "STRING")
+            && matches!(
+                self.peek().value.to_uppercase().as_str(),
+                "STRING" | "BIGNUMERIC" | "BIGDECIMAL"
+            )
     }
 
     fn is_timestamp_typed_literal_start(&self) -> bool {
