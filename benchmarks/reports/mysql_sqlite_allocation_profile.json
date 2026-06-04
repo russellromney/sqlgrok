@@ -1,11 +1,11 @@
 {
   "aggregate": {
-    "allocated_bytes": 51813000,
+    "allocated_bytes": 53853000,
     "allocations": 707000,
     "allocations_per_op": 88.375,
-    "bytes_per_op": 6476.625,
+    "bytes_per_op": 6731.625,
     "checksum": 586000,
-    "deallocated_bytes": 51813000,
+    "deallocated_bytes": 53853000,
     "deallocations": 707000,
     "net_bytes": 0,
     "operations": 8000
@@ -110,12 +110,12 @@
       "read": "mysql",
       "sql": "SELECT GROUP_CONCAT(v ORDER BY v SEPARATOR '|') FROM gc",
       "stats": {
-        "allocated_bytes": 3852000,
+        "allocated_bytes": 3956000,
         "allocations": 80000,
         "allocations_per_op": 80.0,
-        "bytes_per_op": 3852.0,
+        "bytes_per_op": 3956.0,
         "checksum": 35000,
-        "deallocated_bytes": 3852000,
+        "deallocated_bytes": 3956000,
         "deallocations": 80000,
         "net_bytes": 0,
         "operations": 1000
@@ -132,12 +132,12 @@
       "read": "mysql",
       "sql": "SELECT JSON_EXTRACT(data, '$.k') FROM events WHERE id = 1",
       "stats": {
-        "allocated_bytes": 6420000,
+        "allocated_bytes": 6532000,
         "allocations": 85000,
         "allocations_per_op": 85.0,
-        "bytes_per_op": 6420.0,
+        "bytes_per_op": 6532.0,
         "checksum": 45000,
-        "deallocated_bytes": 6420000,
+        "deallocated_bytes": 6532000,
         "deallocations": 85000,
         "net_bytes": 0,
         "operations": 1000
@@ -154,12 +154,12 @@
       "read": "mysql",
       "sql": "SELECT a, b FROM t WHERE a > 10 ORDER BY b DESC LIMIT 5, 10",
       "stats": {
-        "allocated_bytes": 6981000,
+        "allocated_bytes": 7317000,
         "allocations": 83000,
         "allocations_per_op": 83.0,
-        "bytes_per_op": 6981.0,
+        "bytes_per_op": 7317.0,
         "checksum": 65000,
-        "deallocated_bytes": 6981000,
+        "deallocated_bytes": 7317000,
         "deallocations": 83000,
         "net_bytes": 0,
         "operations": 1000
@@ -176,12 +176,12 @@
       "read": "mysql",
       "sql": "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') FROM users",
       "stats": {
-        "allocated_bytes": 4147000,
+        "allocated_bytes": 4251000,
         "allocations": 76000,
         "allocations_per_op": 76.0,
-        "bytes_per_op": 4147.0,
+        "bytes_per_op": 4251.0,
         "checksum": 50000,
-        "deallocated_bytes": 4147000,
+        "deallocated_bytes": 4251000,
         "deallocations": 76000,
         "net_bytes": 0,
         "operations": 1000
@@ -198,12 +198,12 @@
       "read": "mysql",
       "sql": "SELECT IF(a > 0, CAST(a AS SIGNED INTEGER), 7 DIV 2), x / y FROM metrics",
       "stats": {
-        "allocated_bytes": 12737000,
+        "allocated_bytes": 13169000,
         "allocations": 139000,
         "allocations_per_op": 139.0,
-        "bytes_per_op": 12737.0,
+        "bytes_per_op": 13169.0,
         "checksum": 109000,
-        "deallocated_bytes": 12737000,
+        "deallocated_bytes": 13169000,
         "deallocations": 139000,
         "net_bytes": 0,
         "operations": 1000
@@ -220,12 +220,12 @@
       "read": "mysql",
       "sql": "INSERT IGNORE INTO users (id, email) VALUES (1, 'a@example.com')",
       "stats": {
-        "allocated_bytes": 2826000,
+        "allocated_bytes": 2954000,
         "allocations": 48000,
         "allocations_per_op": 48.0,
-        "bytes_per_op": 2826.0,
+        "bytes_per_op": 2954.0,
         "checksum": 67000,
-        "deallocated_bytes": 2826000,
+        "deallocated_bytes": 2954000,
         "deallocations": 48000,
         "net_bytes": 0,
         "operations": 1000
@@ -242,12 +242,12 @@
       "read": "mysql",
       "sql": "INSERT INTO users (id, email) VALUES (1, 'a@example.com') ON DUPLICATE KEY UPDATE email = VALUES(email)",
       "stats": {
-        "allocated_bytes": 5412000,
+        "allocated_bytes": 5612000,
         "allocations": 107000,
         "allocations_per_op": 107.0,
-        "bytes_per_op": 5412.0,
+        "bytes_per_op": 5612.0,
         "checksum": 107000,
-        "deallocated_bytes": 5412000,
+        "deallocated_bytes": 5612000,
         "deallocations": 107000,
         "net_bytes": 0,
         "operations": 1000
@@ -264,12 +264,12 @@
       "read": "mysql",
       "sql": "CREATE TABLE users (id INT PRIMARY KEY, email VARCHAR(255), email_lc VARCHAR(255) AS (LOWER(email)) STORED)",
       "stats": {
-        "allocated_bytes": 9438000,
+        "allocated_bytes": 10062000,
         "allocations": 89000,
         "allocations_per_op": 89.0,
-        "bytes_per_op": 9438.0,
+        "bytes_per_op": 10062.0,
         "checksum": 108000,
-        "deallocated_bytes": 9438000,
+        "deallocated_bytes": 10062000,
         "deallocations": 89000,
         "net_bytes": 0,
         "operations": 1000

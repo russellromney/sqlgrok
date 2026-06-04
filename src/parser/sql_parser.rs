@@ -989,6 +989,29 @@ impl<'a> Parser<'a> {
         char_pos.min(self.sql.len())
     }
 
+    fn token_end_byte(&self, token: &Token) -> usize {
+        let end = if token.end > token.position {
+            token.end
+        } else {
+            token.position + token.value.len()
+        };
+        self.char_pos_to_byte(end)
+    }
+
+    fn token_text_owned(&self, token: &Token) -> String {
+        let start = self.char_pos_to_byte(token.position);
+        let end = self.token_end_byte(token);
+        self.sql
+            .get(start..end)
+            .map_or_else(|| token.value.clone(), ToOwned::to_owned)
+    }
+
+    fn advance_text_owned(&mut self) -> String {
+        let text = self.token_text_owned(self.peek());
+        self.advance();
+        text
+    }
+
     fn normalize_sqlite_command(sql: &str) -> String {
         let trimmed = sql.trim();
         if Self::starts_with_keyword(trimmed, "PRAGMA") {
@@ -2033,7 +2056,7 @@ impl<'a> Parser<'a> {
         let end = self
             .tokens
             .get(self.pos.saturating_sub(1))
-            .map(|token| self.char_pos_to_byte(token.position + token.value.chars().count()))
+            .map(|token| self.token_end_byte(token))
             .unwrap_or(start);
         let sql = self.sql[start..end].trim().to_string();
         let (alias, alias_quote_style) = match self.parse_optional_alias()? {
@@ -2078,7 +2101,7 @@ impl<'a> Parser<'a> {
         let end = self
             .tokens
             .get(self.pos.saturating_sub(1))
-            .map(|token| self.char_pos_to_byte(token.position + token.value.chars().count()))
+            .map(|token| self.token_end_byte(token))
             .unwrap_or(start);
         Ok(TableSource::Raw {
             sql: self.sql[start..end].trim().to_string(),
@@ -4549,16 +4572,16 @@ impl<'a> Parser<'a> {
             match self.peek_type() {
                 TokenType::LParen | TokenType::LBracket | TokenType::LBrace => {
                     depth += 1;
-                    parts.push(self.advance().value.clone());
+                    parts.push(self.advance_text_owned());
                 }
                 TokenType::RParen | TokenType::RBracket | TokenType::RBrace => {
                     if depth == 0 {
                         break;
                     }
                     depth -= 1;
-                    parts.push(self.advance().value.clone());
+                    parts.push(self.advance_text_owned());
                 }
-                _ => parts.push(self.advance().value.clone()),
+                _ => parts.push(self.advance_text_owned()),
             }
         }
         (!parts.is_empty()).then(|| parts.join(" "))
@@ -4594,7 +4617,7 @@ impl<'a> Parser<'a> {
                         parts.push(")".to_string());
                     }
                 } else {
-                    parts.push(self.advance().value.clone());
+                    parts.push(self.advance_text_owned());
                 }
             }
             return Some(parts.join(" "));
@@ -5070,7 +5093,7 @@ impl<'a> Parser<'a> {
         let end = self
             .tokens
             .get(self.pos.saturating_sub(1))
-            .map(|token| self.char_pos_to_byte(token.position + token.value.chars().count()))
+            .map(|token| self.token_end_byte(token))
             .unwrap_or(start);
         Some(self.sql[start..end].to_string())
     }
@@ -5392,8 +5415,7 @@ impl<'a> Parser<'a> {
                     self.peek_type(),
                     TokenType::Comma | TokenType::Semicolon | TokenType::Eof
                 ) {
-                    tail_tokens.push(self.peek().value.clone());
-                    self.advance();
+                    tail_tokens.push(self.advance_text_owned());
                 }
                 let _ = start_pos;
                 let tail = tail_tokens.join(" ");
@@ -7264,7 +7286,7 @@ impl<'a> Parser<'a> {
             let end = self
                 .tokens
                 .get(self.pos.saturating_sub(1))
-                .map(|token| self.char_pos_to_byte(token.position + token.value.chars().count()))
+                .map(|token| self.token_end_byte(token))
                 .unwrap_or(start);
             return Ok(Expr::Function {
                 name: "__RAW_EXPR__".to_string(),

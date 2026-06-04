@@ -11,8 +11,8 @@ Counts allocations in a dedicated helper binary while repeatedly measuring the `
 - Warmup iterations per case: `100`
 - Operations: `8000`
 - Output checksum: `586000`
-- Allocated: `6.32 KiB/op` across `88.38` allocations/op
-- Total allocated: `49.41 MiB`
+- Allocated: `6.57 KiB/op` across `88.38` allocations/op
+- Total allocated: `51.36 MiB`
 - Net bytes after drops: `0`
 
 ## Notes
@@ -25,14 +25,14 @@ Counts allocations in a dedicated helper binary while repeatedly measuring the `
 
 | id | KiB/op | allocations/op | net bytes/op | tags |
 | --- | ---: | ---: | ---: | --- |
-| `mysql-if-cast-div` | 12.44 | 139.00 | 0.00 | `expression,function` |
-| `mysql-computed-column` | 9.22 | 89.00 | 0.00 | `ddl,migration` |
-| `mysql-limit-offset-comma` | 6.82 | 83.00 | 0.00 | `limit,orm` |
-| `mysql-json-extract-key` | 6.27 | 85.00 | 0.00 | `json,orm` |
-| `mysql-on-duplicate-key` | 5.29 | 107.00 | 0.00 | `ddl,orm` |
-| `mysql-date-format` | 4.05 | 76.00 | 0.00 | `datetime,function` |
-| `mysql-group-concat-order-separator` | 3.76 | 80.00 | 0.00 | `aggregate,orm` |
-| `mysql-insert-ignore` | 2.76 | 48.00 | 0.00 | `ddl,orm` |
+| `mysql-if-cast-div` | 12.86 | 139.00 | 0.00 | `expression,function` |
+| `mysql-computed-column` | 9.83 | 89.00 | 0.00 | `ddl,migration` |
+| `mysql-limit-offset-comma` | 7.15 | 83.00 | 0.00 | `limit,orm` |
+| `mysql-json-extract-key` | 6.38 | 85.00 | 0.00 | `json,orm` |
+| `mysql-on-duplicate-key` | 5.48 | 107.00 | 0.00 | `ddl,orm` |
+| `mysql-date-format` | 4.15 | 76.00 | 0.00 | `datetime,function` |
+| `mysql-group-concat-order-separator` | 3.86 | 80.00 | 0.00 | `aggregate,orm` |
+| `mysql-insert-ignore` | 2.88 | 48.00 | 0.00 | `ddl,orm` |
 
 ## Workload
 

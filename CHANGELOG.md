@@ -50,6 +50,10 @@ this file records what landed.
   borrow the source SQL during parsing; refreshed full-transpile allocation
   reports now show MySQL/Postgres/SQLite priority lanes at
   `6.32`/`5.77`/`5.75` KiB per operation.
+- Added byte end spans to tokens so parser raw carriers can reconstruct source
+  text without relying on decoded token values. A hostile review kept public
+  punctuation token values intact; spans are now correctness infrastructure for
+  raw SQL and future borrowed-token work rather than a public-token API break.
 
 ### Public Documentation Cleanup
 

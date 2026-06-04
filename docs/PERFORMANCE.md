@@ -193,26 +193,30 @@ Current allocation-profile snapshot, using the checked-in 8-case workloads with
 
 | Workload | Allocated | Allocations | Heaviest checked-in case |
 | --- | ---: | ---: | --- |
-| MySQL -> SQLite | 6.32 KiB/op | 88.38 allocs/op | `mysql-if-cast-div` at 12.44 KiB/op |
-| Postgres -> SQLite | 5.77 KiB/op | 84.00 allocs/op | `postgres-distinct-on` at 9.97 KiB/op |
-| SQLite -> SQLite | 5.75 KiB/op | 66.38 allocs/op | `sqlite-cte` at 14.34 KiB/op |
+| MySQL -> SQLite | 6.57 KiB/op | 88.38 allocs/op | `mysql-if-cast-div` at 12.86 KiB/op |
+| Postgres -> SQLite | 5.93 KiB/op | 84.00 allocs/op | `postgres-distinct-on` at 10.17 KiB/op |
+| SQLite -> SQLite | 5.98 KiB/op | 66.38 allocs/op | `sqlite-cte` at 14.76 KiB/op |
 
 Example phase read on the current heaviest MySQL row, `mysql-if-cast-div`:
 
 | Phase | Allocated | Allocations |
 | --- | ---: | ---: |
-| tokenize | 3.10 KiB/op | 27 allocs/op |
-| parse | 5.93 KiB/op | 75 allocs/op |
-| transform | 2.11 KiB/op | 26 allocs/op |
+| tokenize | 3.50 KiB/op | 20 allocs/op |
+| parse | 6.35 KiB/op | 75 allocs/op |
+| transform | 6.16 KiB/op | 54 allocs/op |
 | generate | 0.35 KiB/op | 10 allocs/op |
-| transpile | 12.44 KiB/op | 139 allocs/op |
+| transpile | 12.86 KiB/op | 139 allocs/op |
 
 That confirms the in-place dialect transform path removed the worst expression
-clone pressure. A follow-up parser pass removed uppercase-string allocation from
-context keyword checks, cutting full-transpile allocation counts across all
-three priority workloads. The tokenizer and parser now borrow the source SQL
-instead of copying the whole input into a `Vec<char>` and parser-owned `String`;
-the next memory frontier is token/AST value ownership rather than cursor setup.
+clone pressure. Follow-up parser passes removed uppercase-string allocation from
+context keyword checks and made the tokenizer/parser borrow the source SQL
+instead of copying it. Token byte spans now let parser raw carriers reconstruct
+source text without relying on decoded token values, while public punctuation
+token values remain intact for tokenizer API compatibility. Bytes per operation
+ticked up slightly because tokens now carry end spans; allocation counts stayed
+flat after preserving punctuation values. The next memory frontier is a safe
+borrowed/internal token or AST string-ownership design, not cursor setup or
+generator output growth.
 
 Current Postgres-to-SQLite per-case PyO3 medians:
 

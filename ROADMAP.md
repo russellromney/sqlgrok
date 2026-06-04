@@ -221,6 +221,116 @@ Boundaries:
 - Do not mix semantic validation into parsing unless Python SQLGlot does so for
   the same case.
 
+## Performance Architecture Program
+
+Status: in progress.
+
+Performance work must preserve SQLGlot parity and must be measured with the
+checked-in MySQL -> SQLite, Postgres -> SQLite, and SQLite -> SQLite workloads.
+Each landed slice should update [docs/PERFORMANCE.md](docs/PERFORMANCE.md),
+refresh allocation reports when allocation behavior changes, and run the same
+Rust/parity tests as behavior work.
+
+### 1. Token Ownership And Source Spans
+
+Goal: stop treating every parser-internal token view as an owned string while
+keeping the public tokenizer API predictable. Tokens should carry `TokenType`,
+source span, quote metadata, and location; future internal parser paths should
+borrow text from source SQL unless decoding or normalization is required.
+
+Current status: tokens now carry byte end spans and raw parser carriers use
+source text where needed. Public punctuation token values remain populated for
+API compatibility; the deeper allocation win requires a borrowed/internal token
+representation rather than empty public values.
+
+Acceptance:
+
+- Tokenizer and parser preserve raw SQL slices exactly for raw carriers,
+  comments, dollar-quoted bodies, table tails, and error messages.
+- Tokenizer tests cover ASCII tokens, quoted identifiers, strings, escaped
+  strings, Unicode text, comments, bracket identifiers, and multi-character
+  operators.
+- `cargo test --features cli --test test_transpile` stays green.
+- Allocation reports show whether token-value ownership changed bytes/op and
+  allocs/op.
+
+### 2. AST String Ownership
+
+Goal: keep the public AST owned and serde-friendly while reducing temporary
+parse/transpile allocation. Candidate designs are a string interner, parse-local
+arena, or borrowed internal AST that is converted to owned only at API
+boundaries.
+
+Acceptance:
+
+- Public AST/serde API remains stable or changes behind a clearly named
+  experimental API.
+- Parse/generate identity tests and SQLGlot bridge reports do not regress.
+- Benchmarks include AST-returning APIs separately from `transpile(...)`.
+
+### 3. Fast Paths Without Parity Drift
+
+Goal: add safe fast paths only for cases where SQLGlot-equivalent output is
+obvious and testable, such as raw command passthroughs or same-dialect identity
+statements that need no rewrite.
+
+Acceptance:
+
+- Every fast path has a forced opt-in predicate and a fallback to full
+  parse/transform/generate.
+- SQLGlot parity fixtures cover each fast path and at least one near miss.
+- No fast path bypasses dialect behavior that SQLGlot would normalize.
+
+### 4. Generator Capacity And Output Buffers
+
+Goal: reduce generator allocation for larger SQL by estimating output capacity
+and supporting caller-owned buffers for FFI/binding paths.
+
+Acceptance:
+
+- `generate` and FFI/PyO3 benchmark reports distinguish owned-output and
+  caller-buffer modes.
+- Generated SQL remains byte-for-byte identical to Python SQLGlot expectations.
+
+### 5. Case Normalization And Keyword Checks
+
+Goal: remove repeated uppercase allocation and normalize keyword/context checks
+through token kinds, ASCII-insensitive comparisons, or parser-local interned
+views.
+
+Acceptance:
+
+- Clippy remains clean.
+- Parser decision points have focused tests for case-insensitive keywords and
+  case-sensitive quoted identifiers.
+- Allocation reports distinguish tokenize/parse wins from transform/generate
+  wins.
+
+### 6. In-Place Transform Architecture
+
+Goal: make dialect transforms mutate owned AST nodes in place wherever possible,
+only allocating when a SQLGlot rewrite genuinely creates a different shape.
+
+Acceptance:
+
+- Transform helpers take `&mut Expr` / `&mut Statement` for hot recursive paths.
+- Existing SQLGlot parity reports do not regress.
+- Allocation phase reports demonstrate improvements on expression-heavy rows.
+
+### 7. Callsite-Aware Profiling
+
+Goal: graduate from phase-level allocation counts to callsite-aware evidence
+before deeper invasive rewrites.
+
+Acceptance:
+
+- Add documented workflows for Instruments/DTrace/samply/DHAT-style profiling
+  on macOS.
+- Keep generated reports small and reproducible; do not check in huge profiler
+  artifacts.
+- Use callsite evidence to choose between token spans, AST interning, generator
+  buffers, and transform rewrites.
+
 ## Dialect Version Policy
 
 SQLGlot dialects are dialect families, not exact server-version promises.

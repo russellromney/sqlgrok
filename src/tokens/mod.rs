@@ -290,7 +290,11 @@ pub struct Token {
     pub value: String,
     pub line: usize,
     pub col: usize,
+    /// Byte offset where the token starts in the original SQL string.
     pub position: usize,
+    /// Byte offset immediately after the token in the original SQL string.
+    #[serde(default)]
+    pub end: usize,
     /// For quoted identifiers: the delimiter character ('"', '`', or '[').
     /// '\0' means unquoted.
     #[serde(default)]
@@ -300,12 +304,15 @@ pub struct Token {
 impl Token {
     #[must_use]
     pub fn new(token_type: TokenType, value: impl Into<String>, position: usize) -> Self {
+        let value = value.into();
+        let end = position + value.len();
         Self {
             token_type,
-            value: value.into(),
+            value,
             line: 0,
             col: 0,
             position,
+            end,
             quote_char: '\0',
         }
     }
@@ -318,12 +325,35 @@ impl Token {
         line: usize,
         col: usize,
     ) -> Self {
+        let value = value.into();
+        let end = position + value.len();
+        Self {
+            token_type,
+            value,
+            line,
+            col,
+            position,
+            end,
+            quote_char: '\0',
+        }
+    }
+
+    #[must_use]
+    pub fn with_span(
+        token_type: TokenType,
+        value: impl Into<String>,
+        position: usize,
+        end: usize,
+        line: usize,
+        col: usize,
+    ) -> Self {
         Self {
             token_type,
             value: value.into(),
             line,
             col,
             position,
+            end,
             quote_char: '\0',
         }
     }
@@ -337,12 +367,28 @@ impl Token {
         col: usize,
         quote_char: char,
     ) -> Self {
+        let value = value.into();
+        let end = position + value.len();
+        Self::with_quote_span(token_type, value, position, end, line, col, quote_char)
+    }
+
+    #[must_use]
+    pub fn with_quote_span(
+        token_type: TokenType,
+        value: impl Into<String>,
+        position: usize,
+        end: usize,
+        line: usize,
+        col: usize,
+        quote_char: char,
+    ) -> Self {
         Self {
             token_type,
             value: value.into(),
             line,
             col,
             position,
+            end,
             quote_char,
         }
     }

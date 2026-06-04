@@ -177,7 +177,7 @@ impl<'a> Tokenizer<'a> {
         start_line: usize,
         start_col: usize,
     ) -> Token {
-        Token::with_location(token_type, value, start, start_line, start_col)
+        Token::with_span(token_type, value, start, self.pos, start_line, start_col)
     }
 
     fn make_quoted_identifier(
@@ -187,10 +187,11 @@ impl<'a> Tokenizer<'a> {
         start_line: usize,
         start_col: usize,
     ) -> Token {
-        Token::with_quote(
+        Token::with_quote_span(
             TokenType::Identifier,
             value,
             start,
+            self.pos,
             start_line,
             start_col,
             '"',
@@ -1058,10 +1059,11 @@ impl<'a> Tokenizer<'a> {
                         self.advance();
                         value.push(end_char);
                     } else {
-                        return Ok(Token::with_quote(
+                        return Ok(Token::with_quote_span(
                             TokenType::Identifier,
                             value,
                             start,
+                            self.pos,
                             start_line,
                             start_col,
                             quote,
@@ -1141,6 +1143,34 @@ mod tests {
         let tokens = tokenizer.tokenize().unwrap();
         assert_eq!(tokens[0].token_type, TokenType::String);
         assert_eq!(tokens[0].value, "hello world");
+    }
+
+    #[test]
+    fn test_token_spans_cover_source_bytes() {
+        let sql = "SELECT 'é\\nb', \"café\" FROM [t]";
+        let mut tokenizer = Tokenizer::new(sql);
+        let tokens = tokenizer.tokenize().unwrap();
+
+        let string = tokens
+            .iter()
+            .find(|token| token.token_type == TokenType::String)
+            .unwrap();
+        assert_eq!(&sql[string.position..string.end], "'é\\nb'");
+        assert_eq!(string.value, "é\nb");
+
+        let comma = tokens
+            .iter()
+            .find(|token| token.token_type == TokenType::Comma)
+            .unwrap();
+        assert_eq!(comma.value, ",");
+        assert_eq!(&sql[comma.position..comma.end], ",");
+
+        let unicode_ident = tokens.iter().find(|token| token.value == "café").unwrap();
+        assert_eq!(&sql[unicode_ident.position..unicode_ident.end], "\"café\"");
+
+        let bracket_ident = tokens.iter().find(|token| token.value == "t").unwrap();
+        assert_eq!(&sql[bracket_ident.position..bracket_ident.end], "[t]");
+        assert_eq!(bracket_ident.quote_char, '[');
     }
 
     #[test]
