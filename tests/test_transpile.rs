@@ -1357,32 +1357,58 @@ fn test_identity_case() {
 
 #[test]
 fn test_identity_predicates() {
-    let cases = [
+    // True identities (round-trip unchanged).
+    let identities = [
         "SELECT * FROM t WHERE x BETWEEN 1 AND 10",
         "SELECT * FROM t WHERE NOT x BETWEEN 1 AND 10",
         "SELECT * FROM t WHERE x IN (1, 2, 3)",
-        "SELECT * FROM t WHERE x NOT IN (1, 2, 3)",
         "SELECT * FROM t WHERE x IS NULL",
-        "SELECT * FROM t WHERE x IS NOT NULL",
         "SELECT * FROM t WHERE x IS TRUE",
-        "SELECT * FROM t WHERE x IS NOT TRUE",
         "SELECT * FROM t WHERE x IS FALSE",
-        "SELECT * FROM t WHERE x IS NOT FALSE",
         "SELECT * FROM t WHERE x IS TRUE AND y IS NULL",
-        "SELECT * FROM t WHERE x IS NOT FALSE OR y IS NOT NULL",
         "SELECT * FROM t WHERE x LIKE '%y%'",
         "SELECT * FROM t WHERE x NOT LIKE '%y%'",
         "SELECT * FROM t WHERE x ILIKE '%y%'",
     ];
-    for sql in &cases {
+    for sql in &identities {
         validate_identity(sql);
+    }
+    // Negated IN/IS render as a prefixed NOT, matching SQLGlot's Not-wrapper model.
+    let rewrites = [
+        (
+            "SELECT * FROM t WHERE x NOT IN (1, 2, 3)",
+            "SELECT * FROM t WHERE NOT x IN (1, 2, 3)",
+        ),
+        (
+            "SELECT * FROM t WHERE x IS NOT NULL",
+            "SELECT * FROM t WHERE NOT x IS NULL",
+        ),
+        (
+            "SELECT * FROM t WHERE x IS NOT TRUE",
+            "SELECT * FROM t WHERE NOT x IS TRUE",
+        ),
+        (
+            "SELECT * FROM t WHERE x IS NOT FALSE",
+            "SELECT * FROM t WHERE NOT x IS FALSE",
+        ),
+        (
+            "SELECT * FROM t WHERE x IS NOT FALSE OR y IS NOT NULL",
+            "SELECT * FROM t WHERE NOT x IS FALSE OR NOT y IS NULL",
+        ),
+    ];
+    for (sql, expected) in &rewrites {
+        validate(sql, expected);
     }
 }
 
 #[test]
 fn test_identity_in_subquery() {
     validate_identity("SELECT * FROM t WHERE a IN (SELECT b FROM t2)");
-    validate_identity("SELECT * FROM t WHERE a NOT IN (SELECT b FROM t2)");
+    // Negated IN renders as a prefixed NOT, matching SQLGlot.
+    validate(
+        "SELECT * FROM t WHERE a NOT IN (SELECT b FROM t2)",
+        "SELECT * FROM t WHERE NOT a IN (SELECT b FROM t2)",
+    );
 }
 
 #[test]
@@ -4187,10 +4213,11 @@ fn test_oracle_preserves_column_alias_as() {
 
 #[test]
 fn test_oracle_catalog_query_no_spurious_as() {
-    // Catalog query that already has no AS should not gain one
+    // Catalog query that already has no AS should not gain one.
+    // (`IS NOT NULL` renders as a prefixed NOT, matching SQLGlot.)
     validate_with_dialect(
         "SELECT U.* FROM ALL_USERS U WHERE (U.USERNAME IS NOT NULL)",
-        "SELECT U.* FROM ALL_USERS U WHERE (U.USERNAME IS NOT NULL)",
+        "SELECT U.* FROM ALL_USERS U WHERE (NOT U.USERNAME IS NULL)",
         Dialect::Postgres,
         Dialect::Oracle,
     );
@@ -5197,8 +5224,10 @@ fn test_forced_suite_parser_burn_down_to_sqlite() {
             "TRUNCATE TABLE t1 ON CLUSTER 'cluster'",
         ),
         (
+            // SQLGlot treats a standalone PIVOT statement as unsupported and
+            // drops it, emitting an empty string; we match that.
             "PIVOT Cities ON Year USING SUM(Population)",
-            "PIVOT Cities ON Year USING SUM(Population)",
+            "",
         ),
     ];
 
