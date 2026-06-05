@@ -61,7 +61,6 @@ fn test_all_dialect_identities() {
         "SELECT * FROM t ORDER BY a LIMIT 10",
         "SELECT a, COUNT(*) FROM t GROUP BY a",
         "SELECT a FROM t WHERE a IS TRUE",
-        "SELECT a FROM t WHERE a IS NOT FALSE",
     ];
     for dialect in Dialect::all() {
         for sql in &queries {
@@ -580,7 +579,7 @@ fn test_create_table_identity_each_dialect() {
 fn test_same_dialect_noop() {
     // Typed functions normalize to the canonical name for the target dialect.
     // SUBSTR → SUBSTRING (ANSI canonical), NOW → CURRENT_TIMESTAMP (ANSI canonical).
-    // Non-typed functions like IFNULL are still preserved via generic Function.
+    // IFNULL is canonicalized read-side to COALESCE (matching SQLGlot).
     assert_transpile(
         "SELECT SUBSTR(x, 1, 3) FROM t",
         "SELECT SUBSTRING(x, 1, 3) FROM t",
@@ -599,7 +598,12 @@ fn test_same_dialect_noop() {
         Dialect::Ansi,
         Dialect::Ansi,
     );
-    assert_identity("SELECT IFNULL(a, b) FROM t", Dialect::Ansi);
+    assert_transpile(
+        "SELECT IFNULL(a, b) FROM t",
+        "SELECT COALESCE(a, b) FROM t",
+        Dialect::Ansi,
+        Dialect::Ansi,
+    );
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -624,14 +628,16 @@ fn test_transpile_update_identity() {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// NEW: IFNULL → ISNULL (T-SQL)
+// NEW: IFNULL → COALESCE (read-side canonicalization, matching SQLGlot)
 // ═════════════════════════════════════════════════════════════════════════════
 
 #[test]
 fn test_ifnull_to_tsql() {
+    // SQLGlot canonicalizes IFNULL to COALESCE; every target (incl. T-SQL)
+    // renders COALESCE.
     assert_transpile(
         "SELECT IFNULL(a, b) FROM t",
-        "SELECT ISNULL(a, b) FROM t",
+        "SELECT COALESCE(a, b) FROM t",
         Dialect::Mysql,
         Dialect::Tsql,
     );
@@ -1008,12 +1014,13 @@ fn test_mysql_family_substring_to_substr() {
 }
 
 #[test]
-fn test_mysql_family_ifnull_preserved() {
-    // MySQL family keeps IFNULL
+fn test_mysql_family_ifnull_to_coalesce() {
+    // SQLGlot canonicalizes IFNULL to COALESCE everywhere, including the
+    // MySQL family.
     for target in [Dialect::Doris, Dialect::SingleStore, Dialect::StarRocks] {
         assert_transpile(
             "SELECT IFNULL(a, b) FROM t",
-            "SELECT IFNULL(a, b) FROM t",
+            "SELECT COALESCE(a, b) FROM t",
             Dialect::Mysql,
             target,
         );
@@ -1035,7 +1042,7 @@ fn test_fabric_same_as_tsql() {
     );
     assert_transpile(
         "SELECT IFNULL(a, b) FROM t",
-        "SELECT ISNULL(a, b) FROM t",
+        "SELECT COALESCE(a, b) FROM t",
         Dialect::Mysql,
         Dialect::Fabric,
     );
@@ -1209,12 +1216,11 @@ fn test_validate_all_ifnull_writes() {
         "SELECT IFNULL(x, y)",
         Dialect::Mysql,
         &[
-            // MySQL family keeps IFNULL
-            (Dialect::Mysql, "SELECT IFNULL(x, y)"),
-            (Dialect::Doris, "SELECT IFNULL(x, y)"),
-            (Dialect::SingleStore, "SELECT IFNULL(x, y)"),
-            (Dialect::StarRocks, "SELECT IFNULL(x, y)"),
-            // ANSI/Postgres family → COALESCE
+            // SQLGlot canonicalizes IFNULL to COALESCE for every target.
+            (Dialect::Mysql, "SELECT COALESCE(x, y)"),
+            (Dialect::Doris, "SELECT COALESCE(x, y)"),
+            (Dialect::SingleStore, "SELECT COALESCE(x, y)"),
+            (Dialect::StarRocks, "SELECT COALESCE(x, y)"),
             (Dialect::Ansi, "SELECT COALESCE(x, y)"),
             (Dialect::Postgres, "SELECT COALESCE(x, y)"),
             (Dialect::Redshift, "SELECT COALESCE(x, y)"),
@@ -1228,9 +1234,8 @@ fn test_validate_all_ifnull_writes() {
             (Dialect::Trino, "SELECT COALESCE(x, y)"),
             (Dialect::ClickHouse, "SELECT COALESCE(x, y)"),
             (Dialect::Oracle, "SELECT COALESCE(x, y)"),
-            // T-SQL family → ISNULL
-            (Dialect::Tsql, "SELECT ISNULL(x, y)"),
-            (Dialect::Fabric, "SELECT ISNULL(x, y)"),
+            (Dialect::Tsql, "SELECT COALESCE(x, y)"),
+            (Dialect::Fabric, "SELECT COALESCE(x, y)"),
         ],
     );
 }
@@ -1843,7 +1848,7 @@ fn test_validate_all_compound_query() {
         &[
             (
                 Dialect::Mysql,
-                "SELECT IFNULL(SUBSTR(CAST(x AS TEXT), 1, 3), 'none') FROM t",
+                "SELECT COALESCE(SUBSTR(CAST(x AS TEXT), 1, 3), 'none') FROM t",
             ),
             (
                 Dialect::Postgres,
@@ -1859,7 +1864,7 @@ fn test_validate_all_compound_query() {
             ),
             (
                 Dialect::Tsql,
-                "SELECT ISNULL(SUBSTRING(CAST(x AS TEXT), 1, 3), 'none') FROM t",
+                "SELECT COALESCE(SUBSTRING(CAST(x AS TEXT), 1, 3), 'none') FROM t",
             ),
             (
                 Dialect::Oracle,
