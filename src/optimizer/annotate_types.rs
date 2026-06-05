@@ -837,7 +837,8 @@ fn infer_generic_function_type<S: Schema>(
             // IF(cond, true_val, false_val) — type from true_val
             args.get(1).and_then(|a| ann.get_type(a)).cloned()
         }
-        "IFNULL" | "NVL" | "ISNULL" => {
+        // IFNULL canonicalizes to COALESCE at parse, so it never reaches here.
+        "NVL" | "ISNULL" => {
             let types: Vec<&DataType> = args.iter().filter_map(|a| ann.get_type(a)).collect();
             common_type(&types)
         }

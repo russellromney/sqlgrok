@@ -2418,10 +2418,14 @@ impl Generator {
                 // target's spelling. Lives here in the generator so it ALWAYS
                 // runs, including identity transpiles (which skip the transform
                 // layer). Functions not in the table get None -> unchanged.
+                // `orig_upper` is computed once; rename outputs are already
+                // uppercase `&'static str`, so `upper` reuses it allocation-free.
+                let orig_upper = name.to_ascii_uppercase();
                 let rendered_name = self
                     .dialect
-                    .and_then(|d| crate::dialects::rules::rename_function(d, &name.to_ascii_uppercase()));
+                    .and_then(|d| crate::dialects::rules::rename_function(d, &orig_upper));
                 let name: &str = rendered_name.unwrap_or(name);
+                let upper: &str = rendered_name.unwrap_or(orig_upper.as_str());
                 if name.eq_ignore_ascii_case("__RAW_EXPR__")
                     && args.len() == 1
                     && let Expr::StringLiteral(raw_sql) = &args[0]
@@ -2440,7 +2444,7 @@ impl Generator {
                     return;
                 }
                 if matches!(
-                    name.to_ascii_uppercase().as_str(),
+                    upper,
                     "ANY_VALUE"
                         | "ARG_MAX"
                         | "ARRAY_AGG"
@@ -2459,7 +2463,7 @@ impl Generator {
                     && let Expr::StringLiteral(raw_args) = &args[0]
                     && (raw_args_contain_function_clause(raw_args)
                         || matches!(
-                            name.to_ascii_uppercase().as_str(),
+                            upper,
                             "CEIL"
                                 | "CEILING"
                                 | "FLOOR"
@@ -2482,10 +2486,9 @@ impl Generator {
                     self.gen_filter_and_over(filter.as_deref(), over.as_ref());
                     return;
                 }
-                if matches!(name.to_ascii_uppercase().as_str(), "ALL" | "ANY" | "SOME") {
-                    let upper_name = name.to_ascii_uppercase();
-                    self.write_keyword(&upper_name);
-                    if upper_name != "ALL" && args.len() == 1 {
+                if matches!(upper, "ALL" | "ANY" | "SOME") {
+                    self.write_keyword(upper);
+                    if upper != "ALL" && args.len() == 1 {
                         self.write("(");
                     } else {
                         self.write(" (");
@@ -2494,16 +2497,16 @@ impl Generator {
                     self.write(")");
                     return;
                 }
-                let normalized_name = if matches!(self.dialect, Some(Dialect::Sqlite))
+                let normalized_name: &str = if matches!(self.dialect, Some(Dialect::Sqlite))
                     && !name.contains('.')
                     && !name.contains('"')
                     && !name.contains('`')
                 {
-                    name.to_ascii_uppercase()
+                    upper
                 } else {
-                    name.to_string()
+                    name
                 };
-                self.write(&normalized_name);
+                self.write(normalized_name);
                 self.write("(");
                 if *distinct {
                     self.write_keyword("DISTINCT ");

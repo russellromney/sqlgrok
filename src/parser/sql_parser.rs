@@ -7259,10 +7259,10 @@ impl<'a> Parser<'a> {
             Some(canonical) => canonical.to_string(),
             None => name,
         };
-        if matches!(
-            name.to_uppercase().as_str(),
-            "MAKE_INTERVAL" | "XMLELEMENT" | "OVERLAY"
-        ) {
+        // ASCII-uppercase view computed once for the dispatch checks below
+        // (function names are ASCII; Unicode folding is slower and wrong-flavored).
+        let upper = name.to_ascii_uppercase();
+        if matches!(upper.as_str(), "MAKE_INTERVAL" | "XMLELEMENT" | "OVERLAY") {
             let raw_args = self.parse_raw_function_args()?;
             return Ok(Expr::Function {
                 name,
@@ -7273,7 +7273,7 @@ impl<'a> Parser<'a> {
             });
         }
 
-        if matches!(name.to_uppercase().as_str(), "CEIL" | "CEILING" | "FLOOR")
+        if matches!(upper.as_str(), "CEIL" | "CEILING" | "FLOOR")
             && self.function_args_contain_top_level_to()
         {
             let raw_args = self.parse_raw_function_args()?;
@@ -7286,9 +7286,8 @@ impl<'a> Parser<'a> {
             });
         }
 
-        let function_name_upper = name.to_uppercase();
         if matches!(
-            function_name_upper.as_str(),
+            upper.as_str(),
             "ANY_VALUE"
                 | "ARG_MAX"
                 | "ARRAY_AGG"
@@ -7340,7 +7339,7 @@ impl<'a> Parser<'a> {
         } else if name.eq_ignore_ascii_case("JSON_VALUE") {
             self.parse_json_value_args()?
         } else if matches!(
-            name.to_uppercase().as_str(),
+            upper.as_str(),
             "ARRAY_AGG" | "ARRAY_CONCAT_AGG" | "JSON_AGG" | "STRING_AGG"
         ) {
             self.parse_ordered_function_args()?

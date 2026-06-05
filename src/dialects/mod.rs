@@ -4546,7 +4546,7 @@ pub(crate) fn map_function_name(name: &str, target: Dialect) -> String {
 }
 
 fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) -> String {
-    let upper = name.to_uppercase();
+    let upper = name.to_ascii_uppercase();
     // The `rules::rename_function` table is now applied by the generator (so it
     // runs on identity transpiles too); only the renames still living in this
     // match below are applied here. See docs/PORTING_PLAN.md (Phase 1.5).
@@ -4866,10 +4866,8 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
             if mapped.is_none()
                 && let Some((base, rest)) = upper.split_once('(')
             {
-                if matches!(
-                    base,
-                    "INT" | "INTEGER" | "BIGINT" | "SMALLINT" | "TINYINT" | "MEDIUMINT"
-                ) {
+                // MEDIUMINT(n) is kept by SQLGlot (not folded to INTEGER(n)).
+                if matches!(base, "INT" | "INTEGER" | "BIGINT" | "SMALLINT" | "TINYINT") {
                     return DataType::Unknown(format!("INTEGER({rest}"));
                 }
                 // VARCHAR(MAX) / CHAR(MAX) → TEXT(MAX)

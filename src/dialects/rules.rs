@@ -92,7 +92,8 @@ pub(crate) fn map_type(target: Dialect, upper_name: &str) -> Option<&'static str
 fn map_type_sqlite(upper_name: &str) -> Option<&'static str> {
     let mapped = match upper_name {
         "NUMBER" | "FLOAT4" => "REAL",
-        "INT4" | "INT1" | "MEDIUMINT" | "INT8" | "INT16" | "INT32" | "INT64" => "INTEGER",
+        // MEDIUMINT is kept by SQLGlot (not folded to INTEGER).
+        "INT4" | "INT1" | "INT8" | "INT16" | "INT32" | "INT64" => "INTEGER",
         "HUGEINT" => "INT128",
         "UHUGEINT" => "UINT128",
         "INT128" => "INT128",
