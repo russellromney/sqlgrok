@@ -2999,10 +2999,11 @@ impl Generator {
             }
         }
         if let Some(frame) = &spec.frame {
-            if spec.window_ref.is_some()
-                || !spec.partition_by.is_empty()
-                || !spec.order_by.is_empty()
-            {
+            // A window_ref already emits its own trailing space above (it does so
+            // whenever anything follows it, including a frame), so only add a
+            // separator here for the partition/order cases — otherwise a
+            // `ref + frame` window renders a double space (`OVER (y  ROWS ...)`).
+            if !spec.partition_by.is_empty() || !spec.order_by.is_empty() {
                 self.write(" ");
             }
             self.gen_window_frame(frame);
