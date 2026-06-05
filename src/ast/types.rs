@@ -1679,8 +1679,6 @@ pub struct OnConflict {
     pub action_where: Option<Expr>,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub duplicate_key: bool,
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub compact_target: bool,
     pub action: ConflictAction,
 }
 

@@ -1012,11 +1012,9 @@ impl Generator {
             } else {
                 self.write_keyword("ON CONFLICT");
                 if !on_conflict.columns.is_empty() {
-                    if on_conflict.compact_target {
-                        self.write("(");
-                    } else {
-                        self.write(" (");
-                    }
+                    // SQLGlot always renders the conflict target compactly:
+                    // `ON CONFLICT(keys)` with no separating space.
+                    self.write("(");
                     self.write(&on_conflict.columns.join(", "));
                     self.write(")");
                 }

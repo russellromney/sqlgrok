@@ -468,9 +468,6 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 }
             }
             if let Some(on_conflict) = &mut ins.on_conflict {
-                if is_postgres_family(source) && matches!(target, Dialect::Sqlite) {
-                    on_conflict.compact_target = true;
-                }
                 if let Some(where_expr) = &mut on_conflict.target_where {
                     transform_expr_in_place(where_expr, source, target);
                 }

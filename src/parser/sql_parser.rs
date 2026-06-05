@@ -2889,7 +2889,6 @@ impl<'a> Parser<'a> {
                     target_where,
                     action_where,
                     duplicate_key: false,
-                    compact_target: false,
                     action,
                 })
             } else if self.match_token(TokenType::Duplicate) {
@@ -2911,7 +2910,6 @@ impl<'a> Parser<'a> {
                     target_where: None,
                     action_where: None,
                     duplicate_key: true,
-                    compact_target: false,
                     action: ConflictAction::DoUpdate(assignments),
                 })
             } else {

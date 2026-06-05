@@ -247,7 +247,8 @@ fn test_roundtrip_insert_select() {
 
 #[test]
 fn test_roundtrip_on_conflict_nothing() {
-    let sql = "INSERT INTO t (id) VALUES (1) ON CONFLICT (id) DO NOTHING";
+    // SQLGlot renders the conflict target compactly: `ON CONFLICT(id)`.
+    let sql = "INSERT INTO t (id) VALUES (1) ON CONFLICT(id) DO NOTHING";
     let ast = parse(sql, Dialect::Postgres).unwrap();
     let output = generate(&ast, Dialect::Postgres);
     assert_eq!(output, sql);
