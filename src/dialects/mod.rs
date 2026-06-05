@@ -3123,9 +3123,13 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
 
-            let new_name = map_function_name_for_source(&name, source, target);
+            // None = no rename: reuse the original `name` (no allocation).
+            let name = match map_function_name_for_source(&name, source, target) {
+                Some(renamed) => renamed.to_string(),
+                None => name,
+            };
             Expr::Function {
-                name: new_name,
+                name,
                 args: new_args,
                 distinct,
                 filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
@@ -4540,21 +4544,33 @@ fn detect_format_style(format_str: &str) -> time::TimeFormatStyle {
 // Function name mapping
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Map function names between dialects.
+/// Map a function name between dialects, returning the owned target spelling
+/// (allocates; for the plugin path). Prefer `map_function_name_for_source`
+/// (returns `Option<&'static str>`, None = unchanged, zero-alloc) on hot paths.
 pub(crate) fn map_function_name(name: &str, target: Dialect) -> String {
     map_function_name_for_source(name, Dialect::Ansi, target)
+        .map(str::to_string)
+        .unwrap_or_else(|| name.to_string())
 }
 
-fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) -> String {
+/// Source/target function-name renames still living in the transform layer.
+/// Returns `Some(&'static str)` for a rename, `None` to keep the name
+/// unchanged (zero allocation — the caller reuses the original name).
+///
+/// `source` is used only by the GETDATE arm; everything else is target-only.
+/// The `rules::rename_function` table (applied in the generator) owns the
+/// source-independent sqlite renames. See docs/PORTING_PLAN.md (Phase 1.5).
+fn map_function_name_for_source(
+    name: &str,
+    source: Dialect,
+    target: Dialect,
+) -> Option<&'static str> {
     let upper = name.to_ascii_uppercase();
-    // The `rules::rename_function` table is now applied by the generator (so it
-    // runs on identity transpiles too); only the renames still living in this
-    // match below are applied here. See docs/PORTING_PLAN.md (Phase 1.5).
     match upper.as_str() {
         // ── NOW / CURRENT_TIMESTAMP / GETDATE ────────────────────────────
         "NOW" => {
             if is_tsql_family(target) {
-                "GETDATE".to_string()
+                Some("GETDATE")
             } else if matches!(
                 target,
                 Dialect::Ansi
@@ -4570,124 +4586,80 @@ fn map_function_name_for_source(name: &str, source: Dialect, target: Dialect) ->
             ) || is_presto_family(target)
                 || is_hive_family(target)
             {
-                "CURRENT_TIMESTAMP".to_string()
+                Some("CURRENT_TIMESTAMP")
             } else {
                 // Postgres, MySQL, SQLite, DuckDB, Redshift, etc. – keep NOW
-                name.to_string()
+                None
             }
         }
         "GETDATE" => {
             if matches!(target, Dialect::Sqlite) {
-                if is_tsql_family(source) {
-                    // SQLGlot converts T-SQL GETDATE() to CURRENT_TIMESTAMP
-                    // when targeting SQLite, but preserves it for every
-                    // other source dialect.
-                    "CURRENT_TIMESTAMP".to_string()
-                } else {
-                    name.to_string()
-                }
+                // SQLGlot converts T-SQL GETDATE() to CURRENT_TIMESTAMP when
+                // targeting SQLite, but preserves it for every other source.
+                is_tsql_family(source).then_some("CURRENT_TIMESTAMP")
             } else if is_tsql_family(target) {
-                name.to_string()
+                None
             } else if is_postgres_family(target)
                 || matches!(target, Dialect::Mysql | Dialect::DuckDb)
             {
-                "NOW".to_string()
+                Some("NOW")
             } else {
-                "CURRENT_TIMESTAMP".to_string()
+                Some("CURRENT_TIMESTAMP")
             }
         }
 
         // ── LEN / LENGTH ─────────────────────────────────────────────────
-        "LEN" => {
-            if is_tsql_family(target) || matches!(target, Dialect::BigQuery | Dialect::Snowflake) {
-                name.to_string()
-            } else {
-                "LENGTH".to_string()
-            }
-        }
-        "LENGTH" if is_tsql_family(target) => "LEN".to_string(),
+        "LEN" => (!(is_tsql_family(target)
+            || matches!(target, Dialect::BigQuery | Dialect::Snowflake)))
+        .then_some("LENGTH"),
+        "LENGTH" if is_tsql_family(target) => Some("LEN"),
         // ANY_VALUE -> MAX (sqlite) moved to rules::rename_function.
 
         // ── SUBSTR / SUBSTRING ───────────────────────────────────────────
-        "SUBSTR" => {
-            if is_mysql_family(target)
-                || matches!(target, Dialect::Sqlite | Dialect::Oracle)
-                || is_hive_family(target)
-            {
-                "SUBSTR".to_string()
-            } else {
-                "SUBSTRING".to_string()
-            }
-        }
-        "SUBSTRING" => {
-            if is_mysql_family(target)
-                || matches!(target, Dialect::Sqlite | Dialect::Oracle)
-                || is_hive_family(target)
-            {
-                "SUBSTR".to_string()
-            } else {
-                name.to_string()
-            }
-        }
+        "SUBSTR" => (!(is_mysql_family(target)
+            || matches!(target, Dialect::Sqlite | Dialect::Oracle)
+            || is_hive_family(target)))
+        .then_some("SUBSTRING"),
+        "SUBSTRING" => (is_mysql_family(target)
+            || matches!(target, Dialect::Sqlite | Dialect::Oracle)
+            || is_hive_family(target))
+        .then_some("SUBSTR"),
 
         // ── IFNULL / COALESCE / ISNULL ───────────────────────────────────
         // IFNULL and NVL are canonicalized to COALESCE read-side (parser, via
         // rules::canonicalize_function) — universal across all dialects.
         "ISNULL" => {
             if is_tsql_family(target) {
-                name.to_string()
+                None
             } else if is_mysql_family(target) || matches!(target, Dialect::Sqlite) {
-                "IFNULL".to_string()
+                Some("IFNULL")
             } else {
-                "COALESCE".to_string()
+                Some("COALESCE")
             }
         }
 
         // ── NVL → COALESCE (Oracle preserves NVL) ───────────────────────
         // Stays in the transform: oracle renders the canonical back to NVL,
         // which a string-level read canonicalization can't model.
-        "NVL" => {
-            if matches!(target, Dialect::Oracle) {
-                name.to_string()
-            } else {
-                "COALESCE".to_string()
-            }
-        }
+        "NVL" => (!matches!(target, Dialect::Oracle)).then_some("COALESCE"),
 
         // ── RANDOM / RAND ────────────────────────────────────────────────
-        "RANDOM" => {
-            if matches!(
-                target,
-                Dialect::Postgres | Dialect::Sqlite | Dialect::DuckDb
-            ) {
-                name.to_string()
-            } else {
-                "RAND".to_string()
-            }
-        }
-        "RAND" => {
-            if matches!(
-                target,
-                Dialect::Postgres | Dialect::Sqlite | Dialect::DuckDb
-            ) {
-                "RANDOM".to_string()
-            } else {
-                name.to_string()
-            }
-        }
+        "RANDOM" => (!matches!(
+            target,
+            Dialect::Postgres | Dialect::Sqlite | Dialect::DuckDb
+        ))
+        .then_some("RAND"),
+        "RAND" => matches!(
+            target,
+            Dialect::Postgres | Dialect::Sqlite | Dialect::DuckDb
+        )
+        .then_some("RANDOM"),
 
-        // Source-independent sqlite renames live in `rules::rename_function`
-        // (consulted at the top of this fn). CHR->CHAR moved there; ASCII and
-        // SPLIT_PART were source-gated self-maps (no-ops) and dropped. The
-        // BIT_* aggregates are the first true Phase 2 read-normalization:
-        // canonicalized read-side (parser, rules::canonicalize_function) and
-        // rendered per target by rules::rename_function (write inverse). The
-        // old source==X && target==Y arms here are gone.
-
-        // GEN_RANDOM_UUID -> UUID (sqlite) moved to rules::rename_function.
-
-        // Everything else – preserve original name
-        _ => name.to_string(),
+        // Source-independent sqlite renames live in `rules::rename_function`,
+        // applied by the generator. The BIT_* aggregates are read-side
+        // canonicalized (parser) + rendered per target (rules). Everything
+        // else: keep the original name.
+        _ => None,
     }
 }
 
