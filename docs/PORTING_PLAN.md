@@ -156,6 +156,36 @@ Each step ratcheted on the forced suite across all lanes (now including
 - Verification: forced suite is the ratchet, run for multiple read/write
   pairs. Rebuild Python bindings (uv venv in `python/.venv`) before measuring.
 
+## Phase 4 — transcribing SQLGlot's dicts (the efficiency unlock)
+
+`parity/scripts/transcribe_sqlglot_types.py` reads each builtin dialect's
+`Generator.TYPE_MAPPING` and emits per-target Rust `map_type_<dialect>`
+tables. This is the "port the dicts as data" tool — re-runnable, no
+hand-discovery.
+
+**Critical constraint discovered (2026-06): `TYPE_MAPPING` is keyed by the
+canonical `DataType.Type` enum, which the parser only assigns when the SOURCE
+dialect recognizes the spelling.** So it is NOT a flat source-independent
+string table. Examples:
+- `DATETIME2 -> TIMESTAMP` (sqlite target) fires only for a TSQL source;
+  sqlite/postgres source leaves `DATETIME2` unchanged (it's an unrecognized
+  UDT there). A flat `map_type(Sqlite, "DATETIME2") -> "TIMESTAMP"` would
+  WRONGLY convert it for every source.
+- Safe to flat-transcribe: types recognized as the same canonical by every
+  source (TINYINT, DOUBLE, FLOAT, NCHAR, NVARCHAR, ...). e.g.
+  `TINYINT -> SMALLINT` for a postgres target is source-independent.
+
+So consuming the transcription requires splitting each dialect's TYPE_MAPPING
+into (a) the source-independent subset → flat `map_type` tables (safe now),
+and (b) the source-exclusive subset → typed `DataType` variants assigned by a
+per-source parser (the bigger lift, mirrors SQLGlot's parser FUNCTIONS/
+KEYWORDS). The script output should be filtered to (a) before integration.
+
+Integration also needs the generator's `gen_data_type` to consult
+`map_type(target, canonical_name)` for TYPED variants (DataType::TinyInt ->
+"TINYINT" -> table), not only the `Unknown(spelling)` path — that's what wires
+the transcribed non-sqlite tables in and lifts `write=postgres`/`write=mysql`.
+
 ## Open coordination item
 
 The perf session's `InternalGenerator` reading the shared `dialects::rules`
