@@ -2596,11 +2596,12 @@ impl Generator {
                 list,
                 negated,
             } => {
-                self.gen_expr(expr);
+                // SQLGlot models negation as a `Not` wrapper, never a flag on
+                // `In`, so it renders the NOT as a prefix: `NOT a IN (...)`.
                 if *negated {
-                    self.write(" ");
-                    self.write_keyword("NOT");
+                    self.write_keyword("NOT ");
                 }
+                self.gen_expr(expr);
                 self.write(" ");
                 self.write_keyword("IN (");
                 self.gen_expr_list(list);
@@ -2611,38 +2612,38 @@ impl Generator {
                 subquery,
                 negated,
             } => {
-                self.gen_expr(expr);
                 if *negated {
-                    self.write(" ");
-                    self.write_keyword("NOT");
+                    self.write_keyword("NOT ");
                 }
+                self.gen_expr(expr);
                 self.write(" ");
                 self.write_keyword("IN (");
                 self.gen_statement(subquery);
                 self.write(")");
             }
             Expr::IsNull { expr, negated } => {
-                self.gen_expr(expr);
+                // Like `In`, SQLGlot prefixes the negation: `NOT a IS NULL`.
                 if *negated {
-                    self.write(" ");
-                    self.write_keyword("IS NOT NULL");
-                } else {
-                    self.write(" ");
-                    self.write_keyword("IS NULL");
+                    self.write_keyword("NOT ");
                 }
+                self.gen_expr(expr);
+                self.write(" ");
+                self.write_keyword("IS NULL");
             }
             Expr::IsBool {
                 expr,
                 value,
                 negated,
             } => {
+                if *negated {
+                    self.write_keyword("NOT ");
+                }
                 self.gen_expr(expr);
                 self.write(" ");
-                match (negated, value) {
-                    (false, true) => self.write_keyword("IS TRUE"),
-                    (false, false) => self.write_keyword("IS FALSE"),
-                    (true, true) => self.write_keyword("IS NOT TRUE"),
-                    (true, false) => self.write_keyword("IS NOT FALSE"),
+                if *value {
+                    self.write_keyword("IS TRUE");
+                } else {
+                    self.write_keyword("IS FALSE");
                 }
             }
             Expr::Like {
