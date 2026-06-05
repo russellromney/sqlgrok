@@ -53,6 +53,25 @@ sqlgrok.transpile(sql, read=None, write=None) -> list[str]
 It also exposes batch APIs for suite tooling and binding benchmarks. The Rust
 crate and CLI remain the primary product surface while the binding API settles.
 
+## Oracle Bumps
+
+CI pins Python SQLGlot with `.github/workflows/ci.yml`'s `SQLGLOT_REF`. Treat
+changes to that ref as explicit oracle bumps, not incidental maintenance.
+
+Oracle bump checklist:
+
+1. Update `SQLGLOT_REF` to the exact Python SQLGlot commit being used locally.
+2. Regenerate SQLGlot inventory artifacts if the codegen spike is in play:
+   `tools/sqlglot_codegen/run.sh /path/to/sqlglot generated/sqlglot_inventory`.
+3. Run curated parity against the same checkout:
+   `SQLGLOT_PYTHON_PATH=/path/to/sqlglot cargo test sqlglot_python_curated_parity --features cli -- --nocapture`.
+4. Refresh affected suite reports or budgets when oracle behavior changes.
+5. Keep the oracle-ref change reviewable. If parity rows change, explain the
+   SQLGlot behavior change in the commit or PR body.
+
+This prevents the repo from drifting into a confusing state where local parity
+uses one SQLGlot checkout while CI uses another.
+
 ## SQLGlot Suite Bridge
 
 The bridge runner executes selected SQLGlot pytest modules from a local checkout

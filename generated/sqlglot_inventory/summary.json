@@ -1,0 +1,26 @@
+{
+  "mysql": {
+    "generator_transforms": 193,
+    "generator_transforms_rename": 15,
+    "generator_type_mapping": 17,
+    "parser_functions": 650,
+    "time_mapping": 11,
+    "tokenizer_keywords": 383
+  },
+  "postgres": {
+    "generator_transforms": 206,
+    "generator_transforms_rename": 17,
+    "generator_type_mapping": 20,
+    "parser_functions": 653,
+    "time_mapping": 34,
+    "tokenizer_keywords": 360
+  },
+  "sqlite": {
+    "generator_transforms": 159,
+    "generator_transforms_rename": 5,
+    "generator_type_mapping": 24,
+    "parser_functions": 641,
+    "time_mapping": 0,
+    "tokenizer_keywords": 325
+  }
+}
