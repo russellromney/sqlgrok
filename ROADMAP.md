@@ -23,6 +23,40 @@ This roadmap is the public execution plan. Completed work belongs in
 7. Prepare a clean `0.1.0` crate release with small docs, MIT licensing, clear
    attribution, and reproducible parity/performance commands.
 
+## Architecture Port (parse -> generate)
+
+Status: in progress. Full plan: [docs/PORTING_PLAN.md](docs/PORTING_PLAN.md).
+
+The core architectural effort is converging sqlgrok onto SQLGlot's actual model:
+
+```
+transpile(sql, read, write) = generate(parse(sql, read), write)
+```
+
+There is no `transform(source, target)` middle layer in the target design. All
+dialect knowledge lives in two homes:
+
+- Parser (read side): resolves source-dialect ambiguity into a canonical,
+  dialect-neutral AST. Anything keyed on `source` belongs here.
+- Generator (write side): TYPE_MAPPING, function renames, node->SQL lowerings,
+  keyword filters, quoting. Everything keyed on `target` only.
+
+Why: the legacy `transform_*` layer encodes the dialect matrix as O(N^2)
+`if source == X && target == Y` rules; SQLGlot is O(N) (one parser + one
+generator per dialect). This is why `* -> sqlite` is ~91% suite match while
+`* -> postgres` is much lower; the generators are sqlite-shaped.
+
+Phases (ratcheted on the forced suite, no real regressions, commit per slice):
+
+1. Relocate target-only rules into the generator as `src/dialects/rules.rs`
+   data tables (`Option<&'static str>`, zero-alloc, shared with the perf
+   fast path). Started: function renames and type mappings.
+2. Move the source-branching rules from `transform_expr`/`transform_statement`
+   into the parser as canonical-AST normalizations (each a silent-wrong risk).
+   Landed example: MySQL `||` -> logical OR at tokenize time.
+3. Delete the transform layer and the `(source, target)` signature.
+4. Port SQLGlot's per-target dicts to backfill thin non-sqlite generators.
+
 ## Operating Principles
 
 - Python SQLGlot is the behavioral oracle until sqlgrok reaches mature parity.
@@ -146,13 +180,25 @@ Priority lanes:
 - Postgres -> SQLite.
 - SQLite -> SQLite.
 
-Current work:
+Current work (forced lanes, write=sqlite; latest counts pg 11871 / my 11676 /
+sq 11856):
 
-- Reduce forced-pair `rust-error` buckets first, because parser coverage reveals
-  the real mismatch backlog.
-- Burn down high-volume mismatch clusters by feature family.
-- Keep helper-route budgets clean for tracked lanes.
+- Drive the Architecture Port: relocate target rules into the generator and
+  source rules into the parser so the same fix lifts non-sqlite write lanes.
+- Burn down high-volume mismatch clusters by feature family, ratcheting every
+  change on the forced suite with zero real regressions per lane.
+- Reduce forced-pair `rust-error` buckets, because parser coverage reveals the
+  real mismatch backlog (many INT->INTEGER / VARCHAR->TEXT buckets are
+  whole-statement parse-failure fallbacks on exotic DDL, not type-map gaps).
 - Add row-level budget diffing so one fixed row cannot hide a new broken row.
+
+Clean mechanical wins are largely exhausted. The remaining high-value buckets
+are structural and warrant careful, interactive work: comment preservation
+(~85/lane), QUALIFY -> subquery elimination (~87), ASOF JOIN (~31), source-aware
+CROSS/OUTER APPLY (~30), bigquery array literals (~36), and pipe syntax `|>`
+(~40). Several need a new field on a shared `crate::ast` struct that the perf
+`internal_*` paths also construct, so they require an explicit decision before
+proceeding.
 
 ### 2. Parse/Generate Identity
 
@@ -359,8 +405,14 @@ Acceptance:
 
 ### 6. In-Place Transform Architecture
 
-Goal: make dialect transforms mutate owned AST nodes in place wherever possible,
-only allocating when a SQLGlot rewrite genuinely creates a different shape.
+Note: interim. The Architecture Port drains the source->target transform layer
+toward deletion (Phase 3), so in-place transform work applies only to rules that
+have not yet been relocated into the parser or generator. Do not invest in
+transform internals that an active port phase is about to remove.
+
+Goal: make remaining dialect transforms mutate owned AST nodes in place wherever
+possible, only allocating when a SQLGlot rewrite genuinely creates a different
+shape.
 
 Acceptance:
 

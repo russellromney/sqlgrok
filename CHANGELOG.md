@@ -3,6 +3,33 @@
 Quick summaries of completed sqlgrok work. The roadmap says what should happen next;
 this file records what landed.
 
+## 2026-06-05
+
+### Transpile Parity (forced lanes, write=sqlite)
+
+- Rendered `ON CONFLICT(keys)` compactly for every source, matching SQLGlot, and
+  removed the source-gated `compact_target` transform branch (mysql +6,
+  sqlite +6).
+- Fixed a double space in window rendering for a window reference followed by a
+  frame clause with no `PARTITION BY`/`ORDER BY` (`OVER (y ROWS ...)`)
+  (pg +2 / my +2 / sq +2).
+- Tokenized `||` as logical OR for the MySQL family (mysql/doris/starrocks/
+  singlestore) via a `pipes_as_or` tokenizer option, matching SQLGlot; other
+  dialects keep string concatenation (mysql +16).
+- Uppercased the alias keyword in the sqlite table-function rewrite so
+  `UNNEST(y) as x` renders `AS x` (pg +2 / my +2 / sq +1).
+- Net forced-suite match counts: postgres 11867 -> 11871, mysql 11650 -> 11676,
+  sqlite 11847 -> 11856.
+
+### Test Hygiene
+
+- Updated stale unit tests left red by earlier merged behavior changes: negated
+  `IN`/`IS` now render a prefixed `NOT` (matching SQLGlot's Not-wrapper), a
+  standalone `PIVOT` statement is unsupported and emits an empty string, and
+  `IFNULL` is canonicalized read-side to `COALESCE` for every write target
+  (including T-SQL/Fabric, which no longer emit `ISNULL`). The full
+  `cargo test --features cli` suite is green.
+
 ## 2026-06-02
 
 ### Public ABI And Binding Benchmarks
