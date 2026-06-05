@@ -4979,13 +4979,27 @@ impl<'a> Parser<'a> {
                     "GEOMETRY" => Ok(DataType::Geometry),
                     "SUPER" => Ok(DataType::Super),
                     _ => {
+                        // Read-side canonicalization: postgres recognizes its
+                        // pseudo-types and range types as keywords, so it
+                        // uppercases them; other sources treat them as
+                        // user-defined names and preserve case. Recognizing
+                        // this here (not in the transform) makes the type
+                        // target-neutral after parse.
+                        let name = if matches!(self.dialect, Dialect::Postgres)
+                            && crate::dialects::is_postgres_pseudo_type(
+                                &raw_name.to_ascii_uppercase(),
+                            ) {
+                            raw_name.to_ascii_uppercase()
+                        } else {
+                            raw_name
+                        };
                         // Preserve the original case for unrecognized type
                         // names (UDTs, dialect-specific types) so SQLGlot
                         // round-trips them verbatim.
                         if let Some(params) = self.consume_balanced_parentheses_sql() {
-                            Ok(DataType::Unknown(format!("{raw_name}{params}")))
+                            Ok(DataType::Unknown(format!("{name}{params}")))
                         } else {
-                            Ok(DataType::Unknown(raw_name))
+                            Ok(DataType::Unknown(name))
                         }
                     }
                 }

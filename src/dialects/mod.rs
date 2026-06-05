@@ -4820,7 +4820,7 @@ fn strip_nullable_wrapper(name: &str, upper: &str) -> Option<String> {
 
 /// Postgres pseudo-types and range/multirange types that SQLGlot recognizes
 /// as type keywords (and therefore uppercases) when the source is postgres.
-fn is_postgres_pseudo_type(upper: &str) -> bool {
+pub(crate) fn is_postgres_pseudo_type(upper: &str) -> bool {
     matches!(
         upper,
         "CSTRING"
@@ -4883,13 +4883,9 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
                 return DataType::Unknown(m);
             }
         }
-        // Postgres pseudo-types and range types are recognized type keywords
-        // in SQLGlot, so they're uppercased on output — but only when the
-        // SOURCE is postgres. Other sources treat them as user-defined type
-        // names and preserve the original case.
-        if is_postgres_family(source) && is_postgres_pseudo_type(&name.to_ascii_uppercase()) {
-            return DataType::Unknown(name.to_ascii_uppercase());
-        }
+        // Postgres pseudo-type/range-type uppercasing is now a read-side
+        // normalization in the parser (it canonicalizes the spelling at parse
+        // for a postgres source), so nothing source-dependent is needed here.
     }
     // ClickHouse-style `Nullable(T)` wrappers: strip for sqlite output
     // and recurse on the inner type (matching Python SQLGlot, which
