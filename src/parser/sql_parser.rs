@@ -32,6 +32,15 @@ fn dialect_digit_letter_is_identifier(dialect: Dialect) -> bool {
     )
 }
 
+fn dialect_pipes_as_or(dialect: Dialect) -> bool {
+    // MySQL and its descendants treat `||` as logical OR by default
+    // (without the PIPES_AS_CONCAT sql_mode); concatenation is CONCAT(...).
+    matches!(
+        dialect,
+        Dialect::Mysql | Dialect::SingleStore | Dialect::Doris | Dialect::StarRocks
+    )
+}
+
 fn dialect_interprets_string_escapes(dialect: Dialect) -> bool {
     // SQLite and (standard-conforming) Postgres treat backslashes
     // inside `'...'` as literal characters. Postgres' E'...' strings
@@ -394,7 +403,8 @@ impl<'a> Parser<'a> {
         )
         .with_bit_literals_as_numbers(dialect_normalizes_bit_literals(dialect))
         .with_digit_letter_is_identifier(dialect_digit_letter_is_identifier(dialect))
-        .with_interpret_string_escapes(dialect_interprets_string_escapes(dialect));
+        .with_interpret_string_escapes(dialect_interprets_string_escapes(dialect))
+        .with_pipes_as_or(dialect_pipes_as_or(dialect));
         let tokens = tokenizer.tokenize()?;
         Ok(Self {
             tokens,

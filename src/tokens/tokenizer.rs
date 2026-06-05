@@ -30,6 +30,10 @@ pub struct Tokenizer<'a> {
     /// etc.). MySQL/Postgres do this; SQLite treats backslashes as
     /// literal characters.
     interpret_string_escapes: bool,
+    /// Whether `||` is the logical OR operator rather than string
+    /// concatenation. MySQL does this by default (without
+    /// `PIPES_AS_CONCAT`); concatenation there is `CONCAT(...)`.
+    pipes_as_or: bool,
 }
 
 impl<'a> Tokenizer<'a> {
@@ -46,6 +50,7 @@ impl<'a> Tokenizer<'a> {
             bit_literals_as_numbers: false,
             digit_letter_is_identifier: false,
             interpret_string_escapes: true,
+            pipes_as_or: false,
         }
     }
 
@@ -62,6 +67,7 @@ impl<'a> Tokenizer<'a> {
             bit_literals_as_numbers: false,
             digit_letter_is_identifier: false,
             interpret_string_escapes: true,
+            pipes_as_or: false,
         }
     }
 
@@ -78,6 +84,7 @@ impl<'a> Tokenizer<'a> {
             bit_literals_as_numbers: false,
             digit_letter_is_identifier: false,
             interpret_string_escapes: true,
+            pipes_as_or: false,
         }
     }
 
@@ -100,6 +107,14 @@ impl<'a> Tokenizer<'a> {
     #[must_use]
     pub fn with_interpret_string_escapes(mut self, enabled: bool) -> Self {
         self.interpret_string_escapes = enabled;
+        self
+    }
+
+    /// Enable or disable treating `||` as logical OR (MySQL default) rather
+    /// than string concatenation.
+    #[must_use]
+    pub fn with_pipes_as_or(mut self, enabled: bool) -> Self {
+        self.pipes_as_or = enabled;
         self
     }
 
@@ -496,7 +511,12 @@ impl<'a> Tokenizer<'a> {
             '|' => {
                 if self.peek() == Some('|') {
                     self.advance();
-                    Ok(self.make_token(TokenType::Concat, "||", start, start_line, start_col))
+                    if self.pipes_as_or {
+                        // MySQL: `||` is logical OR, not concatenation.
+                        Ok(self.make_token(TokenType::Or, "OR", start, start_line, start_col))
+                    } else {
+                        Ok(self.make_token(TokenType::Concat, "||", start, start_line, start_col))
+                    }
                 } else {
                     Ok(self.make_token(TokenType::BitwiseOr, "|", start, start_line, start_col))
                 }
