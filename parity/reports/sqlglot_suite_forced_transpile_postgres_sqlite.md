@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11869 |
-| `mismatch` | 1105 |
+| `match` | 11871 |
+| `mismatch` | 1103 |
 | `oracle-error` | 1456 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -23,12 +23,12 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8537 |
+| `match` | `validate_all` | 8539 |
 | `match` | `validate_identity` | 3222 |
 | `oracle-error` | `validate_identity` | 949 |
 | `mismatch` | `validate_identity` | 545 |
 | `oracle-error` | `validate_all` | 501 |
-| `mismatch` | `validate_all` | 496 |
+| `mismatch` | `validate_all` | 494 |
 | `rust-error` | `validate_identity` | 343 |
 | `rust-error` | `validate_all` | 243 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
@@ -43,8 +43,8 @@ Filtered by read/write: `0`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1086 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 685 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1087 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 686 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 487 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 338 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 332 |
@@ -60,7 +60,7 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 110 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 107 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 104 |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 97 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 96 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 90 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |

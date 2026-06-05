@@ -4454,7 +4454,9 @@ fn rewrite_postgres_table_function_sqlite(sql: &str) -> String {
                 .get(i + 2)
                 .is_none_or(|b| !b.is_ascii_alphanumeric() && *b != b'_')
         {
-            out.push_str(&sql[i..i + 2]);
+            // Normalize the alias keyword to uppercase `AS`, matching SQLGlot
+            // (the source may spell it `as`).
+            out.push_str("AS");
             i += 2;
             while i < bytes.len() && bytes[i].is_ascii_whitespace() {
                 out.push(bytes[i] as char);
