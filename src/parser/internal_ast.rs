@@ -236,13 +236,26 @@ impl<'sql> InternalExpr<'sql> {
                 args,
                 distinct,
                 over,
-            } => Expr::Function {
-                name: name.into_owned(),
-                args: args.into_iter().map(Self::into_public).collect(),
-                distinct,
-                filter: None,
-                over: over.map(InternalWindowSpec::into_public),
-            },
+            } => {
+                let name = name.into_owned();
+                let args: Vec<Expr> = args.into_iter().map(Self::into_public).collect();
+                if name.eq_ignore_ascii_case("COALESCE") && !distinct && over.is_none() {
+                    Expr::Coalesce {
+                        items: args,
+                        is_nvl: false,
+                        is_null: false,
+                        source_name: None,
+                    }
+                } else {
+                    Expr::Function {
+                        name,
+                        args,
+                        distinct,
+                        filter: None,
+                        over: over.map(InternalWindowSpec::into_public),
+                    }
+                }
+            }
             Self::BinaryOp { left, op, right } => Expr::BinaryOp {
                 left: Box::new(left.into_public()),
                 op,
