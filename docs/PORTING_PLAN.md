@@ -160,6 +160,12 @@ Each step ratcheted on the forced suite across all lanes (now including
     target spellings (`CURRENT_DATE`, `MAKETIME`, `MAKE_TIME`,
     `TIME_FROM_PARTS`, `FROM_UNIXTIME`, `TO_TIMESTAMP`, `UNIX_TO_TIME`,
     `TIMESTAMP_SECONDS`). The replaced sqlite-only transform arms are gone.
+  - **Phase 2 update (2026-06-10):** Postgres
+    `JSON_EXTRACT_PATH` / `JSON_EXTRACT_PATH_TEXT` now parse into a typed JSON
+    path node that preserves segment lists for identity output and renders per
+    target. The postgres-family `JSON_EXTRACT_PATH` transform arm is gone; the
+    remaining `JSON_EXTRACT_PATH_TEXT` SQLite fallback is target-only for
+    non-Postgres generic-function parses.
   - **Finding (2026-06): the multi-target renames in
     `map_function_name_for_source` (NOW, LEN/LENGTH, SUBSTR/SUBSTRING,
     IFNULL/ISNULL, NVL, RANDOM/RAND) DIVERGE from SQLGlot for identity** and

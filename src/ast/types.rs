@@ -954,6 +954,12 @@ pub enum TypedFunction {
     JSONExtract { expr: Box<Expr>, path: Box<Expr> },
     /// `JSON_EXTRACT_SCALAR(expr, path)` / `->>`
     JSONExtractScalar { expr: Box<Expr>, path: Box<Expr> },
+    /// Postgres `JSON_EXTRACT_PATH[_TEXT](expr, key [, ...])`
+    JSONExtractPath {
+        expr: Box<Expr>,
+        path: Vec<Expr>,
+        as_text: bool,
+    },
     /// `PARSE_JSON(expr)` / `JSON_PARSE`
     ParseJSON { expr: Box<Expr> },
     /// `JSON_FORMAT(expr)` / `TO_JSON`
@@ -1200,6 +1206,12 @@ impl TypedFunction {
             | TypedFunction::JSONExtractScalar { expr, path } => {
                 expr.walk(visitor);
                 path.walk(visitor);
+            }
+            TypedFunction::JSONExtractPath { expr, path, .. } => {
+                expr.walk(visitor);
+                for part in path {
+                    part.walk(visitor);
+                }
             }
             TypedFunction::ParseJSON { expr } | TypedFunction::JSONFormat { expr } => {
                 expr.walk(visitor)
@@ -1510,6 +1522,15 @@ impl TypedFunction {
             TypedFunction::JSONExtractScalar { expr, path } => TypedFunction::JSONExtractScalar {
                 expr: Box::new(expr.transform(func)),
                 path: Box::new(path.transform(func)),
+            },
+            TypedFunction::JSONExtractPath {
+                expr,
+                path,
+                as_text,
+            } => TypedFunction::JSONExtractPath {
+                expr: Box::new(expr.transform(func)),
+                path: path.into_iter().map(|part| part.transform(func)).collect(),
+                as_text,
             },
             TypedFunction::ParseJSON { expr } => TypedFunction::ParseJSON {
                 expr: Box::new(expr.transform(func)),

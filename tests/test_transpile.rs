@@ -524,6 +524,36 @@ fn test_postgres_json_access_to_sqlite_paths() {
         Dialect::Postgres,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "JSON_EXTRACT_PATH(x, 'x', 'y', 'z')",
+        "JSON_EXTRACT_PATH(x, 'x', 'y', 'z')",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "JSON_EXTRACT_PATH_TEXT(x, 'x', 'y')",
+        "JSON_EXTRACT_PATH_TEXT(x, 'x', 'y')",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "JSON_EXTRACT_PATH_TEXT('{\"farm\": [\"a\", \"b\", \"c\"]}', 'farm', '0')",
+        "'{\"farm\": [\"a\", \"b\", \"c\"]}' ->> '$.farm[0]'",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "JSON_EXTRACT_PATH_TEXT('{\"farm\": [\"a\", \"b\", \"c\"]}', 'farm', '0')",
+        "CAST('{\"farm\": [\"a\", \"b\", \"c\"]}' AS JSON) ->> '$.farm[0]'",
+        Dialect::Postgres,
+        Dialect::Mysql,
+    );
+    validate_with_dialect(
+        "JSON_EXTRACT_PATH_TEXT('{\"farm\": [\"a\", \"b\", \"c\"]}', 'farm', '0')",
+        "'{\"farm\": [\"a\", \"b\", \"c\"]}' ->> '$.farm'",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
 
     let path_cases = [
         ("JSON_EXTRACT_PATH(x, 'x', 'y', 'z')", "x -> '$.x.y.z'"),

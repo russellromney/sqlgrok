@@ -3033,14 +3033,9 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     data_type: DataType::Unknown("INTEGER".to_string()),
                 });
             }
-            // JSON_EXTRACT_PATH_TEXT is normalized to `x ->> $.path` for any
-            // source dialect targeting SQLite (SQLGlot does this universally).
-            // JSON_EXTRACT_PATH only collapses to the arrow form when the
-            // source is Postgres-family; other sources keep the function call.
-            // SQLGlot only joins ALL path args when the source is Postgres-
-            // family; other sources use only the first path arg (the
-            // intermediate keys are dropped because non-Postgres parsers
-            // can't make sense of multi-arg JSON_EXTRACT_PATH_TEXT).
+            // Non-Postgres parsers keep JSON_EXTRACT_PATH_TEXT as a plain
+            // function; SQLGlot's SQLite generator consumes only the first
+            // path arg for that fallback form.
             if matches!(target, Dialect::Sqlite)
                 && name.eq_ignore_ascii_case("JSON_EXTRACT_PATH_TEXT")
                 && !distinct
@@ -3048,29 +3043,10 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && over.is_none()
                 && new_args.len() >= 2
             {
-                let path = if is_postgres_family(source) {
-                    postgres_json_extract_path_arg(&new_args[1..])
-                } else {
-                    sqlite_json_path_for_first_arg(&new_args[1])
-                };
                 return Expr::JsonAccess {
                     expr: Box::new(new_args[0].clone()),
-                    path: Box::new(path),
+                    path: Box::new(sqlite_json_path_for_first_arg(&new_args[1])),
                     as_text: true,
-                };
-            }
-            if matches!(target, Dialect::Sqlite)
-                && is_postgres_family(source)
-                && name.eq_ignore_ascii_case("JSON_EXTRACT_PATH")
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-                && new_args.len() >= 2
-            {
-                return Expr::JsonAccess {
-                    expr: Box::new(new_args[0].clone()),
-                    path: Box::new(postgres_json_extract_path_arg(&new_args[1..])),
-                    as_text: false,
                 };
             }
 
@@ -4102,24 +4078,6 @@ fn sqlite_json_path_for_first_arg(arg: &Expr) -> Expr {
             }
         }
         other => other.clone(),
-    }
-}
-
-fn postgres_json_extract_path_arg(path_args: &[Expr]) -> Expr {
-    if path_args
-        .iter()
-        .all(|arg| matches!(arg, Expr::StringLiteral(_)))
-    {
-        let mut path = "$".to_string();
-        for arg in path_args {
-            let Expr::StringLiteral(segment) = arg else {
-                unreachable!("all path args are string literals");
-            };
-            path.push_str(&sqlite_json_path_segment(segment));
-        }
-        Expr::StringLiteral(path)
-    } else {
-        path_args[0].clone()
     }
 }
 

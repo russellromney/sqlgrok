@@ -340,6 +340,13 @@ fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
         TypedFunction::Flatten { .. } => "FLATTEN",
         TypedFunction::JSONExtract { .. } => "JSON_EXTRACT",
         TypedFunction::JSONExtractScalar { .. } => "JSON_EXTRACT_SCALAR",
+        TypedFunction::JSONExtractPath { as_text, .. } => {
+            if *as_text {
+                "JSON_EXTRACT_PATH_TEXT"
+            } else {
+                "JSON_EXTRACT_PATH"
+            }
+        }
         TypedFunction::ParseJSON { .. } => "PARSE_JSON",
         TypedFunction::JSONFormat { .. } => "JSON_FORMAT",
         TypedFunction::RowNumber => "ROW_NUMBER",
@@ -503,6 +510,11 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         TypedFunction::JSONExtract { expr, path }
         | TypedFunction::JSONExtractScalar { expr, path } => {
             vec![*expr.clone(), *path.clone()]
+        }
+        TypedFunction::JSONExtractPath { expr, path, .. } => {
+            let mut args = vec![*expr.clone()];
+            args.extend(path.clone());
+            args
         }
         TypedFunction::NTile { n } => vec![*n.clone()],
         TypedFunction::Lead {

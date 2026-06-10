@@ -107,15 +107,15 @@ Plan, attached to Phase 3 (delete `transform_owned`):
 
 First measured baselines for the O(N^2) hole, and the counts after the
 Phase 1.5 function/type relocation landed the same day. The latest counts add
-the 2026-06-10 COALESCE/date-time parser relocation work (reports in
-`parity/reports/`):
+the 2026-06-10 COALESCE/date-time and Postgres JSON path parser relocation
+work (reports in `parity/reports/`):
 
 | lane | match (baseline) | match (latest) | mismatch (latest) |
 | --- | ---: | ---: | ---: |
 | postgres -> postgres | 7100 | 8195 (+1095) | 4779 |
 | mysql -> postgres | 6405 | 7448 (+1043) | 5272 |
 | sqlite -> postgres | 6508 | 7618 (+1110) | 5277 |
-| postgres -> duckdb | 6626 | 6736 (+110) | 6238 |
+| postgres -> duckdb | 6626 | 6773 (+147) | 6201 |
 | postgres -> sqlite | 11871 | 11877 (+6) | 1097 |
 | mysql -> sqlite | 11676 | 11686 (+10) | 1037 |
 | sqlite -> sqlite | 11856 | 11860 (+4) | 1035 |
@@ -143,9 +143,13 @@ Where the remaining `(source, target)` rules in `src/dialects/mod.rs` belong
     write side maps TIMESTAMPTZ back to `TIMESTAMP` for a mysql target.
   - `SUBSTR`/`SUBSTRING`, `LEN`/`LENGTH`, `RANDOM`/`RAND` canonicalize at
     parse for all sources (SQLGlot `_sql_names` aliases on one expression).
-  - postgres `JSON_EXTRACT_PATH` -> JsonAccess, mysql `FROM_UNIXTIME` /
-    postgres `TO_TIMESTAMP` time-format arms, and the other
-    `is_*_family(source)` arms in `transform_expr` (concentrated
+  - Landed 2026-06-10: postgres `JSON_EXTRACT_PATH` /
+    `JSON_EXTRACT_PATH_TEXT` now parse into a typed JSON path node that
+    preserves source path segments for identity and renders per target. The
+    old postgres-family `JSON_EXTRACT_PATH` transform arm is gone, and
+    postgres->duckdb improved to 6773 matches.
+  - mysql `FROM_UNIXTIME` / postgres `TO_TIMESTAMP` time-format arms, and the
+    other `is_*_family(source)` arms in `transform_expr` (concentrated
     2038-3200).
 - **Write-side generator lowering** (target-keyed only):
   - CurrentTimestamp rendering: `GETDATE()` (tsql-family, redshift), `NOW()`

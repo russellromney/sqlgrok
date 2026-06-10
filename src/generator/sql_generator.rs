@@ -3225,6 +3225,62 @@ impl Generator {
         }
     }
 
+    fn gen_json_extract_path(&mut self, expr: &Expr, path: &[Expr], as_text: bool) {
+        let dialect = self.dialect;
+        let path_expr = json_path_from_segments(path);
+
+        if dialect.is_some_and(crate::dialects::is_postgres_family) {
+            self.write_keyword(if as_text {
+                "JSON_EXTRACT_PATH_TEXT("
+            } else {
+                "JSON_EXTRACT_PATH("
+            });
+            self.gen_expr(expr);
+            for part in path {
+                self.write(", ");
+                self.gen_expr(part);
+            }
+            self.write(")");
+            return;
+        }
+
+        if matches!(dialect, Some(Dialect::Sqlite)) {
+            self.gen_expr(expr);
+            self.write(if as_text { " ->> " } else { " -> " });
+            self.gen_sqlite_json_path(&path_expr);
+            return;
+        }
+
+        if matches!(dialect, Some(Dialect::DuckDb)) {
+            self.gen_expr(expr);
+            self.write(if as_text { " ->> " } else { " -> " });
+            self.gen_expr(&path_expr);
+            return;
+        }
+
+        let is_mysql_family = matches!(
+            dialect,
+            Some(Dialect::Mysql | Dialect::SingleStore | Dialect::Doris | Dialect::StarRocks)
+        );
+        if is_mysql_family && as_text {
+            self.write_keyword("CAST(");
+            self.gen_expr(expr);
+            self.write_keyword(" AS JSON) ->> ");
+            self.gen_expr(&path_expr);
+            return;
+        }
+
+        self.write_keyword(if as_text {
+            "JSON_EXTRACT_SCALAR("
+        } else {
+            "JSON_EXTRACT("
+        });
+        self.gen_expr(expr);
+        self.write(", ");
+        self.gen_expr(&path_expr);
+        self.write(")");
+    }
+
     /// Generate SQL for a typed function expression.
     fn gen_typed_function(&mut self, func: &TypedFunction) {
         let dialect = self.dialect;
@@ -4059,6 +4115,11 @@ impl Generator {
                 self.gen_expr(path);
                 self.write(")");
             }
+            TypedFunction::JSONExtractPath {
+                expr,
+                path,
+                as_text,
+            } => self.gen_json_extract_path(expr, path, *as_text),
             TypedFunction::ParseJSON { expr } => {
                 if is_snowflake {
                     self.write_keyword("PARSE_JSON(");
@@ -4745,6 +4806,48 @@ fn escape_postgres_escaped_string(value: &str) -> String {
         }
     }
     out
+}
+
+fn json_path_from_segments(path: &[Expr]) -> Expr {
+    if path.is_empty() {
+        return Expr::StringLiteral("$".to_string());
+    }
+
+    if path.iter().all(json_path_segment_is_literal) {
+        let mut out = "$".to_string();
+        for part in path {
+            out.push_str(&json_path_segment(part));
+        }
+        Expr::StringLiteral(out)
+    } else {
+        path[0].clone()
+    }
+}
+
+fn json_path_segment_is_literal(expr: &Expr) -> bool {
+    matches!(expr, Expr::StringLiteral(_) | Expr::Number(_))
+}
+
+fn json_path_segment(expr: &Expr) -> String {
+    match expr {
+        Expr::StringLiteral(segment) | Expr::Number(segment) => {
+            if segment.chars().all(|c| c.is_ascii_digit()) {
+                format!("[{segment}]")
+            } else if segment
+                .chars()
+                .all(|c| c == '_' || c.is_ascii_alphanumeric())
+                && segment
+                    .chars()
+                    .next()
+                    .is_some_and(|c| c == '_' || c.is_ascii_alphabetic())
+            {
+                format!(".{segment}")
+            } else {
+                format!(".\"{}\"", segment.replace('"', "\\\""))
+            }
+        }
+        _ => String::new(),
+    }
 }
 
 #[cfg(test)]

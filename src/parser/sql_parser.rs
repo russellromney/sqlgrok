@@ -8553,6 +8553,16 @@ impl<'a> Parser<'a> {
             }
 
             // ── JSON ───────────────────────────────────────────────
+            "JSON_EXTRACT_PATH" | "JSON_EXTRACT_PATH_TEXT"
+                if crate::dialects::is_postgres_family(dialect) && args.len() >= 2 =>
+            {
+                let mut it = args.into_iter();
+                TypedFunction::JSONExtractPath {
+                    expr: Box::new(it.next()?),
+                    path: it.collect(),
+                    as_text: upper == "JSON_EXTRACT_PATH_TEXT",
+                }
+            }
             "JSON_EXTRACT" if args.len() == 2 => {
                 let mut it = args.into_iter();
                 let expr = it.next()?;

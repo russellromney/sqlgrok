@@ -974,6 +974,11 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
         // ── JSON ─────────────────────────────────────────────────────
         TypedFunction::JSONExtract { .. } => Some(DataType::Json),
         TypedFunction::JSONExtractScalar { .. } => Some(DataType::Varchar(None)),
+        TypedFunction::JSONExtractPath { as_text, .. } => Some(if *as_text {
+            DataType::Varchar(None)
+        } else {
+            DataType::Json
+        }),
         TypedFunction::ParseJSON { .. } | TypedFunction::JSONFormat { .. } => Some(DataType::Json),
 
         // ── Window ───────────────────────────────────────────────────

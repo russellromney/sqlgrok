@@ -5,6 +5,20 @@ this file records what landed.
 
 ## 2026-06-10
 
+### Architecture Port: Postgres JSON Path Functions
+
+- Moved Postgres `JSON_EXTRACT_PATH` / `JSON_EXTRACT_PATH_TEXT` parsing into a
+  typed AST node that preserves the original path segments for identity output.
+- Added target-owned rendering for the node: Postgres keeps
+  `JSON_EXTRACT_PATH[_TEXT]`, SQLite/DuckDB render arrow JSON access, and
+  MySQL-family text extraction renders `CAST(... AS JSON) ->> path`.
+- Deleted the Postgres-family `JSON_EXTRACT_PATH` transform arm and removed the
+  source split from the `JSON_EXTRACT_PATH_TEXT` SQLite fallback.
+- Added identity, DuckDB, MySQL, and SQLite regression coverage plus curated
+  parity rows. Refreshed forced reports hold six lanes steady and improve
+  postgres -> duckdb from `6736` to `6773` matches with zero row-level
+  regressions.
+
 ### Architecture Port: Coalesce Flags Moved Into The AST
 
 - Added SQLGlot-style `Expr::Coalesce` metadata for `is_null`, `is_nvl`, and
