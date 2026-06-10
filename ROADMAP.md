@@ -57,6 +57,27 @@ Phases (ratcheted on the forced suite, no real regressions, commit per slice):
 3. Delete the transform layer and the `(source, target)` signature.
 4. Port SQLGlot's per-target dicts to backfill thin non-sqlite generators.
 
+## Track Boundaries
+
+Three efforts are intentionally moving together, but they are not the same
+track:
+
+- **Parity Architecture:** the public parse -> canonical AST -> generate path.
+  This owns correctness work: moving source behavior into parsers, moving target
+  behavior into generators, and deleting the source->target transform layer.
+- **SQLGlot Inventory Codegen:** development tooling that mines Python SQLGlot's
+  declarative tables. Generated inventories should feed public parser/generator
+  work first. The checked-in inventory sample is intentionally limited to
+  postgres/mysql/sqlite until a larger artifact has a CI freshness check or a
+  production consumer.
+- **Internal Fast Path:** a private borrowed/zero-copy path for performance. It
+  may consume shared static rule data after public output parity is proven, but
+  it must keep byte-for-byte guards against the public generator and must not
+  become the place where new SQLGlot behavior is defined.
+
+Default rule: make the public SQLGlot-parity pipeline correct first, then let
+codegen and the internal fast path reuse that knowledge.
+
 ## Operating Principles
 
 - Python SQLGlot is the behavioral oracle until sqlgrok reaches mature parity.
@@ -240,6 +261,37 @@ Deliverables:
 - Add AST nodes in small batches tied to parser/generator/serde/test coverage.
 - Avoid lossy raw carriers when a construct is common enough to deserve a real
   representation.
+
+## SQLGlot-Derived Codegen Inventories
+
+Status: spike landed (`tools/sqlglot_codegen/`), not yet wired into production.
+
+The default parity loop finds gaps one at a time: pick a report bucket, find the
+one diverging case, fix it, lock a regression. Much of SQLGlot's per-dialect
+knowledge is already declarative data, so we can mine it directly and turn "find
+the next gap" into "diff two data sets".
+
+Direction:
+
+- Keep a codegen tool that imports a local Python SQLGlot checkout and
+  introspects its dialect classes (no regex over Python source). It emits
+  deterministic, version-stamped JSON inventories: dialect names, tokenizer
+  `KEYWORDS`, generator `TYPE_MAPPING`, classified generator `TRANSFORMS`, parser
+  `FUNCTIONS`, `TIME_MAPPING`, and the expression-class `arg_types` schema.
+- Generate Rust dialect tables from the portable subset (e.g. function renames
+  recovered from `rename_func`). Generated files are `@generated`, sorted, and
+  rustfmt-clean static data.
+- Port only structural parser/generator behavior by hand. Dynamic transforms
+  (`lambda`/`named` helpers) are classified and fenced off, never auto-translated.
+  This is data extraction, not py2many-style source translation.
+- The parity harness stays the referee. Inventories say *where to look*; the
+  oracle still decides correctness.
+- Treat the extractor as a sync tool, not a report: re-running after a SQLGlot
+  bump produces a clean diff of exactly what changed upstream, so inventories do
+  not rot. A CI freshness check can gate drift once tables are wired in.
+
+This supersedes the "generated reports" deliverable under AST Expansion: the
+expression inventory is one of the JSON outputs above.
 
 ## Parser Architecture Direction
 
