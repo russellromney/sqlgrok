@@ -68,6 +68,41 @@ Phases (ratcheted on the forced suite, no real regressions, commit per slice):
 3. Delete the transform layer and the `(source, target)` signature.
 4. Port SQLGlot's per-target dicts to backfill thin non-sqlite generators.
 
+### Measurement model: pair lanes retire with Phase 3
+
+The dialect x dialect lane matrix is the right scoreboard only while
+behavior can vary per pair. The old transform layer made pairs the unit of
+failure (`if source==X && target==Y` rules), so we track read/write pairs.
+Once nothing is pair-keyed, correctness factorizes: a read bug appears in
+every lane with that read dialect, a write bug in every lane with that
+write target, and N^2 lanes just re-measure the same N parser and N
+generator bugs with quadratic suite runtime.
+
+Plan, attached to Phase 3 (delete `transform_owned`):
+
+- **Until Phase 3 lands, keep the current seven pair lanes as the ratchet.**
+  The remaining `transform_expr` source arms and the identity short-circuit
+  (`from == to && !sqlite`) mean identity and cross-dialect paths still
+  genuinely differ, so pairs still fail independently. The lanes caught the
+  mysql `TIMESTAMP WITHOUT TIME ZONE` regression for exactly this reason.
+- **When Phase 3 deletes the transform layer, switch the scoreboard to:**
+  1. *Identity per dialect* (`d -> d`), one number per dialect — SQLGlot's
+     own primary check (`validate_identity`), exercising one parser plus one
+     generator with no cross-dialect noise. O(N).
+  2. *A spanning set instead of the matrix*: all reads -> one fixed write
+     (isolates parsers; the write side is held constant) plus one fixed
+     read -> all writes (isolates generators). 2N lanes with the same fault
+     coverage the full matrix has once nothing is pair-keyed.
+  3. Later (Parse/Generate Identity milestone): AST-shape parity comparing
+     `parse(sql, d)` directly against SQLGlot's parsed AST — read-side
+     measurement with no generator involved.
+- **Switch-over check:** any failure a retired pair lane can show that the
+  spanning set plus identities cannot reproduce means something is still
+  secretly pair-keyed. Run the full matrix once at switch-over as proof, and
+  once after any suspicious divergence.
+- Budgets and row-level diffs move from per-pair reports to per-dialect
+  identity reports and the spanning lanes.
+
 ### Non-sqlite write-target baselines (2026-06-09, forced suite)
 
 First measured baselines for the O(N^2) hole, and the counts after the
