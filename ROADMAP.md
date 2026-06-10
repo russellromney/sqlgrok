@@ -57,6 +57,70 @@ Phases (ratcheted on the forced suite, no real regressions, commit per slice):
 3. Delete the transform layer and the `(source, target)` signature.
 4. Port SQLGlot's per-target dicts to backfill thin non-sqlite generators.
 
+### Non-sqlite write-target baselines (2026-06-09, forced suite)
+
+First measured baselines for the O(N^2) hole, reports in `parity/reports/`:
+
+| lane | match | mismatch | rust-error | oracle-error | unsupported |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| postgres -> postgres | 7100 | 5874 | 589 | 1456 | 137 |
+| mysql -> postgres | 6405 | 6315 | 557 | 1742 | 137 |
+| sqlite -> postgres | 6508 | 6387 | 579 | 1545 | 137 |
+| postgres -> duckdb | 6626 | 6348 | 589 | 1456 | 137 |
+
+`* -> sqlite` is ~91% match; these lanes sit at ~50-55%. The generators are
+sqlite-shaped; relocating rules per the phases above is the fix.
+
+### Transform-rule audit (2026-06-09)
+
+Where the remaining `(source, target)` rules in `src/dialects/mod.rs` belong
+(verified against the Python SQLGlot oracle, full read x write sweeps):
+
+- **Read-side parser normalization** (source-keyed; ~61 source-branch sites):
+  - `NOW()` -> CurrentTimestamp only for postgres-family, presto-family,
+    databricks, exasol sources; `GETDATE()` -> CurrentTimestamp only for
+    tsql-family, redshift, snowflake, databricks. Other sources keep them as
+    anonymous functions. (Our parser canonicalized `NOW` for every source.)
+  - MySQL cast types `SIGNED`/`SIGNED INTEGER` -> BIGINT and
+    `UNSIGNED`/`UNSIGNED INTEGER` -> UBIGINT are tokenizer keywords in SQLGlot
+    (read-side), not transform rules.
+  - MySQL `TIMESTAMP` -> TIMESTAMPTZ at parse (SQLGlot tokenizer keyword);
+    write side maps TIMESTAMPTZ back to `TIMESTAMP` for a mysql target.
+  - `SUBSTR`/`SUBSTRING`, `LEN`/`LENGTH`, `RANDOM`/`RAND` canonicalize at
+    parse for all sources (SQLGlot `_sql_names` aliases on one expression).
+  - postgres `JSON_EXTRACT_PATH` -> JsonAccess, mysql `FROM_UNIXTIME` /
+    postgres `TO_TIMESTAMP` time-format arms, and the other
+    `is_*_family(source)` arms in `transform_expr` (concentrated
+    2038-3200).
+- **Write-side generator lowering** (target-keyed only):
+  - CurrentTimestamp rendering: `GETDATE()` (tsql-family, redshift), `NOW()`
+    (doris), bare `CURRENT_TIMESTAMP` (postgres-family sans redshift,
+    presto-family, sqlite, duckdb, oracle, drill, druid, teradata),
+    `CURRENT_TIMESTAMP()` (mysql-family sans doris, bigquery, hive-family,
+    snowflake, clickhouse, dremio, exasol, tableau).
+  - Rand rendering: `RANDOM` (postgres-family, sqlite, duckdb, snowflake,
+    teradata), `DBMS_RANDOM.VALUE` (oracle), `randCanonical` (clickhouse),
+    `RAND` otherwise.
+  - Substring rendering: `SUBSTR` (oracle, presto-family),
+    `SUBSTRING(x FROM a FOR b)` (postgres-family), `SUBSTRING(x, a, b)`
+    otherwise.
+  - Length rendering: `LEN` (tsql-family), `CHAR_LENGTH` (mysql-family,
+    clickhouse) for character length, `LENGTH` otherwise.
+  - Type maps: `rules::map_type` plus the target-only arms of
+    `map_data_type` (sqlite affinity, bigquery INT->BIGINT, BYTEA<->BLOB).
+- **Genuinely unresolved / needs an AST distinction** (string-named
+  `Expr::Function` cannot carry SQLGlot's node flags):
+  - `Length(binary=...)`: mysql/clickhouse/snowflake/bigquery parse `LENGTH`
+    as byte length (renders `LENGTH` even where char length renders
+    `CHAR_LENGTH`; duckdb target lowers it to a `CASE TYPEOF(...)` form).
+    Modeled for now with two canonical names (`CHAR_LENGTH` vs `LENGTH`).
+  - `Coalesce(is_nvl/is_null)`: oracle `NVL` and tsql `ISNULL` re-render
+    their own spelling only for their own target; a flat canonical cannot
+    represent that, so the `NVL`/`ISNULL` arms stay in the transform layer.
+  - ASOF JOIN method and source-aware CROSS/OUTER APPLY need a new
+    `JoinClause` field shared with `internal_ast` (tracked under Transpile
+    Parity).
+
 ## Track Boundaries
 
 Three efforts are intentionally moving together, but they are not the same
