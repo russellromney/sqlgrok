@@ -2094,16 +2094,79 @@ impl Generator {
                 }
             }
             DataType::Timestamp { precision, with_tz } => {
-                self.write("TIMESTAMP");
+                // Target-keyed TYPE_MAPPING (SQLGlot): canonical TIMESTAMPTZ
+                // and TIMESTAMP render per write dialect.
+                let dialect = self.dialect;
+                let is_tsql = dialect.is_some_and(crate::dialects::is_tsql_family);
+                let (name, tz_suffix) = if *with_tz {
+                    if is_tsql {
+                        ("DATETIMEOFFSET", false)
+                    } else if matches!(
+                        dialect,
+                        Some(Dialect::Mysql) | Some(Dialect::SingleStore) | Some(Dialect::BigQuery)
+                    ) {
+                        ("TIMESTAMP", false)
+                    } else if matches!(dialect, Some(Dialect::Doris) | Some(Dialect::StarRocks)) {
+                        ("DATETIME", false)
+                    } else if matches!(
+                        dialect,
+                        Some(Dialect::Oracle)
+                            | Some(Dialect::Redshift)
+                            | Some(Dialect::Teradata)
+                            | Some(Dialect::ClickHouse)
+                    ) || dialect.is_some_and(crate::dialects::is_presto_family)
+                    {
+                        ("TIMESTAMP", true)
+                    } else if dialect.is_some_and(crate::dialects::is_hive_family)
+                        || matches!(dialect, Some(Dialect::Exasol) | Some(Dialect::Drill))
+                    {
+                        ("TIMESTAMP", false)
+                    } else {
+                        ("TIMESTAMPTZ", false)
+                    }
+                } else if is_tsql {
+                    ("DATETIME2", false)
+                } else if matches!(
+                    dialect,
+                    Some(Dialect::Mysql)
+                        | Some(Dialect::Doris)
+                        | Some(Dialect::StarRocks)
+                        | Some(Dialect::BigQuery)
+                ) {
+                    ("DATETIME", false)
+                } else {
+                    ("TIMESTAMP", false)
+                };
+                self.write(name);
                 if let Some(p) = precision {
                     self.write(&format!("({p})"));
                 }
-                if *with_tz {
+                if tz_suffix {
                     self.write(" WITH TIME ZONE");
                 }
             }
             DataType::Interval => self.write("INTERVAL"),
-            DataType::DateTime => self.write("DATETIME"),
+            DataType::DateTime => {
+                // Target-keyed TYPE_MAPPING (SQLGlot): canonical DATETIME
+                // renders TIMESTAMP for dialects without a DATETIME type.
+                if self
+                    .dialect
+                    .is_some_and(crate::dialects::is_postgres_family)
+                    || self.dialect.is_some_and(crate::dialects::is_presto_family)
+                    || self.dialect.is_some_and(crate::dialects::is_hive_family)
+                    || matches!(
+                        self.dialect,
+                        Some(Dialect::DuckDb)
+                            | Some(Dialect::Exasol)
+                            | Some(Dialect::Drill)
+                            | Some(Dialect::Dremio)
+                    )
+                {
+                    self.write("TIMESTAMP");
+                } else {
+                    self.write("DATETIME");
+                }
+            }
             DataType::Blob => self.write("BLOB"),
             DataType::Bytea => self.write("BYTEA"),
             DataType::Bytes => self.write("BYTES"),
@@ -2744,24 +2807,48 @@ impl Generator {
                 self.write(")");
             }
             Expr::Cast { expr, data_type } => {
-                let is_postgres = matches!(
-                    self.dialect,
-                    Some(
-                        Dialect::Postgres
-                            | Dialect::Redshift
-                            | Dialect::Materialize
-                            | Dialect::RisingWave
-                    )
-                );
-                if is_postgres {
-                    self.gen_expr(expr);
-                    self.write("::");
-                    self.gen_data_type(data_type);
-                } else {
+                // SQLGlot renders CAST(x AS T) for every target, including
+                // the postgres family (`x::T` input is normalized to CAST).
+                {
                     self.write_keyword("CAST(");
                     self.gen_expr(expr);
                     self.write(" ");
                     self.write_keyword("AS ");
+                    // MySQL CAST only accepts a restricted type set; SQLGlot's
+                    // mysql CAST_MAPPING renders integer types as SIGNED /
+                    // UNSIGNED and text types as CHAR in cast position only.
+                    if matches!(self.dialect, Some(Dialect::Mysql)) {
+                        match data_type {
+                            DataType::BigInt
+                            | DataType::Int
+                            | DataType::SmallInt
+                            | DataType::TinyInt
+                            | DataType::Boolean => {
+                                self.write("SIGNED");
+                                self.write(")");
+                                return;
+                            }
+                            DataType::Unknown(name) if name.eq_ignore_ascii_case("UBIGINT") => {
+                                self.write("UNSIGNED");
+                                self.write(")");
+                                return;
+                            }
+                            DataType::Text => {
+                                self.write("CHAR");
+                                self.write(")");
+                                return;
+                            }
+                            DataType::Varchar(len) => {
+                                self.write("CHAR");
+                                if let Some(n) = len {
+                                    self.write(&format!("({n})"));
+                                }
+                                self.write(")");
+                                return;
+                            }
+                            _ => {}
+                        }
+                    }
                     self.gen_data_type(data_type);
                     self.write(")");
                 }

@@ -400,6 +400,93 @@ fn test_len_to_duckdb() {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// Type mapping: read-side canonicalization + target-keyed rendering
+// (verified against the Python SQLGlot oracle)
+// ═════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_mysql_timestamp_is_tz_aware() {
+    // MySQL TIMESTAMP is timezone-aware (SQLGlot tokenizer maps it to
+    // TIMESTAMPTZ); DATETIME is its naive type.
+    assert_transpile(
+        "CREATE TABLE t (a TIMESTAMP, b TIMESTAMP(3), e DATETIME)",
+        "CREATE TABLE t (a TIMESTAMPTZ, b TIMESTAMPTZ(3), e TIMESTAMP)",
+        Dialect::Mysql,
+        Dialect::Postgres,
+    );
+    // Identity round-trips through the canonical type.
+    assert_transpile(
+        "CREATE TABLE t (a TIMESTAMP, e DATETIME)",
+        "CREATE TABLE t (a TIMESTAMP, e DATETIME)",
+        Dialect::Mysql,
+        Dialect::Mysql,
+    );
+    // Postgres TIMESTAMP stays naive and becomes mysql DATETIME.
+    assert_transpile(
+        "CREATE TABLE t (a TIMESTAMP, b TIMESTAMPTZ, e DATETIME)",
+        "CREATE TABLE t (a DATETIME, b TIMESTAMP, e DATETIME)",
+        Dialect::Postgres,
+        Dialect::Mysql,
+    );
+    // Postgres renders canonical TIMESTAMPTZ (not TIMESTAMP WITH TIME ZONE),
+    // and canonical DATETIME as TIMESTAMP.
+    assert_transpile(
+        "CREATE TABLE t (b TIMESTAMP WITH TIME ZONE, e DATETIME)",
+        "CREATE TABLE t (b TIMESTAMPTZ, e TIMESTAMP)",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    assert_transpile(
+        "CREATE TABLE t (a TIMESTAMP, e DATETIME)",
+        "CREATE TABLE t (a DATETIME2, e DATETIME)",
+        Dialect::Postgres,
+        Dialect::Tsql,
+    );
+}
+
+#[test]
+fn test_tsql_timestamp_is_rowversion() {
+    // T-SQL TIMESTAMP is the legacy rowversion type (SQLGlot).
+    assert_transpile(
+        "CREATE TABLE t (a TIMESTAMP)",
+        "CREATE TABLE t (a ROWVERSION)",
+        Dialect::Tsql,
+        Dialect::Tsql,
+    );
+}
+
+#[test]
+fn test_mysql_signed_unsigned_casts() {
+    // MySQL SIGNED/UNSIGNED are canonical BIGINT/UBIGINT (SQLGlot tokenizer
+    // keywords); mysql's own CAST renders them back as SIGNED/UNSIGNED.
+    assert_transpile(
+        "SELECT CAST(x AS SIGNED), CAST(y AS UNSIGNED)",
+        "SELECT CAST(x AS SIGNED), CAST(y AS UNSIGNED)",
+        Dialect::Mysql,
+        Dialect::Mysql,
+    );
+    assert_transpile(
+        "SELECT CAST(x AS SIGNED), CAST(y AS UNSIGNED)",
+        "SELECT CAST(x AS BIGINT), CAST(y AS UBIGINT)",
+        Dialect::Mysql,
+        Dialect::Postgres,
+    );
+    assert_transpile(
+        "SELECT CAST(x AS SIGNED), CAST(y AS UNSIGNED)",
+        "SELECT CAST(x AS INTEGER), CAST(y AS UBIGINT)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    // Any integer/text cast lowers to mysql's restricted cast-type set.
+    assert_transpile(
+        "SELECT CAST(a AS BIGINT), CAST(b AS TEXT), CAST(c AS VARCHAR(10))",
+        "SELECT CAST(a AS SIGNED), CAST(b AS CHAR), CAST(c AS CHAR(10))",
+        Dialect::Postgres,
+        Dialect::Mysql,
+    );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // Function mapping: IFNULL → COALESCE
 // (from Python test_mysql.py → test_postgres.py)
 // ═════════════════════════════════════════════════════════════════════════════
@@ -511,7 +598,7 @@ fn test_text_to_string_bigquery() {
 fn test_string_to_text_postgres() {
     assert_transpile(
         "SELECT CAST(x AS STRING) FROM t",
-        "SELECT x::TEXT FROM t",
+        "SELECT CAST(x AS TEXT) FROM t",
         Dialect::BigQuery,
         Dialect::Postgres,
     );
@@ -519,9 +606,10 @@ fn test_string_to_text_postgres() {
 
 #[test]
 fn test_string_to_text_mysql() {
+    // MySQL CAST renders text types as CHAR (SQLGlot CAST_MAPPING)
     assert_transpile(
         "SELECT CAST(x AS STRING) FROM t",
-        "SELECT CAST(x AS TEXT) FROM t",
+        "SELECT CAST(x AS CHAR) FROM t",
         Dialect::BigQuery,
         Dialect::Mysql,
     );
@@ -586,7 +674,7 @@ fn test_bytea_to_blob_mysql() {
 fn test_blob_to_bytea_postgres() {
     assert_transpile(
         "SELECT CAST(x AS BLOB) FROM t",
-        "SELECT x::BYTEA FROM t",
+        "SELECT CAST(x AS BYTEA) FROM t",
         Dialect::Mysql,
         Dialect::Postgres,
     );
@@ -609,10 +697,10 @@ fn test_bytea_to_blob_sqlite() {
 
 #[test]
 fn test_compound_function_and_type() {
-    // MySQL renders Substring as SUBSTRING (SQLGlot)
+    // MySQL renders Substring as SUBSTRING and casts TEXT as CHAR (SQLGlot)
     assert_transpile(
         "SELECT SUBSTRING(CAST(x AS TEXT), 1, 3) FROM t",
-        "SELECT SUBSTRING(CAST(x AS TEXT), 1, 3) FROM t",
+        "SELECT SUBSTRING(CAST(x AS CHAR), 1, 3) FROM t",
         Dialect::Postgres,
         Dialect::Mysql,
     );
@@ -1022,7 +1110,7 @@ fn test_text_to_string_spark() {
 fn test_string_to_text_redshift() {
     assert_transpile(
         "SELECT CAST(x AS STRING) FROM t",
-        "SELECT x::TEXT FROM t",
+        "SELECT CAST(x AS TEXT) FROM t",
         Dialect::BigQuery,
         Dialect::Redshift,
     );
@@ -1058,7 +1146,7 @@ fn test_postgres_family_blob_to_bytea() {
     for target in [Dialect::Redshift, Dialect::Materialize, Dialect::RisingWave] {
         assert_transpile(
             "SELECT CAST(x AS BLOB) FROM t",
-            "SELECT x::BYTEA FROM t",
+            "SELECT CAST(x AS BYTEA) FROM t",
             Dialect::Mysql,
             target,
         );
@@ -1070,7 +1158,7 @@ fn test_postgres_family_string_to_text() {
     for target in [Dialect::Redshift, Dialect::Materialize, Dialect::RisingWave] {
         assert_transpile(
             "SELECT CAST(x AS STRING) FROM t",
-            "SELECT x::TEXT FROM t",
+            "SELECT CAST(x AS TEXT) FROM t",
             Dialect::BigQuery,
             target,
         );
@@ -1236,16 +1324,16 @@ fn test_validate_all_cast_text() {
         "SELECT CAST(a AS TEXT)",
         Dialect::Postgres,
         &[
-            (Dialect::Postgres, "SELECT a::TEXT"),
-            (Dialect::Mysql, "SELECT CAST(a AS TEXT)"),
+            (Dialect::Postgres, "SELECT CAST(a AS TEXT)"),
+            (Dialect::Mysql, "SELECT CAST(a AS CHAR)"),
             (Dialect::Sqlite, "SELECT CAST(a AS TEXT)"),
             (Dialect::BigQuery, "SELECT CAST(a AS STRING)"),
             (Dialect::DuckDb, "SELECT CAST(a AS TEXT)"),
             (Dialect::Hive, "SELECT CAST(a AS STRING)"),
             (Dialect::Spark, "SELECT CAST(a AS STRING)"),
             (Dialect::Databricks, "SELECT CAST(a AS STRING)"),
-            (Dialect::Redshift, "SELECT a::TEXT"),
-            (Dialect::Materialize, "SELECT a::TEXT"),
+            (Dialect::Redshift, "SELECT CAST(a AS TEXT)"),
+            (Dialect::Materialize, "SELECT CAST(a AS TEXT)"),
         ],
     );
 }
@@ -1257,14 +1345,14 @@ fn test_validate_all_cast_string_to_text() {
         "SELECT CAST(a AS STRING)",
         Dialect::BigQuery,
         &[
-            (Dialect::Postgres, "SELECT a::TEXT"),
-            (Dialect::Mysql, "SELECT CAST(a AS TEXT)"),
+            (Dialect::Postgres, "SELECT CAST(a AS TEXT)"),
+            (Dialect::Mysql, "SELECT CAST(a AS CHAR)"),
             (Dialect::Sqlite, "SELECT CAST(a AS TEXT)"),
             (Dialect::BigQuery, "SELECT CAST(a AS STRING)"),
             (Dialect::DuckDb, "SELECT CAST(a AS STRING)"),
-            (Dialect::Redshift, "SELECT a::TEXT"),
-            (Dialect::Materialize, "SELECT a::TEXT"),
-            (Dialect::RisingWave, "SELECT a::TEXT"),
+            (Dialect::Redshift, "SELECT CAST(a AS TEXT)"),
+            (Dialect::Materialize, "SELECT CAST(a AS TEXT)"),
+            (Dialect::RisingWave, "SELECT CAST(a AS TEXT)"),
             (Dialect::Doris, "SELECT CAST(a AS TEXT)"),
             (Dialect::SingleStore, "SELECT CAST(a AS TEXT)"),
             (Dialect::StarRocks, "SELECT CAST(a AS TEXT)"),
@@ -1279,9 +1367,9 @@ fn test_validate_all_cast_bytea() {
         "SELECT CAST(x AS BYTEA)",
         Dialect::Postgres,
         &[
-            (Dialect::Postgres, "SELECT x::BYTEA"),
-            (Dialect::Redshift, "SELECT x::BYTEA"),
-            (Dialect::Materialize, "SELECT x::BYTEA"),
+            (Dialect::Postgres, "SELECT CAST(x AS BYTEA)"),
+            (Dialect::Redshift, "SELECT CAST(x AS BYTEA)"),
+            (Dialect::Materialize, "SELECT CAST(x AS BYTEA)"),
             (Dialect::Mysql, "SELECT CAST(x AS BLOB)"),
             (Dialect::Sqlite, "SELECT CAST(x AS BLOB)"),
             (Dialect::Oracle, "SELECT CAST(x AS BLOB)"),
@@ -1664,7 +1752,7 @@ fn test_postgres_identity() {
     let sqls = [
         "SELECT 1",
         "SELECT * FROM t WHERE a ILIKE '%test%'",
-        "SELECT x::TEXT",
+        "SELECT CAST(x AS TEXT)",
         "SELECT * FROM t1 LEFT JOIN t2 ON t1.id = t2.id",
         "CREATE TABLE t (id SERIAL PRIMARY KEY, name VARCHAR(100))",
     ];
@@ -1850,7 +1938,7 @@ fn test_materialize_identity() {
     let sqls = [
         "SELECT 1",
         "SELECT * FROM t WHERE a ILIKE '%x%'",
-        "SELECT a::INT FROM t",
+        "SELECT CAST(a AS INT) FROM t",
     ];
     for sql in &sqls {
         assert_identity(sql, Dialect::Materialize);
@@ -1939,11 +2027,11 @@ fn test_validate_all_compound_query() {
         &[
             (
                 Dialect::Mysql,
-                "SELECT COALESCE(SUBSTRING(CAST(x AS TEXT), 1, 3), 'none') FROM t",
+                "SELECT COALESCE(SUBSTRING(CAST(x AS CHAR), 1, 3), 'none') FROM t",
             ),
             (
                 Dialect::Postgres,
-                "SELECT COALESCE(SUBSTRING(x::TEXT FROM 1 FOR 3), 'none') FROM t",
+                "SELECT COALESCE(SUBSTRING(CAST(x AS TEXT) FROM 1 FOR 3), 'none') FROM t",
             ),
             (
                 Dialect::BigQuery,
@@ -2035,18 +2123,20 @@ fn test_complex_select_identity_all_dialects() {
             assert_identity(sql, *dialect);
         }
     }
-    // CAST identity - PostgreSQL-family uses :: syntax, others use CAST()
+    // CAST identity. SQLite folds INT to INTEGER; MySQL CAST only accepts
+    // SIGNED/UNSIGNED/CHAR-style cast types (SQLGlot CAST_MAPPING).
     for dialect in Dialect::all() {
-        let is_pg_family = matches!(
-            dialect,
-            Dialect::Postgres | Dialect::Redshift | Dialect::Materialize | Dialect::RisingWave
-        );
-        if is_pg_family {
-            assert_identity("SELECT a::INT FROM t", *dialect);
-        } else if *dialect == Dialect::Sqlite {
+        if *dialect == Dialect::Sqlite {
             assert_transpile(
                 "SELECT CAST(a AS INT) FROM t",
                 "SELECT CAST(a AS INTEGER) FROM t",
+                *dialect,
+                *dialect,
+            );
+        } else if *dialect == Dialect::Mysql {
+            assert_transpile(
+                "SELECT CAST(a AS INT) FROM t",
+                "SELECT CAST(a AS SIGNED) FROM t",
                 *dialect,
                 *dialect,
             );
@@ -2193,32 +2283,32 @@ fn test_unpivot_transpile_tsql_to_snowflake() {
 
 #[test]
 fn test_postgres_array_type_cast_identity() {
-    assert_identity("SELECT ARRAY[1, 2, 3]::INT[]", Dialect::Postgres);
+    assert_identity("SELECT CAST(ARRAY[1, 2, 3] AS INT[])", Dialect::Postgres);
 }
 
 #[test]
 fn test_postgres_array_type_string_cast() {
-    assert_identity("SELECT '{}'::INT[]", Dialect::Postgres);
+    assert_identity("SELECT CAST('{}' AS INT[])", Dialect::Postgres);
 }
 
 #[test]
 fn test_postgres_array_type_in_function_arg() {
-    assert_identity("SELECT MY_FUNC('{1,2}'::INT[])", Dialect::Postgres);
+    assert_identity("SELECT MY_FUNC(CAST('{1,2}' AS INT[]))", Dialect::Postgres);
 }
 
 #[test]
 fn test_postgres_array_type_multi_dimensional() {
-    assert_identity("SELECT '{{1,2},{3,4}}'::INT[][]", Dialect::Postgres);
+    assert_identity("SELECT CAST('{{1,2},{3,4}}' AS INT[][])", Dialect::Postgres);
 }
 
 #[test]
 fn test_postgres_array_type_text() {
-    assert_identity("SELECT col::TEXT[]", Dialect::Postgres);
+    assert_identity("SELECT CAST(col AS TEXT[])", Dialect::Postgres);
 }
 
 #[test]
 fn test_postgres_array_type_varchar() {
-    assert_identity("SELECT col::VARCHAR[]", Dialect::Postgres);
+    assert_identity("SELECT CAST(col AS VARCHAR[])", Dialect::Postgres);
 }
 
 #[test]
@@ -2234,7 +2324,7 @@ fn test_postgres_array_type_with_bound_ignored() {
     // PostgreSQL accepts [N] but ignores the size; we normalize to []
     assert_transpile(
         "SELECT '{1,2,3}'::int[3]",
-        "SELECT '{1,2,3}'::INT[]",
+        "SELECT CAST('{1,2,3}' AS INT[])",
         Dialect::Postgres,
         Dialect::Postgres,
     );
@@ -2256,7 +2346,7 @@ fn test_bigquery_array_type_to_postgres() {
     // BigQuery ARRAY<INT> should become INT[] for PostgreSQL
     assert_transpile(
         "SELECT CAST(x AS ARRAY<INT>)",
-        "SELECT x::INT[]",
+        "SELECT CAST(x AS INT[])",
         Dialect::BigQuery,
         Dialect::Postgres,
     );

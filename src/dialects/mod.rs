@@ -4780,21 +4780,10 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
             return map_data_type_for_source(inner_dt, source, target);
         }
     }
+    // MySQL SIGNED/UNSIGNED and tz-aware TIMESTAMP are read-side parser
+    // canonicalizations now (SQLGlot tokenizer keywords); the generator's
+    // Timestamp arm owns the per-target rendering.
     match (&dt, source, target) {
-        (DataType::Unknown(name), s, Dialect::Sqlite)
-            if is_mysql_family(s)
-                && (name.eq_ignore_ascii_case("SIGNED")
-                    || name.eq_ignore_ascii_case("SIGNED INTEGER")) =>
-        {
-            DataType::Unknown("INTEGER".to_string())
-        }
-        (DataType::Unknown(name), s, Dialect::Sqlite)
-            if is_mysql_family(s)
-                && (name.eq_ignore_ascii_case("UNSIGNED")
-                    || name.eq_ignore_ascii_case("UNSIGNED INTEGER")) =>
-        {
-            DataType::Unknown("UBIGINT".to_string())
-        }
         (DataType::Unknown(name), _, Dialect::Sqlite)
             if name.eq_ignore_ascii_case("INT UNSIGNED")
                 || name.eq_ignore_ascii_case("INT SIGNED") =>
@@ -4815,28 +4804,6 @@ fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> D
                 DataType::Unknown("BIGINT".to_string())
             }
         }
-        (
-            DataType::Timestamp {
-                precision,
-                with_tz: true,
-            },
-            _,
-            Dialect::Sqlite,
-        ) => DataType::Unknown(match precision {
-            Some(p) => format!("TIMESTAMPTZ({p})"),
-            None => "TIMESTAMPTZ".to_string(),
-        }),
-        (
-            DataType::Timestamp {
-                precision,
-                with_tz: false,
-            },
-            s,
-            Dialect::Sqlite,
-        ) if is_mysql_family(s) => DataType::Unknown(match precision {
-            Some(p) => format!("TIMESTAMPTZ({p})"),
-            None => "TIMESTAMPTZ".to_string(),
-        }),
         (DataType::Unknown(name), _, Dialect::Sqlite)
             if name.to_ascii_uppercase().starts_with("STRING FORMAT ") =>
         {

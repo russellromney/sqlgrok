@@ -16,7 +16,8 @@ fn transpile_stdin_to_stdout() {
         .write_stdin("SELECT CAST(x AS INT) FROM t")
         .assert()
         .success()
-        .stdout(predicate::str::contains("SELECT x::INT FROM t"));
+        // SQLGlot renders CAST(...) for postgres targets (never `::`).
+        .stdout(predicate::str::contains("SELECT CAST(x AS INT) FROM t"));
 }
 
 #[test]

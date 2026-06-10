@@ -4839,7 +4839,16 @@ impl<'a> Parser<'a> {
             TokenType::Timestamp => {
                 self.advance();
                 let precision = self.parse_single_type_param()?;
-                let with_tz = if self.match_keyword("WITH") {
+                // Read-side canonicalization (SQLGlot tokenizer keywords):
+                // mysql-family and bigquery TIMESTAMP is timezone-aware
+                // (canonical TIMESTAMPTZ); tsql TIMESTAMP is ROWVERSION.
+                if crate::dialects::is_tsql_family(self.dialect) {
+                    return Ok(DataType::Unknown(match precision {
+                        Some(p) => format!("ROWVERSION({p})"),
+                        None => "ROWVERSION".to_string(),
+                    }));
+                }
+                let mut with_tz = if self.match_keyword("WITH") {
                     let _ = self.match_keyword("TIME");
                     let _ = self.match_keyword("ZONE");
                     true
@@ -4850,6 +4859,14 @@ impl<'a> Parser<'a> {
                 } else {
                     false
                 };
+                // mysql-family and bigquery TIMESTAMP is tz-aware even when
+                // spelled TIMESTAMP WITHOUT TIME ZONE: SQLGlot's tokenizer
+                // keyword wins over the suffix.
+                if crate::dialects::is_mysql_family(self.dialect)
+                    || matches!(self.dialect, Dialect::BigQuery)
+                {
+                    with_tz = true;
+                }
                 Ok(DataType::Timestamp { precision, with_tz })
             }
             TokenType::TimestampTz => {
@@ -4933,6 +4950,20 @@ impl<'a> Parser<'a> {
                     return Ok(DataType::Unknown(format!("{raw_name}.{ty}")));
                 }
                 match name.as_str() {
+                    // Read-side canonicalization (SQLGlot mysql tokenizer
+                    // keywords): SIGNED [INTEGER] is BIGINT, UNSIGNED
+                    // [INTEGER] is UBIGINT. Other sources treat them as
+                    // user-defined type names.
+                    "SIGNED" | "UNSIGNED" if crate::dialects::is_mysql_family(self.dialect) => {
+                        if matches!(self.peek_type(), TokenType::Int | TokenType::Integer) {
+                            self.advance();
+                        }
+                        if name == "SIGNED" {
+                            Ok(DataType::BigInt)
+                        } else {
+                            Ok(DataType::Unknown("UBIGINT".to_string()))
+                        }
+                    }
                     "SIGNED" | "UNSIGNED"
                         if matches!(
                             self.peek_type(),
