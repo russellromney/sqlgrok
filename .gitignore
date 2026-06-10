@@ -10,3 +10,4 @@ python/.pytest_cache/
 python/python/sqlgrok/_native*.so
 python/python/sqlgrok/_native*.pyd
 python/python/sqlgrok/_native*.dylib
+.claude/

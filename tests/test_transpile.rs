@@ -3068,6 +3068,16 @@ fn test_postgres_comment_on_to_sqlite() {
 }
 
 #[test]
+fn test_postgres_create_function_tail_identity_to_sqlite() {
+    validate_with_dialect(
+        "CREATE FUNCTION add(integer, integer) RETURNS integer AS 'select $1 + $2;' LANGUAGE SQL IMMUTABLE CALLED ON NULL INPUT",
+        "CREATE FUNCTION add(integer, integer) RETURNS integer AS 'select $1 + $2;' LANGUAGE SQL IMMUTABLE CALLED ON NULL INPUT",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_postgres_tablesample_to_sqlite() {
     validate_with_dialect(
         "SELECT * FROM t TABLESAMPLE SYSTEM (50)",
