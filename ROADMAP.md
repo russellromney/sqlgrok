@@ -10,17 +10,28 @@ This roadmap is the public execution plan. Completed work belongs in
 
 ## Current Critical Path
 
+The project is a pure port of SQLGlot's architecture:
+`transpile(sql, read, write) = generate(parse(sql, read), write)`. Work is
+port-driven, not gap-driven: read SQLGlot's per-dialect parsers and
+generators and port that knowledge directly; the forced suite is the
+scoreboard that proves each slice, not the to-do list that discovers it.
+
 1. Keep the Rust library, CLI, and curated parity regression corpus green.
-2. Make the SQLGlot pytest bridge the authoritative parity surface.
-3. Burn down forced-pair MySQL -> SQLite, Postgres -> SQLite, and SQLite ->
-   SQLite reports by bucket.
-4. Add row-level report diffing so budgets catch newly regressed cases, not only
-   worse status counts.
-5. Expand beyond transpilation into parse/generate, optimizer, and expression
+2. Phase 2: move the remaining source-branch arms in
+   `transform_expr`/`transform_statement` into the per-dialect parsers as
+   canonical-AST normalizations, family by family.
+3. Phase 4 backfill: transcribe SQLGlot's per-target generator dicts
+   (TYPE_MAPPING, TRANSFORMS renames) into `rules.rs` tables and typed
+   generator arms; the tables are already dict-shaped for this.
+4. Phase 3: delete `transform_owned(from, to)` and the `(source, target)`
+   signature once the arms drain.
+5. Ratchet every slice on the seven forced lanes with row-level diffs (zero
+   regressions), not just status counts.
+6. Expand beyond transpilation into parse/generate, optimizer, and expression
    AST-shape suites.
-6. Stabilize the Rust API, C ABI, and first language bindings around the same
+7. Stabilize the Rust API, C ABI, and first language bindings around the same
    conformance and benchmark cases.
-7. Prepare a clean `0.1.0` crate release with small docs, MIT licensing, clear
+8. Prepare a clean `0.1.0` crate release with small docs, MIT licensing, clear
    attribution, and reproducible parity/performance commands.
 
 ## Architecture Port (parse -> generate)
@@ -189,17 +200,33 @@ codegen and the internal fast path reuse that knowledge.
 
 ## Standard Session Loop
 
-Use this loop for parity work:
+Use this loop for port work. The unit of work is a behavior family (a
+function, a type, a clause), not a report bucket.
 
-1. Pick a report bucket or focused bug.
-2. Confirm Python SQLGlot's oracle output for the same SQL and dialects.
-3. Add or import the smallest reproducing case.
-4. Confirm whether sqlgrok mismatches, errors, or already matches.
-5. Fix the parser, AST, generator, or dialect mapping.
-6. Add a focused Rust regression test near the owning behavior.
-7. Run the relevant Rust tests and SQLGlot parity command.
-8. Refresh the relevant report or budget when the change affects suite counts.
-9. Update [CHANGELOG.md](CHANGELOG.md).
+1. Pick a behavior family — from the transform-rule audit, from a transform
+   arm slated for deletion, or from a SQLGlot per-dialect table not yet
+   ported.
+2. Read how SQLGlot actually implements it: the local checkout has
+   per-dialect parsers in `sqlglot/parsers/<name>.py` and generators in
+   `sqlglot/generators/<name>.py`. Look for node flags
+   (`Length(binary=...)`, `Coalesce(is_nvl=...)`) — they decide the AST
+   shape.
+3. Sweep the oracle: read x write matrix including every identity pair
+   (`transpile(sql, read=r)` with no write defaults write=read). Identity
+   transpiles skip the transform layer but always run the generator, so the
+   generator must be correct for them.
+4. Port it: source-keyed behavior goes into the parser as canonicalization;
+   target-keyed behavior goes into the generator (a `rules.rs` data table if
+   it can be data, a typed arm if structural). If SQLGlot carries a node
+   flag, add the field to the `TypedFunction`/AST variant rather than
+   inventing a string canonical.
+5. Delete the transform arms the port replaces.
+6. Lock focused Rust regression tests near the owning behavior, including
+   identity cases.
+7. Run the Rust gate, the curated parity corpus, and the seven forced lanes;
+   require zero row-level regressions (diff report JSONL against git HEAD,
+   not just status counts).
+8. Update [CHANGELOG.md](CHANGELOG.md). Commit per family.
 
 Do not describe a curated corpus run as the full SQLGlot suite. The suite bridge
 and forced-pair reports are the visibility tools for broad parity.
