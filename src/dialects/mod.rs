@@ -3120,11 +3120,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
 
-            // None = no rename: reuse the original `name` (no allocation).
-            let name = match map_function_name_for_target(&name, target) {
-                Some(renamed) => renamed.to_string(),
-                None => name,
-            };
             Expr::Function {
                 name,
                 args: new_args,
@@ -3498,6 +3493,20 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             condition: Box::new(transform_expr(*condition, source, target)),
             true_val: Box::new(transform_expr(*true_val, source, target)),
             false_val: false_val.map(|expr| Box::new(transform_expr(*expr, source, target))),
+        },
+        Expr::Coalesce {
+            items,
+            is_nvl,
+            is_null,
+            source_name,
+        } => Expr::Coalesce {
+            items: items
+                .into_iter()
+                .map(|item| transform_expr(item, source, target))
+                .collect(),
+            is_nvl,
+            is_null,
+            source_name,
         },
         Expr::Interval {
             value,
@@ -4530,48 +4539,13 @@ fn detect_format_style(format_str: &str) -> time::TimeFormatStyle {
 // Function name mapping
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Map a function name between dialects, returning the owned target spelling
-/// (allocates; for the plugin path). Prefer `map_function_name_for_target`
-/// (returns `Option<&'static str>`, None = unchanged, zero-alloc) on hot paths.
+/// Map a canonical function name to the target spelling for the plugin path.
+/// COALESCE-family spellings need AST flags/metadata and are handled by the
+/// parser/generator, not this flat string helper.
 pub(crate) fn map_function_name(name: &str, target: Dialect) -> String {
-    map_function_name_for_target(name, target)
+    rules::rename_function(target, &name.to_ascii_uppercase())
         .map(str::to_string)
         .unwrap_or_else(|| name.to_string())
-}
-
-/// Function-name renames still living in the transform layer (target-only).
-/// Returns `Some(&'static str)` for a rename, `None` to keep the name
-/// unchanged (zero allocation — the caller reuses the original name).
-///
-/// Only ISNULL and NVL remain. Both diverge from SQLGlot because SQLGlot
-/// models them as `Coalesce(is_null=...)` / `Coalesce(is_nvl=...)` flags that
-/// re-render the original spelling for their home target only (tsql ISNULL,
-/// oracle/bigquery/clickhouse NVL); a flat string canonical cannot represent
-/// that, so they stay here until the AST grows the distinction. Everything
-/// else moved: read-side canonicalization in `rules::canonicalize_function`
-/// (parser) + target rendering in `rules::rename_function` and the typed
-/// generator arms. See docs/PORTING_PLAN.md (Phase 1.5).
-fn map_function_name_for_target(name: &str, target: Dialect) -> Option<&'static str> {
-    let upper = name.to_ascii_uppercase();
-    match upper.as_str() {
-        // ── IFNULL / COALESCE / ISNULL ───────────────────────────────────
-        // IFNULL and NVL are canonicalized to COALESCE read-side (parser, via
-        // rules::canonicalize_function) — universal across all dialects.
-        "ISNULL" => {
-            if is_tsql_family(target) {
-                None
-            } else if is_mysql_family(target) || matches!(target, Dialect::Sqlite) {
-                Some("IFNULL")
-            } else {
-                Some("COALESCE")
-            }
-        }
-
-        // ── NVL → COALESCE (Oracle preserves NVL) ───────────────────────
-        "NVL" => (!matches!(target, Dialect::Oracle)).then_some("COALESCE"),
-
-        _ => None,
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

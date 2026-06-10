@@ -3,6 +3,22 @@
 Quick summaries of completed sqlgrok work. The roadmap says what should happen next;
 this file records what landed.
 
+## 2026-06-10
+
+### Architecture Port: Coalesce Flags Moved Into The AST
+
+- Added SQLGlot-style `Expr::Coalesce` metadata for `is_null`, `is_nvl`, and
+  source spelling, so T-SQL/Fabric `ISNULL`, Oracle `NVL`, and
+  BigQuery/ClickHouse `IFNULL`/`NVL` identity output are generated from the
+  AST instead of a source->target string rename.
+- Parsed MySQL-family `ISNULL(x[, ...])` as the unary `(x IS NULL)` predicate,
+  matching SQLGlot's MySQL parser.
+- Deleted the remaining `map_function_name_for_target` transform hook; flat
+  function-name mapping now only uses target-keyed rule tables, while
+  COALESCE-family spellings live in parser/generator state.
+- Added focused dialect tests for T-SQL `ISNULL`, MySQL `ISNULL`, Oracle
+  `NVL`, and BigQuery/ClickHouse COALESCE metadata preservation.
+
 ## 2026-06-09
 
 ### Architecture Port: Function Renames And Type Mappings Are Target-Owned

@@ -2922,8 +2922,28 @@ impl Generator {
                 self.gen_expr_list(items);
                 self.write(")");
             }
-            Expr::Coalesce(items) => {
-                self.write_keyword("COALESCE(");
+            Expr::Coalesce {
+                items,
+                is_nvl,
+                is_null,
+                source_name,
+            } => {
+                let name =
+                    if *is_null && matches!(self.dialect, Some(Dialect::Tsql | Dialect::Fabric)) {
+                        "ISNULL"
+                    } else if *is_nvl && matches!(self.dialect, Some(Dialect::Oracle)) {
+                        "NVL"
+                    } else if matches!(self.dialect, Some(Dialect::BigQuery | Dialect::ClickHouse))
+                        && source_name
+                            .as_deref()
+                            .is_some_and(|name| matches!(name, "IFNULL" | "NVL"))
+                    {
+                        source_name.as_deref().unwrap_or("COALESCE")
+                    } else {
+                        "COALESCE"
+                    };
+                self.write_keyword(name);
+                self.write("(");
                 self.gen_expr_list(items);
                 self.write(")");
             }

@@ -605,8 +605,20 @@ pub enum Expr {
     ArrayLiteral(Vec<Expr>),
     /// Struct literal / row constructor: `(1, 'a', true)`
     Tuple(Vec<Expr>),
-    /// `COALESCE(a, b, c)`
-    Coalesce(Vec<Expr>),
+    /// `COALESCE(a, b, c)` / `NVL(a, b)` / T-SQL `ISNULL(a, b)`.
+    ///
+    /// SQLGlot carries `is_nvl` and `is_null` flags so home generators can
+    /// re-render `NVL` (oracle/bigquery/clickhouse) or `ISNULL` (tsql/fabric)
+    /// while other targets render plain `COALESCE`.
+    Coalesce {
+        items: Vec<Expr>,
+        #[serde(default)]
+        is_nvl: bool,
+        #[serde(default)]
+        is_null: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        source_name: Option<String>,
+    },
     /// `IF(condition, true_val, false_val)` (MySQL, BigQuery)
     If {
         condition: Box<Expr>,
@@ -2266,7 +2278,7 @@ impl Expr {
             Expr::Cast { expr, .. } | Expr::TryCast { expr, .. } => expr.walk(visitor),
             Expr::Extract { expr, .. } => expr.walk(visitor),
             Expr::Interval { value, .. } => value.walk(visitor),
-            Expr::ArrayLiteral(items) | Expr::Tuple(items) | Expr::Coalesce(items) => {
+            Expr::ArrayLiteral(items) | Expr::Tuple(items) | Expr::Coalesce { items, .. } => {
                 for item in items {
                     item.walk(visitor);
                 }
@@ -2550,9 +2562,17 @@ impl Expr {
             Expr::Tuple(elems) => {
                 Expr::Tuple(elems.into_iter().map(|e| e.transform(func)).collect())
             }
-            Expr::Coalesce(elems) => {
-                Expr::Coalesce(elems.into_iter().map(|e| e.transform(func)).collect())
-            }
+            Expr::Coalesce {
+                items,
+                is_nvl,
+                is_null,
+                source_name,
+            } => Expr::Coalesce {
+                items: items.into_iter().map(|e| e.transform(func)).collect(),
+                is_nvl,
+                is_null,
+                source_name,
+            },
             Expr::If {
                 condition,
                 true_val,

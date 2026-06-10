@@ -133,9 +133,9 @@ Where the remaining `(source, target)` rules in `src/dialects/mod.rs` belong
     as byte length (renders `LENGTH` even where char length renders
     `CHAR_LENGTH`; duckdb target lowers it to a `CASE TYPEOF(...)` form).
     Modeled for now with two canonical names (`CHAR_LENGTH` vs `LENGTH`).
-  - `Coalesce(is_nvl/is_null)`: oracle `NVL` and tsql `ISNULL` re-render
-    their own spelling only for their own target; a flat canonical cannot
-    represent that, so the `NVL`/`ISNULL` arms stay in the transform layer.
+  - Landed 2026-06-10: `Expr::Coalesce` now carries SQLGlot's `is_nvl`,
+    `is_null`, and source spelling metadata, so the `NVL`/`ISNULL` transform
+    rename hook is gone.
   - ASOF JOIN method and source-aware CROSS/OUTER APPLY need a new
     `JoinClause` field shared with `internal_ast` (tracked under Transpile
     Parity).

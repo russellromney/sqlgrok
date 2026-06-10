@@ -7315,6 +7315,7 @@ impl<'a> Parser<'a> {
         name: String,
         name_position: usize,
     ) -> Result<Expr> {
+        let original_upper = name.to_ascii_uppercase();
         // Read-side canonicalization: normalize a source-dialect function
         // spelling into the neutral name the AST carries; the generator renders
         // it per target (mirror of rules::rename_function). Safe now that the
@@ -7444,6 +7445,10 @@ impl<'a> Parser<'a> {
             });
         }
 
+        if let Some(expr) = self.build_coalesce_expr(&original_upper, args.clone()) {
+            return Ok(expr);
+        }
+
         // Try to construct a typed function variant. Keep COUNT() as
         // a raw function because SQLGlot preserves the empty call.
         if name.eq_ignore_ascii_case("COUNT") && args.is_empty() {
@@ -7466,6 +7471,52 @@ impl<'a> Parser<'a> {
                 filter: None,
                 over: None,
             })
+        }
+    }
+
+    fn build_coalesce_expr(&self, original_upper: &str, args: Vec<Expr>) -> Option<Expr> {
+        match original_upper {
+            // MySQL's ISNULL is a unary NULL predicate. SQLGlot ignores any
+            // accidental tail args and renders only the first expression.
+            "ISNULL" if crate::dialects::is_mysql_family(self.dialect) => {
+                args.into_iter().next().map(|expr| {
+                    Expr::Nested(Box::new(Expr::IsNull {
+                        expr: Box::new(expr),
+                        negated: false,
+                    }))
+                })
+            }
+            // T-SQL/Fabric ISNULL is SQLGlot's Coalesce(is_null=True).
+            "ISNULL" if crate::dialects::is_tsql_family(self.dialect) => Some(Expr::Coalesce {
+                items: args,
+                is_nvl: false,
+                is_null: true,
+                source_name: None,
+            }),
+            // Oracle NVL is SQLGlot's Coalesce(is_nvl=True). BigQuery and
+            // ClickHouse preserve IFNULL/NVL home spellings via expression
+            // metadata, modeled here as source_name.
+            "NVL" => Some(Expr::Coalesce {
+                items: args,
+                is_nvl: matches!(self.dialect, Dialect::Oracle),
+                is_null: false,
+                source_name: matches!(self.dialect, Dialect::BigQuery | Dialect::ClickHouse)
+                    .then(|| "NVL".to_string()),
+            }),
+            "IFNULL" => Some(Expr::Coalesce {
+                items: args,
+                is_nvl: false,
+                is_null: false,
+                source_name: matches!(self.dialect, Dialect::BigQuery | Dialect::ClickHouse)
+                    .then(|| "IFNULL".to_string()),
+            }),
+            "COALESCE" => Some(Expr::Coalesce {
+                items: args,
+                is_nvl: false,
+                is_null: false,
+                source_name: None,
+            }),
+            _ => None,
         }
     }
 

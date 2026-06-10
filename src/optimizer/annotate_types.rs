@@ -420,7 +420,7 @@ fn annotate_children<S: Schema>(
         }
         Expr::Extract { expr: e, .. } => annotate_expr(e, ctx, ann),
         Expr::Interval { value, .. } => annotate_expr(value, ctx, ann),
-        Expr::ArrayLiteral(items) | Expr::Tuple(items) | Expr::Coalesce(items) => {
+        Expr::ArrayLiteral(items) | Expr::Tuple(items) | Expr::Coalesce { items, .. } => {
             for item in items {
                 annotate_expr(item, ctx, ann);
             }
@@ -580,7 +580,7 @@ fn infer_type<S: Schema>(
         }
 
         // ── COALESCE ─────────────────────────────────────────────────
-        Expr::Coalesce(items) => {
+        Expr::Coalesce { items, .. } => {
             let types: Vec<&DataType> = items.iter().filter_map(|e| ann.get_type(e)).collect();
             common_type(&types)
         }

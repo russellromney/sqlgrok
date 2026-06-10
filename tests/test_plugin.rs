@@ -579,14 +579,11 @@ fn test_register_dialect_convenience() {
 
 #[test]
 fn test_dialect_ref_map_function_builtin() {
-    // NOW/GETDATE now travel through the CurrentTimestamp node (parser
-    // canonicalization + per-target rendering), not the string-level rename
-    // table; NVL -> COALESCE is one of the remaining string-level renames.
-    let dr = DialectRef::from(Dialect::Postgres);
-    assert_eq!(dr.map_function_name("NVL"), "COALESCE");
-    // Unmapped function returns the original name.
+    // NOW/GETDATE and COALESCE-family spellings travel through typed AST
+    // nodes/metadata, not the flat string-level rename table.
     let dr = DialectRef::from(Dialect::Tsql);
     assert_eq!(dr.map_function_name("NOW"), "NOW");
+    assert_eq!(dr.map_function_name("NVL"), "NVL");
 }
 
 #[test]

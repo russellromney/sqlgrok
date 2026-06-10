@@ -709,7 +709,9 @@ impl AstDiffer {
                     self.diff_exprs(se, te);
                 }
             }
-            (Expr::Coalesce(sa), Expr::Coalesce(ta)) => self.diff_expr_lists(sa, ta),
+            (Expr::Coalesce { items: sa, .. }, Expr::Coalesce { items: ta, .. }) => {
+                self.diff_expr_lists(sa, ta)
+            }
             (Expr::ArrayLiteral(sa), Expr::ArrayLiteral(ta)) => self.diff_expr_lists(sa, ta),
             (Expr::Tuple(sa), Expr::Tuple(ta)) => self.diff_expr_lists(sa, ta),
             (Expr::TypedFunction { func: sf, .. }, Expr::TypedFunction { func: tf, .. })

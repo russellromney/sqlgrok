@@ -25,11 +25,8 @@ pub(crate) fn canonicalize_function(source: Dialect, upper_name: &str) -> Option
     // Source-independent canonicalizations: normalize to one neutral name for
     // every source (and render as that name in every target).
     match upper_name {
-        // IFNULL is COALESCE in every dialect, including oracle (verified
-        // across the full read x write matrix against SQLGlot). NVL is NOT
-        // here: oracle renders it back to NVL, which a string canonical can't
-        // distinguish from a true COALESCE — it stays a transform-layer rule.
-        "IFNULL" => return Some("COALESCE"),
+        // COALESCE-family functions carry SQLGlot flags/metadata in
+        // Expr::Coalesce, so the parser handles IFNULL/NVL/ISNULL directly.
         // SQLGlot parses RAND and RANDOM into one expression (`Rand`) for
         // every source; `rename_function` renders it per target.
         "RANDOM" => return Some("RAND"),

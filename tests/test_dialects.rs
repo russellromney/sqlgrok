@@ -823,9 +823,29 @@ fn test_isnull_to_postgres() {
 fn test_isnull_to_mysql() {
     assert_transpile(
         "SELECT ISNULL(a, b) FROM t",
-        "SELECT IFNULL(a, b) FROM t",
+        "SELECT COALESCE(a, b) FROM t",
         Dialect::Tsql,
         Dialect::Mysql,
+    );
+}
+
+#[test]
+fn test_isnull_to_sqlite() {
+    assert_transpile(
+        "SELECT ISNULL(a, b) FROM t",
+        "SELECT COALESCE(a, b) FROM t",
+        Dialect::Tsql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_mysql_isnull_is_null_predicate() {
+    assert_transpile(
+        "SELECT ISNULL(a, b) FROM t",
+        "SELECT (a IS NULL) FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
     );
 }
 
@@ -1447,8 +1467,33 @@ fn test_validate_all_isnull_writes() {
             (Dialect::BigQuery, "SELECT COALESCE(x, y)"),
             (Dialect::DuckDb, "SELECT COALESCE(x, y)"),
             (Dialect::Snowflake, "SELECT COALESCE(x, y)"),
-            (Dialect::Mysql, "SELECT IFNULL(x, y)"),
-            (Dialect::Sqlite, "SELECT IFNULL(x, y)"),
+            (Dialect::Mysql, "SELECT COALESCE(x, y)"),
+            (Dialect::Sqlite, "SELECT COALESCE(x, y)"),
+        ],
+    );
+}
+
+#[test]
+fn test_validate_all_coalesce_metadata_writes() {
+    assert_validate_all(
+        "SELECT NVL(x, y)",
+        Dialect::BigQuery,
+        &[
+            (Dialect::BigQuery, "SELECT NVL(x, y)"),
+            (Dialect::ClickHouse, "SELECT NVL(x, y)"),
+            (Dialect::Oracle, "SELECT COALESCE(x, y)"),
+            (Dialect::Postgres, "SELECT COALESCE(x, y)"),
+        ],
+    );
+
+    assert_validate_all(
+        "SELECT IFNULL(x, y)",
+        Dialect::ClickHouse,
+        &[
+            (Dialect::BigQuery, "SELECT IFNULL(x, y)"),
+            (Dialect::ClickHouse, "SELECT IFNULL(x, y)"),
+            (Dialect::Oracle, "SELECT COALESCE(x, y)"),
+            (Dialect::Postgres, "SELECT COALESCE(x, y)"),
         ],
     );
 }

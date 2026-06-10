@@ -291,8 +291,8 @@ fn eval_expr_impl(
             }
         }
 
-        Expr::Coalesce(exprs) => {
-            for e in exprs {
+        Expr::Coalesce { items, .. } => {
+            for e in items {
                 let v = eval_expr_impl(e, row, group, tables, ctes)?;
                 if !v.is_null() {
                     return Ok(v);

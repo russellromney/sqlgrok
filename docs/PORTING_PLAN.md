@@ -145,8 +145,14 @@ Each step ratcheted on the forced suite across all lanes (now including
     BIGINT/UBIGINT at parse (tsql TIMESTAMP -> ROWVERSION); the generator's
     Timestamp/DateTime arms hold the per-target TYPE_MAPPING table; mysql
     CAST lowers to its SIGNED/UNSIGNED/CHAR cast set; postgres casts render
-    CAST(x AS T), never `::`. Only ISNULL/NVL remain in the transform rename
-    table (they need Coalesce is_null/is_nvl flags).
+    CAST(x AS T), never `::`.
+  - **Phase 1.5 update (2026-06-10):** COALESCE-family spellings now have a
+    typed AST home. `Expr::Coalesce` carries SQLGlot-style `is_null`,
+    `is_nvl`, and source spelling metadata, so T-SQL/Fabric `ISNULL`, Oracle
+    `NVL`, and BigQuery/ClickHouse `IFNULL`/`NVL` identity behavior render in
+    the generator. MySQL-family `ISNULL` parses as the unary `(x IS NULL)`
+    predicate. The remaining `map_function_name_for_target` transform hook was
+    deleted.
   - **Finding (2026-06): the multi-target renames in
     `map_function_name_for_source` (NOW, LEN/LENGTH, SUBSTR/SUBSTRING,
     IFNULL/ISNULL, NVL, RANDOM/RAND) DIVERGE from SQLGlot for identity** and
