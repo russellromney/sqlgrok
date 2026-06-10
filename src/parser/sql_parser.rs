@@ -7226,6 +7226,20 @@ impl<'a> Parser<'a> {
                             return Ok(Expr::StringLiteral(name));
                         }
                     }
+                    // Bare CURRENT_TIMESTAMP is SQLGlot's CurrentTimestamp
+                    // node for every source except clickhouse (which treats
+                    // it as a plain identifier). Quoted spellings stay
+                    // columns.
+                    if matches!(name_qs, QuoteStyle::None)
+                        && !matches!(self.dialect, Dialect::ClickHouse)
+                        && name.eq_ignore_ascii_case("CURRENT_TIMESTAMP")
+                    {
+                        return Ok(Expr::TypedFunction {
+                            func: TypedFunction::CurrentTimestamp,
+                            filter: None,
+                            over: None,
+                        });
+                    }
                     Ok(Expr::Column {
                         table: None,
                         name,
@@ -7409,7 +7423,9 @@ impl<'a> Parser<'a> {
                 filter: None,
                 over: None,
             })
-        } else if let Some(typed) = Self::try_typed_function(&name, args.clone(), distinct) {
+        } else if let Some(typed) =
+            Self::try_typed_function(&name, args.clone(), distinct, self.dialect)
+        {
             Ok(typed)
         } else {
             Ok(Expr::Function {
@@ -7962,8 +7978,15 @@ impl<'a> Parser<'a> {
 
     /// Try to construct a typed function expression from a parsed function call.
     /// Returns `None` if the function name is not recognized, falling back to
-    /// the generic `Expr::Function`.
-    fn try_typed_function(name: &str, args: Vec<Expr>, distinct: bool) -> Option<Expr> {
+    /// the generic `Expr::Function`. `dialect` is the source dialect; it only
+    /// disambiguates spellings whose canonical node depends on the reader
+    /// (e.g. byte-counting LENGTH).
+    fn try_typed_function(
+        name: &str,
+        args: Vec<Expr>,
+        distinct: bool,
+        dialect: Dialect,
+    ) -> Option<Expr> {
         let upper = name.to_uppercase();
         let tf = match upper.as_str() {
             // ── Date/Time ──────────────────────────────────────────
@@ -8050,7 +8073,13 @@ impl<'a> Parser<'a> {
                 }
             }
             "CURRENT_DATE" => TypedFunction::CurrentDate,
-            "NOW" => TypedFunction::CurrentTimestamp,
+            // NOW()/GETDATE() arrive here already canonicalized to
+            // CURRENT_TIMESTAMP by rules::canonicalize_function for the
+            // sources where SQLGlot parses them into CurrentTimestamp; a
+            // literal CURRENT_TIMESTAMP() call canonicalizes for every
+            // source. CURRENT_TIMESTAMP(n) keeps its precision argument and
+            // stays a generic function.
+            "CURRENT_TIMESTAMP" if args.is_empty() => TypedFunction::CurrentTimestamp,
             // STR_TO_TIME, PARSE_TIMESTAMP, and PARSE_DATETIME stay as
             // generic Expr::Function so we can preserve their names
             // through to sqlite output. Python SQLGlot keeps these
@@ -8212,9 +8241,24 @@ impl<'a> Parser<'a> {
                 }
             }
             "LENGTH" | "LEN" | "CHAR_LENGTH" | "CHARACTER_LENGTH" => {
+                // SQLGlot's Length(binary=True): these sources' LENGTH counts
+                // bytes (snowflake's LEN too); LEN/CHAR_LENGTH/
+                // CHARACTER_LENGTH count characters everywhere else.
+                let binary = match upper.as_str() {
+                    "LENGTH" => {
+                        crate::dialects::is_mysql_family(dialect)
+                            || matches!(
+                                dialect,
+                                Dialect::ClickHouse | Dialect::Snowflake | Dialect::BigQuery
+                            )
+                    }
+                    "LEN" => matches!(dialect, Dialect::Snowflake),
+                    _ => false,
+                };
                 let mut it = args.into_iter();
                 TypedFunction::Length {
                     expr: Box::new(it.next()?),
+                    binary,
                 }
             }
             "REPLACE" => {

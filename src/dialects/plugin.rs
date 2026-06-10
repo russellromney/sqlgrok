@@ -372,7 +372,7 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
     match func {
         TypedFunction::CurrentDate | TypedFunction::CurrentTimestamp => vec![],
         TypedFunction::RowNumber | TypedFunction::Rank | TypedFunction::DenseRank => vec![],
-        TypedFunction::Length { expr }
+        TypedFunction::Length { expr, .. }
         | TypedFunction::Upper { expr }
         | TypedFunction::Lower { expr }
         | TypedFunction::Initcap { expr }

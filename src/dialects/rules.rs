@@ -12,7 +12,7 @@
 //! depend on the source dialect. Source-dependent behaviour belongs in the
 //! parser (read-side canonicalization), not here. See `docs/PORTING_PLAN.md`.
 
-use crate::dialects::Dialect;
+use crate::dialects::{Dialect, is_postgres_family, is_presto_family, is_tsql_family};
 
 /// Read-side: canonicalize a *source-dialect* function spelling into the
 /// neutral name the AST carries, so the generator alone (via `rename_function`)
@@ -30,6 +30,31 @@ pub(crate) fn canonicalize_function(source: Dialect, upper_name: &str) -> Option
         // here: oracle renders it back to NVL, which a string canonical can't
         // distinguish from a true COALESCE — it stays a transform-layer rule.
         "IFNULL" => return Some("COALESCE"),
+        // SQLGlot parses RAND and RANDOM into one expression (`Rand`) for
+        // every source; `rename_function` renders it per target.
+        "RANDOM" => return Some("RAND"),
+        // SQLGlot parses NOW() into CurrentTimestamp only for these sources;
+        // everyone else keeps it as an anonymous function (renders NOW()
+        // for every target). Same for GETDATE(). The canonical name routes
+        // through the parser's typed-function path into
+        // TypedFunction::CurrentTimestamp, rendered per target by
+        // `render_current_timestamp`.
+        "NOW"
+            if is_postgres_family(source)
+                || is_presto_family(source)
+                || matches!(source, Dialect::Databricks | Dialect::Exasol) =>
+        {
+            return Some("CURRENT_TIMESTAMP");
+        }
+        "GETDATE"
+            if is_tsql_family(source)
+                || matches!(
+                    source,
+                    Dialect::Redshift | Dialect::Snowflake | Dialect::Databricks
+                ) =>
+        {
+            return Some("CURRENT_TIMESTAMP");
+        }
         _ => {}
     }
     match source {
@@ -52,9 +77,58 @@ pub(crate) fn canonicalize_function(source: Dialect, upper_name: &str) -> Option
     }
 }
 
+/// Target-keyed rendering for the canonical CurrentTimestamp node (SQLGlot's
+/// `exp.CurrentTimestamp`). Verified against the full SQLGlot write sweep.
+pub(crate) fn render_current_timestamp(target: Option<Dialect>) -> &'static str {
+    let Some(target) = target else {
+        return "CURRENT_TIMESTAMP()";
+    };
+    if is_tsql_family(target) || matches!(target, Dialect::Redshift) {
+        return "GETDATE()";
+    }
+    if matches!(target, Dialect::Doris) {
+        return "NOW()";
+    }
+    if is_postgres_family(target)
+        || is_presto_family(target)
+        || matches!(
+            target,
+            Dialect::Sqlite
+                | Dialect::DuckDb
+                | Dialect::Oracle
+                | Dialect::Drill
+                | Dialect::Druid
+                | Dialect::Teradata
+        )
+    {
+        return "CURRENT_TIMESTAMP";
+    }
+    // mysql family (sans doris), bigquery, hive family, snowflake,
+    // clickhouse, dremio, exasol, tableau, ansi: SQLGlot's default function
+    // rendering with parens.
+    "CURRENT_TIMESTAMP()"
+}
+
 /// Map a (canonical, uppercased) function name to its target-dialect spelling.
 /// Returns `None` when no rename applies (caller keeps the name).
 pub(crate) fn rename_function(target: Dialect, upper_name: &str) -> Option<&'static str> {
+    // Canonical names rendered per target for every write dialect (SQLGlot's
+    // base-expression transforms). Checked before the per-target tables.
+    if upper_name == "RAND" {
+        return match target {
+            Dialect::Oracle => Some("DBMS_RANDOM.VALUE"),
+            Dialect::ClickHouse => Some("randCanonical"),
+            t if is_postgres_family(t)
+                || matches!(
+                    t,
+                    Dialect::Sqlite | Dialect::DuckDb | Dialect::Snowflake | Dialect::Teradata
+                ) =>
+            {
+                Some("RANDOM")
+            }
+            _ => None,
+        };
+    }
     match target {
         Dialect::Sqlite => rename_function_sqlite(upper_name),
         // Write-side inverse of `canonicalize_function`: render the neutral

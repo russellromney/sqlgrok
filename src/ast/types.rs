@@ -857,8 +857,16 @@ pub enum TypedFunction {
     },
     /// `INITCAP(expr)` — capitalize first letter of each word
     Initcap { expr: Box<Expr> },
-    /// `LENGTH(expr)` / `LEN`
-    Length { expr: Box<Expr> },
+    /// `LENGTH(expr)` / `LEN` / `CHAR_LENGTH` / `CHARACTER_LENGTH`.
+    /// `binary` mirrors SQLGlot's `Length(binary=...)`: true when the source
+    /// dialect's LENGTH counts bytes (mysql family, clickhouse, snowflake,
+    /// bigquery), which renders LENGTH instead of CHAR_LENGTH for targets
+    /// that distinguish the two.
+    Length {
+        expr: Box<Expr>,
+        #[serde(default)]
+        binary: bool,
+    },
     /// `REPLACE(expr, from, to)`
     Replace {
         expr: Box<Expr>,
@@ -1068,7 +1076,7 @@ impl TypedFunction {
             TypedFunction::Upper { expr }
             | TypedFunction::Lower { expr }
             | TypedFunction::Initcap { expr }
-            | TypedFunction::Length { expr }
+            | TypedFunction::Length { expr, .. }
             | TypedFunction::Reverse { expr } => expr.walk(visitor),
             TypedFunction::RegexpLike {
                 expr,
@@ -1379,8 +1387,9 @@ impl TypedFunction {
             TypedFunction::Initcap { expr } => TypedFunction::Initcap {
                 expr: Box::new(expr.transform(func)),
             },
-            TypedFunction::Length { expr } => TypedFunction::Length {
+            TypedFunction::Length { expr, binary } => TypedFunction::Length {
                 expr: Box::new(expr.transform(func)),
+                binary,
             },
             TypedFunction::Replace { expr, from, to } => TypedFunction::Replace {
                 expr: Box::new(expr.transform(func)),

@@ -115,10 +115,10 @@ fn test_dialect_display() {
 
 #[test]
 fn test_substr_postgres_to_mysql() {
-    // Postgres SUBSTRING → MySQL SUBSTR
+    // MySQL renders Substring as SUBSTRING (SQLGlot)
     assert_transpile(
         "SELECT SUBSTRING(x, 1, 3) FROM t",
-        "SELECT SUBSTR(x, 1, 3) FROM t",
+        "SELECT SUBSTRING(x, 1, 3) FROM t",
         Dialect::Postgres,
         Dialect::Mysql,
     );
@@ -126,10 +126,10 @@ fn test_substr_postgres_to_mysql() {
 
 #[test]
 fn test_substr_mysql_to_postgres() {
-    // MySQL SUBSTR → Postgres SUBSTRING
+    // Postgres renders Substring in SQL-standard FROM/FOR form (SQLGlot)
     assert_transpile(
         "SELECT SUBSTR(x, 1, 3) FROM t",
-        "SELECT SUBSTRING(x, 1, 3) FROM t",
+        "SELECT SUBSTRING(x FROM 1 FOR 3) FROM t",
         Dialect::Mysql,
         Dialect::Postgres,
     );
@@ -148,10 +148,10 @@ fn test_substring_to_sqlite() {
 
 #[test]
 fn test_substr_from_duckdb() {
-    // DuckDB uses SUBSTRING; targeting MySQL should produce SUBSTR
+    // MySQL renders Substring as SUBSTRING (SQLGlot)
     assert_transpile(
         "SELECT SUBSTRING(x, 1, 3) FROM t",
-        "SELECT SUBSTR(x, 1, 3) FROM t",
+        "SELECT SUBSTRING(x, 1, 3) FROM t",
         Dialect::DuckDb,
         Dialect::Mysql,
     );
@@ -214,9 +214,10 @@ fn test_now_to_spark() {
 
 #[test]
 fn test_now_to_presto() {
+    // The presto family renders CurrentTimestamp bare (SQLGlot)
     assert_transpile(
         "SELECT NOW()",
-        "SELECT CURRENT_TIMESTAMP()",
+        "SELECT CURRENT_TIMESTAMP",
         Dialect::Postgres,
         Dialect::Presto,
     );
@@ -226,7 +227,7 @@ fn test_now_to_presto() {
 fn test_now_to_trino() {
     assert_transpile(
         "SELECT NOW()",
-        "SELECT CURRENT_TIMESTAMP()",
+        "SELECT CURRENT_TIMESTAMP",
         Dialect::Postgres,
         Dialect::Trino,
     );
@@ -255,9 +256,10 @@ fn test_now_to_clickhouse() {
 
 #[test]
 fn test_getdate_to_postgres() {
+    // Postgres renders CurrentTimestamp bare (SQLGlot)
     assert_transpile(
         "SELECT GETDATE()",
-        "SELECT NOW()",
+        "SELECT CURRENT_TIMESTAMP",
         Dialect::Tsql,
         Dialect::Postgres,
     );
@@ -290,9 +292,11 @@ fn test_len_to_postgres() {
 
 #[test]
 fn test_len_to_mysql() {
+    // MySQL reserves LENGTH for byte counting; character length renders
+    // CHAR_LENGTH (SQLGlot)
     assert_transpile(
         "SELECT LEN(x) FROM t",
-        "SELECT LENGTH(x) FROM t",
+        "SELECT CHAR_LENGTH(x) FROM t",
         Dialect::BigQuery,
         Dialect::Mysql,
     );
@@ -305,6 +309,83 @@ fn test_len_to_sqlite() {
         "SELECT LENGTH(x) FROM t",
         Dialect::BigQuery,
         Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_length_binary_flag() {
+    // MySQL's own LENGTH counts bytes (SQLGlot Length(binary=True)): it must
+    // KEEP the LENGTH spelling for a mysql target, while a character-counting
+    // source renders CHAR_LENGTH there.
+    assert_transpile(
+        "SELECT LENGTH(x) FROM t",
+        "SELECT LENGTH(x) FROM t",
+        Dialect::Mysql,
+        Dialect::Mysql,
+    );
+    assert_transpile(
+        "SELECT LENGTH(x) FROM t",
+        "SELECT CHAR_LENGTH(x) FROM t",
+        Dialect::Postgres,
+        Dialect::Mysql,
+    );
+    // Both spellings leave mysql as the canonical LENGTH for other targets.
+    assert_transpile(
+        "SELECT LENGTH(x), CHAR_LENGTH(x) FROM t",
+        "SELECT LENGTH(x), LENGTH(x) FROM t",
+        Dialect::Mysql,
+        Dialect::Postgres,
+    );
+}
+
+#[test]
+fn test_bare_current_timestamp_is_node() {
+    // Bare CURRENT_TIMESTAMP parses to the CurrentTimestamp node (SQLGlot),
+    // so it renders with parens for mysql and as GETDATE() for tsql.
+    assert_transpile(
+        "SELECT CURRENT_TIMESTAMP",
+        "SELECT CURRENT_TIMESTAMP()",
+        Dialect::Postgres,
+        Dialect::Mysql,
+    );
+    assert_transpile(
+        "SELECT CURRENT_TIMESTAMP",
+        "SELECT GETDATE()",
+        Dialect::Postgres,
+        Dialect::Tsql,
+    );
+    // An empty-paren call canonicalizes to the same node.
+    assert_transpile(
+        "SELECT CURRENT_TIMESTAMP()",
+        "SELECT CURRENT_TIMESTAMP",
+        Dialect::Mysql,
+        Dialect::Postgres,
+    );
+    // ClickHouse treats bare CURRENT_TIMESTAMP as an identifier (SQLGlot).
+    assert_transpile(
+        "SELECT CURRENT_TIMESTAMP",
+        "SELECT CURRENT_TIMESTAMP",
+        Dialect::ClickHouse,
+        Dialect::Postgres,
+    );
+}
+
+#[test]
+fn test_now_not_canonicalized_for_mysql_source() {
+    // Only postgres/presto families, databricks, and exasol parse NOW() into
+    // CurrentTimestamp (SQLGlot); a mysql-source NOW() stays NOW() for every
+    // target.
+    assert_transpile(
+        "SELECT NOW()",
+        "SELECT NOW()",
+        Dialect::Mysql,
+        Dialect::Postgres,
+    );
+    assert_transpile(
+        "SELECT NOW()",
+        "SELECT NOW()",
+        Dialect::Mysql,
+        Dialect::Tsql,
     );
 }
 
@@ -528,10 +609,10 @@ fn test_bytea_to_blob_sqlite() {
 
 #[test]
 fn test_compound_function_and_type() {
-    // SUBSTR + CAST(x AS TEXT): Postgres → MySQL should map both
+    // MySQL renders Substring as SUBSTRING (SQLGlot)
     assert_transpile(
         "SELECT SUBSTRING(CAST(x AS TEXT), 1, 3) FROM t",
-        "SELECT SUBSTR(CAST(x AS TEXT), 1, 3) FROM t",
+        "SELECT SUBSTRING(CAST(x AS TEXT), 1, 3) FROM t",
         Dialect::Postgres,
         Dialect::Mysql,
     );
@@ -586,12 +667,9 @@ fn test_same_dialect_noop() {
         Dialect::Ansi,
         Dialect::Ansi,
     );
-    assert_transpile(
-        "SELECT NOW()",
-        "SELECT CURRENT_TIMESTAMP()",
-        Dialect::Ansi,
-        Dialect::Ansi,
-    );
+    // ANSI does not canonicalize NOW (only postgres/presto families,
+    // databricks, and exasol do in SQLGlot), so it round-trips.
+    assert_transpile("SELECT NOW()", "SELECT NOW()", Dialect::Ansi, Dialect::Ansi);
     assert_transpile(
         "SELECT LEN(x) FROM t",
         "SELECT LENGTH(x) FROM t",
@@ -758,9 +836,10 @@ fn test_rand_to_sqlite() {
 
 #[test]
 fn test_substring_to_hive() {
+    // The hive family renders Substring as SUBSTRING (SQLGlot)
     assert_transpile(
         "SELECT SUBSTRING(x, 1, 3) FROM t",
-        "SELECT SUBSTR(x, 1, 3) FROM t",
+        "SELECT SUBSTRING(x, 1, 3) FROM t",
         Dialect::Postgres,
         Dialect::Hive,
     );
@@ -770,7 +849,7 @@ fn test_substring_to_hive() {
 fn test_substring_to_spark() {
     assert_transpile(
         "SELECT SUBSTRING(x, 1, 3) FROM t",
-        "SELECT SUBSTR(x, 1, 3) FROM t",
+        "SELECT SUBSTRING(x, 1, 3) FROM t",
         Dialect::Postgres,
         Dialect::Spark,
     );
@@ -780,7 +859,7 @@ fn test_substring_to_spark() {
 fn test_substring_to_databricks() {
     assert_transpile(
         "SELECT SUBSTRING(x, 1, 3) FROM t",
-        "SELECT SUBSTR(x, 1, 3) FROM t",
+        "SELECT SUBSTRING(x, 1, 3) FROM t",
         Dialect::Postgres,
         Dialect::Databricks,
     );
@@ -798,9 +877,10 @@ fn test_substring_to_oracle() {
 
 #[test]
 fn test_substr_to_presto() {
+    // The presto family renders Substring as SUBSTR (SQLGlot)
     assert_transpile(
         "SELECT SUBSTR(x, 1, 3) FROM t",
-        "SELECT SUBSTRING(x, 1, 3) FROM t",
+        "SELECT SUBSTR(x, 1, 3) FROM t",
         Dialect::Mysql,
         Dialect::Presto,
     );
@@ -810,7 +890,7 @@ fn test_substr_to_presto() {
 fn test_substr_to_trino() {
     assert_transpile(
         "SELECT SUBSTR(x, 1, 3) FROM t",
-        "SELECT SUBSTRING(x, 1, 3) FROM t",
+        "SELECT SUBSTR(x, 1, 3) FROM t",
         Dialect::Mysql,
         Dialect::Trino,
     );
@@ -1002,11 +1082,12 @@ fn test_postgres_family_string_to_text() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 #[test]
-fn test_mysql_family_substring_to_substr() {
+fn test_mysql_family_substring() {
+    // The mysql family renders Substring as SUBSTRING (SQLGlot)
     for target in [Dialect::Doris, Dialect::SingleStore, Dialect::StarRocks] {
         assert_transpile(
             "SELECT SUBSTRING(x, 1, 3) FROM t",
-            "SELECT SUBSTR(x, 1, 3) FROM t",
+            "SELECT SUBSTRING(x, 1, 3) FROM t",
             Dialect::Postgres,
             target,
         );
@@ -1060,10 +1141,10 @@ fn test_fabric_same_as_tsql() {
 
 #[test]
 fn test_compound_postgres_to_hive() {
-    // SUBSTRING → SUBSTR, TEXT → STRING, NOW → CURRENT_TIMESTAMP
+    // Substring stays SUBSTRING for hive (SQLGlot); TEXT → STRING
     assert_transpile(
         "SELECT SUBSTRING(CAST(x AS TEXT), 1, 3) FROM t",
-        "SELECT SUBSTR(CAST(x AS STRING), 1, 3) FROM t",
+        "SELECT SUBSTRING(CAST(x AS STRING), 1, 3) FROM t",
         Dialect::Postgres,
         Dialect::Hive,
     );
@@ -1108,14 +1189,17 @@ fn test_validate_all_rand() {
             (Dialect::Postgres, "SELECT RANDOM()"),
             (Dialect::DuckDb, "SELECT RANDOM()"),
             (Dialect::Sqlite, "SELECT RANDOM()"),
+            (Dialect::Snowflake, "SELECT RANDOM()"),
+            (Dialect::Teradata, "SELECT RANDOM()"),
+            (Dialect::Redshift, "SELECT RANDOM()"),
+            (Dialect::Oracle, "SELECT DBMS_RANDOM.VALUE()"),
+            (Dialect::ClickHouse, "SELECT randCanonical()"),
             (Dialect::BigQuery, "SELECT RAND()"),
-            (Dialect::Snowflake, "SELECT RAND()"),
             (Dialect::Hive, "SELECT RAND()"),
             (Dialect::Spark, "SELECT RAND()"),
             (Dialect::Presto, "SELECT RAND()"),
             (Dialect::Trino, "SELECT RAND()"),
             (Dialect::Tsql, "SELECT RAND()"),
-            (Dialect::ClickHouse, "SELECT RAND()"),
             (Dialect::Databricks, "SELECT RAND()"),
             (Dialect::Athena, "SELECT RAND()"),
             (Dialect::Doris, "SELECT RAND()"),
@@ -1290,45 +1374,47 @@ fn test_validate_all_now_writes() {
         "SELECT NOW()",
         Dialect::Postgres,
         &[
-            // Keeps NOW
-            (Dialect::Postgres, "SELECT NOW()"),
-            (Dialect::Mysql, "SELECT NOW()"),
-            (Dialect::DuckDb, "SELECT NOW()"),
-            (Dialect::Redshift, "SELECT NOW()"),
-            // → CURRENT_TIMESTAMP
+            // Postgres canonicalizes NOW() to CurrentTimestamp (SQLGlot),
+            // rendered per target.
+            // → bare CURRENT_TIMESTAMP
+            (Dialect::Postgres, "SELECT CURRENT_TIMESTAMP"),
+            (Dialect::DuckDb, "SELECT CURRENT_TIMESTAMP"),
             (Dialect::Sqlite, "SELECT CURRENT_TIMESTAMP"),
+            (Dialect::Oracle, "SELECT CURRENT_TIMESTAMP"),
+            (Dialect::Presto, "SELECT CURRENT_TIMESTAMP"),
+            (Dialect::Trino, "SELECT CURRENT_TIMESTAMP"),
+            (Dialect::Athena, "SELECT CURRENT_TIMESTAMP"),
+            (Dialect::Teradata, "SELECT CURRENT_TIMESTAMP"),
+            // → CURRENT_TIMESTAMP()
+            (Dialect::Mysql, "SELECT CURRENT_TIMESTAMP()"),
             (Dialect::Ansi, "SELECT CURRENT_TIMESTAMP()"),
             (Dialect::BigQuery, "SELECT CURRENT_TIMESTAMP()"),
             (Dialect::Snowflake, "SELECT CURRENT_TIMESTAMP()"),
             (Dialect::Hive, "SELECT CURRENT_TIMESTAMP()"),
             (Dialect::Spark, "SELECT CURRENT_TIMESTAMP()"),
             (Dialect::Databricks, "SELECT CURRENT_TIMESTAMP()"),
-            (Dialect::Presto, "SELECT CURRENT_TIMESTAMP()"),
-            (Dialect::Trino, "SELECT CURRENT_TIMESTAMP()"),
-            (Dialect::Athena, "SELECT CURRENT_TIMESTAMP()"),
             (Dialect::ClickHouse, "SELECT CURRENT_TIMESTAMP()"),
-            (Dialect::Oracle, "SELECT CURRENT_TIMESTAMP()"),
             (Dialect::Exasol, "SELECT CURRENT_TIMESTAMP()"),
-            (Dialect::Teradata, "SELECT CURRENT_TIMESTAMP()"),
             // → GETDATE
             (Dialect::Tsql, "SELECT GETDATE()"),
             (Dialect::Fabric, "SELECT GETDATE()"),
+            (Dialect::Redshift, "SELECT GETDATE()"),
         ],
     );
 }
 
 #[test]
 fn test_validate_all_getdate_writes() {
-    // Python: GETDATE() from T-SQL → writes to many dialects. We accept either
-    // NOW() or CURRENT_TIMESTAMP-style rendering since SQLGlot itself has shifted
-    // between these as the canonical form across releases.
+    // Python: GETDATE() from T-SQL parses to CurrentTimestamp (SQLGlot),
+    // rendered per target.
     assert_validate_all(
         "SELECT GETDATE()",
         Dialect::Tsql,
         &[
             (Dialect::Tsql, "SELECT GETDATE()"),
             (Dialect::Fabric, "SELECT GETDATE()"),
-            (Dialect::Sqlite, "SELECT CURRENT_TIMESTAMP()"),
+            (Dialect::Postgres, "SELECT CURRENT_TIMESTAMP"),
+            (Dialect::Sqlite, "SELECT CURRENT_TIMESTAMP"),
             (Dialect::BigQuery, "SELECT CURRENT_TIMESTAMP()"),
             (Dialect::Snowflake, "SELECT CURRENT_TIMESTAMP()"),
             (Dialect::Hive, "SELECT CURRENT_TIMESTAMP()"),
@@ -1345,28 +1431,29 @@ fn test_validate_all_substring_writes() {
         "SELECT SUBSTRING(x, 1, 3)",
         Dialect::Postgres,
         &[
+            // SQL-standard FROM/FOR form (postgres family)
+            (Dialect::Postgres, "SELECT SUBSTRING(x FROM 1 FOR 3)"),
+            (Dialect::Redshift, "SELECT SUBSTRING(x FROM 1 FOR 3)"),
+            (Dialect::Materialize, "SELECT SUBSTRING(x FROM 1 FOR 3)"),
             // SUBSTRING dialects
-            (Dialect::Postgres, "SELECT SUBSTRING(x, 1, 3)"),
-            (Dialect::Redshift, "SELECT SUBSTRING(x, 1, 3)"),
             (Dialect::DuckDb, "SELECT SUBSTRING(x, 1, 3)"),
             (Dialect::BigQuery, "SELECT SUBSTRING(x, 1, 3)"),
             (Dialect::Snowflake, "SELECT SUBSTRING(x, 1, 3)"),
-            (Dialect::Presto, "SELECT SUBSTRING(x, 1, 3)"),
-            (Dialect::Trino, "SELECT SUBSTRING(x, 1, 3)"),
-            (Dialect::Athena, "SELECT SUBSTRING(x, 1, 3)"),
             (Dialect::ClickHouse, "SELECT SUBSTRING(x, 1, 3)"),
             (Dialect::Ansi, "SELECT SUBSTRING(x, 1, 3)"),
-            (Dialect::Materialize, "SELECT SUBSTRING(x, 1, 3)"),
             (Dialect::Sqlite, "SELECT SUBSTRING(x, 1, 3)"),
-            // SUBSTR dialects
-            (Dialect::Mysql, "SELECT SUBSTR(x, 1, 3)"),
+            (Dialect::Mysql, "SELECT SUBSTRING(x, 1, 3)"),
+            (Dialect::Hive, "SELECT SUBSTRING(x, 1, 3)"),
+            (Dialect::Spark, "SELECT SUBSTRING(x, 1, 3)"),
+            (Dialect::Databricks, "SELECT SUBSTRING(x, 1, 3)"),
+            (Dialect::Doris, "SELECT SUBSTRING(x, 1, 3)"),
+            (Dialect::SingleStore, "SELECT SUBSTRING(x, 1, 3)"),
+            (Dialect::StarRocks, "SELECT SUBSTRING(x, 1, 3)"),
+            // SUBSTR dialects (oracle, presto family)
             (Dialect::Oracle, "SELECT SUBSTR(x, 1, 3)"),
-            (Dialect::Hive, "SELECT SUBSTR(x, 1, 3)"),
-            (Dialect::Spark, "SELECT SUBSTR(x, 1, 3)"),
-            (Dialect::Databricks, "SELECT SUBSTR(x, 1, 3)"),
-            (Dialect::Doris, "SELECT SUBSTR(x, 1, 3)"),
-            (Dialect::SingleStore, "SELECT SUBSTR(x, 1, 3)"),
-            (Dialect::StarRocks, "SELECT SUBSTR(x, 1, 3)"),
+            (Dialect::Presto, "SELECT SUBSTR(x, 1, 3)"),
+            (Dialect::Trino, "SELECT SUBSTR(x, 1, 3)"),
+            (Dialect::Athena, "SELECT SUBSTR(x, 1, 3)"),
         ],
     );
 }
@@ -1380,18 +1467,22 @@ fn test_validate_all_len_writes() {
         "SELECT LEN(x)",
         Dialect::BigQuery,
         &[
-            (Dialect::BigQuery, "SELECT LEN(x)"),
-            (Dialect::Snowflake, "SELECT LEN(x)"),
+            // Known divergence: SQLGlot preserves the LEN spelling for a
+            // bigquery identity round-trip; we render the canonical LENGTH.
+            (Dialect::BigQuery, "SELECT LENGTH(x)"),
+            (Dialect::Snowflake, "SELECT LENGTH(x)"),
             (Dialect::Tsql, "SELECT LEN(x)"),
             (Dialect::Fabric, "SELECT LEN(x)"),
             (Dialect::Postgres, "SELECT LENGTH(x)"),
-            (Dialect::Mysql, "SELECT LENGTH(x)"),
+            // MySQL family and clickhouse reserve LENGTH for byte counting;
+            // character length renders CHAR_LENGTH (SQLGlot).
+            (Dialect::Mysql, "SELECT CHAR_LENGTH(x)"),
+            (Dialect::ClickHouse, "SELECT CHAR_LENGTH(x)"),
             (Dialect::Sqlite, "SELECT LENGTH(x)"),
             (Dialect::DuckDb, "SELECT LENGTH(x)"),
             (Dialect::Oracle, "SELECT LENGTH(x)"),
             (Dialect::Hive, "SELECT LENGTH(x)"),
             (Dialect::Presto, "SELECT LENGTH(x)"),
-            (Dialect::ClickHouse, "SELECT LENGTH(x)"),
         ],
     );
 }
@@ -1848,11 +1939,11 @@ fn test_validate_all_compound_query() {
         &[
             (
                 Dialect::Mysql,
-                "SELECT COALESCE(SUBSTR(CAST(x AS TEXT), 1, 3), 'none') FROM t",
+                "SELECT COALESCE(SUBSTRING(CAST(x AS TEXT), 1, 3), 'none') FROM t",
             ),
             (
                 Dialect::Postgres,
-                "SELECT COALESCE(SUBSTRING(x::TEXT, 1, 3), 'none') FROM t",
+                "SELECT COALESCE(SUBSTRING(x::TEXT FROM 1 FOR 3), 'none') FROM t",
             ),
             (
                 Dialect::BigQuery,
@@ -1860,7 +1951,7 @@ fn test_validate_all_compound_query() {
             ),
             (
                 Dialect::Hive,
-                "SELECT COALESCE(SUBSTR(CAST(x AS STRING), 1, 3), 'none') FROM t",
+                "SELECT COALESCE(SUBSTRING(CAST(x AS STRING), 1, 3), 'none') FROM t",
             ),
             (
                 Dialect::Tsql,

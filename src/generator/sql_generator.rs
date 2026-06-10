@@ -3388,21 +3388,7 @@ impl Generator {
                 }
             }
             TypedFunction::CurrentTimestamp => {
-                if is_tsql {
-                    self.write_keyword("GETDATE()");
-                } else if is_mysql
-                    || matches!(
-                        dialect,
-                        Some(Dialect::Postgres)
-                            | Some(Dialect::DuckDb)
-                            | Some(Dialect::Sqlite)
-                            | Some(Dialect::Redshift)
-                    )
-                {
-                    self.write_keyword("NOW()");
-                } else {
-                    self.write_keyword("CURRENT_TIMESTAMP()");
-                }
+                self.write_keyword(crate::dialects::rules::render_current_timestamp(dialect));
             }
             TypedFunction::StrToTime { expr, format } => {
                 if is_mysql {
@@ -3553,20 +3539,23 @@ impl Generator {
                 start,
                 length,
             } => {
-                let name = if matches!(dialect, Some(Dialect::Sqlite)) {
-                    // Python SQLGlot normalizes both SUBSTR and SUBSTRING to
-                    // SUBSTRING for SQLite output.
-                    "SUBSTRING"
-                } else if is_oracle
-                    || is_hive_family
-                    || is_mysql
-                    || matches!(
-                        dialect,
-                        Some(Dialect::Doris)
-                            | Some(Dialect::SingleStore)
-                            | Some(Dialect::StarRocks)
-                    )
-                {
+                // SQLGlot per-target Substring rendering: SUBSTR for oracle
+                // and the presto family, SQL-standard SUBSTRING(x FROM a
+                // FOR b) for the postgres family, SUBSTRING(x, a, b)
+                // everywhere else.
+                if dialect.is_some_and(crate::dialects::is_postgres_family) {
+                    self.write_keyword("SUBSTRING(");
+                    self.gen_expr(expr);
+                    self.write_keyword(" FROM ");
+                    self.gen_expr(start);
+                    if let Some(l) = length {
+                        self.write_keyword(" FOR ");
+                        self.gen_expr(l);
+                    }
+                    self.write(")");
+                    return;
+                }
+                let name = if is_oracle || dialect.is_some_and(crate::dialects::is_presto_family) {
                     "SUBSTR"
                 } else {
                     "SUBSTRING"
@@ -3669,9 +3658,15 @@ impl Generator {
                 self.gen_expr(expr);
                 self.write(")");
             }
-            TypedFunction::Length { expr } => {
-                let name = if is_tsql || is_bigquery || is_snowflake {
+            TypedFunction::Length { expr, binary } => {
+                // SQLGlot per-target Length rendering: LEN for the tsql
+                // family; CHAR_LENGTH for targets that reserve LENGTH for
+                // byte counting (mysql family, clickhouse) unless this node
+                // IS a byte count; LENGTH otherwise.
+                let name = if is_tsql {
                     "LEN"
+                } else if !binary && (is_mysql || matches!(dialect, Some(Dialect::ClickHouse))) {
+                    "CHAR_LENGTH"
                 } else {
                     "LENGTH"
                 };

@@ -2448,10 +2448,10 @@ fn test_transpile_identity_same_dialect() {
 
 #[test]
 fn test_transpile_substr_to_substring() {
-    // SUBSTR → SUBSTRING when targeting ANSI/Postgres
+    // Postgres renders Substring in SQL-standard FROM/FOR form (SQLGlot)
     validate_with_dialect(
         "SELECT SUBSTR(name, 1, 3) FROM users",
-        "SELECT SUBSTRING(name, 1, 3) FROM users",
+        "SELECT SUBSTRING(name FROM 1 FOR 3) FROM users",
         Dialect::Mysql,
         Dialect::Postgres,
     );
@@ -2459,10 +2459,10 @@ fn test_transpile_substr_to_substring() {
 
 #[test]
 fn test_transpile_substring_to_substr() {
-    // SUBSTRING → SUBSTR when targeting MySQL
+    // MySQL and SQLite render Substring as SUBSTRING (SQLGlot)
     validate_with_dialect(
         "SELECT SUBSTRING(name, 1, 3) FROM users",
-        "SELECT SUBSTR(name, 1, 3) FROM users",
+        "SELECT SUBSTRING(name, 1, 3) FROM users",
         Dialect::Postgres,
         Dialect::Mysql,
     );
@@ -2505,7 +2505,8 @@ fn test_transpile_now_to_current_timestamp() {
 
 #[test]
 fn test_transpile_len_to_length() {
-    // LEN → LENGTH for Postgres, MySQL, SQLite, DuckDB
+    // Character length renders LENGTH for postgres, CHAR_LENGTH for mysql
+    // (which reserves LENGTH for byte counting) — SQLGlot.
     validate_with_dialect(
         "SELECT LEN(name) FROM t",
         "SELECT LENGTH(name) FROM t",
@@ -2514,7 +2515,7 @@ fn test_transpile_len_to_length() {
     );
     validate_with_dialect(
         "SELECT LEN(name) FROM t",
-        "SELECT LENGTH(name) FROM t",
+        "SELECT CHAR_LENGTH(name) FROM t",
         Dialect::BigQuery,
         Dialect::Mysql,
     );
@@ -3272,15 +3273,17 @@ fn test_typed_length_cross_dialect() {
 
 #[test]
 fn test_typed_substring_cross_dialect() {
+    // MySQL renders Substring as SUBSTRING; postgres uses the SQL-standard
+    // FROM/FOR form (SQLGlot).
     validate_with_dialect(
         "SELECT SUBSTRING(name, 1, 3) FROM t",
-        "SELECT SUBSTR(name, 1, 3) FROM t",
+        "SELECT SUBSTRING(name, 1, 3) FROM t",
         Dialect::Postgres,
         Dialect::Mysql,
     );
     validate_with_dialect(
         "SELECT SUBSTR(name, 1, 3) FROM t",
-        "SELECT SUBSTRING(name, 1, 3) FROM t",
+        "SELECT SUBSTRING(name FROM 1 FOR 3) FROM t",
         Dialect::Mysql,
         Dialect::Postgres,
     );

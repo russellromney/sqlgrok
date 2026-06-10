@@ -844,7 +844,9 @@ fn test_pushdown_and_splitting_partial() {
 
 #[test]
 fn test_pushdown_blocked_by_nondeterministic() {
-    validate_pushdown_no_op("SELECT sub.x FROM (SELECT x FROM t) AS sub WHERE RANDOM() > 0.5");
+    // RAND is the canonical spelling (RANDOM canonicalizes to it at parse,
+    // and the dialect-less generator renders the canonical name).
+    validate_pushdown_no_op("SELECT sub.x FROM (SELECT x FROM t) AS sub WHERE RAND() > 0.5");
 }
 
 // ── Non-SELECT statements pass through ───────────────────────────────

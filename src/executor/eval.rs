@@ -1042,7 +1042,9 @@ fn eval_typed_fn(
         TypedFunction::Lower { expr } => {
             Ok(Value::String(ev(expr)?.to_string_val().to_lowercase()))
         }
-        TypedFunction::Length { expr } => Ok(Value::Int(ev(expr)?.to_string_val().len() as i64)),
+        TypedFunction::Length { expr, .. } => {
+            Ok(Value::Int(ev(expr)?.to_string_val().len() as i64))
+        }
         TypedFunction::Reverse { expr } => Ok(Value::String(
             ev(expr)?.to_string_val().chars().rev().collect(),
         )),

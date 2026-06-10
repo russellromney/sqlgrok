@@ -237,7 +237,7 @@ impl Dialect {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Dialects in the MySQL family (use SUBSTR, IFNULL, similar type system).
-fn is_mysql_family(d: Dialect) -> bool {
+pub(crate) fn is_mysql_family(d: Dialect) -> bool {
     matches!(
         d,
         Dialect::Mysql | Dialect::Doris | Dialect::SingleStore | Dialect::StarRocks
@@ -245,7 +245,7 @@ fn is_mysql_family(d: Dialect) -> bool {
 }
 
 /// Dialects in the Postgres family (support ILIKE, BYTEA, SUBSTRING).
-fn is_postgres_family(d: Dialect) -> bool {
+pub(crate) fn is_postgres_family(d: Dialect) -> bool {
     matches!(
         d,
         Dialect::Postgres | Dialect::Redshift | Dialect::Materialize | Dialect::RisingWave
@@ -253,17 +253,17 @@ fn is_postgres_family(d: Dialect) -> bool {
 }
 
 /// Dialects in the Presto family (ANSI-like, VARCHAR oriented).
-fn is_presto_family(d: Dialect) -> bool {
+pub(crate) fn is_presto_family(d: Dialect) -> bool {
     matches!(d, Dialect::Presto | Dialect::Trino | Dialect::Athena)
 }
 
 /// Dialects in the Hive/Spark family (use STRING type, SUBSTR).
-fn is_hive_family(d: Dialect) -> bool {
+pub(crate) fn is_hive_family(d: Dialect) -> bool {
     matches!(d, Dialect::Hive | Dialect::Spark | Dialect::Databricks)
 }
 
 /// Dialects in the T-SQL family.
-fn is_tsql_family(d: Dialect) -> bool {
+pub(crate) fn is_tsql_family(d: Dialect) -> bool {
     matches!(d, Dialect::Tsql | Dialect::Fabric)
 }
 
@@ -3121,7 +3121,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             }
 
             // None = no rename: reuse the original `name` (no allocation).
-            let name = match map_function_name_for_source(&name, source, target) {
+            let name = match map_function_name_for_target(&name, target) {
                 Some(renamed) => renamed.to_string(),
                 None => name,
             };
@@ -3136,19 +3136,8 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         // Recurse into typed function child expressions, with special handling
         // for date/time formatting functions that need format string conversion
         Expr::TypedFunction { func, filter, over } => {
-            if matches!(func, TypedFunction::CurrentTimestamp)
-                && is_postgres_family(source)
-                && matches!(target, Dialect::Sqlite)
-                && filter.is_none()
-                && over.is_none()
-            {
-                return Expr::Column {
-                    table: None,
-                    name: "CURRENT_TIMESTAMP".to_string(),
-                    quote_style: QuoteStyle::None,
-                    table_quote_style: QuoteStyle::None,
-                };
-            }
+            // CurrentTimestamp rendering is target-owned: the generator
+            // consults rules::render_current_timestamp on every path.
             if matches!(target, Dialect::Sqlite)
                 && is_mysql_family(source)
                 && let TypedFunction::StrToTime { expr, format } = func
@@ -4542,86 +4531,29 @@ fn detect_format_style(format_str: &str) -> time::TimeFormatStyle {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Map a function name between dialects, returning the owned target spelling
-/// (allocates; for the plugin path). Prefer `map_function_name_for_source`
+/// (allocates; for the plugin path). Prefer `map_function_name_for_target`
 /// (returns `Option<&'static str>`, None = unchanged, zero-alloc) on hot paths.
 pub(crate) fn map_function_name(name: &str, target: Dialect) -> String {
-    map_function_name_for_source(name, Dialect::Ansi, target)
+    map_function_name_for_target(name, target)
         .map(str::to_string)
         .unwrap_or_else(|| name.to_string())
 }
 
-/// Source/target function-name renames still living in the transform layer.
+/// Function-name renames still living in the transform layer (target-only).
 /// Returns `Some(&'static str)` for a rename, `None` to keep the name
 /// unchanged (zero allocation — the caller reuses the original name).
 ///
-/// `source` is used only by the GETDATE arm; everything else is target-only.
-/// The `rules::rename_function` table (applied in the generator) owns the
-/// source-independent sqlite renames. See docs/PORTING_PLAN.md (Phase 1.5).
-fn map_function_name_for_source(
-    name: &str,
-    source: Dialect,
-    target: Dialect,
-) -> Option<&'static str> {
+/// Only ISNULL and NVL remain. Both diverge from SQLGlot because SQLGlot
+/// models them as `Coalesce(is_null=...)` / `Coalesce(is_nvl=...)` flags that
+/// re-render the original spelling for their home target only (tsql ISNULL,
+/// oracle/bigquery/clickhouse NVL); a flat string canonical cannot represent
+/// that, so they stay here until the AST grows the distinction. Everything
+/// else moved: read-side canonicalization in `rules::canonicalize_function`
+/// (parser) + target rendering in `rules::rename_function` and the typed
+/// generator arms. See docs/PORTING_PLAN.md (Phase 1.5).
+fn map_function_name_for_target(name: &str, target: Dialect) -> Option<&'static str> {
     let upper = name.to_ascii_uppercase();
     match upper.as_str() {
-        // ── NOW / CURRENT_TIMESTAMP / GETDATE ────────────────────────────
-        "NOW" => {
-            if is_tsql_family(target) {
-                Some("GETDATE")
-            } else if matches!(
-                target,
-                Dialect::Ansi
-                    | Dialect::BigQuery
-                    | Dialect::Snowflake
-                    | Dialect::Oracle
-                    | Dialect::ClickHouse
-                    | Dialect::Exasol
-                    | Dialect::Teradata
-                    | Dialect::Druid
-                    | Dialect::Dremio
-                    | Dialect::Tableau
-            ) || is_presto_family(target)
-                || is_hive_family(target)
-            {
-                Some("CURRENT_TIMESTAMP")
-            } else {
-                // Postgres, MySQL, SQLite, DuckDB, Redshift, etc. – keep NOW
-                None
-            }
-        }
-        "GETDATE" => {
-            if matches!(target, Dialect::Sqlite) {
-                // SQLGlot converts T-SQL GETDATE() to CURRENT_TIMESTAMP when
-                // targeting SQLite, but preserves it for every other source.
-                is_tsql_family(source).then_some("CURRENT_TIMESTAMP")
-            } else if is_tsql_family(target) {
-                None
-            } else if is_postgres_family(target)
-                || matches!(target, Dialect::Mysql | Dialect::DuckDb)
-            {
-                Some("NOW")
-            } else {
-                Some("CURRENT_TIMESTAMP")
-            }
-        }
-
-        // ── LEN / LENGTH ─────────────────────────────────────────────────
-        "LEN" => (!(is_tsql_family(target)
-            || matches!(target, Dialect::BigQuery | Dialect::Snowflake)))
-        .then_some("LENGTH"),
-        "LENGTH" if is_tsql_family(target) => Some("LEN"),
-        // ANY_VALUE -> MAX (sqlite) moved to rules::rename_function.
-
-        // ── SUBSTR / SUBSTRING ───────────────────────────────────────────
-        "SUBSTR" => (!(is_mysql_family(target)
-            || matches!(target, Dialect::Sqlite | Dialect::Oracle)
-            || is_hive_family(target)))
-        .then_some("SUBSTRING"),
-        "SUBSTRING" => (is_mysql_family(target)
-            || matches!(target, Dialect::Sqlite | Dialect::Oracle)
-            || is_hive_family(target))
-        .then_some("SUBSTR"),
-
         // ── IFNULL / COALESCE / ISNULL ───────────────────────────────────
         // IFNULL and NVL are canonicalized to COALESCE read-side (parser, via
         // rules::canonicalize_function) — universal across all dialects.
@@ -4636,26 +4568,8 @@ fn map_function_name_for_source(
         }
 
         // ── NVL → COALESCE (Oracle preserves NVL) ───────────────────────
-        // Stays in the transform: oracle renders the canonical back to NVL,
-        // which a string-level read canonicalization can't model.
         "NVL" => (!matches!(target, Dialect::Oracle)).then_some("COALESCE"),
 
-        // ── RANDOM / RAND ────────────────────────────────────────────────
-        "RANDOM" => (!matches!(
-            target,
-            Dialect::Postgres | Dialect::Sqlite | Dialect::DuckDb
-        ))
-        .then_some("RAND"),
-        "RAND" => matches!(
-            target,
-            Dialect::Postgres | Dialect::Sqlite | Dialect::DuckDb
-        )
-        .then_some("RANDOM"),
-
-        // Source-independent sqlite renames live in `rules::rename_function`,
-        // applied by the generator. The BIT_* aggregates are read-side
-        // canonicalized (parser) + rendered per target (rules). Everything
-        // else: keep the original name.
         _ => None,
     }
 }
@@ -4823,38 +4737,36 @@ pub(crate) fn is_postgres_pseudo_type(upper: &str) -> bool {
 
 fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> DataType {
     // Common type aliases that always map to the canonical sqlite-
-    // target name regardless of source.
-    if let DataType::Unknown(name) = &dt {
-        if matches!(target, Dialect::Sqlite) {
-            let upper = name.to_ascii_uppercase();
-            // Pure name→name mappings are data in `rules::map_type`.
-            let mapped = rules::map_type(target, &upper).map(str::to_string);
-            // Signed integer types carrying a MySQL display width
-            // (INT(10), BIGINT(10), TINYINT(1), ...) all fold to
-            // INTEGER(width) for sqlite.
-            if mapped.is_none()
-                && let Some((base, rest)) = upper.split_once('(')
-            {
-                // MEDIUMINT(n) is kept by SQLGlot (not folded to INTEGER(n)).
-                if matches!(base, "INT" | "INTEGER" | "BIGINT" | "SMALLINT" | "TINYINT") {
-                    return DataType::Unknown(format!("INTEGER({rest}"));
-                }
-                // VARCHAR(MAX) / CHAR(MAX) → TEXT(MAX)
-                if matches!(base, "VARCHAR" | "CHAR") {
-                    return DataType::Unknown(format!("TEXT({rest}"));
-                }
-                // DOUBLE(p, s) → REAL(p, s)
-                if base == "DOUBLE" {
-                    return DataType::Unknown(format!("REAL({rest}"));
-                }
+    // target name regardless of source. (Postgres pseudo-type/range-type
+    // uppercasing is a read-side normalization in the parser now.)
+    if let DataType::Unknown(name) = &dt
+        && matches!(target, Dialect::Sqlite)
+    {
+        let upper = name.to_ascii_uppercase();
+        // Pure name→name mappings are data in `rules::map_type`.
+        let mapped = rules::map_type(target, &upper).map(str::to_string);
+        // Signed integer types carrying a MySQL display width
+        // (INT(10), BIGINT(10), TINYINT(1), ...) all fold to
+        // INTEGER(width) for sqlite.
+        if mapped.is_none()
+            && let Some((base, rest)) = upper.split_once('(')
+        {
+            // MEDIUMINT(n) is kept by SQLGlot (not folded to INTEGER(n)).
+            if matches!(base, "INT" | "INTEGER" | "BIGINT" | "SMALLINT" | "TINYINT") {
+                return DataType::Unknown(format!("INTEGER({rest}"));
             }
-            if let Some(m) = mapped {
-                return DataType::Unknown(m);
+            // VARCHAR(MAX) / CHAR(MAX) → TEXT(MAX)
+            if matches!(base, "VARCHAR" | "CHAR") {
+                return DataType::Unknown(format!("TEXT({rest}"));
+            }
+            // DOUBLE(p, s) → REAL(p, s)
+            if base == "DOUBLE" {
+                return DataType::Unknown(format!("REAL({rest}"));
             }
         }
-        // Postgres pseudo-type/range-type uppercasing is now a read-side
-        // normalization in the parser (it canonicalizes the spelling at parse
-        // for a postgres source), so nothing source-dependent is needed here.
+        if let Some(m) = mapped {
+            return DataType::Unknown(m);
+        }
     }
     // ClickHouse-style `Nullable(T)` wrappers: strip for sqlite output
     // and recurse on the inner type (matching Python SQLGlot, which
