@@ -3536,10 +3536,6 @@ impl Generator {
                     self.write_keyword("TIMESTAMP_SECONDS(");
                     self.gen_expr(expr);
                     self.write(")");
-                } else if matches!(dialect, Some(Dialect::Sqlite)) {
-                    self.write_keyword("UNIX_TO_TIME(");
-                    self.gen_expr(expr);
-                    self.write(")");
                 } else {
                     self.write_keyword("UNIX_TO_TIME(");
                     self.gen_expr(expr);
