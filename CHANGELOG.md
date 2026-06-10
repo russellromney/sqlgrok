@@ -3,6 +3,43 @@
 Quick summaries of completed sqlgrok work. The roadmap says what should happen next;
 this file records what landed.
 
+## 2026-06-09
+
+### Architecture Port: Function Renames And Type Mappings Are Target-Owned
+
+First real step of the parse -> generate port (docs/PORTING_PLAN.md Phase
+1.5). Function renames and type mappings no longer go through the
+`(source, target)` transform matrix; the parser canonicalizes source
+spellings and the generator renders the canonical per write dialect, so
+identity transpiles take the same path as cross-dialect ones. Every moved
+rule was verified against the Python SQLGlot oracle with full read x write
+sweeps.
+
+- Functions: RAND/RANDOM canonicalize to `RAND` and render per target
+  (RANDOM, DBMS_RANDOM.VALUE, randCanonical). NOW()/GETDATE() parse into
+  `TypedFunction::CurrentTimestamp` only for the sources SQLGlot
+  canonicalizes (postgres/presto families, databricks, exasol; tsql family,
+  redshift, snowflake); bare `CURRENT_TIMESTAMP` parses to the node for
+  every source except clickhouse, rendered per target as `GETDATE()`,
+  `NOW()`, bare, or with parens. LEN/LENGTH/CHAR_LENGTH flow through
+  `TypedFunction::Length` with a new `binary` flag (SQLGlot's
+  `Length(binary=...)` byte/char distinction); mysql-family and clickhouse
+  targets render CHAR_LENGTH for character length. SUBSTR/SUBSTRING render
+  SUBSTR for oracle/presto family and SQL-standard `SUBSTRING(x FROM a FOR
+  b)` for the postgres family. Only ISNULL/NVL remain in the transform
+  rename table (they need `Coalesce` is_null/is_nvl flags).
+- Types: mysql TIMESTAMP parses tz-aware (TIMESTAMPTZ canonical), mysql
+  SIGNED/UNSIGNED parse to BIGINT/UBIGINT, tsql TIMESTAMP parses to
+  ROWVERSION. The generator's Timestamp/DateTime arms hold the per-target
+  TYPE_MAPPING (TIMESTAMPTZ, TIMESTAMP WITH TIME ZONE, DATETIMEOFFSET,
+  DATETIME2, DATETIME, ...), and mysql CAST lowers integer/text types to
+  its restricted SIGNED/UNSIGNED/CHAR cast set.
+- Postgres-family casts render `CAST(x AS T)` instead of `x::T` — SQLGlot
+  never emits `::`, and the old style mismatched on every cast in the
+  write=postgres lanes.
+- Baselined the non-sqlite write lanes (forced suite) and re-ran all seven
+  lanes after the port; counts in ROADMAP.md.
+
 ## 2026-06-05
 
 ### Transpile Parity (forced lanes, write=sqlite)

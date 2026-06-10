@@ -59,17 +59,25 @@ Phases (ratcheted on the forced suite, no real regressions, commit per slice):
 
 ### Non-sqlite write-target baselines (2026-06-09, forced suite)
 
-First measured baselines for the O(N^2) hole, reports in `parity/reports/`:
+First measured baselines for the O(N^2) hole, and the counts after the
+Phase 1.5 function/type relocation landed the same day (reports in
+`parity/reports/`):
 
-| lane | match | mismatch | rust-error | oracle-error | unsupported |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| postgres -> postgres | 7100 | 5874 | 589 | 1456 | 137 |
-| mysql -> postgres | 6405 | 6315 | 557 | 1742 | 137 |
-| sqlite -> postgres | 6508 | 6387 | 579 | 1545 | 137 |
-| postgres -> duckdb | 6626 | 6348 | 589 | 1456 | 137 |
+| lane | match (baseline) | match (after) | mismatch (after) |
+| --- | ---: | ---: | ---: |
+| postgres -> postgres | 7100 | 8172 (+1072) | 4802 |
+| mysql -> postgres | 6405 | 7407 (+1002) | 5313 |
+| sqlite -> postgres | 6508 | 7608 (+1100) | 5287 |
+| postgres -> duckdb | 6626 | 6719 (+93) | 6255 |
+| postgres -> sqlite | 11871 | 11871 | 1103 |
+| mysql -> sqlite | 11676 | 11678 (+2) | 1045 |
+| sqlite -> sqlite | 11856 | 11856 | 1039 |
 
-`* -> sqlite` is ~91% match; these lanes sit at ~50-55%. The generators are
-sqlite-shaped; relocating rules per the phases above is the fix.
+Zero row-level regressions across all seven lanes. The single biggest
+write=postgres bucket was the cast style: SQLGlot renders `CAST(x AS T)` for
+every target and never `::`. `* -> sqlite` is ~91% match; the postgres lanes
+moved from ~50-55% to ~57-63%; relocating the remaining rules per the phases
+above continues the burn-down.
 
 ### Transform-rule audit (2026-06-09)
 

@@ -127,6 +127,26 @@ Each step ratcheted on the forced suite across all lanes (now including
     (`Expr::Function` emission consults `rules::rename_function(target)`),
     verified zero-movement and identity-safe. The verified-correct sqlite
     renames (ANY_VALUE->MAX, GEN_RANDOM_UUID->UUID) have moved too.
+  - **Phase 1.5 update (2026-06-09):** the divergent multi-target families
+    are now ported faithfully per SQLGlot instead of relocated. RAND/RANDOM
+    canonicalize at parse and render per target (RANDOM, DBMS_RANDOM.VALUE,
+    randCanonical, RAND). NOW()/GETDATE() canonicalize into
+    TypedFunction::CurrentTimestamp only for the sources whose SQLGlot
+    parsers do (postgres/presto families, databricks, exasol; tsql family,
+    redshift, snowflake), and bare CURRENT_TIMESTAMP parses to the node for
+    every source but clickhouse; `rules::render_current_timestamp(target)`
+    owns the GETDATE()/NOW()/bare/parens spellings. LEN/LENGTH/CHAR_LENGTH
+    flow through TypedFunction::Length with a new `binary` flag mirroring
+    SQLGlot's byte/char distinction (mysql family, clickhouse, snowflake,
+    bigquery byte-LENGTH); mysql/clickhouse targets render CHAR_LENGTH for
+    char length. SUBSTR/SUBSTRING render per target (SUBSTR for
+    oracle/presto family, SQL-standard FROM/FOR for the postgres family).
+    Type mappings: mysql TIMESTAMP -> TIMESTAMPTZ and SIGNED/UNSIGNED ->
+    BIGINT/UBIGINT at parse (tsql TIMESTAMP -> ROWVERSION); the generator's
+    Timestamp/DateTime arms hold the per-target TYPE_MAPPING table; mysql
+    CAST lowers to its SIGNED/UNSIGNED/CHAR cast set; postgres casts render
+    CAST(x AS T), never `::`. Only ISNULL/NVL remain in the transform rename
+    table (they need Coalesce is_null/is_nvl flags).
   - **Finding (2026-06): the multi-target renames in
     `map_function_name_for_source` (NOW, LEN/LENGTH, SUBSTR/SUBSTRING,
     IFNULL/ISNULL, NVL, RANDOM/RAND) DIVERGE from SQLGlot for identity** and
