@@ -8,7 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  SQLGLOT_REF: 33b31be8255d45a464cd119fe4d16c3438ff3be3
+  SQLGLOT_REF: e6bcedb28ab30a050e524cc1a929d890290a0d94
 
 jobs:
   fmt:
