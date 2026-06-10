@@ -808,6 +808,10 @@ pub enum TypedFunction {
     CurrentDate,
     /// `CURRENT_TIMESTAMP` / `NOW()` / `GETDATE()`
     CurrentTimestamp,
+    /// `MAKE_TIME` / `MAKETIME` / `TIME_FROM_PARTS`
+    TimeFromParts { parts: Vec<Expr> },
+    /// `TO_TIMESTAMP(epoch)` / `FROM_UNIXTIME(epoch)` / `UNIX_TO_TIME(epoch)`
+    UnixToTime { expr: Box<Expr> },
     /// `STR_TO_TIME(expr, format)` / `TO_TIMESTAMP` / `PARSE_DATETIME`
     StrToTime { expr: Box<Expr>, format: Box<Expr> },
     /// `TIME_TO_STR(expr, format)` / `DATE_FORMAT` / `FORMAT_DATETIME`
@@ -1055,6 +1059,12 @@ impl TypedFunction {
                 expr.walk(visitor);
             }
             TypedFunction::CurrentDate | TypedFunction::CurrentTimestamp => {}
+            TypedFunction::TimeFromParts { parts } => {
+                for part in parts {
+                    part.walk(visitor);
+                }
+            }
+            TypedFunction::UnixToTime { expr } => expr.walk(visitor),
             TypedFunction::StrToTime { expr, format }
             | TypedFunction::TimeToStr { expr, format } => {
                 expr.walk(visitor);
@@ -1313,6 +1323,12 @@ impl TypedFunction {
             },
             TypedFunction::CurrentDate => TypedFunction::CurrentDate,
             TypedFunction::CurrentTimestamp => TypedFunction::CurrentTimestamp,
+            TypedFunction::TimeFromParts { parts } => TypedFunction::TimeFromParts {
+                parts: parts.into_iter().map(|part| part.transform(func)).collect(),
+            },
+            TypedFunction::UnixToTime { expr } => TypedFunction::UnixToTime {
+                expr: Box::new(expr.transform(func)),
+            },
             TypedFunction::StrToTime { expr, format } => TypedFunction::StrToTime {
                 expr: Box::new(expr.transform(func)),
                 format: Box::new(format.transform(func)),

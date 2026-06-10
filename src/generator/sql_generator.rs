@@ -3239,6 +3239,7 @@ impl Generator {
         let is_bigquery = matches!(dialect, Some(Dialect::BigQuery));
         let is_snowflake = matches!(dialect, Some(Dialect::Snowflake));
         let is_oracle = matches!(dialect, Some(Dialect::Oracle));
+        let is_postgres_family = dialect.is_some_and(crate::dialects::is_postgres_family);
         let is_hive_family = matches!(
             dialect,
             Some(Dialect::Hive) | Some(Dialect::Spark) | Some(Dialect::Databricks)
@@ -3488,7 +3489,9 @@ impl Generator {
             TypedFunction::CurrentDate => {
                 if is_tsql {
                     self.write_keyword("CAST(GETDATE() AS DATE)");
-                } else if is_mysql || is_hive_family {
+                } else if matches!(dialect, Some(Dialect::Doris | Dialect::SingleStore))
+                    || is_hive_family
+                {
                     self.write_keyword("CURRENT_DATE()");
                 } else {
                     self.write_keyword("CURRENT_DATE");
@@ -3496,6 +3499,52 @@ impl Generator {
             }
             TypedFunction::CurrentTimestamp => {
                 self.write_keyword(crate::dialects::rules::render_current_timestamp(dialect));
+            }
+            TypedFunction::TimeFromParts { parts } => {
+                if is_mysql {
+                    self.write_keyword("MAKETIME(");
+                    self.gen_expr_list(parts);
+                    self.write(")");
+                } else if is_bigquery {
+                    self.write_keyword("TIME(");
+                    self.gen_expr_list(parts);
+                    self.write(")");
+                } else if is_tsql {
+                    self.write_keyword("TIMEFROMPARTS(");
+                    self.gen_expr_list(parts);
+                    self.write(", 0, 0)");
+                } else if is_postgres_family || matches!(dialect, Some(Dialect::DuckDb)) {
+                    self.write_keyword("MAKE_TIME(");
+                    self.gen_expr_list(parts);
+                    self.write(")");
+                } else {
+                    self.write_keyword("TIME_FROM_PARTS(");
+                    self.gen_expr_list(parts);
+                    self.write(")");
+                }
+            }
+            TypedFunction::UnixToTime { expr } => {
+                if is_mysql {
+                    self.write_keyword("FROM_UNIXTIME(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else if is_postgres_family || matches!(dialect, Some(Dialect::DuckDb)) {
+                    self.write_keyword("TO_TIMESTAMP(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else if is_bigquery {
+                    self.write_keyword("TIMESTAMP_SECONDS(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else if matches!(dialect, Some(Dialect::Sqlite)) {
+                    self.write_keyword("UNIX_TO_TIME(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else {
+                    self.write_keyword("UNIX_TO_TIME(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                }
             }
             TypedFunction::StrToTime { expr, format } => {
                 if is_mysql {

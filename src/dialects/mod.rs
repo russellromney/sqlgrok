@@ -2058,21 +2058,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             }
             if matches!(target, Dialect::Sqlite)
                 && is_mysql_family(source)
-                && name.eq_ignore_ascii_case("CURDATE")
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-                && new_args.is_empty()
-            {
-                return Expr::Column {
-                    table: None,
-                    name: "CURRENT_DATE".to_string(),
-                    quote_style: QuoteStyle::None,
-                    table_quote_style: QuoteStyle::None,
-                };
-            }
-            if matches!(target, Dialect::Sqlite)
-                && is_mysql_family(source)
                 && matches!(
                     name.to_ascii_uppercase().as_str(),
                     "UTC_TIME" | "UTC_TIMESTAMP"
@@ -2090,21 +2075,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     },
                     quote_style: QuoteStyle::None,
                     table_quote_style: QuoteStyle::None,
-                };
-            }
-            if matches!(target, Dialect::Sqlite)
-                && (is_mysql_family(source) || is_postgres_family(source))
-                && matches!(name.to_ascii_uppercase().as_str(), "MAKETIME" | "MAKE_TIME")
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-            {
-                return Expr::Function {
-                    name: "TIME_FROM_PARTS".to_string(),
-                    args: new_args,
-                    distinct: false,
-                    filter: None,
-                    over: None,
                 };
             }
             if matches!(target, Dialect::Sqlite)
@@ -2963,22 +2933,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                             target,
                         )),
                     },
-                    filter: None,
-                    over: None,
-                };
-            }
-            if matches!(target, Dialect::Sqlite)
-                && ((is_mysql_family(source) && name.eq_ignore_ascii_case("FROM_UNIXTIME"))
-                    || (is_postgres_family(source) && name.eq_ignore_ascii_case("TO_TIMESTAMP")))
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-                && new_args.len() == 1
-            {
-                return Expr::Function {
-                    name: "UNIX_TO_TIME".to_string(),
-                    args: new_args,
-                    distinct: false,
                     filter: None,
                     over: None,
                 };

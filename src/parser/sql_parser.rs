@@ -8154,7 +8154,16 @@ impl<'a> Parser<'a> {
                     unit,
                 }
             }
-            "CURRENT_DATE" => TypedFunction::CurrentDate,
+            "CURRENT_DATE" | "CURDATE"
+                if upper == "CURRENT_DATE"
+                    || crate::dialects::is_mysql_family(dialect)
+                    || matches!(
+                        dialect,
+                        Dialect::Spark | Dialect::Databricks | Dialect::Exasol
+                    ) =>
+            {
+                TypedFunction::CurrentDate
+            }
             // NOW()/GETDATE() arrive here already canonicalized to
             // CURRENT_TIMESTAMP by rules::canonicalize_function for the
             // sources where SQLGlot parses them into CurrentTimestamp; a
@@ -8162,6 +8171,38 @@ impl<'a> Parser<'a> {
             // source. CURRENT_TIMESTAMP(n) keeps its precision argument and
             // stays a generic function.
             "CURRENT_TIMESTAMP" if args.is_empty() => TypedFunction::CurrentTimestamp,
+            "MAKETIME" if crate::dialects::is_mysql_family(dialect) => {
+                TypedFunction::TimeFromParts { parts: args }
+            }
+            "MAKE_TIME"
+                if crate::dialects::is_postgres_family(dialect)
+                    || matches!(dialect, Dialect::DuckDb) =>
+            {
+                TypedFunction::TimeFromParts { parts: args }
+            }
+            "TIME_FROM_PARTS"
+                if crate::dialects::is_mysql_family(dialect)
+                    || crate::dialects::is_postgres_family(dialect)
+                    || matches!(dialect, Dialect::DuckDb) =>
+            {
+                TypedFunction::TimeFromParts { parts: args }
+            }
+            "FROM_UNIXTIME" if crate::dialects::is_mysql_family(dialect) && args.len() == 1 => {
+                let mut it = args.into_iter();
+                TypedFunction::UnixToTime {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "TO_TIMESTAMP"
+                if (crate::dialects::is_postgres_family(dialect)
+                    || matches!(dialect, Dialect::DuckDb))
+                    && args.len() == 1 =>
+            {
+                let mut it = args.into_iter();
+                TypedFunction::UnixToTime {
+                    expr: Box::new(it.next()?),
+                }
+            }
             // STR_TO_TIME, PARSE_TIMESTAMP, and PARSE_DATETIME stay as
             // generic Expr::Function so we can preserve their names
             // through to sqlite output. Python SQLGlot keeps these

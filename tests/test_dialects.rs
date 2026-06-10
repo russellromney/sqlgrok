@@ -1555,6 +1555,55 @@ fn test_validate_all_getdate_writes() {
     );
 }
 
+#[test]
+fn test_validate_all_current_date_alias_writes() {
+    assert_validate_all(
+        "SELECT CURDATE()",
+        Dialect::Mysql,
+        &[
+            (Dialect::Mysql, "SELECT CURRENT_DATE"),
+            (Dialect::Doris, "SELECT CURRENT_DATE()"),
+            (Dialect::SingleStore, "SELECT CURRENT_DATE()"),
+            (Dialect::StarRocks, "SELECT CURRENT_DATE"),
+            (Dialect::Sqlite, "SELECT CURRENT_DATE"),
+            (Dialect::Postgres, "SELECT CURRENT_DATE"),
+            (Dialect::Tsql, "SELECT CAST(GETDATE() AS DATE)"),
+        ],
+    );
+}
+
+#[test]
+fn test_validate_all_time_from_parts_writes() {
+    assert_validate_all(
+        "SELECT MAKETIME(15, 30, 0)",
+        Dialect::Mysql,
+        &[
+            (Dialect::Mysql, "SELECT MAKETIME(15, 30, 0)"),
+            (Dialect::Sqlite, "SELECT TIME_FROM_PARTS(15, 30, 0)"),
+            (Dialect::Postgres, "SELECT MAKE_TIME(15, 30, 0)"),
+            (Dialect::DuckDb, "SELECT MAKE_TIME(15, 30, 0)"),
+            (Dialect::BigQuery, "SELECT TIME(15, 30, 0)"),
+            (Dialect::Tsql, "SELECT TIMEFROMPARTS(15, 30, 0, 0, 0)"),
+        ],
+    );
+}
+
+#[test]
+fn test_validate_all_unix_to_time_writes() {
+    assert_validate_all(
+        "SELECT FROM_UNIXTIME(col)",
+        Dialect::Mysql,
+        &[
+            (Dialect::Mysql, "SELECT FROM_UNIXTIME(col)"),
+            (Dialect::Sqlite, "SELECT UNIX_TO_TIME(col)"),
+            (Dialect::Postgres, "SELECT TO_TIMESTAMP(col)"),
+            (Dialect::DuckDb, "SELECT TO_TIMESTAMP(col)"),
+            (Dialect::BigQuery, "SELECT TIMESTAMP_SECONDS(col)"),
+            (Dialect::Tsql, "SELECT UNIX_TO_TIME(col)"),
+        ],
+    );
+}
+
 // ── SUBSTR/SUBSTRING validate_all ──
 
 #[test]

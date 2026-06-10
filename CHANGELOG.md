@@ -19,6 +19,20 @@ this file records what landed.
 - Added focused dialect tests for T-SQL `ISNULL`, MySQL `ISNULL`, Oracle
   `NVL`, and BigQuery/ClickHouse COALESCE metadata preservation.
 
+### Architecture Port: Date/Time Alias Nodes
+
+- Moved `CURDATE`, `MAKETIME`/`MAKE_TIME`/`TIME_FROM_PARTS`, and one-argument
+  `FROM_UNIXTIME`/`TO_TIMESTAMP` into read-side typed-function parsing plus
+  target-keyed generator rendering.
+- Removed the replaced sqlite-only transform branches for those date/time
+  aliases, so their source behavior no longer lives in the source->target
+  matrix.
+- Corrected `CurrentDate` target rendering to match SQLGlot identity output:
+  MySQL/StarRocks/Postgres/SQLite render bare `CURRENT_DATE`, while
+  Doris/SingleStore/Hive-family targets keep `CURRENT_DATE()`.
+- Added focused read x write tests for current-date aliases, time-from-parts,
+  and Unix-epoch timestamp conversion.
+
 ## 2026-06-09
 
 ### Architecture Port: Function Renames And Type Mappings Are Target-Owned

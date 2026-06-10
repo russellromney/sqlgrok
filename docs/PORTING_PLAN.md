@@ -153,6 +153,13 @@ Each step ratcheted on the forced suite across all lanes (now including
     the generator. MySQL-family `ISNULL` parses as the unary `(x IS NULL)`
     predicate. The remaining `map_function_name_for_target` transform hook was
     deleted.
+  - **Phase 2 starter (2026-06-10):** date/time aliases started moving out of
+    `transform_expr`. The parser now canonicalizes SQLGlot source-native
+    `CURDATE`, `MAKETIME`/`MAKE_TIME`/`TIME_FROM_PARTS`, and one-argument
+    `FROM_UNIXTIME`/`TO_TIMESTAMP` into typed nodes, and the generator owns the
+    target spellings (`CURRENT_DATE`, `MAKETIME`, `MAKE_TIME`,
+    `TIME_FROM_PARTS`, `FROM_UNIXTIME`, `TO_TIMESTAMP`, `UNIX_TO_TIME`,
+    `TIMESTAMP_SECONDS`). The replaced sqlite-only transform arms are gone.
   - **Finding (2026-06): the multi-target renames in
     `map_function_name_for_source` (NOW, LEN/LENGTH, SUBSTR/SUBSTRING,
     IFNULL/ISNULL, NVL, RANDOM/RAND) DIVERGE from SQLGlot for identity** and

@@ -905,6 +905,11 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
             precision: None,
             with_tz: false,
         }),
+        TypedFunction::TimeFromParts { .. } => Some(DataType::Time { precision: None }),
+        TypedFunction::UnixToTime { .. } => Some(DataType::Timestamp {
+            precision: None,
+            with_tz: false,
+        }),
         TypedFunction::StrToTime { .. } => Some(DataType::Timestamp {
             precision: None,
             with_tz: false,

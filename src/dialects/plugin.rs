@@ -298,6 +298,8 @@ fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
         TypedFunction::DateSub { .. } => "DATE_SUB",
         TypedFunction::CurrentDate => "CURRENT_DATE",
         TypedFunction::CurrentTimestamp => "NOW",
+        TypedFunction::TimeFromParts { .. } => "TIME_FROM_PARTS",
+        TypedFunction::UnixToTime { .. } => "UNIX_TO_TIME",
         TypedFunction::StrToTime { .. } => "STR_TO_TIME",
         TypedFunction::TimeToStr { .. } => "TIME_TO_STR",
         TypedFunction::TsOrDsToDate { .. } => "TS_OR_DS_TO_DATE",
@@ -372,6 +374,7 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
     match func {
         TypedFunction::CurrentDate | TypedFunction::CurrentTimestamp => vec![],
         TypedFunction::RowNumber | TypedFunction::Rank | TypedFunction::DenseRank => vec![],
+        TypedFunction::TimeFromParts { parts } => parts.clone(),
         TypedFunction::Length { expr, .. }
         | TypedFunction::Upper { expr }
         | TypedFunction::Lower { expr }
@@ -383,6 +386,7 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         | TypedFunction::Ln { expr }
         | TypedFunction::Sqrt { expr }
         | TypedFunction::Explode { expr }
+        | TypedFunction::UnixToTime { expr }
         | TypedFunction::Flatten { expr }
         | TypedFunction::ArraySize { expr }
         | TypedFunction::ParseJSON { expr }
