@@ -71,18 +71,19 @@ Phases (ratcheted on the forced suite, no real regressions, commit per slice):
 ### Non-sqlite write-target baselines (2026-06-09, forced suite)
 
 First measured baselines for the O(N^2) hole, and the counts after the
-Phase 1.5 function/type relocation landed the same day (reports in
+Phase 1.5 function/type relocation landed the same day. The latest counts add
+the 2026-06-10 COALESCE/date-time parser relocation work (reports in
 `parity/reports/`):
 
-| lane | match (baseline) | match (after) | mismatch (after) |
+| lane | match (baseline) | match (latest) | mismatch (latest) |
 | --- | ---: | ---: | ---: |
-| postgres -> postgres | 7100 | 8172 (+1072) | 4802 |
-| mysql -> postgres | 6405 | 7407 (+1002) | 5313 |
-| sqlite -> postgres | 6508 | 7608 (+1100) | 5287 |
-| postgres -> duckdb | 6626 | 6719 (+93) | 6255 |
-| postgres -> sqlite | 11871 | 11871 | 1103 |
-| mysql -> sqlite | 11676 | 11678 (+2) | 1045 |
-| sqlite -> sqlite | 11856 | 11856 | 1039 |
+| postgres -> postgres | 7100 | 8195 (+1095) | 4779 |
+| mysql -> postgres | 6405 | 7448 (+1043) | 5272 |
+| sqlite -> postgres | 6508 | 7618 (+1110) | 5277 |
+| postgres -> duckdb | 6626 | 6736 (+110) | 6238 |
+| postgres -> sqlite | 11871 | 11877 (+6) | 1097 |
+| mysql -> sqlite | 11676 | 11686 (+10) | 1037 |
+| sqlite -> sqlite | 11856 | 11860 (+4) | 1035 |
 
 Zero row-level regressions across all seven lanes. The single biggest
 write=postgres bucket was the cast style: SQLGlot renders `CAST(x AS T)` for
@@ -300,8 +301,8 @@ Priority lanes:
 - Postgres -> SQLite.
 - SQLite -> SQLite.
 
-Current work (forced lanes, write=sqlite; latest counts pg 11871 / my 11676 /
-sq 11856):
+Current work (forced lanes, write=sqlite; latest counts pg 11877 / my 11686 /
+sq 11860):
 
 - Drive the Architecture Port: relocate target rules into the generator and
   source rules into the parser so the same fix lifts non-sqlite write lanes.

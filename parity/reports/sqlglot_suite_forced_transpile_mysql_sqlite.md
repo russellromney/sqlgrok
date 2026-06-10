@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11678 |
-| `mismatch` | 1045 |
+| `match` | 11686 |
+| `mismatch` | 1037 |
 | `oracle-error` | 1739 |
 | `rust-error` | 557 |
 | `unsupported-harness-shape` | 137 |
@@ -23,12 +23,12 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8502 |
-| `match` | `validate_identity` | 3065 |
+| `match` | `validate_all` | 8509 |
+| `match` | `validate_identity` | 3066 |
 | `oracle-error` | `validate_identity` | 1135 |
 | `oracle-error` | `validate_all` | 595 |
-| `mismatch` | `validate_identity` | 552 |
-| `mismatch` | `validate_all` | 434 |
+| `mismatch` | `validate_identity` | 551 |
+| `mismatch` | `validate_all` | 427 |
 | `rust-error` | `validate_identity` | 307 |
 | `rust-error` | `validate_all` | 246 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
@@ -44,7 +44,7 @@ Filtered by read/write: `0`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1098 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 662 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 664 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 473 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 301 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 289 |
@@ -57,7 +57,7 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 158 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 129 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 119 |
-| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 105 |
+| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 107 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 104 |
 | `match` | `tests/dialects/test_mysql.py` | `test_mysql` | 103 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 99 |

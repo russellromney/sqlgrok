@@ -33,6 +33,16 @@ this file records what landed.
 - Added focused read x write tests for current-date aliases, time-from-parts,
   and Unix-epoch timestamp conversion.
 
+### Architecture Port: Forced-Lane Refresh
+
+- Refreshed all seven forced-pair SQLGlot bridge reports after the COALESCE and
+  date/time alias parser relocations. Exact matches now stand at: postgres ->
+  postgres `8195`, mysql -> postgres `7448`, sqlite -> postgres `7618`,
+  postgres -> duckdb `6736`, postgres -> sqlite `11877`, mysql -> sqlite
+  `11686`, and sqlite -> sqlite `11860`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes; the refresh only converted mismatches to matches.
+
 ## 2026-06-09
 
 ### Architecture Port: Function Renames And Type Mappings Are Target-Owned
