@@ -554,6 +554,42 @@ fn test_postgres_json_access_to_sqlite_paths() {
         Dialect::Mysql,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "JSON_EXTRACT_PATH(x, 'a', k2, 'c')",
+        "JSON_EXTRACT(x, 'a', k2, 'c')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "JSON_EXTRACT_PATH(x, 'a', k2, 'c')",
+        "JSON_EXTRACT(x, 'a', k2, 'c')",
+        Dialect::Postgres,
+        Dialect::Mysql,
+    );
+    validate_with_dialect(
+        "JSON_EXTRACT_PATH(x, 'a', k2, 'c')",
+        "x -> 'a'",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "JSON_EXTRACT_PATH_TEXT(col, 'farm', '0')",
+        "col ->> '$.farm[0]'",
+        Dialect::Postgres,
+        Dialect::Mysql,
+    );
+    validate_with_dialect(
+        "JSON_EXTRACT_PATH(x, 'a', 'b')",
+        "JSON_EXTRACT_PATH_TEXT(x, 'a', 'b')",
+        Dialect::Postgres,
+        Dialect::Redshift,
+    );
+    validate_with_dialect(
+        "JSON_EXTRACT_PATH(x, 0, 'b')",
+        "JSON_EXTRACT_PATH(x, '0', 'b')",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
 
     let path_cases = [
         ("JSON_EXTRACT_PATH(x, 'x', 'y', 'z')", "x -> '$.x.y.z'"),

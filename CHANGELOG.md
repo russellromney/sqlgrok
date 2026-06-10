@@ -18,6 +18,9 @@ this file records what landed.
   parity rows. Refreshed forced reports hold six lanes steady and improve
   postgres -> duckdb from `6736` to `6773` matches with zero row-level
   regressions.
+- Follow-up hostile review fixed mixed literal/dynamic path fallback, MySQL's
+  string-literal-only JSON cast, Redshift target rendering, and numeric
+  all-literal path segment rendering.
 
 ### Architecture Port: Coalesce Flags Moved Into The AST
 

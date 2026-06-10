@@ -3227,20 +3227,35 @@ impl Generator {
 
     fn gen_json_extract_path(&mut self, expr: &Expr, path: &[Expr], as_text: bool) {
         let dialect = self.dialect;
+        let path_is_literal = json_path_segments_are_literal(path);
         let path_expr = json_path_from_segments(path);
 
+        if matches!(dialect, Some(Dialect::Redshift)) {
+            self.gen_json_extract_path_function(
+                "JSON_EXTRACT_PATH_TEXT",
+                expr,
+                path,
+                path_is_literal,
+            );
+            return;
+        }
+
         if dialect.is_some_and(crate::dialects::is_postgres_family) {
-            self.write_keyword(if as_text {
-                "JSON_EXTRACT_PATH_TEXT("
-            } else {
-                "JSON_EXTRACT_PATH("
-            });
-            self.gen_expr(expr);
-            for part in path {
-                self.write(", ");
-                self.gen_expr(part);
-            }
-            self.write(")");
+            self.gen_json_extract_path_function(
+                if as_text {
+                    "JSON_EXTRACT_PATH_TEXT"
+                } else {
+                    "JSON_EXTRACT_PATH"
+                },
+                expr,
+                path,
+                path_is_literal,
+            );
+            return;
+        }
+
+        if !path_is_literal && !as_text && !matches!(dialect, Some(Dialect::DuckDb)) {
+            self.gen_json_extract_path_function("JSON_EXTRACT", expr, path, false);
             return;
         }
 
@@ -3263,9 +3278,14 @@ impl Generator {
             Some(Dialect::Mysql | Dialect::SingleStore | Dialect::Doris | Dialect::StarRocks)
         );
         if is_mysql_family && as_text {
-            self.write_keyword("CAST(");
-            self.gen_expr(expr);
-            self.write_keyword(" AS JSON) ->> ");
+            if matches!(expr, Expr::StringLiteral(_)) {
+                self.write_keyword("CAST(");
+                self.gen_expr(expr);
+                self.write_keyword(" AS JSON)");
+            } else {
+                self.gen_expr(expr);
+            }
+            self.write(" ->> ");
             self.gen_expr(&path_expr);
             return;
         }
@@ -3278,6 +3298,27 @@ impl Generator {
         self.gen_expr(expr);
         self.write(", ");
         self.gen_expr(&path_expr);
+        self.write(")");
+    }
+
+    fn gen_json_extract_path_function(
+        &mut self,
+        name: &str,
+        expr: &Expr,
+        path: &[Expr],
+        stringify_numbers: bool,
+    ) {
+        self.write_keyword(name);
+        self.write("(");
+        self.gen_expr(expr);
+        for part in path {
+            self.write(", ");
+            if stringify_numbers && let Expr::Number(n) = part {
+                self.gen_expr(&Expr::StringLiteral(n.clone()));
+            } else {
+                self.gen_expr(part);
+            }
+        }
         self.write(")");
     }
 
@@ -4813,7 +4854,7 @@ fn json_path_from_segments(path: &[Expr]) -> Expr {
         return Expr::StringLiteral("$".to_string());
     }
 
-    if path.iter().all(json_path_segment_is_literal) {
+    if json_path_segments_are_literal(path) {
         let mut out = "$".to_string();
         for part in path {
             out.push_str(&json_path_segment(part));
@@ -4822,6 +4863,10 @@ fn json_path_from_segments(path: &[Expr]) -> Expr {
     } else {
         path[0].clone()
     }
+}
+
+fn json_path_segments_are_literal(path: &[Expr]) -> bool {
+    path.iter().all(json_path_segment_is_literal)
 }
 
 fn json_path_segment_is_literal(expr: &Expr) -> bool {
