@@ -651,6 +651,36 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
                 over,
             }
         }
+        Expr::Coalesce {
+            items,
+            is_nvl,
+            is_null,
+            source_name,
+        } => {
+            let new_items: Vec<Expr> = items
+                .into_iter()
+                .map(|a| transform_expr_plugin(a, target))
+                .collect();
+            if let DialectRef::Custom(_) = target {
+                let canonical = "COALESCE";
+                let new_name = target.map_function_name(canonical);
+                if new_name != canonical {
+                    return Expr::Function {
+                        name: new_name,
+                        args: new_items,
+                        distinct: false,
+                        filter: None,
+                        over: None,
+                    };
+                }
+            }
+            Expr::Coalesce {
+                items: new_items,
+                is_nvl,
+                is_null,
+                source_name,
+            }
+        }
         Expr::Function {
             name,
             args,
