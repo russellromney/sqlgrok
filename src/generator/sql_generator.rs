@@ -4093,6 +4093,40 @@ impl Generator {
                 self.gen_expr(expr);
                 self.write(")");
             }
+            TypedFunction::JSONAgg { expr, distinct } => {
+                let name = if matches!(dialect, Some(Dialect::Sqlite)) {
+                    "JSON_GROUP_ARRAY"
+                } else if dialect.is_some_and(crate::dialects::is_postgres_family) {
+                    "JSON_AGG"
+                } else {
+                    "JSON_ARRAYAGG"
+                };
+                self.write_keyword(name);
+                self.write("(");
+                if *distinct {
+                    self.write_keyword("DISTINCT ");
+                }
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            TypedFunction::JSONObjectAgg { exprs } => {
+                let name = if matches!(dialect, Some(Dialect::Sqlite | Dialect::DuckDb)) {
+                    "JSON_GROUP_OBJECT"
+                } else if dialect.is_some_and(crate::dialects::is_postgres_family) {
+                    "JSON_OBJECT_AGG"
+                } else {
+                    "JSON_OBJECTAGG"
+                };
+                self.write_keyword(name);
+                self.write("(");
+                for (i, expr) in exprs.iter().enumerate() {
+                    if i > 0 {
+                        self.write(", ");
+                    }
+                    self.gen_expr(expr);
+                }
+                self.write(")");
+            }
             TypedFunction::ApproxDistinct { expr } => {
                 let name = if is_hive_family
                     || matches!(

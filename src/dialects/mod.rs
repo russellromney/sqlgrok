@@ -2035,28 +2035,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
-                && is_postgres_family(source)
-                && matches!(
-                    name.to_ascii_uppercase().as_str(),
-                    "JSON_AGG" | "JSON_OBJECT_AGG"
-                )
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-            {
-                return Expr::Function {
-                    name: if name.eq_ignore_ascii_case("JSON_AGG") {
-                        "JSON_GROUP_ARRAY".to_string()
-                    } else {
-                        "JSON_GROUP_OBJECT".to_string()
-                    },
-                    args: new_args,
-                    distinct: false,
-                    filter: None,
-                    over: None,
-                };
-            }
-            if matches!(target, Dialect::Sqlite)
                 && is_mysql_family(source)
                 && matches!(
                     name.to_ascii_uppercase().as_str(),

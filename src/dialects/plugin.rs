@@ -330,6 +330,8 @@ fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
         TypedFunction::Min { .. } => "MIN",
         TypedFunction::Max { .. } => "MAX",
         TypedFunction::ArrayAgg { .. } => "ARRAY_AGG",
+        TypedFunction::JSONAgg { .. } => "JSON_AGG",
+        TypedFunction::JSONObjectAgg { .. } => "JSON_OBJECT_AGG",
         TypedFunction::ApproxDistinct { .. } => "APPROX_DISTINCT",
         TypedFunction::Variance { .. } => "VARIANCE",
         TypedFunction::Stddev { .. } => "STDDEV",
@@ -502,7 +504,9 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         | TypedFunction::Avg { expr, .. }
         | TypedFunction::Min { expr }
         | TypedFunction::Max { expr }
-        | TypedFunction::ArrayAgg { expr, .. } => vec![*expr.clone()],
+        | TypedFunction::ArrayAgg { expr, .. }
+        | TypedFunction::JSONAgg { expr, .. } => vec![*expr.clone()],
+        TypedFunction::JSONObjectAgg { exprs } => exprs.clone(),
         TypedFunction::ArrayConcat { arrays } => arrays.clone(),
         TypedFunction::ArrayContains { array, element } => {
             vec![*array.clone(), *element.clone()]

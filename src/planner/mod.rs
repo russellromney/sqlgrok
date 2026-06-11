@@ -765,6 +765,8 @@ fn typed_function_is_aggregate(func: &TypedFunction) -> bool {
             | TypedFunction::Min { .. }
             | TypedFunction::Max { .. }
             | TypedFunction::ArrayAgg { .. }
+            | TypedFunction::JSONAgg { .. }
+            | TypedFunction::JSONObjectAgg { .. }
             | TypedFunction::ApproxDistinct { .. }
             | TypedFunction::Variance { .. }
             | TypedFunction::Stddev { .. }

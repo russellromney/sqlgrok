@@ -553,6 +553,8 @@ fn is_typed_aggregate(func: &TypedFunction) -> bool {
             | TypedFunction::Min { .. }
             | TypedFunction::Max { .. }
             | TypedFunction::ArrayAgg { .. }
+            | TypedFunction::JSONAgg { .. }
+            | TypedFunction::JSONObjectAgg { .. }
             | TypedFunction::Variance { .. }
             | TypedFunction::Stddev { .. }
     )

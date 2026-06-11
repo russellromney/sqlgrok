@@ -952,6 +952,7 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
             let elem = ann.get_type(expr.as_ref()).cloned();
             Some(DataType::Array(elem.map(Box::new)))
         }
+        TypedFunction::JSONAgg { .. } | TypedFunction::JSONObjectAgg { .. } => Some(DataType::Json),
         TypedFunction::ApproxDistinct { .. } => Some(DataType::BigInt),
         TypedFunction::Variance { .. } | TypedFunction::Stddev { .. } => Some(DataType::Double),
 

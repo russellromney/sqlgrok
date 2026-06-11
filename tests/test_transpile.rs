@@ -2887,6 +2887,24 @@ fn test_sqlite_function_operator_mapping_batch() {
         Dialect::Postgres,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "SELECT JSON_AGG(name), JSON_OBJECT_AGG(name, value) FROM t",
+        "SELECT JSON_AGG(name), JSON_OBJECT_AGG(name, value) FROM t",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT JSON_AGG(name), JSON_OBJECT_AGG(name, value) FROM t",
+        "SELECT JSON_ARRAYAGG(name), JSON_GROUP_OBJECT(name, value) FROM t",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT JSON_GROUP_ARRAY(name), JSON_GROUP_OBJECT(name, value) FROM t",
+        "SELECT JSON_AGG(name), JSON_OBJECT_AGG(name, value) FROM t",
+        Dialect::Sqlite,
+        Dialect::Postgres,
+    );
     validate_with_dialect("x IS UNKNOWN", "x IS NULL", Dialect::Mysql, Dialect::Sqlite);
     validate_with_dialect(
         "x IS NOT UNKNOWN",
@@ -3443,6 +3461,11 @@ fn test_typed_array_agg_cross_dialect() {
         Dialect::Postgres,
         Dialect::Hive,
     );
+}
+
+#[test]
+fn test_typed_json_agg_distinct_identity() {
+    validate_identity("SELECT JSON_AGG(DISTINCT name) FROM users");
 }
 
 #[test]

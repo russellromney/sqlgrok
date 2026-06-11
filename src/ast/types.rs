@@ -926,6 +926,10 @@ pub enum TypedFunction {
     Max { expr: Box<Expr> },
     /// `ARRAY_AGG([DISTINCT] expr)` / `LIST` / `COLLECT_LIST`
     ArrayAgg { expr: Box<Expr>, distinct: bool },
+    /// `JSON_AGG([DISTINCT] expr)` / `JSON_ARRAYAGG(expr)` / `JSON_GROUP_ARRAY(expr)`
+    JSONAgg { expr: Box<Expr>, distinct: bool },
+    /// `JSON_OBJECT_AGG(key, value)` / `JSON_GROUP_OBJECT(key, value)`
+    JSONObjectAgg { exprs: Vec<Expr> },
     /// `APPROX_DISTINCT(expr)` / `APPROX_COUNT_DISTINCT`
     ApproxDistinct { expr: Box<Expr> },
     /// `VARIANCE(expr)` / `VAR_SAMP`
@@ -1187,9 +1191,15 @@ impl TypedFunction {
             | TypedFunction::Min { expr }
             | TypedFunction::Max { expr }
             | TypedFunction::ArrayAgg { expr, .. }
+            | TypedFunction::JSONAgg { expr, .. }
             | TypedFunction::ApproxDistinct { expr }
             | TypedFunction::Variance { expr }
             | TypedFunction::Stddev { expr } => expr.walk(visitor),
+            TypedFunction::JSONObjectAgg { exprs } => {
+                for e in exprs {
+                    e.walk(visitor);
+                }
+            }
 
             // Array
             TypedFunction::ArrayConcat { arrays } => {
@@ -1496,6 +1506,13 @@ impl TypedFunction {
             TypedFunction::ArrayAgg { expr, distinct } => TypedFunction::ArrayAgg {
                 expr: Box::new(expr.transform(func)),
                 distinct,
+            },
+            TypedFunction::JSONAgg { expr, distinct } => TypedFunction::JSONAgg {
+                expr: Box::new(expr.transform(func)),
+                distinct,
+            },
+            TypedFunction::JSONObjectAgg { exprs } => TypedFunction::JSONObjectAgg {
+                exprs: exprs.into_iter().map(|e| e.transform(func)).collect(),
             },
             TypedFunction::ApproxDistinct { expr } => TypedFunction::ApproxDistinct {
                 expr: Box::new(expr.transform(func)),

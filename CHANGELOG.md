@@ -5,6 +5,17 @@ this file records what landed.
 
 ## 2026-06-11
 
+### Architecture Port: JSON Aggregate Functions
+
+- Added typed JSON aggregate nodes for SQLGlot's `JSONArrayAgg` and
+  `JSONObjectAgg` shapes.
+- Parse Postgres `JSON_AGG` / `JSON_OBJECT_AGG` and SQLite
+  `JSON_GROUP_ARRAY` / `JSON_GROUP_OBJECT` into those nodes, with
+  generator-owned target rendering for Postgres, SQLite, DuckDB, and generic
+  targets.
+- Deleted the old Postgres-source `JSON_AGG` / `JSON_OBJECT_AGG` SQLite
+  transform arm and added cross-target regression coverage.
+
 ### Architecture Port: Formatted Time Functions
 
 - Moved source-native formatted time calls into parser-owned typed AST nodes:

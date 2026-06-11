@@ -8589,6 +8589,28 @@ impl<'a> Parser<'a> {
                     distinct,
                 }
             }
+            "JSON_AGG" if crate::dialects::is_postgres_family(dialect) && args.len() == 1 => {
+                let mut it = args.into_iter();
+                TypedFunction::JSONAgg {
+                    expr: Box::new(it.next()?),
+                    distinct,
+                }
+            }
+            "JSON_GROUP_ARRAY" if matches!(dialect, Dialect::Sqlite) && args.len() == 1 => {
+                let mut it = args.into_iter();
+                TypedFunction::JSONAgg {
+                    expr: Box::new(it.next()?),
+                    distinct,
+                }
+            }
+            "JSON_OBJECT_AGG"
+                if crate::dialects::is_postgres_family(dialect) && args.len() == 2 =>
+            {
+                TypedFunction::JSONObjectAgg { exprs: args }
+            }
+            "JSON_GROUP_OBJECT" if matches!(dialect, Dialect::Sqlite) && args.len() == 2 => {
+                TypedFunction::JSONObjectAgg { exprs: args }
+            }
             "APPROX_DISTINCT" | "APPROX_COUNT_DISTINCT" => {
                 if args.len() > 1 {
                     return None;
