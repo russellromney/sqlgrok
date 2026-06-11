@@ -120,6 +120,35 @@ fn data_type_with_format(data_type: DataType, format: &Expr) -> DataType {
     ))
 }
 
+fn time_format_to_strftime(expr: Expr, dialect: Dialect) -> Expr {
+    match expr {
+        Expr::StringLiteral(format) => {
+            let source_style = crate::dialects::time::TimeFormatStyle::for_dialect(dialect);
+            Expr::StringLiteral(crate::dialects::time::format_time(
+                &format,
+                source_style,
+                crate::dialects::time::TimeFormatStyle::Strftime,
+            ))
+        }
+        other => other,
+    }
+}
+
+fn mysql_format_contains_time(format: &str) -> bool {
+    let mut chars = format.chars();
+    while let Some(ch) = chars.next() {
+        if ch == '%'
+            && matches!(
+                chars.next(),
+                Some('f' | 'H' | 'h' | 'I' | 'i' | 'k' | 'l' | 'p' | 'r' | 'S' | 's' | 'T')
+            )
+        {
+            return true;
+        }
+    }
+    false
+}
+
 fn data_type_is_json(data_type: &DataType) -> bool {
     matches!(data_type, DataType::Json | DataType::Jsonb)
         || matches!(data_type, DataType::Unknown(name) if name.eq_ignore_ascii_case("JSON") || name.eq_ignore_ascii_case("JSONB"))
@@ -8187,10 +8216,16 @@ impl<'a> Parser<'a> {
             {
                 TypedFunction::TimeFromParts { parts: args }
             }
-            "FROM_UNIXTIME" if crate::dialects::is_mysql_family(dialect) && args.len() == 1 => {
+            "FROM_UNIXTIME"
+                if crate::dialects::is_mysql_family(dialect)
+                    && (args.len() == 1 || args.len() == 2) =>
+            {
                 let mut it = args.into_iter();
                 TypedFunction::UnixToTime {
                     expr: Box::new(it.next()?),
+                    format: it
+                        .next()
+                        .map(|format| Box::new(time_format_to_strftime(format, dialect))),
                 }
             }
             "TO_TIMESTAMP"
@@ -8201,6 +8236,20 @@ impl<'a> Parser<'a> {
                 let mut it = args.into_iter();
                 TypedFunction::UnixToTime {
                     expr: Box::new(it.next()?),
+                    format: None,
+                }
+            }
+            "TO_TIMESTAMP"
+                if (crate::dialects::is_postgres_family(dialect)
+                    || matches!(dialect, Dialect::DuckDb))
+                    && args.len() == 2 =>
+            {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let format = time_format_to_strftime(it.next()?, dialect);
+                TypedFunction::StrToTime {
+                    expr: Box::new(expr),
+                    format: Box::new(format),
                 }
             }
             // STR_TO_TIME, PARSE_TIMESTAMP, and PARSE_DATETIME stay as
@@ -8210,7 +8259,34 @@ impl<'a> Parser<'a> {
             "STR_TO_TIME" | "PARSE_TIMESTAMP" | "PARSE_DATETIME" if args.len() == 2 => {
                 return None;
             }
-            "TIME_TO_STR" | "FORMAT_TIMESTAMP" | "FORMAT_DATETIME" => {
+            "STR_TO_DATE" if crate::dialects::is_mysql_family(dialect) && args.len() == 2 => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let format = it.next()?;
+                let has_time = matches!(&format, Expr::StringLiteral(format) if mysql_format_contains_time(format));
+                let format = time_format_to_strftime(format, dialect);
+                if has_time {
+                    TypedFunction::StrToTime {
+                        expr: Box::new(expr),
+                        format: Box::new(format),
+                    }
+                } else {
+                    TypedFunction::StrToDate {
+                        expr: Box::new(expr),
+                        format: Box::new(format),
+                    }
+                }
+            }
+            "TO_DATE" if crate::dialects::is_postgres_family(dialect) && args.len() == 2 => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let format = time_format_to_strftime(it.next()?, dialect);
+                TypedFunction::StrToDate {
+                    expr: Box::new(expr),
+                    format: Box::new(format),
+                }
+            }
+            "TIME_TO_STR" if args.len() == 2 => {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
                 let format = it.next()?;
@@ -8219,12 +8295,36 @@ impl<'a> Parser<'a> {
                     format: Box::new(format),
                 }
             }
-            // TO_CHAR stays as a generic Expr::Function so transform_expr
-            // can apply source-specific rules (postgres → STRFTIME for
-            // sqlite or DATE_FORMAT for mysql, mysql/sqlite → drop format
-            // and CAST AS TEXT for sqlite, etc.).
-            "TO_CHAR" => {
-                return None;
+            "FORMAT_TIMESTAMP" | "FORMAT_DATETIME" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let format = time_format_to_strftime(it.next()?, dialect);
+                TypedFunction::TimeToStr {
+                    expr: Box::new(expr),
+                    format: Box::new(format),
+                }
+            }
+            "DATE_FORMAT"
+                if (crate::dialects::is_mysql_family(dialect)
+                    || crate::dialects::is_hive_family(dialect))
+                    && args.len() == 2 =>
+            {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let format = time_format_to_strftime(it.next()?, dialect);
+                TypedFunction::TimeToStr {
+                    expr: Box::new(expr),
+                    format: Box::new(format),
+                }
+            }
+            "TO_CHAR" if crate::dialects::is_postgres_family(dialect) && args.len() == 2 => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let format = time_format_to_strftime(it.next()?, dialect);
+                TypedFunction::TimeToStr {
+                    expr: Box::new(expr),
+                    format: Box::new(format),
+                }
             }
             "TS_OR_DS_TO_DATE" => {
                 let mut it = args.into_iter();

@@ -2468,33 +2468,15 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                         data_type: DataType::Unknown("TEXT".to_string()),
                     };
                 }
-                // Two-arg TO_CHAR(x, fmt):
-                //   - postgres source: convert to TimeToStr (generator
-                //     picks the right name per target — STRFTIME for
-                //     sqlite, DATE_FORMAT for mysql, TO_CHAR for pg, …).
-                //   - mysql/sqlite source → sqlite target: Python drops
-                //     the format and emits CAST(x AS TEXT).
-                if new_args.len() == 2 {
-                    if is_postgres_family(source) {
-                        return Expr::TypedFunction {
-                            func: TypedFunction::TimeToStr {
-                                expr: Box::new(new_args[0].clone()),
-                                format: Box::new(transform_format_expr(
-                                    new_args[1].clone(),
-                                    source,
-                                    target,
-                                )),
-                            },
-                            filter: None,
-                            over: None,
-                        };
-                    }
-                    if matches!(target, Dialect::Sqlite) {
-                        return Expr::Cast {
-                            expr: Box::new(new_args[0].clone()),
-                            data_type: DataType::Unknown("TEXT".to_string()),
-                        };
-                    }
+                // Two-arg generic TO_CHAR(x, fmt): SQLite-targeted anonymous
+                // calls drop the format and cast to text. Postgres-native
+                // TO_CHAR parses to TypedFunction::TimeToStr before this
+                // transform layer.
+                if new_args.len() == 2 && matches!(target, Dialect::Sqlite) {
+                    return Expr::Cast {
+                        expr: Box::new(new_args[0].clone()),
+                        data_type: DataType::Unknown("TEXT".to_string()),
+                    };
                 }
             }
             // Mysql FORMAT(value, fmt[, locale]) is the NUMBER_TO_STR
@@ -2891,92 +2873,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
-            // mysql STR_TO_DATE(x, fmt) needs format conversion and (when
-            // the format contains time markers) renaming to STR_TO_TIME for
-            // SQLite output. Other source dialects preserve STR_TO_DATE.
-            if matches!(target, Dialect::Sqlite)
-                && is_mysql_family(source)
-                && name.eq_ignore_ascii_case("STR_TO_DATE")
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-                && new_args.len() == 2
-            {
-                let transformed_format = transform_format_expr(new_args[1].clone(), source, target);
-                return Expr::Function {
-                    name: mysql_sqlite_str_to_time_name(&transformed_format).to_string(),
-                    args: vec![new_args[0].clone(), transformed_format],
-                    distinct: false,
-                    filter: None,
-                    over: None,
-                };
-            }
-            // DATE_FORMAT in MySQL/Hive/Spark/Databricks is the native format
-            // function and needs dialect-specific lowering (STRFTIME for
-            // SQLite, TO_CHAR for Postgres, FORMAT_TIMESTAMP for BigQuery,
-            // etc.). For Postgres/SQLite sources, DATE_FORMAT stays as a
-            // plain function call so identity round-trips match SQLGlot
-            // (those sources don't have DATE_FORMAT as a native function).
-            if (is_mysql_family(source) || is_hive_family(source))
-                && name.eq_ignore_ascii_case("DATE_FORMAT")
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-                && new_args.len() == 2
-            {
-                return Expr::TypedFunction {
-                    func: TypedFunction::TimeToStr {
-                        expr: Box::new(new_args[0].clone()),
-                        format: Box::new(transform_format_expr(
-                            new_args[1].clone(),
-                            source,
-                            target,
-                        )),
-                    },
-                    filter: None,
-                    over: None,
-                };
-            }
-            if matches!(target, Dialect::Sqlite)
-                && is_mysql_family(source)
-                && name.eq_ignore_ascii_case("FROM_UNIXTIME")
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-                && new_args.len() == 2
-            {
-                return Expr::Function {
-                    name: "UNIX_TO_TIME".to_string(),
-                    args: vec![
-                        new_args[0].clone(),
-                        transform_format_expr(new_args[1].clone(), source, target),
-                    ],
-                    distinct: false,
-                    filter: None,
-                    over: None,
-                };
-            }
-            if matches!(target, Dialect::Sqlite)
-                && is_postgres_family(source)
-                && name.eq_ignore_ascii_case("TO_TIMESTAMP")
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-                && new_args.len() == 2
-            {
-                return Expr::TypedFunction {
-                    func: TypedFunction::StrToTime {
-                        expr: Box::new(new_args[0].clone()),
-                        format: Box::new(transform_format_expr(
-                            new_args[1].clone(),
-                            source,
-                            target,
-                        )),
-                    },
-                    filter: None,
-                    over: None,
-                };
-            }
             if matches!(target, Dialect::Sqlite)
                 && is_mysql_family(source)
                 && name.eq_ignore_ascii_case("TIMESTAMPDIFF")
@@ -2991,25 +2887,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                         new_args[2].clone(),
                         new_args[1].clone(),
                         timestampdiff_unit_arg(&new_args[0]),
-                    ],
-                    distinct: false,
-                    filter: None,
-                    over: None,
-                };
-            }
-            if matches!(target, Dialect::Sqlite)
-                && is_postgres_family(source)
-                && name.eq_ignore_ascii_case("TO_DATE")
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-                && new_args.len() == 2
-            {
-                return Expr::Function {
-                    name: "STR_TO_DATE".to_string(),
-                    args: vec![
-                        new_args[0].clone(),
-                        transform_format_expr(new_args[1].clone(), source, target),
                     ],
                     distinct: false,
                     filter: None,
@@ -3058,24 +2935,12 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 over: over.map(|spec| transform_window_spec(spec, source, target)),
             }
         }
-        // Recurse into typed function child expressions, with special handling
-        // for date/time formatting functions that need format string conversion
+        // Recurse into typed function child expressions; source-native
+        // format strings are canonicalized by the parser and rendered by
+        // the generator.
         Expr::TypedFunction { func, filter, over } => {
             // CurrentTimestamp rendering is target-owned: the generator
             // consults rules::render_current_timestamp on every path.
-            if matches!(target, Dialect::Sqlite)
-                && is_mysql_family(source)
-                && let TypedFunction::StrToTime { expr, format } = func
-            {
-                let transformed_format = transform_format_expr(*format, source, target);
-                return Expr::Function {
-                    name: mysql_sqlite_str_to_time_name(&transformed_format).to_string(),
-                    args: vec![transform_expr(*expr, source, target), transformed_format],
-                    distinct: false,
-                    filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
-                    over: over.map(|spec| transform_window_spec(spec, source, target)),
-                };
-            }
             if matches!(target, Dialect::Sqlite)
                 && is_postgres_family(source)
                 && filter.is_none()
@@ -3098,21 +2963,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     distinct: false,
                     filter: None,
                     over: None,
-                };
-            }
-            if matches!(target, Dialect::Sqlite)
-                && is_postgres_family(source)
-                && let TypedFunction::StrToTime { expr, format } = func
-            {
-                return Expr::Function {
-                    name: "STR_TO_TIME".to_string(),
-                    args: vec![
-                        transform_expr(*expr, source, target),
-                        transform_format_expr(*format, source, target),
-                    ],
-                    distinct: false,
-                    filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
-                    over: over.map(|spec| transform_window_spec(spec, source, target)),
                 };
             }
             if matches!(target, Dialect::Sqlite) {
@@ -4157,35 +4007,15 @@ fn sqlite_postgres_json_typeof(expr: Expr) -> Expr {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Typed function transformation with format string conversion
+// Typed function transformation
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Transform a TypedFunction, including date/time format string conversion.
-///
-/// For TimeToStr and StrToTime functions, this converts the format string
-/// from the source dialect's convention to the target dialect's convention.
 fn transform_typed_function(
     func: TypedFunction,
     source: Dialect,
     target: Dialect,
 ) -> TypedFunction {
     match func {
-        TypedFunction::TimeToStr { expr, format } => {
-            let transformed_expr = Box::new(transform_expr(*expr, source, target));
-            let transformed_format = transform_format_expr(*format, source, target);
-            TypedFunction::TimeToStr {
-                expr: transformed_expr,
-                format: Box::new(transformed_format),
-            }
-        }
-        TypedFunction::StrToTime { expr, format } => {
-            let transformed_expr = Box::new(transform_expr(*expr, source, target));
-            let transformed_format = transform_format_expr(*format, source, target);
-            TypedFunction::StrToTime {
-                expr: transformed_expr,
-                format: Box::new(transformed_format),
-            }
-        }
         TypedFunction::DatePart { part, expr }
             if matches!(source, Dialect::Postgres) && matches!(target, Dialect::Sqlite) =>
         {
@@ -4261,28 +4091,6 @@ fn transform_typed_function(
     }
 }
 
-/// Transform a format string expression for the target dialect.
-///
-/// If the expression is a string literal, convert the format specifiers.
-/// Otherwise, just recursively transform child expressions.
-fn transform_format_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
-    match &expr {
-        Expr::StringLiteral(s) => {
-            let detected_source = source_time_format_style(s, source);
-            let target_style = time::TimeFormatStyle::for_dialect(target);
-
-            // Only convert if styles differ
-            if detected_source != target_style {
-                let converted = time::format_time(s, detected_source, target_style);
-                Expr::StringLiteral(converted)
-            } else {
-                expr
-            }
-        }
-        _ => transform_expr(expr, source, target),
-    }
-}
-
 fn transform_safe_cast_date_format(expr: Expr, source: Dialect, target: Dialect) -> Expr {
     match (expr, source, target) {
         (Expr::StringLiteral(format), Dialect::Postgres, Dialect::Sqlite) => {
@@ -4298,20 +4106,6 @@ fn format_postgres_safe_cast_date_format(format: &str) -> String {
         .replace("YY", "%y")
         .replace("MM", "%m")
         .replace("DD", "%d")
-}
-
-fn source_time_format_style(format_str: &str, source: Dialect) -> time::TimeFormatStyle {
-    match source {
-        Dialect::Ansi | Dialect::Prql => detect_format_style(format_str),
-        _ => time::TimeFormatStyle::for_dialect(source),
-    }
-}
-
-fn mysql_sqlite_str_to_time_name(format: &Expr) -> &'static str {
-    match format {
-        Expr::StringLiteral(format) if mysql_format_contains_time(format) => "STR_TO_TIME",
-        _ => "STR_TO_DATE",
-    }
 }
 
 /// Render an Expr to a string suitable for embedding inside SQLite's
@@ -4352,14 +4146,6 @@ fn is_recognized_interval_unit(unit: &str) -> bool {
             | "NANOSECOND"
             | "NANOSECONDS"
     )
-}
-
-fn mysql_format_contains_time(format: &str) -> bool {
-    [
-        "%f", "%H", "%h", "%I", "%i", "%k", "%l", "%p", "%r", "%S", "%s", "%T",
-    ]
-    .iter()
-    .any(|needle| format.contains(needle))
 }
 
 fn timestampdiff_unit_arg(expr: &Expr) -> Expr {
@@ -4409,42 +4195,6 @@ fn split_compact_interval_literal(literal: &str) -> Option<(String, DateTimeFiel
         return None;
     }
     parse_interval_unit(unit).map(|field| (amount.to_string(), field))
-}
-
-/// Detect the format style from a format string based on its content.
-fn detect_format_style(format_str: &str) -> time::TimeFormatStyle {
-    // Check for style-specific patterns
-    if format_str.contains('%') {
-        // strftime-style format
-        if format_str.contains("%i") {
-            // MySQL uses %i for minutes
-            time::TimeFormatStyle::Mysql
-        } else {
-            // Generic strftime (SQLite, BigQuery, etc.)
-            time::TimeFormatStyle::Strftime
-        }
-    } else if format_str.contains("YYYY") || format_str.contains("yyyy") {
-        // Check for Java vs Postgres/Snowflake
-        if format_str.contains("HH24") || format_str.contains("MI") || format_str.contains("SS") {
-            // Postgres/Oracle style
-            time::TimeFormatStyle::Postgres
-        } else if format_str.contains("mm") && format_str.contains("ss") {
-            // Java style (lowercase seconds and minutes)
-            time::TimeFormatStyle::Java
-        } else if format_str.contains("FF") {
-            // Snowflake fractional seconds
-            time::TimeFormatStyle::Snowflake
-        } else if format_str.contains("MM") && format_str.contains("DD") {
-            // Could be Postgres or Snowflake - default to Postgres
-            time::TimeFormatStyle::Postgres
-        } else {
-            // Default to Java for ambiguous cases with lowercase patterns
-            time::TimeFormatStyle::Java
-        }
-    } else {
-        // Unknown format - default to strftime
-        time::TimeFormatStyle::Strftime
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

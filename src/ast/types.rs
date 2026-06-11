@@ -810,8 +810,13 @@ pub enum TypedFunction {
     CurrentTimestamp,
     /// `MAKE_TIME` / `MAKETIME` / `TIME_FROM_PARTS`
     TimeFromParts { parts: Vec<Expr> },
-    /// `TO_TIMESTAMP(epoch)` / `FROM_UNIXTIME(epoch)` / `UNIX_TO_TIME(epoch)`
-    UnixToTime { expr: Box<Expr> },
+    /// `TO_TIMESTAMP(epoch[, format])` / `FROM_UNIXTIME(epoch[, format])` / `UNIX_TO_TIME(epoch[, format])`
+    UnixToTime {
+        expr: Box<Expr>,
+        format: Option<Box<Expr>>,
+    },
+    /// `STR_TO_DATE(expr, format)` / `TO_DATE(expr, format)` / `PARSE_DATE`
+    StrToDate { expr: Box<Expr>, format: Box<Expr> },
     /// `STR_TO_TIME(expr, format)` / `TO_TIMESTAMP` / `PARSE_DATETIME`
     StrToTime { expr: Box<Expr>, format: Box<Expr> },
     /// `TIME_TO_STR(expr, format)` / `DATE_FORMAT` / `FORMAT_DATETIME`
@@ -1070,8 +1075,14 @@ impl TypedFunction {
                     part.walk(visitor);
                 }
             }
-            TypedFunction::UnixToTime { expr } => expr.walk(visitor),
-            TypedFunction::StrToTime { expr, format }
+            TypedFunction::UnixToTime { expr, format } => {
+                expr.walk(visitor);
+                if let Some(format) = format {
+                    format.walk(visitor);
+                }
+            }
+            TypedFunction::StrToDate { expr, format }
+            | TypedFunction::StrToTime { expr, format }
             | TypedFunction::TimeToStr { expr, format } => {
                 expr.walk(visitor);
                 format.walk(visitor);
@@ -1338,8 +1349,13 @@ impl TypedFunction {
             TypedFunction::TimeFromParts { parts } => TypedFunction::TimeFromParts {
                 parts: parts.into_iter().map(|part| part.transform(func)).collect(),
             },
-            TypedFunction::UnixToTime { expr } => TypedFunction::UnixToTime {
+            TypedFunction::UnixToTime { expr, format } => TypedFunction::UnixToTime {
                 expr: Box::new(expr.transform(func)),
+                format: format.map(|format| Box::new(format.transform(func))),
+            },
+            TypedFunction::StrToDate { expr, format } => TypedFunction::StrToDate {
+                expr: Box::new(expr.transform(func)),
+                format: Box::new(format.transform(func)),
             },
             TypedFunction::StrToTime { expr, format } => TypedFunction::StrToTime {
                 expr: Box::new(expr.transform(func)),

@@ -3322,6 +3322,19 @@ impl Generator {
         self.write(")");
     }
 
+    fn gen_time_format_expr(&mut self, format: &Expr) {
+        if let (Some(dialect), Expr::StringLiteral(format)) = (self.dialect, format) {
+            let converted = crate::dialects::time::format_time(
+                format,
+                crate::dialects::time::TimeFormatStyle::Strftime,
+                crate::dialects::time::TimeFormatStyle::for_dialect(dialect),
+            );
+            self.gen_expr(&Expr::StringLiteral(converted));
+        } else {
+            self.gen_expr(format);
+        }
+    }
+
     /// Generate SQL for a typed function expression.
     fn gen_typed_function(&mut self, func: &TypedFunction) {
         let dialect = self.dialect;
@@ -3620,14 +3633,24 @@ impl Generator {
                     self.write(")");
                 }
             }
-            TypedFunction::UnixToTime { expr } => {
+            TypedFunction::UnixToTime { expr, format } => {
                 if is_mysql {
                     self.write_keyword("FROM_UNIXTIME(");
                     self.gen_expr(expr);
+                    if let Some(format) = format {
+                        self.write(", ");
+                        self.gen_time_format_expr(format);
+                    }
                     self.write(")");
                 } else if is_postgres_family || matches!(dialect, Some(Dialect::DuckDb)) {
                     self.write_keyword("TO_TIMESTAMP(");
                     self.gen_expr(expr);
+                    if let Some(format) = format
+                        && is_postgres_family
+                    {
+                        self.write(", ");
+                        self.gen_time_format_expr(format);
+                    }
                     self.write(")");
                 } else if is_bigquery {
                     self.write_keyword("TIMESTAMP_SECONDS(");
@@ -3636,6 +3659,35 @@ impl Generator {
                 } else {
                     self.write_keyword("UNIX_TO_TIME(");
                     self.gen_expr(expr);
+                    if let Some(format) = format {
+                        self.write(", ");
+                        self.gen_time_format_expr(format);
+                    }
+                    self.write(")");
+                }
+            }
+            TypedFunction::StrToDate { expr, format } => {
+                if is_bigquery {
+                    self.write_keyword("PARSE_DATE(");
+                    self.gen_time_format_expr(format);
+                    self.write(", ");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else if matches!(dialect, Some(Dialect::DuckDb)) {
+                    self.write_keyword("CAST(STRPTIME(");
+                    self.gen_expr(expr);
+                    self.write(", ");
+                    self.gen_time_format_expr(format);
+                    self.write(") AS DATE)");
+                } else {
+                    if is_mysql || matches!(dialect, Some(Dialect::Sqlite)) {
+                        self.write_keyword("STR_TO_DATE(");
+                    } else {
+                        self.write_keyword("TO_DATE(");
+                    }
+                    self.gen_expr(expr);
+                    self.write(", ");
+                    self.gen_time_format_expr(format);
                     self.write(")");
                 }
             }
@@ -3644,24 +3696,33 @@ impl Generator {
                     self.write_keyword("STR_TO_DATE(");
                 } else if is_bigquery {
                     self.write_keyword("PARSE_TIMESTAMP(");
+                    self.gen_time_format_expr(format);
+                    self.write(", ");
+                    self.gen_expr(expr);
+                    self.write(")");
+                    return;
                 } else if matches!(dialect, Some(Dialect::Sqlite)) {
                     self.write_keyword("STR_TO_TIME(");
+                } else if matches!(dialect, Some(Dialect::DuckDb)) {
+                    self.write_keyword("STRPTIME(");
                 } else {
                     self.write_keyword("TO_TIMESTAMP(");
                 }
                 self.gen_expr(expr);
                 self.write(", ");
-                self.gen_expr(format);
+                self.gen_time_format_expr(format);
                 self.write(")");
             }
             TypedFunction::TimeToStr { expr, format } => {
                 if matches!(dialect, Some(Dialect::Sqlite)) {
                     self.write_keyword("STRFTIME(");
-                    self.gen_expr(format);
+                    self.gen_time_format_expr(format);
                     self.write(", ");
                     self.gen_expr(expr);
                     self.write(")");
                     return;
+                } else if matches!(dialect, Some(Dialect::DuckDb)) {
+                    self.write_keyword("STRFTIME(");
                 } else if is_mysql || is_hive_family {
                     self.write_keyword("DATE_FORMAT(");
                 } else if is_bigquery {
@@ -3671,9 +3732,15 @@ impl Generator {
                 } else {
                     self.write_keyword("TO_CHAR(");
                 }
-                self.gen_expr(expr);
-                self.write(", ");
-                self.gen_expr(format);
+                if is_bigquery {
+                    self.gen_time_format_expr(format);
+                    self.write(", ");
+                    self.gen_expr(expr);
+                } else {
+                    self.gen_expr(expr);
+                    self.write(", ");
+                    self.gen_time_format_expr(format);
+                }
                 self.write(")");
             }
             TypedFunction::TsOrDsToDate { expr } => {

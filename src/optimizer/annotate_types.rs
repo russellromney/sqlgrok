@@ -910,6 +910,7 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
             precision: None,
             with_tz: false,
         }),
+        TypedFunction::StrToDate { .. } => Some(DataType::Date),
         TypedFunction::StrToTime { .. } => Some(DataType::Timestamp {
             precision: None,
             with_tz: false,

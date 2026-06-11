@@ -300,6 +300,7 @@ fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
         TypedFunction::CurrentTimestamp => "NOW",
         TypedFunction::TimeFromParts { .. } => "TIME_FROM_PARTS",
         TypedFunction::UnixToTime { .. } => "UNIX_TO_TIME",
+        TypedFunction::StrToDate { .. } => "STR_TO_DATE",
         TypedFunction::StrToTime { .. } => "STR_TO_TIME",
         TypedFunction::TimeToStr { .. } => "TIME_TO_STR",
         TypedFunction::TsOrDsToDate { .. } => "TS_OR_DS_TO_DATE",
@@ -393,7 +394,6 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         | TypedFunction::Ln { expr }
         | TypedFunction::Sqrt { expr }
         | TypedFunction::Explode { expr }
-        | TypedFunction::UnixToTime { expr }
         | TypedFunction::Flatten { expr }
         | TypedFunction::ArraySize { expr }
         | TypedFunction::ParseJSON { expr }
@@ -411,6 +411,13 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         | TypedFunction::Stddev { expr }
         | TypedFunction::FirstValue { expr }
         | TypedFunction::LastValue { expr } => vec![*expr.clone()],
+        TypedFunction::UnixToTime { expr, format } => {
+            let mut args = vec![*expr.clone()];
+            if let Some(format) = format {
+                args.push(*format.clone());
+            }
+            args
+        }
         TypedFunction::DatePart { part, expr } | TypedFunction::ExtractPart { part, expr } => {
             vec![*part.clone(), *expr.clone()]
         }
@@ -422,9 +429,9 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
             vec![*expr.clone(), *interval.clone()]
         }
         TypedFunction::DateDiff { start, end, .. } => vec![*start.clone(), *end.clone()],
-        TypedFunction::StrToTime { expr, format } | TypedFunction::TimeToStr { expr, format } => {
-            vec![*expr.clone(), *format.clone()]
-        }
+        TypedFunction::StrToDate { expr, format }
+        | TypedFunction::StrToTime { expr, format }
+        | TypedFunction::TimeToStr { expr, format } => vec![*expr.clone(), *format.clone()],
         TypedFunction::Trim { expr, .. } => vec![*expr.clone()],
         TypedFunction::Substring {
             expr,

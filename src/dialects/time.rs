@@ -226,7 +226,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
         FormatMapping {
             strftime: "%w", // Weekday as number (0=Sunday, 6=Saturday)
             mysql: "%w",
-            postgres: "D",
+            postgres: "",
             snowflake: "D",
             java: "e",
             tsql: "",
@@ -235,7 +235,7 @@ fn build_format_mappings() -> Vec<FormatMapping> {
         FormatMapping {
             strftime: "%u", // Weekday as number (1=Monday, 7=Sunday)
             mysql: "%u",
-            postgres: "ID",
+            postgres: "D",
             snowflake: "ID",
             java: "u",
             tsql: "",
@@ -473,15 +473,17 @@ fn convert_strftime_style(
 
 /// Convert a format string from Postgres style to target.
 fn convert_postgres_style(format_str: &str, target: TimeFormatStyle) -> String {
-    let mappings = get_format_mappings();
     let mut result = String::with_capacity(format_str.len() * 2);
     let chars: Vec<char> = format_str.chars().collect();
     let mut i = 0;
 
-    // Postgres specifiers to check, ordered by length (longest first)
+    // SQLGlot's Postgres.TIME_MAPPING keys, ordered by length (longest first).
+    // Match exactly: unsupported/case-different tokens such as MON, DAY, hh,
+    // and hh24 are preserved by SQLGlot rather than normalized.
     let pg_specifiers: &[&str] = &[
-        "YYYY", "MMMM", "Month", "Mon", "MM", "DDD", "DD", "Day", "Dy", "D", "HH24", "HH12", "HH",
-        "MI", "SS", "US", "AM", "PM", "TZH:TZM", "TZR", "TZ", "OF", "IW", "WW", "YY", "ID", "FMDD",
+        "TMMonth", "FMHH12", "FMHH24", "FMDDD", "TMDay", "TMMon", "FMDD", "FMMI", "FMMM", "FMSS",
+        "HH12", "HH24", "TMDy", "YYYY", "yyyy", "ddd", "DDD", "dd", "DD", "mi", "MI", "mm", "MM",
+        "ss", "SS", "OF", "TZ", "US", "ww", "WW", "yy", "YY", "d", "D",
     ];
 
     while i < chars.len() {
@@ -490,29 +492,9 @@ fn convert_postgres_style(format_str: &str, target: TimeFormatStyle) -> String {
 
         // Try to match longest specifier first
         for spec in pg_specifiers {
-            if remaining.starts_with(spec)
-                || remaining.to_uppercase().starts_with(&spec.to_uppercase())
-            {
-                if matches!(target, TimeFormatStyle::Strftime)
-                    && matches!(*spec, "Mon" | "AM" | "PM")
-                {
-                    result.push_str(spec);
-                    i += spec.len();
-                    matched = true;
-                    break;
-                }
-                // Find the mapping
-                let mapping = mappings
-                    .iter()
-                    .find(|m| m.postgres.eq_ignore_ascii_case(spec));
-
-                if let Some(m) = mapping {
-                    let target_spec = m.get(target);
-                    if !target_spec.is_empty() {
-                        result.push_str(target_spec);
-                    } else {
-                        result.push_str(spec);
-                    }
+            if remaining.starts_with(spec) {
+                if let Some(strftime) = postgres_token_to_strftime(spec) {
+                    result.push_str(&format_time(strftime, TimeFormatStyle::Strftime, target));
                 } else {
                     result.push_str(spec);
                 }
@@ -543,6 +525,38 @@ fn convert_postgres_style(format_str: &str, target: TimeFormatStyle) -> String {
     }
 
     result
+}
+
+fn postgres_token_to_strftime(token: &str) -> Option<&'static str> {
+    let strftime = match token {
+        "dd" | "DD" => "%d",
+        "d" | "D" => "%u",
+        "ddd" | "DDD" => "%j",
+        "FMDD" => "%-d",
+        "FMDDD" => "%-j",
+        "FMHH12" => "%-I",
+        "FMHH24" => "%-H",
+        "FMMI" => "%-M",
+        "FMMM" => "%-m",
+        "FMSS" => "%-S",
+        "HH12" => "%I",
+        "HH24" => "%H",
+        "mi" | "MI" => "%M",
+        "mm" | "MM" => "%m",
+        "OF" => "%z",
+        "ss" | "SS" => "%S",
+        "TMDay" => "%A",
+        "TMDy" => "%a",
+        "TMMon" => "%b",
+        "TMMonth" => "%B",
+        "TZ" => "%Z",
+        "US" => "%f",
+        "ww" | "WW" => "%U",
+        "yy" | "YY" => "%y",
+        "yyyy" | "YYYY" => "%Y",
+        _ => return None,
+    };
+    Some(strftime)
 }
 
 /// Convert a format string from Snowflake style to target.
@@ -907,6 +921,14 @@ mod tests {
                 TimeFormatStyle::Postgres
             ),
             "YYYY-MM-DD HH24:MI:SS"
+        );
+        assert_eq!(
+            format_time("%u", TimeFormatStyle::Strftime, TimeFormatStyle::Postgres),
+            "D"
+        );
+        assert_eq!(
+            format_time("%w", TimeFormatStyle::Strftime, TimeFormatStyle::Postgres),
+            "%w"
         );
     }
 

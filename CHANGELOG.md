@@ -3,6 +3,30 @@
 Quick summaries of completed sqlgrok work. The roadmap says what should happen next;
 this file records what landed.
 
+## 2026-06-11
+
+### Architecture Port: Formatted Time Functions
+
+- Moved source-native formatted time calls into parser-owned typed AST nodes:
+  MySQL `STR_TO_DATE`, `DATE_FORMAT`, and formatted `FROM_UNIXTIME`, plus
+  Postgres `TO_CHAR`, `TO_DATE`, and formatted `TO_TIMESTAMP`.
+- Added `TypedFunction::StrToDate` and an optional format field on
+  `TypedFunction::UnixToTime`, so SQLGlot's canonical `strftime` format state
+  is carried explicitly instead of through source->target transform arms.
+- Made generators render canonical time formats per target, including SQLite
+  `STRFTIME` / `STR_TO_DATE` / `STR_TO_TIME`, Postgres `TO_CHAR` / `TO_DATE` /
+  `TO_TIMESTAMP`, MySQL `DATE_FORMAT` / `STR_TO_DATE` / `FROM_UNIXTIME`, and
+  DuckDB `STRFTIME` / `STRPTIME`.
+- Tightened Postgres format-token conversion to SQLGlot's exact
+  `Postgres.TIME_MAPPING` behavior, including single-letter `D` / `d`
+  weekday tokens and generic `TIME_TO_STR` strftime formats.
+- Refreshed all seven forced-pair SQLGlot bridge reports. Exact matches now
+  stand at: postgres -> postgres `8259`, mysql -> postgres `7468`, sqlite ->
+  postgres `7618`, postgres -> duckdb `6953`, postgres -> sqlite `11927`,
+  mysql -> sqlite `11691`, and sqlite -> sqlite `11860`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes.
+
 ## 2026-06-10
 
 ### Architecture Port: Postgres JSON Path Functions

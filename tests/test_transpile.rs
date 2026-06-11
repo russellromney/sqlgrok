@@ -3850,6 +3850,18 @@ fn test_mysql_time_format_ambiguous_tokens_to_sqlite() {
         Dialect::Mysql,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "SELECT STR_TO_DATE(x, '%%H')",
+        "SELECT STR_TO_DATE(x, '%%H')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT STR_TO_DATE(x, 'abc%%Hdef')",
+        "SELECT STR_TO_DATE(x, 'abc%%Hdef')",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]
@@ -3887,6 +3899,12 @@ fn test_sqlite_time_report_parity_batch() {
     validate_with_dialect(
         "SELECT TO_CHAR(CAST('2020-02-03 04:05:06.789' AS TIMESTAMP), 'YY-DDD HH24:MI:SS.US TZ')",
         "SELECT STRFTIME('%y-%j %H:%M:%S.%f %Z', CAST('2020-02-03 04:05:06.789' AS TIMESTAMP))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT TO_CHAR(ts, 'D')",
+        "SELECT STRFTIME('%u', ts)",
         Dialect::Postgres,
         Dialect::Sqlite,
     );
@@ -4197,7 +4215,7 @@ fn test_time_format_mysql_to_bigquery() {
     // MySQL to BigQuery (BigQuery uses strftime-like format)
     validate_with_dialect(
         "SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s')",
-        "SELECT FORMAT_TIMESTAMP(created_at, '%Y-%m-%d %H:%M:%S')",
+        "SELECT FORMAT_TIMESTAMP('%Y-%m-%d %H:%M:%S', created_at)",
         Dialect::Mysql,
         Dialect::BigQuery,
     );
@@ -4220,7 +4238,7 @@ fn test_str_to_time_mysql_to_postgres() {
     // (without the time-suffix marker conversion).
     validate_with_dialect(
         "SELECT STR_TO_DATE(date_str, '%Y-%m-%d')",
-        "SELECT STR_TO_DATE(date_str, '%Y-%m-%d')",
+        "SELECT TO_DATE(date_str, 'YYYY-MM-DD')",
         Dialect::Mysql,
         Dialect::Postgres,
     );
@@ -4243,6 +4261,12 @@ fn test_time_format_identity_postgres() {
     validate_with_dialect(
         "SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS')",
         "SELECT TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS')",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "TIME_TO_STR(x, '%Y-%m-%d')",
+        "TO_CHAR(x, 'YYYY-MM-DD')",
         Dialect::Postgres,
         Dialect::Postgres,
     );

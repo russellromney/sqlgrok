@@ -108,16 +108,17 @@ Plan, attached to Phase 3 (delete `transform_owned`):
 First measured baselines for the O(N^2) hole, and the counts after the
 Phase 1.5 function/type relocation landed the same day. The latest counts add
 the 2026-06-10 COALESCE/date-time and Postgres JSON path parser relocation
-work (reports in `parity/reports/`):
+work plus the 2026-06-11 formatted-time parser/generator relocation work
+(reports in `parity/reports/`):
 
 | lane | match (baseline) | match (latest) | mismatch (latest) |
 | --- | ---: | ---: | ---: |
-| postgres -> postgres | 7100 | 8195 (+1095) | 4779 |
-| mysql -> postgres | 6405 | 7448 (+1043) | 5272 |
+| postgres -> postgres | 7100 | 8259 (+1159) | 4715 |
+| mysql -> postgres | 6405 | 7468 (+1063) | 5252 |
 | sqlite -> postgres | 6508 | 7618 (+1110) | 5277 |
-| postgres -> duckdb | 6626 | 6773 (+147) | 6201 |
-| postgres -> sqlite | 11871 | 11877 (+6) | 1097 |
-| mysql -> sqlite | 11676 | 11686 (+10) | 1037 |
+| postgres -> duckdb | 6626 | 6953 (+327) | 6021 |
+| postgres -> sqlite | 11871 | 11927 (+56) | 1047 |
+| mysql -> sqlite | 11676 | 11691 (+15) | 1032 |
 | sqlite -> sqlite | 11856 | 11860 (+4) | 1035 |
 
 Zero row-level regressions across all seven lanes. The single biggest
@@ -340,7 +341,7 @@ Priority lanes:
 - Postgres -> SQLite.
 - SQLite -> SQLite.
 
-Current work (forced lanes, write=sqlite; latest counts pg 11877 / my 11686 /
+Current work (forced lanes, write=sqlite; latest counts pg 11927 / my 11691 /
 sq 11860):
 
 - Drive the Architecture Port: relocate target rules into the generator and
