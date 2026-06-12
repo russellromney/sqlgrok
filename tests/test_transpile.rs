@@ -3276,7 +3276,7 @@ fn test_typed_date_trunc_to_tsql() {
 fn test_typed_date_trunc_to_oracle() {
     validate_with_dialect(
         "SELECT DATE_TRUNC('MONTH', created_at) FROM orders",
-        "SELECT TRUNC(created_at, 'MONTH') FROM orders",
+        "SELECT TIMESTAMP_TRUNC(created_at, MONTH) FROM orders",
         Dialect::Postgres,
         Dialect::Oracle,
     );
@@ -3894,6 +3894,24 @@ fn test_sqlite_time_report_parity_batch() {
         "TIMESTAMPDIFF(a, b, MONTH)",
         Dialect::Mysql,
         Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "TIMESTAMPDIFF(month, b, a)",
+        "TIMESTAMPDIFF(MONTH, b, a)",
+        Dialect::Mysql,
+        Dialect::Mysql,
+    );
+    validate_with_dialect(
+        "TIMESTAMPDIFF(month, b, a)",
+        "DATE_DIFF('MONTH', b, a)",
+        Dialect::Mysql,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "TIMESTAMP_DIFF(a, b, MONTH)",
+        "TIMESTAMPDIFF(a, b, MONTH)",
+        Dialect::BigQuery,
+        Dialect::Postgres,
     );
     validate_with_dialect(
         "SELECT FROM_UNIXTIME(1711366265, '%Y %D %M')",
@@ -5448,5 +5466,21 @@ fn test_year_month_day_to_sqlite_preserved() {
     ];
     for (sql, expected) in mysql_sqlite {
         validate_with_dialect(sql, expected, Dialect::Mysql, Dialect::Sqlite);
+    }
+    let mysql_identity: &[(&str, &str)] = &[
+        ("SELECT YEAR(x)", "SELECT YEAR(x)"),
+        ("SELECT MONTH(x)", "SELECT MONTH(x)"),
+        ("SELECT DAY(x)", "SELECT DAY(x)"),
+    ];
+    for (sql, expected) in mysql_identity {
+        validate_with_dialect(sql, expected, Dialect::Mysql, Dialect::Mysql);
+    }
+    let mysql_postgres: &[(&str, &str)] = &[
+        ("SELECT YEAR(x)", "SELECT YEAR(CAST(x AS DATE))"),
+        ("SELECT MONTH(x)", "SELECT MONTH(CAST(x AS DATE))"),
+        ("SELECT DAY(x)", "SELECT DAY(CAST(x AS DATE))"),
+    ];
+    for (sql, expected) in mysql_postgres {
+        validate_with_dialect(sql, expected, Dialect::Mysql, Dialect::Postgres);
     }
 }

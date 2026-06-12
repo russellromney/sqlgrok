@@ -3419,17 +3419,20 @@ impl Generator {
                                         payload.push_str(n);
                                         payload.push('\'');
                                     } else {
-                                        payload.push_str(&render_expr_to_sql(inner));
+                                        payload.push_str(&render_expr_to_sql_for_dialect(
+                                            inner, dialect,
+                                        ));
                                     }
                                 }
-                                other => payload.push_str(&render_expr_to_sql(other)),
+                                other => payload
+                                    .push_str(&render_expr_to_sql_for_dialect(other, dialect)),
                             }
                             if let Some(u) = interval_unit {
                                 payload.push(' ');
                                 payload.push_str(&datetime_field_keyword(u));
                             }
                         }
-                        other => payload.push_str(&render_expr_to_sql(other)),
+                        other => payload.push_str(&render_expr_to_sql_for_dialect(other, dialect)),
                     }
                     if let Some(u) = unit {
                         payload.push(' ');
@@ -3506,6 +3509,46 @@ impl Generator {
                     self.write(")");
                 }
             }
+            TypedFunction::TimestampDiff { start, end, unit } => {
+                if is_mysql || is_snowflake {
+                    self.write_keyword("TIMESTAMPDIFF(");
+                    if let Some(u) = unit {
+                        self.gen_datetime_field(u);
+                    } else {
+                        self.write_keyword("DAY");
+                    }
+                    self.write(", ");
+                    self.gen_expr(start);
+                    self.write(", ");
+                    self.gen_expr(end);
+                    self.write(")");
+                } else if matches!(dialect, Some(Dialect::DuckDb)) {
+                    self.write_keyword("DATE_DIFF(");
+                    self.write("'");
+                    if let Some(u) = unit {
+                        self.gen_datetime_field(u);
+                    } else {
+                        self.write_keyword("DAY");
+                    }
+                    self.write("', ");
+                    self.gen_expr(start);
+                    self.write(", ");
+                    self.gen_expr(end);
+                    self.write(")");
+                } else {
+                    self.write_keyword("TIMESTAMPDIFF(");
+                    self.gen_expr(end);
+                    self.write(", ");
+                    self.gen_expr(start);
+                    self.write(", ");
+                    if let Some(u) = unit {
+                        self.gen_datetime_field(u);
+                    } else {
+                        self.write_keyword("DAY");
+                    }
+                    self.write(")");
+                }
+            }
             TypedFunction::DatePart { part, expr } => {
                 self.write_keyword("DATE_PART(");
                 self.gen_expr(part);
@@ -3525,11 +3568,26 @@ impl Generator {
                 self.write(")");
             }
             TypedFunction::TimestampTrunc { unit, expr } => {
-                self.write_keyword("TIMESTAMP_TRUNC(");
-                self.gen_expr(expr);
-                self.write(", ");
-                self.gen_datetime_field(unit);
-                self.write(")");
+                if is_tsql {
+                    self.write_keyword("DATETRUNC(");
+                    self.gen_datetime_field(unit);
+                    self.write(", ");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else if is_postgres_family || matches!(dialect, Some(Dialect::DuckDb)) {
+                    self.write_keyword("DATE_TRUNC(");
+                    self.write("'");
+                    self.gen_datetime_field(unit);
+                    self.write("', ");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else {
+                    self.write_keyword("TIMESTAMP_TRUNC(");
+                    self.gen_expr(expr);
+                    self.write(", ");
+                    self.gen_datetime_field(unit);
+                    self.write(")");
+                }
             }
             TypedFunction::DateTrunc { unit, expr } => {
                 if is_tsql {
@@ -3756,7 +3814,27 @@ impl Generator {
                 }
             }
             TypedFunction::Year { expr } => {
-                if is_tsql || matches!(dialect, Some(Dialect::Sqlite)) {
+                if is_mysql
+                    && let Expr::TypedFunction {
+                        func: TypedFunction::TsOrDsToDate { expr: inner },
+                        ..
+                    } = expr.as_ref()
+                {
+                    self.write_keyword("YEAR(");
+                    self.gen_expr(inner);
+                    self.write(")");
+                } else if let Expr::TypedFunction {
+                    func: TypedFunction::TsOrDsToDate { .. },
+                    ..
+                } = expr.as_ref()
+                {
+                    self.write_keyword("YEAR(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else if matches!(
+                    dialect,
+                    Some(Dialect::Sqlite | Dialect::Tsql | Dialect::Fabric)
+                ) {
                     self.write_keyword("YEAR(");
                     self.gen_expr(expr);
                     self.write(")");
@@ -3767,7 +3845,27 @@ impl Generator {
                 }
             }
             TypedFunction::Month { expr } => {
-                if is_tsql || matches!(dialect, Some(Dialect::Sqlite)) {
+                if is_mysql
+                    && let Expr::TypedFunction {
+                        func: TypedFunction::TsOrDsToDate { expr: inner },
+                        ..
+                    } = expr.as_ref()
+                {
+                    self.write_keyword("MONTH(");
+                    self.gen_expr(inner);
+                    self.write(")");
+                } else if let Expr::TypedFunction {
+                    func: TypedFunction::TsOrDsToDate { .. },
+                    ..
+                } = expr.as_ref()
+                {
+                    self.write_keyword("MONTH(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else if matches!(
+                    dialect,
+                    Some(Dialect::Sqlite | Dialect::Tsql | Dialect::Fabric)
+                ) {
                     self.write_keyword("MONTH(");
                     self.gen_expr(expr);
                     self.write(")");
@@ -3778,7 +3876,27 @@ impl Generator {
                 }
             }
             TypedFunction::Day { expr } => {
-                if is_tsql || matches!(dialect, Some(Dialect::Sqlite)) {
+                if is_mysql
+                    && let Expr::TypedFunction {
+                        func: TypedFunction::TsOrDsToDate { expr: inner },
+                        ..
+                    } = expr.as_ref()
+                {
+                    self.write_keyword("DAY(");
+                    self.gen_expr(inner);
+                    self.write(")");
+                } else if let Expr::TypedFunction {
+                    func: TypedFunction::TsOrDsToDate { .. },
+                    ..
+                } = expr.as_ref()
+                {
+                    self.write_keyword("DAY(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else if matches!(
+                    dialect,
+                    Some(Dialect::Sqlite | Dialect::Tsql | Dialect::Fabric)
+                ) {
                     self.write_keyword("DAY(");
                     self.gen_expr(expr);
                     self.write(")");
@@ -4542,7 +4660,7 @@ fn normalize_sqlite_json_path(path: &str) -> String {
 
 /// Render an expression to a SQL-ish string for embedding inside string
 /// payloads (e.g. SQLite's DATE_ADD lowering to DATE(x, 'INTERVAL ...')).
-fn render_expr_to_sql(expr: &Expr) -> String {
+fn render_expr_to_sql_for_dialect(expr: &Expr, dialect: Option<Dialect>) -> String {
     match expr {
         Expr::Number(n) => n.clone(),
         Expr::StringLiteral(s) => format!("'{}'", s.replace('\'', "''")),
@@ -4551,7 +4669,7 @@ fn render_expr_to_sql(expr: &Expr) -> String {
             None => name.to_ascii_uppercase(),
         },
         Expr::UnaryOp { op, expr } => {
-            let inner = render_expr_to_sql(expr);
+            let inner = render_expr_to_sql_for_dialect(expr, dialect);
             match op {
                 UnaryOperator::Minus => format!("-{inner}"),
                 UnaryOperator::Plus => format!("+{inner}"),
@@ -4571,12 +4689,12 @@ fn render_expr_to_sql(expr: &Expr) -> String {
             };
             format!(
                 "{} {} {}",
-                render_expr_to_sql(left),
+                render_expr_to_sql_for_dialect(left, dialect),
                 op_str,
-                render_expr_to_sql(right)
+                render_expr_to_sql_for_dialect(right, dialect)
             )
         }
-        Expr::Nested(inner) => format!("({})", render_expr_to_sql(inner)),
+        Expr::Nested(inner) => format!("({})", render_expr_to_sql_for_dialect(inner, dialect)),
         Expr::Function {
             name,
             args,
@@ -4585,7 +4703,7 @@ fn render_expr_to_sql(expr: &Expr) -> String {
         } => {
             let args_str = args
                 .iter()
-                .map(render_expr_to_sql)
+                .map(|arg| render_expr_to_sql_for_dialect(arg, dialect))
                 .collect::<Vec<_>>()
                 .join(", ");
             let distinct_str = if *distinct { "DISTINCT " } else { "" };
@@ -4593,7 +4711,20 @@ fn render_expr_to_sql(expr: &Expr) -> String {
         }
         Expr::Cast { expr, data_type } => {
             let dt = format!("{data_type:?}").to_ascii_uppercase();
-            format!("CAST({} AS {})", render_expr_to_sql(expr), dt)
+            format!(
+                "CAST({} AS {})",
+                render_expr_to_sql_for_dialect(expr, dialect),
+                dt
+            )
+        }
+        Expr::TypedFunction { .. } => {
+            let mut generator = if let Some(dialect) = dialect {
+                Generator::with_dialect(dialect)
+            } else {
+                Generator::new()
+            };
+            generator.gen_expr(expr);
+            generator.output
         }
         other => format!("{other:?}"),
     }

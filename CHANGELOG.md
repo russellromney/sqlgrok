@@ -5,6 +5,25 @@ this file records what landed.
 
 ## 2026-06-11
 
+### Architecture Port: Date/Time Arithmetic Functions
+
+- Added a typed `TimestampDiff` AST node and moved MySQL
+  `TIMESTAMPDIFF(unit, start, end)` plus `TIMESTAMP_DIFF(end, start, unit)`
+  parsing into source-owned normalization.
+- Parse Postgres-family `DATE_TRUNC` into `TimestampTrunc`, and moved MySQL
+  `YEAR` / `MONTH` / `DAY` date wrapping into parser-owned `TsOrDsToDate`
+  structure with generator-owned target rendering.
+- Deleted the MySQL-source `TIMESTAMPDIFF` SQLite transform arm, the
+  Postgres-source `DateTrunc` SQLite typed transform arm, the MySQL
+  `YEAR` / `MONTH` / `DAY` transform arms, and the old
+  `timestampdiff_unit_arg` helper.
+- Refreshed all seven forced-pair SQLGlot bridge reports. Exact matches now
+  stand at: postgres -> sqlite `11928`, mysql -> sqlite `11691`,
+  sqlite -> sqlite `11860`, postgres -> postgres `8276`, mysql -> postgres
+  `7573`, sqlite -> postgres `7639`, and postgres -> duckdb `6977`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes.
+
 ### Architecture Port: JSON Aggregate Functions
 
 - Added typed JSON aggregate nodes for SQLGlot's `JSONArrayAgg` and

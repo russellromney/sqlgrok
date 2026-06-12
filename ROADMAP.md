@@ -108,16 +108,17 @@ Plan, attached to Phase 3 (delete `transform_owned`):
 First measured baselines for the O(N^2) hole, and the counts after the
 Phase 1.5 function/type relocation landed the same day. The latest counts add
 the 2026-06-10 COALESCE/date-time and Postgres JSON path parser relocation
-work plus the 2026-06-11 formatted-time parser/generator relocation work
+work plus the 2026-06-11 formatted-time, JSON aggregate, and date/time
+arithmetic parser/generator relocation work
 (reports in `parity/reports/`):
 
 | lane | match (baseline) | match (latest) | mismatch (latest) |
 | --- | ---: | ---: | ---: |
-| postgres -> postgres | 7100 | 8259 (+1159) | 4715 |
-| mysql -> postgres | 6405 | 7468 (+1063) | 5252 |
-| sqlite -> postgres | 6508 | 7618 (+1110) | 5277 |
-| postgres -> duckdb | 6626 | 6953 (+327) | 6021 |
-| postgres -> sqlite | 11871 | 11927 (+56) | 1047 |
+| postgres -> postgres | 7100 | 8276 (+1176) | 4698 |
+| mysql -> postgres | 6405 | 7573 (+1168) | 5147 |
+| sqlite -> postgres | 6508 | 7639 (+1131) | 5256 |
+| postgres -> duckdb | 6626 | 6977 (+351) | 5997 |
+| postgres -> sqlite | 11871 | 11928 (+57) | 1046 |
 | mysql -> sqlite | 11676 | 11691 (+15) | 1032 |
 | sqlite -> sqlite | 11856 | 11860 (+4) | 1035 |
 

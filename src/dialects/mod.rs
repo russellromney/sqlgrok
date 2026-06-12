@@ -2852,26 +2852,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 };
             }
             if matches!(target, Dialect::Sqlite)
-                && is_mysql_family(source)
-                && name.eq_ignore_ascii_case("TIMESTAMPDIFF")
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-                && new_args.len() == 3
-            {
-                return Expr::Function {
-                    name: "TIMESTAMPDIFF".to_string(),
-                    args: vec![
-                        new_args[2].clone(),
-                        new_args[1].clone(),
-                        timestampdiff_unit_arg(&new_args[0]),
-                    ],
-                    distinct: false,
-                    filter: None,
-                    over: None,
-                };
-            }
-            if matches!(target, Dialect::Sqlite)
                 && is_postgres_family(source)
                 && name.eq_ignore_ascii_case("DIV")
                 && !distinct
@@ -3068,51 +3048,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                             left: Box::new(wrap(left)),
                             op: BinaryOperator::Modulo,
                             right: Box::new(wrap(right)),
-                        };
-                    }
-                    TypedFunction::Year { expr } if is_mysql_family(source) => {
-                        return Expr::TypedFunction {
-                            func: TypedFunction::Year {
-                                expr: Box::new(Expr::Function {
-                                    name: "DATE".to_string(),
-                                    args: vec![transform_expr(*expr, source, target)],
-                                    distinct: false,
-                                    filter: None,
-                                    over: None,
-                                }),
-                            },
-                            filter,
-                            over,
-                        };
-                    }
-                    TypedFunction::Month { expr } if is_mysql_family(source) => {
-                        return Expr::TypedFunction {
-                            func: TypedFunction::Month {
-                                expr: Box::new(Expr::Function {
-                                    name: "DATE".to_string(),
-                                    args: vec![transform_expr(*expr, source, target)],
-                                    distinct: false,
-                                    filter: None,
-                                    over: None,
-                                }),
-                            },
-                            filter,
-                            over,
-                        };
-                    }
-                    TypedFunction::Day { expr } if is_mysql_family(source) => {
-                        return Expr::TypedFunction {
-                            func: TypedFunction::Day {
-                                expr: Box::new(Expr::Function {
-                                    name: "DATE".to_string(),
-                                    args: vec![transform_expr(*expr, source, target)],
-                                    distinct: false,
-                                    filter: None,
-                                    over: None,
-                                }),
-                            },
-                            filter,
-                            over,
                         };
                     }
                     _ => {}
@@ -4002,14 +3937,6 @@ fn transform_typed_function(
                 expr: Box::new(transform_expr(*expr, source, target)),
             }
         }
-        TypedFunction::DateTrunc { unit, expr }
-            if matches!(source, Dialect::Postgres) && matches!(target, Dialect::Sqlite) =>
-        {
-            TypedFunction::TimestampTrunc {
-                unit,
-                expr: Box::new(transform_expr(*expr, source, target)),
-            }
-        }
         // Mysql DATE_SUB / DATE_ADD with an INTERVAL second arg unboxes
         // to the 3-arg form (value, value_str, unit) for sqlite output,
         // matching Python SQLGlot.
@@ -4124,24 +4051,6 @@ fn is_recognized_interval_unit(unit: &str) -> bool {
             | "NANOSECOND"
             | "NANOSECONDS"
     )
-}
-
-fn timestampdiff_unit_arg(expr: &Expr) -> Expr {
-    match expr {
-        Expr::Column { name, .. } => Expr::Column {
-            table: None,
-            name: name.to_ascii_uppercase(),
-            quote_style: QuoteStyle::None,
-            table_quote_style: QuoteStyle::None,
-        },
-        Expr::StringLiteral(unit) => Expr::Column {
-            table: None,
-            name: unit.to_ascii_uppercase(),
-            quote_style: QuoteStyle::None,
-            table_quote_style: QuoteStyle::None,
-        },
-        other => other.clone(),
-    }
 }
 
 fn transform_generate_series_step(step: Expr, source: Dialect, target: Dialect) -> Expr {

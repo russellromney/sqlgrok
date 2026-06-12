@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 6959 |
-| `mismatch` | 6015 |
+| `match` | 6977 |
+| `mismatch` | 5997 |
 | `oracle-error` | 1456 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -23,10 +23,10 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `mismatch` | `validate_all` | 4554 |
-| `match` | `validate_all` | 4479 |
-| `match` | `validate_identity` | 2421 |
-| `mismatch` | `validate_identity` | 1346 |
+| `mismatch` | `validate_all` | 4537 |
+| `match` | `validate_all` | 4496 |
+| `match` | `validate_identity` | 2422 |
+| `mismatch` | `validate_identity` | 1345 |
 | `oracle-error` | `validate_identity` | 949 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 343 |
@@ -45,13 +45,13 @@ Filtered by read/write: `0`
 | --- | --- | --- | ---: |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 618 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 565 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 402 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 330 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 394 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 338 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 288 |
-| `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 283 |
+| `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 274 |
 | `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 235 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 201 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 189 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 202 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 188 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 174 |
 | `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 159 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 152 |

@@ -291,6 +291,7 @@ fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
     match func {
         TypedFunction::DateAdd { .. } => "DATE_ADD",
         TypedFunction::DateDiff { .. } => "DATE_DIFF",
+        TypedFunction::TimestampDiff { .. } => "TIMESTAMPDIFF",
         TypedFunction::DatePart { .. } => "DATE_PART",
         TypedFunction::ExtractPart { .. } => "EXTRACT",
         TypedFunction::DateTrunc { .. } => "DATE_TRUNC",
@@ -430,7 +431,8 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         | TypedFunction::DateSub { expr, interval, .. } => {
             vec![*expr.clone(), *interval.clone()]
         }
-        TypedFunction::DateDiff { start, end, .. } => vec![*start.clone(), *end.clone()],
+        TypedFunction::DateDiff { start, end, .. }
+        | TypedFunction::TimestampDiff { start, end, .. } => vec![*start.clone(), *end.clone()],
         TypedFunction::StrToDate { expr, format }
         | TypedFunction::StrToTime { expr, format }
         | TypedFunction::TimeToStr { expr, format } => vec![*expr.clone(), *format.clone()],

@@ -8144,6 +8144,45 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
+            "TIMESTAMPDIFF" if args.len() == 3 && crate::dialects::is_mysql_family(dialect) => {
+                let mut it = args.into_iter();
+                let unit_arg = it.next()?;
+                let start = it.next()?;
+                let end = it.next()?;
+                let unit = Self::expr_to_datetime_field(&unit_arg);
+                TypedFunction::TimestampDiff {
+                    start: Box::new(start),
+                    end: Box::new(end),
+                    unit,
+                }
+            }
+            "TIMESTAMPDIFF" if args.len() == 3 => {
+                if Self::expr_to_datetime_field(&args[0]).is_some() {
+                    return None;
+                }
+                let mut it = args.into_iter();
+                let end = it.next()?;
+                let start = it.next()?;
+                let unit_arg = it.next()?;
+                let unit = Self::expr_to_datetime_field(&unit_arg);
+                TypedFunction::TimestampDiff {
+                    start: Box::new(start),
+                    end: Box::new(end),
+                    unit,
+                }
+            }
+            "TIMESTAMP_DIFF" if args.len() == 3 => {
+                let mut it = args.into_iter();
+                let end = it.next()?;
+                let start = it.next()?;
+                let unit_arg = it.next()?;
+                let unit = Self::expr_to_datetime_field(&unit_arg);
+                TypedFunction::TimestampDiff {
+                    start: Box::new(start),
+                    end: Box::new(end),
+                    unit,
+                }
+            }
             "DATE_PART" => {
                 let mut it = args.into_iter();
                 let part = it.next()?;
@@ -8166,9 +8205,16 @@ impl<'a> Parser<'a> {
                     // Default: first = unit string, second = expr
                     return None;
                 };
-                TypedFunction::DateTrunc {
-                    unit,
-                    expr: Box::new(expr),
+                if crate::dialects::is_postgres_family(dialect) {
+                    TypedFunction::TimestampTrunc {
+                        unit,
+                        expr: Box::new(expr),
+                    }
+                } else {
+                    TypedFunction::DateTrunc {
+                        unit,
+                        expr: Box::new(expr),
+                    }
                 }
             }
             "DATE_SUB" | "DATESUB" => {
@@ -8334,20 +8380,23 @@ impl<'a> Parser<'a> {
             }
             "YEAR" => {
                 let mut it = args.into_iter();
+                let expr = it.next()?;
                 TypedFunction::Year {
-                    expr: Box::new(it.next()?),
+                    expr: Box::new(wrap_mysql_date_part_arg(expr, dialect)),
                 }
             }
             "MONTH" => {
                 let mut it = args.into_iter();
+                let expr = it.next()?;
                 TypedFunction::Month {
-                    expr: Box::new(it.next()?),
+                    expr: Box::new(wrap_mysql_date_part_arg(expr, dialect)),
                 }
             }
             "DAY" => {
                 let mut it = args.into_iter();
+                let expr = it.next()?;
                 TypedFunction::Day {
-                    expr: Box::new(it.next()?),
+                    expr: Box::new(wrap_mysql_date_part_arg(expr, dialect)),
                 }
             }
 
@@ -8893,6 +8942,7 @@ impl<'a> Parser<'a> {
                 "SECOND" => Some(DateTimeField::Second),
                 "MILLISECOND" => Some(DateTimeField::Millisecond),
                 "MICROSECOND" => Some(DateTimeField::Microsecond),
+                "NANOSECOND" | "NANOSECONDS" => Some(DateTimeField::Nanosecond),
                 _ => None,
             },
             Expr::StringLiteral(s) => match s.to_uppercase().as_str() {
@@ -8906,6 +8956,7 @@ impl<'a> Parser<'a> {
                 "SECOND" => Some(DateTimeField::Second),
                 "MILLISECOND" => Some(DateTimeField::Millisecond),
                 "MICROSECOND" => Some(DateTimeField::Microsecond),
+                "NANOSECOND" | "NANOSECONDS" => Some(DateTimeField::Nanosecond),
                 _ => None,
             },
             _ => None,
@@ -8955,6 +9006,20 @@ fn concat_exprs(mut exprs: Vec<Expr>) -> Expr {
         };
     }
     expr
+}
+
+fn wrap_mysql_date_part_arg(expr: Expr, dialect: Dialect) -> Expr {
+    if crate::dialects::is_mysql_family(dialect) {
+        Expr::TypedFunction {
+            func: TypedFunction::TsOrDsToDate {
+                expr: Box::new(expr),
+            },
+            filter: None,
+            over: None,
+        }
+    } else {
+        expr
+    }
 }
 
 /// Attach comments to the appropriate field on a parsed statement.

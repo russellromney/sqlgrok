@@ -784,6 +784,12 @@ pub enum TypedFunction {
         end: Box<Expr>,
         unit: Option<DateTimeField>,
     },
+    /// `TIMESTAMPDIFF(unit, start, end)` / `TIMESTAMP_DIFF(end, start, unit)`
+    TimestampDiff {
+        start: Box<Expr>,
+        end: Box<Expr>,
+        unit: Option<DateTimeField>,
+    },
     /// `DATE_PART(part, expr)` — extract a date/time field expression
     DatePart { part: Box<Expr>, expr: Box<Expr> },
     /// `EXTRACT(part FROM expr)` where `part` is itself an expression
@@ -1062,7 +1068,8 @@ impl TypedFunction {
                 expr.walk(visitor);
                 interval.walk(visitor);
             }
-            TypedFunction::DateDiff { start, end, .. } => {
+            TypedFunction::DateDiff { start, end, .. }
+            | TypedFunction::TimestampDiff { start, end, .. } => {
                 start.walk(visitor);
                 end.walk(visitor);
             }
@@ -1325,6 +1332,11 @@ impl TypedFunction {
                 unit,
             },
             TypedFunction::DateDiff { start, end, unit } => TypedFunction::DateDiff {
+                start: Box::new(start.transform(func)),
+                end: Box::new(end.transform(func)),
+                unit,
+            },
+            TypedFunction::TimestampDiff { start, end, unit } => TypedFunction::TimestampDiff {
                 start: Box::new(start.transform(func)),
                 end: Box::new(end.transform(func)),
                 unit,
