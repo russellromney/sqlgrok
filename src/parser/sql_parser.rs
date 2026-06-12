@@ -7478,6 +7478,24 @@ impl<'a> Parser<'a> {
             return Ok(expr);
         }
 
+        if crate::dialects::is_postgres_family(self.dialect)
+            && name.eq_ignore_ascii_case("DIV")
+            && !distinct
+            && args.len() == 2
+        {
+            return Ok(Expr::Cast {
+                expr: Box::new(Expr::BinaryOp {
+                    left: Box::new(args[0].clone()),
+                    op: BinaryOperator::IntDiv,
+                    right: Box::new(args[1].clone()),
+                }),
+                data_type: DataType::Decimal {
+                    precision: None,
+                    scale: None,
+                },
+            });
+        }
+
         // Try to construct a typed function variant. Keep COUNT() as
         // a raw function because SQLGlot preserves the empty call.
         if name.eq_ignore_ascii_case("COUNT") && args.is_empty() {
@@ -8746,11 +8764,29 @@ impl<'a> Parser<'a> {
                 let mut it = args.into_iter();
                 let start = it.next()?;
                 let stop = it.next()?;
-                let step = it.next();
-                TypedFunction::GenerateSeries {
-                    start: Box::new(start),
-                    stop: Box::new(stop),
-                    step: step.map(Box::new),
+                let step = it.next().map(|step| {
+                    if crate::dialects::is_postgres_family(dialect)
+                        && name.eq_ignore_ascii_case("GENERATE_SERIES")
+                    {
+                        normalize_postgres_generate_series_step(step)
+                    } else {
+                        step
+                    }
+                });
+                if crate::dialects::is_postgres_family(dialect)
+                    && name.eq_ignore_ascii_case("GENERATE_SERIES")
+                {
+                    TypedFunction::ExplodingGenerateSeries {
+                        start: Box::new(start),
+                        stop: Box::new(stop),
+                        step: step.map(Box::new),
+                    }
+                } else {
+                    TypedFunction::GenerateSeries {
+                        start: Box::new(start),
+                        stop: Box::new(stop),
+                        step: step.map(Box::new),
+                    }
                 }
             }
             "FLATTEN" => {
@@ -8879,9 +8915,15 @@ impl<'a> Parser<'a> {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
                 let base = it.next();
-                TypedFunction::Log {
-                    expr: Box::new(expr),
-                    base: base.map(Box::new),
+                if base.is_none() && crate::dialects::is_mysql_family(dialect) {
+                    TypedFunction::Ln {
+                        expr: Box::new(expr),
+                    }
+                } else {
+                    TypedFunction::Log {
+                        expr: Box::new(expr),
+                        base: base.map(Box::new),
+                    }
                 }
             }
             "LN" => {
@@ -9056,6 +9098,78 @@ fn wrap_mysql_date_part_arg(expr: Expr, dialect: Dialect) -> Expr {
         }
     } else {
         expr
+    }
+}
+
+fn normalize_postgres_generate_series_step(step: Expr) -> Expr {
+    match step {
+        Expr::StringLiteral(literal) => {
+            postgres_generate_series_interval(&literal).unwrap_or(Expr::StringLiteral(literal))
+        }
+        Expr::Interval {
+            value,
+            unit: None,
+            unit_text: None,
+        } => match *value {
+            Expr::StringLiteral(literal) => {
+                postgres_generate_series_interval(&literal).unwrap_or(Expr::Interval {
+                    value: Box::new(Expr::StringLiteral(literal)),
+                    unit: None,
+                    unit_text: None,
+                })
+            }
+            other => Expr::Interval {
+                value: Box::new(other),
+                unit: None,
+                unit_text: None,
+            },
+        },
+        other => other,
+    }
+}
+
+fn postgres_generate_series_interval(literal: &str) -> Option<Expr> {
+    let (amount, unit) = split_postgres_generate_series_interval(literal)?;
+    Some(Expr::Interval {
+        value: Box::new(Expr::StringLiteral(amount)),
+        unit: Some(unit),
+        unit_text: None,
+    })
+}
+
+fn split_postgres_generate_series_interval(literal: &str) -> Option<(String, DateTimeField)> {
+    if let Some((amount, unit)) = literal.split_once(char::is_whitespace) {
+        let unit = unit.trim();
+        if !amount.is_empty() && !unit.is_empty() && !unit.contains(char::is_whitespace) {
+            return parse_postgres_generate_series_interval_unit(unit)
+                .map(|field| (amount.to_string(), field));
+        }
+    }
+
+    let split_at = literal
+        .char_indices()
+        .find_map(|(index, ch)| ch.is_ascii_alphabetic().then_some(index))?;
+    let (amount, unit) = literal.split_at(split_at);
+    if amount.is_empty() || unit.is_empty() {
+        return None;
+    }
+    parse_postgres_generate_series_interval_unit(unit).map(|field| (amount.to_string(), field))
+}
+
+fn parse_postgres_generate_series_interval_unit(unit: &str) -> Option<DateTimeField> {
+    match unit.trim_end_matches('s').to_ascii_uppercase().as_str() {
+        "YEAR" => Some(DateTimeField::Year),
+        "QUARTER" => Some(DateTimeField::Quarter),
+        "MONTH" => Some(DateTimeField::Month),
+        "WEEK" => Some(DateTimeField::Week),
+        "DAY" => Some(DateTimeField::Day),
+        "HOUR" => Some(DateTimeField::Hour),
+        "MINUTE" => Some(DateTimeField::Minute),
+        "SECOND" => Some(DateTimeField::Second),
+        "MILLISECOND" => Some(DateTimeField::Millisecond),
+        "MICROSECOND" => Some(DateTimeField::Microsecond),
+        "NANOSECOND" => Some(DateTimeField::Nanosecond),
+        _ => None,
     }
 }
 

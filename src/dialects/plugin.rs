@@ -341,7 +341,9 @@ fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
         TypedFunction::ArrayContains { .. } => "ARRAY_CONTAINS",
         TypedFunction::ArraySize { .. } => "ARRAY_SIZE",
         TypedFunction::Explode { .. } => "EXPLODE",
-        TypedFunction::GenerateSeries { .. } => "GENERATE_SERIES",
+        TypedFunction::GenerateSeries { .. } | TypedFunction::ExplodingGenerateSeries { .. } => {
+            "GENERATE_SERIES"
+        }
         TypedFunction::Flatten { .. } => "FLATTEN",
         TypedFunction::JSONExtract { .. } => "JSON_EXTRACT",
         TypedFunction::JSONExtractScalar { .. } => "JSON_EXTRACT_SCALAR",
@@ -527,7 +529,8 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         TypedFunction::ArrayContains { array, element } => {
             vec![*array.clone(), *element.clone()]
         }
-        TypedFunction::GenerateSeries { start, stop, step } => {
+        TypedFunction::GenerateSeries { start, stop, step }
+        | TypedFunction::ExplodingGenerateSeries { start, stop, step } => {
             let mut args = vec![*start.clone(), *stop.clone()];
             if let Some(s) = step {
                 args.push(*s.clone());

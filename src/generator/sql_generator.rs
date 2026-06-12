@@ -2414,19 +2414,8 @@ impl Generator {
             }
 
             Expr::BinaryOp { left, op, right } => {
-                if *op == BinaryOperator::IntDiv && self.dialect == Some(Dialect::Sqlite) {
-                    self.write_keyword("CAST(");
-                    self.write_keyword("CAST(");
-                    self.gen_expr(left);
-                    self.write(" ");
-                    self.write_keyword("AS ");
-                    self.write_keyword("REAL");
-                    self.write(") / ");
-                    self.gen_expr(right);
-                    self.write(" ");
-                    self.write_keyword("AS ");
-                    self.write_keyword("INTEGER");
-                    self.write(")");
+                if *op == BinaryOperator::IntDiv {
+                    self.gen_int_div(left, right);
                 } else {
                     self.gen_expr(left);
                     self.write(Self::binary_op_str(op));
@@ -2807,6 +2796,24 @@ impl Generator {
                 self.write(")");
             }
             Expr::Cast { expr, data_type } => {
+                if crate::dialects::is_postgres_family(self.dialect.unwrap_or(Dialect::Ansi))
+                    && matches!(
+                        data_type,
+                        DataType::Decimal {
+                            precision: None,
+                            scale: None
+                        }
+                    )
+                    && let Expr::BinaryOp {
+                        left,
+                        op: BinaryOperator::IntDiv,
+                        right,
+                    } = expr.as_ref()
+                {
+                    self.gen_int_div(left, right);
+                    return;
+                }
+
                 // SQLGlot renders CAST(x AS T) for every target, including
                 // the postgres family (`x::T` input is normalized to CAST).
                 {
@@ -2907,6 +2914,23 @@ impl Generator {
                     self.write(num);
                     self.write("' ");
                     self.write_keyword(&rest.to_ascii_uppercase());
+                } else if matches!(
+                    self.dialect,
+                    Some(
+                        Dialect::Postgres
+                            | Dialect::Redshift
+                            | Dialect::Materialize
+                            | Dialect::RisingWave
+                            | Dialect::Snowflake
+                    )
+                ) && let (Expr::StringLiteral(s), Some(unit), None) =
+                    (value.as_ref(), unit.as_ref(), unit_text.as_ref())
+                {
+                    self.write("'");
+                    self.write(s);
+                    self.write(" ");
+                    self.write(&datetime_field_keyword(unit));
+                    self.write("'");
                 } else {
                     self.gen_expr(value);
                     render_unit(self);
@@ -3332,6 +3356,69 @@ impl Generator {
             self.gen_expr(&Expr::StringLiteral(converted));
         } else {
             self.gen_expr(format);
+        }
+    }
+
+    fn gen_generate_series(&mut self, start: &Expr, stop: &Expr, step: Option<&Expr>) {
+        self.write_keyword("GENERATE_SERIES(");
+        self.gen_expr(start);
+        self.write(", ");
+        self.gen_expr(stop);
+        if let Some(step) = step {
+            self.write(", ");
+            self.gen_expr(step);
+        }
+        self.write(")");
+    }
+
+    fn gen_int_div(&mut self, left: &Expr, right: &Expr) {
+        let dialect = self.dialect.unwrap_or(Dialect::Ansi);
+        if matches!(dialect, Dialect::Sqlite) {
+            self.write_keyword("CAST(");
+            self.write_keyword("CAST(");
+            self.gen_expr(left);
+            self.write(" ");
+            self.write_keyword("AS ");
+            self.write_keyword("REAL");
+            self.write(") / ");
+            self.gen_expr(right);
+            self.write(" ");
+            self.write_keyword("AS ");
+            self.write_keyword("INTEGER");
+            self.write(")");
+        } else if crate::dialects::is_postgres_family(dialect) {
+            self.write_keyword("DIV(");
+            self.gen_expr(left);
+            self.write(", ");
+            self.gen_expr(right);
+            self.write(")");
+        } else if matches!(dialect, Dialect::DuckDb) {
+            self.gen_expr(left);
+            self.write(" // ");
+            self.gen_expr(right);
+        } else if matches!(
+            dialect,
+            Dialect::Mysql | Dialect::SingleStore | Dialect::Doris | Dialect::StarRocks
+        ) {
+            self.write_keyword("CAST(");
+            self.gen_expr(left);
+            self.write(" / ");
+            self.gen_expr(right);
+            self.write_keyword(" AS ");
+            self.write_keyword("SIGNED");
+            self.write(")");
+        } else if matches!(dialect, Dialect::Snowflake) {
+            self.write_keyword("CAST(");
+            self.gen_expr(left);
+            self.write(" / ");
+            self.gen_expr(right);
+            self.write_keyword(" AS ");
+            self.write_keyword("INT");
+            self.write(")");
+        } else {
+            self.gen_expr(left);
+            self.write(Self::binary_op_str(&BinaryOperator::IntDiv));
+            self.gen_expr(right);
         }
     }
 
@@ -4369,15 +4456,16 @@ impl Generator {
                 self.write(")");
             }
             TypedFunction::GenerateSeries { start, stop, step } => {
-                self.write_keyword("GENERATE_SERIES(");
-                self.gen_expr(start);
-                self.write(", ");
-                self.gen_expr(stop);
-                if let Some(s) = step {
-                    self.write(", ");
-                    self.gen_expr(s);
+                self.gen_generate_series(start, stop, step.as_deref());
+            }
+            TypedFunction::ExplodingGenerateSeries { start, stop, step } => {
+                if matches!(self.dialect, Some(Dialect::Sqlite | Dialect::DuckDb)) {
+                    self.write_keyword("UNNEST(");
+                    self.gen_generate_series(start, stop, step.as_deref());
+                    self.write(")");
+                } else {
+                    self.gen_generate_series(start, stop, step.as_deref());
                 }
-                self.write(")");
             }
             TypedFunction::Flatten { expr } => {
                 self.write_keyword("FLATTEN(");

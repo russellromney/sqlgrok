@@ -973,7 +973,9 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
                 _ => None,
             }
         }
-        TypedFunction::GenerateSeries { .. } => Some(DataType::Int),
+        TypedFunction::GenerateSeries { .. } | TypedFunction::ExplodingGenerateSeries { .. } => {
+            Some(DataType::Int)
+        }
         TypedFunction::Flatten { expr } => ann.get_type(expr.as_ref()).cloned(),
 
         // ── JSON ─────────────────────────────────────────────────────

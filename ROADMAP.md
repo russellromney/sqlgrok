@@ -109,15 +109,16 @@ First measured baselines for the O(N^2) hole, and the counts after the
 Phase 1.5 function/type relocation landed the same day. The latest counts add
 the 2026-06-10 COALESCE/date-time and Postgres JSON path parser relocation
 work plus the 2026-06-11 formatted-time, JSON aggregate, date/time arithmetic,
-and timezone conversion parser/generator relocation work
+timezone conversion, and compact expression-oddity parser/generator relocation
+work
 (reports in `parity/reports/`):
 
 | lane | match (baseline) | match (latest) | mismatch (latest) |
 | --- | ---: | ---: | ---: |
-| postgres -> postgres | 7100 | 8294 (+1194) | 4680 |
-| mysql -> postgres | 6405 | 7600 (+1195) | 5120 |
-| sqlite -> postgres | 6508 | 7657 (+1149) | 5238 |
-| postgres -> duckdb | 6626 | 6995 (+369) | 5979 |
+| postgres -> postgres | 7100 | 8335 (+1235) | 4639 |
+| mysql -> postgres | 6405 | 7661 (+1256) | 5059 |
+| sqlite -> postgres | 6508 | 7700 (+1192) | 5195 |
+| postgres -> duckdb | 6626 | 7015 (+389) | 5959 |
 | postgres -> sqlite | 11871 | 11929 (+58) | 1045 |
 | mysql -> sqlite | 11676 | 11692 (+16) | 1031 |
 | sqlite -> sqlite | 11856 | 11861 (+5) | 1034 |

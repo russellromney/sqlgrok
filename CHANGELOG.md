@@ -5,6 +5,27 @@ this file records what landed.
 
 ## 2026-06-11
 
+### Architecture Port: Compact Expression Oddities
+
+- Added SQLGlot-style `ExplodingGenerateSeries` typed AST state for
+  Postgres-family projection `GENERATE_SERIES`, with parser-owned step
+  interval normalization and generator-owned `UNNEST(GENERATE_SERIES(...))`
+  rendering for SQLite and DuckDB.
+- Moved Postgres `DIV(a, b)` into parser-owned `CAST(IntDiv AS DECIMAL)`
+  structure and added target-owned `IntDiv` rendering for Postgres-family,
+  MySQL-family, DuckDB, Snowflake, and SQLite.
+- Moved MySQL `LOG(x)` default-to-`LN(x)` behavior into the parser, and let
+  typed `SUBSTRING` generation own the Postgres -> SQLite rendering.
+- Deleted the old Postgres-source `GENERATE_SERIES`, Postgres-source `DIV`,
+  MySQL-source `LOG`, and Postgres-source `SUBSTRING` SQLite transform arms,
+  plus the now-dead generate-series step transform helper.
+- Refreshed all seven forced-pair SQLGlot bridge reports. Exact matches now
+  stand at: postgres -> sqlite `11929`, mysql -> sqlite `11692`,
+  sqlite -> sqlite `11861`, postgres -> postgres `8335`, mysql -> postgres
+  `7661`, sqlite -> postgres `7700`, and postgres -> duckdb `7015`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes.
+
 ### Architecture Port: Timezone Conversion Functions
 
 - Added typed `ConvertTimezone` AST state for SQLGlot's

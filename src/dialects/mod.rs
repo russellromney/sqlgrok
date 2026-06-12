@@ -2790,23 +2790,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
-            if matches!(target, Dialect::Sqlite)
-                && is_postgres_family(source)
-                && name.eq_ignore_ascii_case("DIV")
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-                && new_args.len() == 2
-            {
-                return sqlite_real_cast(Expr::Cast {
-                    expr: Box::new(Expr::BinaryOp {
-                        left: Box::new(sqlite_real_cast(new_args[0].clone())),
-                        op: BinaryOperator::Divide,
-                        right: Box::new(new_args[1].clone()),
-                    }),
-                    data_type: DataType::Unknown("INTEGER".to_string()),
-                });
-            }
             // Non-Postgres parsers keep JSON_EXTRACT_PATH_TEXT as a plain
             // function; SQLGlot's SQLite generator consumes only the first
             // path arg for that fallback form.
@@ -2836,32 +2819,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         // format strings are canonicalized by the parser and rendered by
         // the generator.
         Expr::TypedFunction { func, filter, over } => {
-            // CurrentTimestamp rendering is target-owned: the generator
-            // consults rules::render_current_timestamp on every path.
-            if matches!(target, Dialect::Sqlite)
-                && is_postgres_family(source)
-                && filter.is_none()
-                && over.is_none()
-                && let TypedFunction::GenerateSeries { start, stop, step } = func
-            {
-                return Expr::Function {
-                    name: "UNNEST".to_string(),
-                    args: vec![Expr::TypedFunction {
-                        func: TypedFunction::GenerateSeries {
-                            start: Box::new(transform_expr(*start, source, target)),
-                            stop: Box::new(transform_expr(*stop, source, target)),
-                            step: step.map(|step| {
-                                Box::new(transform_generate_series_step(*step, source, target))
-                            }),
-                        },
-                        filter: None,
-                        over: None,
-                    }],
-                    distinct: false,
-                    filter: None,
-                    over: None,
-                };
-            }
             if matches!(target, Dialect::Sqlite) {
                 match func {
                     TypedFunction::Greatest { exprs } => {
@@ -2896,37 +2853,8 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                             over,
                         };
                     }
-                    TypedFunction::Log { expr, base: None } if is_mysql_family(source) => {
-                        return Expr::TypedFunction {
-                            func: TypedFunction::Ln {
-                                expr: Box::new(transform_expr(*expr, source, target)),
-                            },
-                            filter,
-                            over,
-                        };
-                    }
                     TypedFunction::ParseJSON { expr } => {
                         return transform_expr(*expr, source, target);
-                    }
-                    TypedFunction::Substring {
-                        expr,
-                        start,
-                        length,
-                    } if is_postgres_family(source) => {
-                        let mut args = vec![
-                            transform_expr(*expr, source, target),
-                            transform_expr(*start, source, target),
-                        ];
-                        if let Some(length) = length {
-                            args.push(transform_expr(*length, source, target));
-                        }
-                        return Expr::Function {
-                            name: "SUBSTRING".to_string(),
-                            args,
-                            distinct: false,
-                            filter,
-                            over,
-                        };
                     }
                     TypedFunction::Left { expr, n } if !matches!(target, Dialect::Sqlite) => {
                         return Expr::Function {
@@ -3990,37 +3918,6 @@ fn is_recognized_interval_unit(unit: &str) -> bool {
             | "NANOSECOND"
             | "NANOSECONDS"
     )
-}
-
-fn transform_generate_series_step(step: Expr, source: Dialect, target: Dialect) -> Expr {
-    match step {
-        Expr::StringLiteral(literal)
-            if matches!(source, Dialect::Postgres) && matches!(target, Dialect::Sqlite) =>
-        {
-            if let Some((amount, unit)) = split_compact_interval_literal(&literal).or_else(|| {
-                split_postgres_interval_literal(&literal).map(|(a, u)| (a.to_string(), u))
-            }) {
-                return Expr::Interval {
-                    value: Box::new(Expr::StringLiteral(amount)),
-                    unit: Some(unit),
-                    unit_text: None,
-                };
-            }
-            Expr::StringLiteral(literal)
-        }
-        other => transform_expr(other, source, target),
-    }
-}
-
-fn split_compact_interval_literal(literal: &str) -> Option<(String, DateTimeField)> {
-    let split_at = literal
-        .char_indices()
-        .find_map(|(index, ch)| ch.is_ascii_alphabetic().then_some(index))?;
-    let (amount, unit) = literal.split_at(split_at);
-    if amount.is_empty() || unit.is_empty() {
-        return None;
-    }
-    parse_interval_unit(unit).map(|field| (amount.to_string(), field))
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

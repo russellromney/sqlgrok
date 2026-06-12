@@ -967,6 +967,12 @@ pub enum TypedFunction {
         stop: Box<Expr>,
         step: Option<Box<Expr>>,
     },
+    /// Postgres projection-position `GENERATE_SERIES`, which explodes on targets that support it.
+    ExplodingGenerateSeries {
+        start: Box<Expr>,
+        stop: Box<Expr>,
+        step: Option<Box<Expr>>,
+    },
     /// `FLATTEN(expr)` — flatten nested arrays
     Flatten { expr: Box<Expr> },
 
@@ -1238,7 +1244,8 @@ impl TypedFunction {
             TypedFunction::ArraySize { expr }
             | TypedFunction::Explode { expr }
             | TypedFunction::Flatten { expr } => expr.walk(visitor),
-            TypedFunction::GenerateSeries { start, stop, step } => {
+            TypedFunction::GenerateSeries { start, stop, step }
+            | TypedFunction::ExplodingGenerateSeries { start, stop, step } => {
                 start.walk(visitor);
                 stop.walk(visitor);
                 if let Some(s) = step {
@@ -1581,6 +1588,13 @@ impl TypedFunction {
                 stop: Box::new(stop.transform(func)),
                 step: step.map(|s| Box::new(s.transform(func))),
             },
+            TypedFunction::ExplodingGenerateSeries { start, stop, step } => {
+                TypedFunction::ExplodingGenerateSeries {
+                    start: Box::new(start.transform(func)),
+                    stop: Box::new(stop.transform(func)),
+                    step: step.map(|s| Box::new(s.transform(func))),
+                }
+            }
             TypedFunction::Flatten { expr } => TypedFunction::Flatten {
                 expr: Box::new(expr.transform(func)),
             },

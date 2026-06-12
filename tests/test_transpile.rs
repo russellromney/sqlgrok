@@ -963,6 +963,24 @@ fn test_mysql_div_to_sqlite_int_cast() {
         Dialect::Mysql,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "SELECT 7 DIV 2",
+        "SELECT DIV(7, 2)",
+        Dialect::Mysql,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT 7 DIV 2",
+        "SELECT 7 // 2",
+        Dialect::Mysql,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT 7 DIV 2",
+        "SELECT CAST(7 / 2 AS INT)",
+        Dialect::Mysql,
+        Dialect::Snowflake,
+    );
 }
 
 #[test]
@@ -988,6 +1006,24 @@ fn test_postgres_div_function_to_sqlite() {
         "SELECT CAST(CAST(CAST(4 AS REAL) / 2 AS INTEGER) AS REAL)",
         Dialect::Postgres,
         Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT DIV(a, b)",
+        "SELECT DIV(a, b)",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT DIV(a, b)",
+        "SELECT CAST(CAST(a / b AS SIGNED) AS DECIMAL)",
+        Dialect::Postgres,
+        Dialect::Mysql,
+    );
+    validate_with_dialect(
+        "SELECT DIV(a, b)",
+        "SELECT CAST(a // b AS DECIMAL)",
+        Dialect::Postgres,
+        Dialect::DuckDb,
     );
     validate_with_dialect(
         "SELECT 1 / DIV(4, 2)",
@@ -3366,6 +3402,12 @@ fn test_typed_substring_cross_dialect() {
         Dialect::Mysql,
     );
     validate_with_dialect(
+        "SELECT SUBSTRING(name FROM 1 FOR 3) FROM t",
+        "SELECT SUBSTRING(name, 1, 3) FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
         "SELECT SUBSTR(name, 1, 3) FROM t",
         "SELECT SUBSTRING(name FROM 1 FOR 3) FROM t",
         Dialect::Mysql,
@@ -3537,6 +3579,29 @@ fn test_typed_math_functions_identity() {
 }
 
 #[test]
+fn test_mysql_log_defaults_to_ln() {
+    for target in [
+        Dialect::Mysql,
+        Dialect::Postgres,
+        Dialect::DuckDb,
+        Dialect::Sqlite,
+    ] {
+        validate_with_dialect(
+            "SELECT LOG(x) FROM t",
+            "SELECT LN(x) FROM t",
+            Dialect::Mysql,
+            target,
+        );
+    }
+    validate_with_dialect(
+        "SELECT LOG(10, x) FROM t",
+        "SELECT LOG(10, x) FROM t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_typed_pow_cross_dialect() {
     validate_with_dialect(
         "SELECT POW(x, 2) FROM t",
@@ -3594,6 +3659,36 @@ fn test_typed_array_concat_cross_dialect() {
 fn test_typed_generate_series() {
     validate_identity("SELECT GENERATE_SERIES(1, 10)");
     validate_identity("SELECT GENERATE_SERIES(1, 100, 5)");
+    validate_with_dialect(
+        "SELECT GENERATE_SERIES(1, 3)",
+        "SELECT UNNEST(GENERATE_SERIES(1, 3))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT GENERATE_SERIES(1, 3)",
+        "SELECT UNNEST(GENERATE_SERIES(1, 3))",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT GENERATE_SERIES(1, 3)",
+        "SELECT GENERATE_SERIES(1, 3)",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT GENERATE_SERIES('2019-01-01'::DATE, CURRENT_TIMESTAMP, '1 day')",
+        "SELECT GENERATE_SERIES(CAST('2019-01-01' AS DATE), CURRENT_TIMESTAMP, INTERVAL '1 DAY')",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT GENERATE_SERIES('2019-01-01'::DATE, CURRENT_TIMESTAMP, '1 day')",
+        "SELECT UNNEST(GENERATE_SERIES(DATE('2019-01-01'), CURRENT_TIMESTAMP, INTERVAL '1' DAY))",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]
