@@ -902,10 +902,12 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
         | TypedFunction::DatePart { .. }
         | TypedFunction::ExtractPart { .. } => Some(DataType::Int),
         TypedFunction::CurrentDate => Some(DataType::Date),
-        TypedFunction::CurrentTimestamp => Some(DataType::Timestamp {
-            precision: None,
-            with_tz: false,
-        }),
+        TypedFunction::CurrentTimestamp | TypedFunction::ConvertTimezone { .. } => {
+            Some(DataType::Timestamp {
+                precision: None,
+                with_tz: false,
+            })
+        }
         TypedFunction::TimeFromParts { .. } => Some(DataType::Time { precision: None }),
         TypedFunction::UnixToTime { .. } => Some(DataType::Timestamp {
             precision: None,

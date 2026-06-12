@@ -108,19 +108,19 @@ Plan, attached to Phase 3 (delete `transform_owned`):
 First measured baselines for the O(N^2) hole, and the counts after the
 Phase 1.5 function/type relocation landed the same day. The latest counts add
 the 2026-06-10 COALESCE/date-time and Postgres JSON path parser relocation
-work plus the 2026-06-11 formatted-time, JSON aggregate, and date/time
-arithmetic parser/generator relocation work
+work plus the 2026-06-11 formatted-time, JSON aggregate, date/time arithmetic,
+and timezone conversion parser/generator relocation work
 (reports in `parity/reports/`):
 
 | lane | match (baseline) | match (latest) | mismatch (latest) |
 | --- | ---: | ---: | ---: |
-| postgres -> postgres | 7100 | 8276 (+1176) | 4698 |
-| mysql -> postgres | 6405 | 7573 (+1168) | 5147 |
-| sqlite -> postgres | 6508 | 7639 (+1131) | 5256 |
-| postgres -> duckdb | 6626 | 6977 (+351) | 5997 |
-| postgres -> sqlite | 11871 | 11928 (+57) | 1046 |
-| mysql -> sqlite | 11676 | 11691 (+15) | 1032 |
-| sqlite -> sqlite | 11856 | 11860 (+4) | 1035 |
+| postgres -> postgres | 7100 | 8294 (+1194) | 4680 |
+| mysql -> postgres | 6405 | 7600 (+1195) | 5120 |
+| sqlite -> postgres | 6508 | 7657 (+1149) | 5238 |
+| postgres -> duckdb | 6626 | 6995 (+369) | 5979 |
+| postgres -> sqlite | 11871 | 11929 (+58) | 1045 |
+| mysql -> sqlite | 11676 | 11692 (+16) | 1031 |
+| sqlite -> sqlite | 11856 | 11861 (+5) | 1034 |
 
 Zero row-level regressions across all seven lanes. The single biggest
 write=postgres bucket was the cast style: SQLGlot renders `CAST(x AS T)` for

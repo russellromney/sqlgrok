@@ -8246,6 +8246,43 @@ impl<'a> Parser<'a> {
             // source. CURRENT_TIMESTAMP(n) keeps its precision argument and
             // stays a generic function.
             "CURRENT_TIMESTAMP" if args.is_empty() => TypedFunction::CurrentTimestamp,
+            "CONVERT_TZ" if args.len() == 3 && crate::dialects::is_mysql_family(dialect) => {
+                let mut it = args.into_iter();
+                let timestamp = it.next()?;
+                let source_tz = it.next()?;
+                let target_tz = it.next()?;
+                TypedFunction::ConvertTimezone {
+                    source_tz: Some(Box::new(source_tz)),
+                    target_tz: Box::new(target_tz),
+                    timestamp: Box::new(timestamp),
+                }
+            }
+            "CONVERT_TIMEZONE" if args.len() == 2 => {
+                let mut it = args.into_iter();
+                let target_tz = it.next()?;
+                let timestamp = it.next()?;
+                let source_tz = if matches!(dialect, Dialect::Redshift) {
+                    Some(Box::new(Expr::StringLiteral("UTC".to_string())))
+                } else {
+                    None
+                };
+                TypedFunction::ConvertTimezone {
+                    source_tz,
+                    target_tz: Box::new(target_tz),
+                    timestamp: Box::new(timestamp),
+                }
+            }
+            "CONVERT_TIMEZONE" if args.len() == 3 => {
+                let mut it = args.into_iter();
+                let source_tz = it.next()?;
+                let target_tz = it.next()?;
+                let timestamp = it.next()?;
+                TypedFunction::ConvertTimezone {
+                    source_tz: Some(Box::new(source_tz)),
+                    target_tz: Box::new(target_tz),
+                    timestamp: Box::new(timestamp),
+                }
+            }
             "MAKETIME" if crate::dialects::is_mysql_family(dialect) => {
                 TypedFunction::TimeFromParts { parts: args }
             }

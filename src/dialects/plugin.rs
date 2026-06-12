@@ -299,6 +299,7 @@ fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
         TypedFunction::DateSub { .. } => "DATE_SUB",
         TypedFunction::CurrentDate => "CURRENT_DATE",
         TypedFunction::CurrentTimestamp => "NOW",
+        TypedFunction::ConvertTimezone { .. } => "CONVERT_TIMEZONE",
         TypedFunction::TimeFromParts { .. } => "TIME_FROM_PARTS",
         TypedFunction::UnixToTime { .. } => "UNIX_TO_TIME",
         TypedFunction::StrToDate { .. } => "STR_TO_DATE",
@@ -433,6 +434,19 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         }
         TypedFunction::DateDiff { start, end, .. }
         | TypedFunction::TimestampDiff { start, end, .. } => vec![*start.clone(), *end.clone()],
+        TypedFunction::ConvertTimezone {
+            source_tz,
+            target_tz,
+            timestamp,
+        } => {
+            let mut args = Vec::new();
+            if let Some(source_tz) = source_tz {
+                args.push(*source_tz.clone());
+            }
+            args.push(*target_tz.clone());
+            args.push(*timestamp.clone());
+            args
+        }
         TypedFunction::StrToDate { expr, format }
         | TypedFunction::StrToTime { expr, format }
         | TypedFunction::TimeToStr { expr, format } => vec![*expr.clone(), *format.clone()],

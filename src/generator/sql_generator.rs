@@ -3668,6 +3668,51 @@ impl Generator {
             TypedFunction::CurrentTimestamp => {
                 self.write_keyword(crate::dialects::rules::render_current_timestamp(dialect));
             }
+            TypedFunction::ConvertTimezone {
+                source_tz,
+                target_tz,
+                timestamp,
+            } => {
+                if is_mysql {
+                    self.write_keyword("CONVERT_TZ(");
+                    self.gen_expr(timestamp);
+                    self.write(", ");
+                    if let Some(source_tz) = source_tz {
+                        self.gen_expr(source_tz);
+                        self.write(", ");
+                    }
+                    self.gen_expr(target_tz);
+                    self.write(")");
+                } else if matches!(dialect, Some(Dialect::Snowflake | Dialect::Redshift)) {
+                    self.write_keyword("CONVERT_TIMEZONE(");
+                    if let Some(source_tz) = source_tz {
+                        self.gen_expr(source_tz);
+                        self.write(", ");
+                    }
+                    self.gen_expr(target_tz);
+                    self.write(", ");
+                    self.gen_expr(timestamp);
+                    self.write(")");
+                } else {
+                    if let Some(source_tz) = source_tz {
+                        self.write_keyword("CAST(");
+                        self.gen_expr(timestamp);
+                        self.write_keyword(" AS ");
+                        if matches!(dialect, Some(Dialect::Sqlite)) {
+                            self.write_keyword("TIMESTAMPNTZ");
+                        } else {
+                            self.write_keyword("TIMESTAMP");
+                        }
+                        self.write(")");
+                        self.write_keyword(" AT TIME ZONE ");
+                        self.gen_expr(source_tz);
+                    } else {
+                        self.gen_expr(timestamp);
+                    }
+                    self.write_keyword(" AT TIME ZONE ");
+                    self.gen_expr(target_tz);
+                }
+            }
             TypedFunction::TimeFromParts { parts } => {
                 if is_mysql {
                     self.write_keyword("MAKETIME(");

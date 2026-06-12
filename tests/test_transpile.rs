@@ -5484,3 +5484,37 @@ fn test_year_month_day_to_sqlite_preserved() {
         validate_with_dialect(sql, expected, Dialect::Mysql, Dialect::Postgres);
     }
 }
+
+#[test]
+fn test_timezone_conversion_functions() {
+    validate_with_dialect(
+        "SELECT CONVERT_TZ(x, from_tz, to_tz)",
+        "SELECT CAST(x AS TIMESTAMPNTZ) AT TIME ZONE from_tz AT TIME ZONE to_tz",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT CONVERT_TZ(x, from_tz, to_tz)",
+        "SELECT CONVERT_TIMEZONE(from_tz, to_tz, x)",
+        Dialect::Mysql,
+        Dialect::Snowflake,
+    );
+    validate_with_dialect(
+        "SELECT CONVERT_TIMEZONE('UTC', x)",
+        "SELECT x AT TIME ZONE 'UTC'",
+        Dialect::Snowflake,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT CONVERT_TIMEZONE('UTC', x)",
+        "SELECT CAST(x AS TIMESTAMPNTZ) AT TIME ZONE 'UTC' AT TIME ZONE 'UTC'",
+        Dialect::Redshift,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT CONVERT_TIMEZONE('UTC', 'America/New_York', x)",
+        "SELECT CONVERT_TZ(x, 'UTC', 'America/New_York')",
+        Dialect::Redshift,
+        Dialect::Mysql,
+    );
+}

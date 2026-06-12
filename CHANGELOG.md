@@ -5,6 +5,24 @@ this file records what landed.
 
 ## 2026-06-11
 
+### Architecture Port: Timezone Conversion Functions
+
+- Added typed `ConvertTimezone` AST state for SQLGlot's
+  `CONVERT_TIMEZONE([source_tz,] target_tz, timestamp)` and MySQL
+  `CONVERT_TZ(timestamp, source_tz, target_tz)` shapes.
+- Parse MySQL-family `CONVERT_TZ`, generic `CONVERT_TIMEZONE`, and Redshift's
+  two-argument `CONVERT_TIMEZONE` default-UTC form into that node, with
+  generator-owned rendering for MySQL, Snowflake/Redshift, and `AT TIME ZONE`
+  targets.
+- Deleted the old SQLite-targeted `CONVERT_TZ` / `CONVERT_TIMEZONE`
+  source->target transform arms and added cross-target regression coverage.
+- Refreshed all seven forced-pair SQLGlot bridge reports. Exact matches now
+  stand at: postgres -> sqlite `11929`, mysql -> sqlite `11692`,
+  sqlite -> sqlite `11861`, postgres -> postgres `8294`, mysql -> postgres
+  `7600`, sqlite -> postgres `7657`, and postgres -> duckdb `6995`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes.
+
 ### Architecture Port: Date/Time Arithmetic Functions
 
 - Added a typed `TimestampDiff` AST node and moved MySQL

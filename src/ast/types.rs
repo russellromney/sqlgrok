@@ -814,6 +814,12 @@ pub enum TypedFunction {
     CurrentDate,
     /// `CURRENT_TIMESTAMP` / `NOW()` / `GETDATE()`
     CurrentTimestamp,
+    /// `CONVERT_TIMEZONE([source_tz,] target_tz, timestamp)` / `CONVERT_TZ`
+    ConvertTimezone {
+        source_tz: Option<Box<Expr>>,
+        target_tz: Box<Expr>,
+        timestamp: Box<Expr>,
+    },
     /// `MAKE_TIME` / `MAKETIME` / `TIME_FROM_PARTS`
     TimeFromParts { parts: Vec<Expr> },
     /// `TO_TIMESTAMP(epoch[, format])` / `FROM_UNIXTIME(epoch[, format])` / `UNIX_TO_TIME(epoch[, format])`
@@ -1079,6 +1085,17 @@ impl TypedFunction {
             }
             TypedFunction::DateTrunc { expr, .. } | TypedFunction::TimestampTrunc { expr, .. } => {
                 expr.walk(visitor);
+            }
+            TypedFunction::ConvertTimezone {
+                source_tz,
+                target_tz,
+                timestamp,
+            } => {
+                if let Some(source_tz) = source_tz {
+                    source_tz.walk(visitor);
+                }
+                target_tz.walk(visitor);
+                timestamp.walk(visitor);
             }
             TypedFunction::CurrentDate | TypedFunction::CurrentTimestamp => {}
             TypedFunction::TimeFromParts { parts } => {
@@ -1368,6 +1385,15 @@ impl TypedFunction {
             },
             TypedFunction::CurrentDate => TypedFunction::CurrentDate,
             TypedFunction::CurrentTimestamp => TypedFunction::CurrentTimestamp,
+            TypedFunction::ConvertTimezone {
+                source_tz,
+                target_tz,
+                timestamp,
+            } => TypedFunction::ConvertTimezone {
+                source_tz: source_tz.map(|expr| Box::new(expr.transform(func))),
+                target_tz: Box::new(target_tz.transform(func)),
+                timestamp: Box::new(timestamp.transform(func)),
+            },
             TypedFunction::TimeFromParts { parts } => TypedFunction::TimeFromParts {
                 parts: parts.into_iter().map(|part| part.transform(func)).collect(),
             },
