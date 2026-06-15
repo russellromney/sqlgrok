@@ -3,6 +3,26 @@
 Quick summaries of completed sqlgrok work. The roadmap says what should happen next;
 this file records what landed.
 
+## 2026-06-14
+
+### Architecture Port: SQLite CREATE TABLE Column Normalization
+
+- Moved SQLGlot's SQLite `CREATE TABLE` column normalization into the
+  generator: single-column table `PRIMARY KEY` constraints now render as
+  inline column primary keys without mutating the AST first.
+- Let SQLite column rendering own `AUTO_INCREMENT` / `AUTOINCREMENT`
+  legality and ordering, including MySQL table-level primary keys and
+  Postgres generated identity columns.
+- Deleted the old transform-layer `move_single_column_primary_key_to_column`
+  helper plus the MySQL-source `AUTO_INCREMENT` pruning and Postgres identity
+  nullability cleanup branches.
+- Refreshed all seven forced-pair SQLGlot bridge reports. Exact matches now
+  stand at: postgres -> sqlite `11931`, mysql -> sqlite `11695`,
+  sqlite -> sqlite `11863`, postgres -> postgres `8335`, mysql -> postgres
+  `7661`, sqlite -> postgres `7700`, and postgres -> duckdb `7015`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes.
+
 ## 2026-06-11
 
 ### Architecture Port: Compact Expression Oddities

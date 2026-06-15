@@ -17,6 +17,26 @@ fn sqlite_function_raw_args(raw_args: &str) -> String {
         .replace(" RESPECT NULLS", "")
 }
 
+fn sqlite_promoted_primary_key(ct: &CreateTableStatement) -> Option<(usize, usize)> {
+    let (constraint_index, column_name) =
+        ct.constraints
+            .iter()
+            .enumerate()
+            .find_map(|(index, constraint)| match constraint {
+                TableConstraint::PrimaryKey { columns, .. } if columns.len() == 1 => {
+                    Some((index, columns[0].as_str()))
+                }
+                _ => None,
+            })?;
+
+    let column_index = ct
+        .columns
+        .iter()
+        .position(|column| column.name.eq_ignore_ascii_case(column_name))?;
+
+    Some((constraint_index, column_index))
+}
+
 /// SQL code generator that converts an AST into a SQL string.
 ///
 /// Supports all statement and expression types defined in the AST,
@@ -1362,19 +1382,37 @@ impl Generator {
             s
         });
 
+        let promoted_primary_key = if matches!(self.dialect, Some(Dialect::Sqlite)) {
+            sqlite_promoted_primary_key(ct)
+        } else {
+            None
+        };
+
+        let visible_constraints: Vec<(usize, &TableConstraint)> = ct
+            .constraints
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| {
+                Some(*i) != promoted_primary_key.map(|(constraint_index, _)| constraint_index)
+            })
+            .collect();
+
         if self.pretty {
             self.indent_up();
             for (i, col) in ct.columns.iter().enumerate() {
                 self.newline();
-                self.gen_column_def(col);
-                if i < ct.columns.len() - 1 || !ct.constraints.is_empty() || like_clause.is_some() {
+                self.gen_column_def_with_sqlite_promotion(col, promoted_primary_key, i);
+                if i < ct.columns.len() - 1
+                    || !visible_constraints.is_empty()
+                    || like_clause.is_some()
+                {
                     self.write(",");
                 }
             }
-            for (i, constraint) in ct.constraints.iter().enumerate() {
+            for (i, (_, constraint)) in visible_constraints.iter().enumerate() {
                 self.newline();
                 self.gen_table_constraint(constraint);
-                if i < ct.constraints.len() - 1 || like_clause.is_some() {
+                if i < visible_constraints.len() - 1 || like_clause.is_some() {
                     self.write(",");
                 }
             }
@@ -1389,9 +1427,9 @@ impl Generator {
                 if i > 0 {
                     self.write(", ");
                 }
-                self.gen_column_def(col);
+                self.gen_column_def_with_sqlite_promotion(col, promoted_primary_key, i);
             }
-            for (i, constraint) in ct.constraints.iter().enumerate() {
+            for (i, (_, constraint)) in visible_constraints.iter().enumerate() {
                 if i + ct.columns.len() > 0 {
                     self.write(", ");
                 }
@@ -1411,6 +1449,25 @@ impl Generator {
             self.write(" ");
             self.write_keyword("AS ");
             self.gen_statement(as_select);
+        }
+    }
+
+    fn gen_column_def_with_sqlite_promotion(
+        &mut self,
+        col: &ColumnDef,
+        promoted_primary_key: Option<(usize, usize)>,
+        column_index: usize,
+    ) {
+        if matches!(self.dialect, Some(Dialect::Sqlite))
+            && promoted_primary_key
+                .is_some_and(|(_, promoted_column)| promoted_column == column_index)
+        {
+            let mut col = col.clone();
+            col.primary_key = true;
+            col.primary_key_from_table_constraint = true;
+            self.gen_column_def(&col);
+        } else {
+            self.gen_column_def(col);
         }
     }
 
@@ -1508,16 +1565,18 @@ impl Generator {
             self.write_keyword("UNIQUE");
         }
 
-        match col.nullable {
-            Some(false) => {
-                self.write(" ");
-                self.write_keyword("NOT NULL");
+        if !(matches!(self.dialect, Some(Dialect::Sqlite)) && col.auto_increment_from_identity) {
+            match col.nullable {
+                Some(false) => {
+                    self.write(" ");
+                    self.write_keyword("NOT NULL");
+                }
+                Some(true) => {
+                    self.write(" ");
+                    self.write_keyword("NULL");
+                }
+                None => {}
             }
-            Some(true) => {
-                self.write(" ");
-                self.write_keyword("NULL");
-            }
-            None => {}
         }
 
         if col.unique && !col.unique_before_not_null {
@@ -1537,10 +1596,15 @@ impl Generator {
         //     → consolidate as `AUTOINCREMENT PRIMARY KEY` on the column.
         if matches!(self.dialect, Some(Dialect::Sqlite)) {
             if col.primary_key_from_table_constraint && col.auto_increment {
-                self.write(" ");
-                self.write_keyword("AUTOINCREMENT");
-                self.write(" ");
-                self.write_keyword("PRIMARY KEY");
+                if col.auto_increment_from_identity {
+                    self.write(" ");
+                    self.write_keyword("PRIMARY KEY AUTOINCREMENT");
+                } else {
+                    self.write(" ");
+                    self.write_keyword("AUTOINCREMENT");
+                    self.write(" ");
+                    self.write_keyword("PRIMARY KEY");
+                }
             } else if col.primary_key {
                 if col.auto_increment && !col.auto_increment_before_primary_key {
                     self.write(" ");

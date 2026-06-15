@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11929 |
-| `mismatch` | 1045 |
+| `match` | 11931 |
+| `mismatch` | 1043 |
 | `oracle-error` | 1456 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -24,9 +24,9 @@ Filtered by read/write: `0`
 | Status | Helper | Count |
 | --- | --- | ---: |
 | `match` | `validate_all` | 8583 |
-| `match` | `validate_identity` | 3236 |
+| `match` | `validate_identity` | 3238 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 531 |
+| `mismatch` | `validate_identity` | 529 |
 | `oracle-error` | `validate_all` | 501 |
 | `mismatch` | `validate_all` | 450 |
 | `rust-error` | `validate_identity` | 343 |
@@ -60,8 +60,8 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 111 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 107 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 107 |
+| `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 92 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |
-| `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 90 |
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |

@@ -508,31 +508,9 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
         }
         // DDL: map data types in CREATE TABLE column definitions
         Statement::CreateTable(ct) => {
-            if matches!(target, Dialect::Sqlite) {
-                move_single_column_primary_key_to_column(ct);
-            }
             for col in &mut ct.columns {
                 if col.name_quote_style.is_quoted() {
                     col.name_quote_style = QuoteStyle::for_dialect(target);
-                }
-                if matches!(target, Dialect::Sqlite)
-                    && is_mysql_family(source)
-                    && (!matches!(col.data_type, DataType::Int) || !col.primary_key)
-                {
-                    col.auto_increment = false;
-                }
-                if matches!(target, Dialect::Sqlite)
-                    && col.primary_key
-                    && col.auto_increment
-                    && (col.auto_increment_from_identity
-                        || (is_postgres_family(source) && col.nullable != Some(false)))
-                {
-                    // GENERATED ... AS IDENTITY (postgres) and bare
-                    // IDENTITY (tsql) are implicit NOT NULL; drop any
-                    // redundant NOT NULL on the sqlite side. For plain
-                    // auto_increment columns without IDENTITY, keep
-                    // any explicit NOT NULL (mysql/sqlite sources).
-                    col.nullable = None;
                 }
                 col.data_type = map_data_type_for_source(col.data_type.clone(), source, target);
                 if let Some(default) = &mut col.default {
@@ -1334,32 +1312,6 @@ fn find_case_insensitive(haystack: &str, needle: &str) -> Option<usize> {
         .as_bytes()
         .windows(needle.len())
         .position(|window| window.eq_ignore_ascii_case(needle.as_bytes()))
-}
-
-fn move_single_column_primary_key_to_column(ct: &mut CreateTableStatement) {
-    let Some(primary_key_index) = ct.constraints.iter().position(|constraint| {
-        matches!(
-            constraint,
-            TableConstraint::PrimaryKey { columns, .. } if columns.len() == 1
-        )
-    }) else {
-        return;
-    };
-
-    let column_name = match &ct.constraints[primary_key_index] {
-        TableConstraint::PrimaryKey { columns, .. } => columns[0].clone(),
-        _ => return,
-    };
-
-    if let Some(column) = ct
-        .columns
-        .iter_mut()
-        .find(|column| column.name.eq_ignore_ascii_case(&column_name))
-    {
-        column.primary_key = true;
-        column.primary_key_from_table_constraint = true;
-        ct.constraints.remove(primary_key_index);
-    }
 }
 
 /// Transform an expression for the target dialect.

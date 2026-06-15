@@ -110,7 +110,7 @@ Phase 1.5 function/type relocation landed the same day. The latest counts add
 the 2026-06-10 COALESCE/date-time and Postgres JSON path parser relocation
 work plus the 2026-06-11 formatted-time, JSON aggregate, date/time arithmetic,
 timezone conversion, and compact expression-oddity parser/generator relocation
-work
+work, plus the 2026-06-14 SQLite CREATE TABLE generator relocation
 (reports in `parity/reports/`):
 
 | lane | match (baseline) | match (latest) | mismatch (latest) |
@@ -119,9 +119,9 @@ work
 | mysql -> postgres | 6405 | 7661 (+1256) | 5059 |
 | sqlite -> postgres | 6508 | 7700 (+1192) | 5195 |
 | postgres -> duckdb | 6626 | 7015 (+389) | 5959 |
-| postgres -> sqlite | 11871 | 11929 (+58) | 1045 |
-| mysql -> sqlite | 11676 | 11692 (+16) | 1031 |
-| sqlite -> sqlite | 11856 | 11861 (+5) | 1034 |
+| postgres -> sqlite | 11871 | 11931 (+60) | 1043 |
+| mysql -> sqlite | 11676 | 11695 (+19) | 1028 |
+| sqlite -> sqlite | 11856 | 11863 (+7) | 1032 |
 
 Zero row-level regressions across all seven lanes. The single biggest
 write=postgres bucket was the cast style: SQLGlot renders `CAST(x AS T)` for
