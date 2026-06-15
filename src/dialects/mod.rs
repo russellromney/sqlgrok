@@ -383,26 +383,6 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                     }
                 }
             }
-            if is_postgres_family(source) && matches!(target, Dialect::Sqlite) {
-                if let Some(from) = &mut sel.from {
-                    normalize_postgres_sqlite_raw_table_source(&mut from.source);
-                }
-                for join in &mut sel.joins {
-                    normalize_postgres_sqlite_raw_table_source(&mut join.table);
-                }
-            }
-            // UNNEST([…]) inside a Raw table source needs source-specific
-            // rewrites for sqlite output:
-            //   - sqlite source: → UNNEST("…")  (quoted-id fallback)
-            //   - postgres/mysql source: → UNNEST(ARRAY(…))
-            if matches!(target, Dialect::Sqlite) {
-                if let Some(from) = &mut sel.from {
-                    rewrite_unnest_array_literal_in_table_source(&mut from.source, source);
-                }
-                for join in &mut sel.joins {
-                    rewrite_unnest_array_literal_in_table_source(&mut join.table, source);
-                }
-            }
             // Recurse into table sources to transform inner Expr nodes
             // (e.g. UNNEST(ARRAY_LITERAL) or UNNEST(GENERATE_DATE_ARRAY(
             // DATE 'x', INTERVAL 1 WEEK))) — these would otherwise miss
@@ -468,6 +448,7 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 *statement = Statement::Raw(RawStatement {
                     comments: vec![],
                     sql: text,
+                    source_dialect: Some(source),
                 });
             }
         }
@@ -526,30 +507,8 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 }
             }
         }
-        Statement::Raw(raw) => {
-            if is_postgres_family(source)
-                && matches!(target, Dialect::Sqlite)
-                && let Some(sql) = normalize_postgres_create_type_enum(&raw.sql)
-            {
-                raw.sql = sql;
-            }
-            if is_postgres_family(source) && matches!(target, Dialect::Sqlite) {
-                raw.sql = normalize_postgres_recursive_cte_raw(&raw.sql);
-            }
-            // Python SQLGlot drops SHOW statements that the mysql parser
-            // recognizes (TABLES, DATABASES, INDEX, COLUMNS, CREATE *,
-            // VARIABLES, etc.) but preserves unrecognized SHOW forms
-            // (USERS, AGGREGATES, ...) as raw Command passthroughs.
-            if is_mysql_family(source) && matches!(target, Dialect::Sqlite) {
-                let trimmed = raw.sql.trim_start();
-                if trimmed
-                    .get(..4)
-                    .is_some_and(|p| p.eq_ignore_ascii_case("SHOW"))
-                    && mysql_show_is_recognized(trimmed)
-                {
-                    raw.sql = String::new();
-                }
-            }
+        Statement::Raw(raw) if raw.source_dialect.is_none() => {
+            raw.source_dialect = Some(source);
         }
         _ => {}
     }
@@ -559,7 +518,7 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
 /// parser in Python SQLGlot recognizes (and therefore drops when
 /// transpiling to sqlite). Unrecognized SHOWs fall back to Command and
 /// are passed through verbatim.
-fn mysql_show_is_recognized(trimmed: &str) -> bool {
+pub(crate) fn mysql_show_is_recognized(trimmed: &str) -> bool {
     // Skip past "SHOW".
     let rest = trimmed[4..].trim_start();
     // Strip leading FULL/EXTENDED/ALL/GLOBAL/SESSION/etc.
@@ -661,7 +620,7 @@ fn render_expr_short(expr: &Expr, out: &mut String) {
     }
 }
 
-fn normalize_postgres_create_type_enum(sql: &str) -> Option<String> {
+pub(crate) fn normalize_postgres_create_type_enum(sql: &str) -> Option<String> {
     let trimmed = sql.trim();
     let upper = trimmed.to_ascii_uppercase();
     let create_type = "CREATE TYPE ";
@@ -681,7 +640,7 @@ fn normalize_postgres_create_type_enum(sql: &str) -> Option<String> {
     Some(format!("CREATE TYPE {name} AS ENUM{values}"))
 }
 
-fn normalize_postgres_recursive_cte_raw(sql: &str) -> String {
+pub(crate) fn normalize_postgres_recursive_cte_raw(sql: &str) -> String {
     let upper = sql.to_ascii_uppercase();
     if !(upper.contains(" SEARCH ") && upper.contains(" ORDER BY ")) {
         return sql.to_string();
@@ -753,44 +712,6 @@ pub(crate) fn normalize_insert_into_function(sql: &str) -> String {
     out.push_str(&after_fn[..name_end].to_ascii_uppercase());
     out.push_str(&after_fn[name_end..]);
     out
-}
-
-fn normalize_postgres_sqlite_raw_table_source(source: &mut TableSource) {
-    match source {
-        TableSource::Raw { sql, .. } => {
-            *sql = strip_postgres_values_column_aliases(sql);
-        }
-        TableSource::Lateral { source } => normalize_postgres_sqlite_raw_table_source(source),
-        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
-            normalize_postgres_sqlite_raw_table_source(source);
-        }
-        _ => {}
-    }
-}
-
-fn rewrite_unnest_array_literal_in_table_source(source: &mut TableSource, src_dialect: Dialect) {
-    match source {
-        TableSource::Raw { sql, .. } => {
-            if matches!(src_dialect, Dialect::Sqlite) {
-                if let Some(r) = rewrite_unnest_array_literal_sqlite(sql) {
-                    *sql = r;
-                }
-            } else if matches!(
-                src_dialect,
-                Dialect::Postgres | Dialect::Mysql | Dialect::SingleStore | Dialect::Doris
-            ) && let Some(r) = rewrite_unnest_array_literal_to_array_call(sql)
-            {
-                *sql = r;
-            }
-        }
-        TableSource::Lateral { source } => {
-            rewrite_unnest_array_literal_in_table_source(source, src_dialect);
-        }
-        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
-            rewrite_unnest_array_literal_in_table_source(source, src_dialect);
-        }
-        _ => {}
-    }
 }
 
 pub(crate) fn uppercase_function_names_in_raw_sql(sql: &str) -> String {
@@ -969,7 +890,7 @@ pub(crate) fn normalize_typed_literals_in_raw_sql(sql: &str) -> String {
 /// becomes `UNNEST(ARRAY(items))` — Python SQLGlot wraps the
 /// bracketed list in an ARRAY function call. Handles nested brackets
 /// inside the outer `[…]` by tracking depth.
-fn rewrite_unnest_array_literal_to_array_call(sql: &str) -> Option<String> {
+pub(crate) fn rewrite_unnest_array_literal_to_array_call(sql: &str) -> Option<String> {
     let upper = sql.to_ascii_uppercase();
     let unnest_pos = upper.find("UNNEST(")?;
     let after_lparen = unnest_pos + "UNNEST".len() + 1;
@@ -1015,7 +936,7 @@ fn rewrite_unnest_array_literal_to_array_call(sql: &str) -> Option<String> {
 /// `UNNEST("1, 2, 3")` (Python's array-literal-to-quoted-string
 /// fallback applied inside UNNEST). Only the outermost `[…]`
 /// immediately inside the UNNEST( … ) is converted.
-fn rewrite_unnest_array_literal_sqlite(sql: &str) -> Option<String> {
+pub(crate) fn rewrite_unnest_array_literal_sqlite(sql: &str) -> Option<String> {
     let upper = sql.to_ascii_uppercase();
     let unnest_pos = upper.find("UNNEST(")?;
     let lparen_abs = unnest_pos + "UNNEST".len();
@@ -1098,7 +1019,7 @@ pub(crate) fn rewrite_unnest_with_offset(sql: &str) -> Option<String> {
     Some(out)
 }
 
-fn strip_postgres_values_column_aliases(sql: &str) -> String {
+pub(crate) fn strip_postgres_values_column_aliases(sql: &str) -> String {
     if find_case_insensitive(sql, "VALUES").is_none() {
         return sql.to_string();
     }
@@ -4059,7 +3980,12 @@ fn transform_quotes_in_select(sel: &mut SelectStatement, target: Dialect) {
 
 fn transform_exprs_in_table_source(ts: &mut TableSource, source: Dialect, target: Dialect) {
     match ts {
-        TableSource::Table(_) | TableSource::Raw { .. } => {}
+        TableSource::Table(_) => {}
+        TableSource::Raw { source_dialect, .. } => {
+            if source_dialect.is_none() {
+                *source_dialect = Some(source);
+            }
+        }
         TableSource::Subquery { query, .. } => {
             transform_statement(query, source, target);
         }

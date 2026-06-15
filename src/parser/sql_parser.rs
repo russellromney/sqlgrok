@@ -874,6 +874,7 @@ impl<'a> Parser<'a> {
         Ok(Statement::Raw(RawStatement {
             comments: vec![],
             sql: self.sql[start..end].trim().to_string(),
+            source_dialect: Some(self.dialect),
         }))
     }
 
@@ -1150,6 +1151,7 @@ impl<'a> Parser<'a> {
                 Ok(Statement::Raw(RawStatement {
                     comments: vec![],
                     sql: self.sql[start..end].trim().to_string(),
+                    source_dialect: Some(self.dialect),
                 }))
             }
             _ => Err(SqlglotError::ParserError {
@@ -1967,6 +1969,7 @@ impl<'a> Parser<'a> {
                 sql: self.sql[table_start..end].trim().to_string(),
                 alias: None,
                 alias_quote_style: QuoteStyle::None,
+                source_dialect: Some(self.dialect),
             });
         }
         self.consume_table_sample()?;
@@ -1999,6 +2002,7 @@ impl<'a> Parser<'a> {
                 sql: self.sql[table_start..end].trim().to_string(),
                 alias: None,
                 alias_quote_style: QuoteStyle::None,
+                source_dialect: Some(self.dialect),
             });
         }
 
@@ -2036,6 +2040,7 @@ impl<'a> Parser<'a> {
                 sql: self.sql[table_start..end].trim().to_string(),
                 alias: None,
                 alias_quote_style: QuoteStyle::None,
+                source_dialect: Some(self.dialect),
             });
         }
 
@@ -2109,6 +2114,7 @@ impl<'a> Parser<'a> {
             sql,
             alias,
             alias_quote_style,
+            source_dialect: Some(self.dialect),
         })
     }
 
@@ -2149,6 +2155,7 @@ impl<'a> Parser<'a> {
             sql: self.sql[start..end].trim().to_string(),
             alias: None,
             alias_quote_style: QuoteStyle::None,
+            source_dialect: Some(self.dialect),
         })
     }
 
@@ -2182,6 +2189,7 @@ impl<'a> Parser<'a> {
             sql: self.sql[start..end].trim().to_string(),
             alias: None,
             alias_quote_style: QuoteStyle::None,
+            source_dialect: Some(self.dialect),
         })
     }
 
@@ -3344,6 +3352,7 @@ impl<'a> Parser<'a> {
                 return Ok(Statement::Raw(RawStatement {
                     comments: vec![],
                     sql: prefix,
+                    source_dialect: Some(self.dialect),
                 }));
             }
         }
@@ -3404,6 +3413,7 @@ impl<'a> Parser<'a> {
             return Ok(Statement::Raw(RawStatement {
                 comments: vec![],
                 sql,
+                source_dialect: Some(self.dialect),
             }));
         }
 

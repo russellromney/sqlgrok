@@ -103,6 +103,7 @@ impl<'sql> InternalStatement<'sql> {
             Self::RawIdentity(sql) => Statement::Raw(crate::ast::RawStatement {
                 comments: vec![],
                 sql: sql.into_owned(),
+                source_dialect: None,
             }),
         }
     }

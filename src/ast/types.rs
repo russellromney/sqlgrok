@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::dialects::Dialect;
+
 // ═══════════════════════════════════════════════════════════════════════
 // Comment types
 // ═══════════════════════════════════════════════════════════════════════
@@ -181,6 +183,8 @@ pub struct RawStatement {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub comments: Vec<String>,
     pub sql: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_dialect: Option<Dialect>,
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -320,6 +324,8 @@ pub enum TableSource {
         alias: Option<String>,
         #[serde(default)]
         alias_quote_style: QuoteStyle,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        source_dialect: Option<Dialect>,
     },
     Values {
         rows: Vec<Vec<Expr>>,

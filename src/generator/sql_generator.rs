@@ -18,10 +18,29 @@ fn sqlite_function_raw_args(raw_args: &str) -> String {
         .replace(" RESPECT NULLS", "")
 }
 
-fn normalize_sqlite_raw_table_source_sql(sql: &str) -> Cow<'_, str> {
-    let mut normalized = match dialects::rewrite_unnest_with_offset(sql) {
+fn normalize_sqlite_raw_table_source_sql(
+    sql: &str,
+    source_dialect: Option<Dialect>,
+) -> Cow<'_, str> {
+    let mut normalized = if source_dialect.is_some_and(dialects::is_postgres_family) {
+        Cow::Owned(dialects::strip_postgres_values_column_aliases(sql))
+    } else {
+        Cow::Borrowed(sql)
+    };
+    normalized = match dialects::rewrite_unnest_with_offset(&normalized) {
         Some(rewritten) => Cow::Owned(rewritten),
-        None => Cow::Borrowed(sql),
+        None => normalized,
+    };
+    normalized = match source_dialect {
+        Some(Dialect::Sqlite) => dialects::rewrite_unnest_array_literal_sqlite(&normalized)
+            .map(Cow::Owned)
+            .unwrap_or(normalized),
+        Some(Dialect::Postgres | Dialect::Mysql | Dialect::SingleStore | Dialect::Doris) => {
+            dialects::rewrite_unnest_array_literal_to_array_call(&normalized)
+                .map(Cow::Owned)
+                .unwrap_or(normalized)
+        }
+        _ => normalized,
     };
     if normalized.contains('`') {
         normalized = Cow::Owned(normalized.replace('`', "\""));
@@ -30,13 +49,33 @@ fn normalize_sqlite_raw_table_source_sql(sql: &str) -> Cow<'_, str> {
     Cow::Owned(dialects::normalize_typed_literals_in_raw_sql(&normalized))
 }
 
-fn normalize_sqlite_raw_statement_sql(sql: &str) -> Cow<'_, str> {
-    let trimmed = sql.trim_start().to_ascii_uppercase();
+fn normalize_sqlite_raw_statement_sql(sql: &str, source_dialect: Option<Dialect>) -> Cow<'_, str> {
+    let mut normalized = if source_dialect.is_some_and(dialects::is_postgres_family) {
+        let enum_normalized = dialects::normalize_postgres_create_type_enum(sql)
+            .map(Cow::Owned)
+            .unwrap_or(Cow::Borrowed(sql));
+        Cow::Owned(dialects::normalize_postgres_recursive_cte_raw(
+            &enum_normalized,
+        ))
+    } else {
+        Cow::Borrowed(sql)
+    };
+    if source_dialect.is_some_and(dialects::is_mysql_family) {
+        let trimmed = normalized.trim_start();
+        if trimmed
+            .get(..4)
+            .is_some_and(|p| p.eq_ignore_ascii_case("SHOW"))
+            && dialects::mysql_show_is_recognized(trimmed)
+        {
+            return Cow::Borrowed("");
+        }
+    }
+    let trimmed = normalized.trim_start().to_ascii_uppercase();
     if trimmed.starts_with("PIVOT ") || trimmed.starts_with("UNPIVOT ") {
         return Cow::Borrowed("");
     }
-    let copied = dialects::normalize_postgres_copy_raw(sql);
-    Cow::Owned(dialects::normalize_insert_into_function(&copied))
+    normalized = Cow::Owned(dialects::normalize_postgres_copy_raw(&normalized));
+    Cow::Owned(dialects::normalize_insert_into_function(&normalized))
 }
 
 fn should_render_nulls_ordering(dialect: Option<Dialect>, item: &OrderByItem) -> bool {
@@ -326,7 +365,7 @@ impl Generator {
             Statement::Raw(s) => {
                 self.gen_comments(&s.comments);
                 let sql = if matches!(self.dialect, Some(Dialect::Sqlite)) {
-                    normalize_sqlite_raw_statement_sql(&s.sql)
+                    normalize_sqlite_raw_statement_sql(&s.sql, s.source_dialect)
                 } else {
                     Cow::Borrowed(s.sql.as_str())
                 };
@@ -644,8 +683,9 @@ impl Generator {
                 sql,
                 alias,
                 alias_quote_style,
+                source_dialect,
             } => {
-                self.write_raw_table_source_sql(sql);
+                self.write_raw_table_source_sql(sql, *source_dialect);
                 if let Some(alias) = alias {
                     self.write(" ");
                     if !self.omit_table_alias_as() {
@@ -791,9 +831,9 @@ impl Generator {
         matches!(self.dialect, Some(Dialect::Oracle))
     }
 
-    fn write_raw_table_source_sql(&mut self, sql: &str) {
+    fn write_raw_table_source_sql(&mut self, sql: &str, source_dialect: Option<Dialect>) {
         let normalized = if matches!(self.dialect, Some(Dialect::Sqlite)) {
-            normalize_sqlite_raw_table_source_sql(sql)
+            normalize_sqlite_raw_table_source_sql(sql, source_dialect)
         } else {
             Cow::Borrowed(sql)
         };

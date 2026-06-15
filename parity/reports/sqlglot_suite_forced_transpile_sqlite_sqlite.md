@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11870 |
-| `mismatch` | 1025 |
+| `match` | 11871 |
+| `mismatch` | 1024 |
 | `oracle-error` | 1545 |
 | `rust-error` | 579 |
 | `unsupported-harness-shape` | 137 |
@@ -24,10 +24,10 @@ Filtered by read/write: `0`
 | Status | Helper | Count |
 | --- | --- | ---: |
 | `match` | `validate_all` | 8540 |
-| `match` | `validate_identity` | 3221 |
+| `match` | `validate_identity` | 3222 |
 | `oracle-error` | `validate_identity` | 993 |
 | `oracle-error` | `validate_all` | 543 |
-| `mismatch` | `validate_identity` | 501 |
+| `mismatch` | `validate_identity` | 500 |
 | `mismatch` | `validate_all` | 462 |
 | `rust-error` | `validate_identity` | 344 |
 | `rust-error` | `validate_all` | 232 |
@@ -44,7 +44,7 @@ Filtered by read/write: `0`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1112 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 696 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 697 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 471 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 344 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 295 |
