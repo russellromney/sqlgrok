@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11871 |
-| `mismatch` | 1024 |
+| `match` | 11872 |
+| `mismatch` | 1023 |
 | `oracle-error` | 1545 |
 | `rust-error` | 579 |
 | `unsupported-harness-shape` | 137 |
@@ -24,10 +24,10 @@ Filtered by read/write: `0`
 | Status | Helper | Count |
 | --- | --- | ---: |
 | `match` | `validate_all` | 8540 |
-| `match` | `validate_identity` | 3222 |
+| `match` | `validate_identity` | 3223 |
 | `oracle-error` | `validate_identity` | 993 |
 | `oracle-error` | `validate_all` | 543 |
-| `mismatch` | `validate_identity` | 500 |
+| `mismatch` | `validate_identity` | 499 |
 | `mismatch` | `validate_all` | 462 |
 | `rust-error` | `validate_identity` | 344 |
 | `rust-error` | `validate_all` | 232 |
@@ -53,8 +53,8 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 244 |
 | `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 197 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 176 |
+| `match` | `tests/dialects/test_presto.py` | `test_presto` | 153 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 152 |
-| `match` | `tests/dialects/test_presto.py` | `test_presto` | 152 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 126 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 124 |
 | `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 111 |

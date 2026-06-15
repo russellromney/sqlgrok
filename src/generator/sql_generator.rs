@@ -18,6 +18,158 @@ fn sqlite_function_raw_args(raw_args: &str) -> String {
         .replace(" RESPECT NULLS", "")
 }
 
+fn sqlite_instr_with_position_expr(haystack: Expr, needle: Expr, position: Expr) -> Expr {
+    let substring = Expr::Function {
+        name: "SUBSTRING".to_string(),
+        args: vec![haystack, position.clone()],
+        distinct: false,
+        filter: None,
+        over: None,
+    };
+    let instr = Expr::Function {
+        name: "INSTR".to_string(),
+        args: vec![substring, needle],
+        distinct: false,
+        filter: None,
+        over: None,
+    };
+    Expr::If {
+        condition: Box::new(Expr::BinaryOp {
+            left: Box::new(instr.clone()),
+            op: BinaryOperator::Eq,
+            right: Box::new(Expr::Number("0".to_string())),
+        }),
+        true_val: Box::new(Expr::Number("0".to_string())),
+        false_val: Some(Box::new(Expr::BinaryOp {
+            left: Box::new(Expr::BinaryOp {
+                left: Box::new(instr),
+                op: BinaryOperator::Plus,
+                right: Box::new(position),
+            }),
+            op: BinaryOperator::Minus,
+            right: Box::new(Expr::Number("1".to_string())),
+        })),
+    }
+}
+
+fn sqlite_decode_uses_plain_equality(expr: &Expr) -> bool {
+    matches!(
+        expr,
+        Expr::Number(_)
+            | Expr::StringLiteral(_)
+            | Expr::EscapedStringLiteral(_)
+            | Expr::HexString(_)
+    )
+}
+
+fn sqlite_decode_search_expr(expr: Expr) -> Expr {
+    match expr {
+        Expr::BinaryOp { .. } => Expr::Nested(Box::new(expr)),
+        other => other,
+    }
+}
+
+fn sqlite_concat_expr(args: Vec<Expr>) -> Expr {
+    let mut iter = args.into_iter();
+    let Some(first) = iter.next() else {
+        return Expr::StringLiteral(String::new());
+    };
+    iter.fold(first, |left, right| Expr::BinaryOp {
+        left: Box::new(left),
+        op: BinaryOperator::Concat,
+        right: Box::new(right),
+    })
+}
+
+fn sqlite_json_path_for_first_arg(arg: &Expr) -> Expr {
+    match arg {
+        Expr::StringLiteral(s) => {
+            if s.starts_with('$') {
+                Expr::StringLiteral(s.clone())
+            } else {
+                Expr::StringLiteral(format!("$.{s}"))
+            }
+        }
+        other => other.clone(),
+    }
+}
+
+fn sqlite_postgres_json_typeof_expr(expr: Expr) -> Expr {
+    fn json_type(expr: Expr) -> Expr {
+        Expr::Function {
+            name: "JSON_TYPE".to_string(),
+            args: vec![expr],
+            distinct: false,
+            filter: None,
+            over: None,
+        }
+    }
+
+    Expr::Case {
+        operand: Some(Box::new(json_type(expr.clone()))),
+        when_clauses: vec![
+            (
+                Expr::StringLiteral("integer".to_string()),
+                Expr::StringLiteral("number".to_string()),
+            ),
+            (
+                Expr::StringLiteral("real".to_string()),
+                Expr::StringLiteral("number".to_string()),
+            ),
+            (
+                Expr::StringLiteral("text".to_string()),
+                Expr::StringLiteral("string".to_string()),
+            ),
+            (
+                Expr::StringLiteral("true".to_string()),
+                Expr::StringLiteral("boolean".to_string()),
+            ),
+            (
+                Expr::StringLiteral("false".to_string()),
+                Expr::StringLiteral("boolean".to_string()),
+            ),
+        ],
+        else_clause: Some(Box::new(json_type(expr))),
+    }
+}
+
+fn sqlite_render_for_date_add_payload(expr: &Expr) -> String {
+    match expr {
+        Expr::StringLiteral(s) => s.clone(),
+        Expr::Number(n) => n.clone(),
+        Expr::Column { name, .. } => name.to_ascii_uppercase(),
+        other => format!("{other:?}"),
+    }
+}
+
+fn sqlite_is_recognized_interval_unit(unit: &str) -> bool {
+    matches!(
+        unit.to_ascii_uppercase().as_str(),
+        "YEAR"
+            | "YEARS"
+            | "QUARTER"
+            | "QUARTERS"
+            | "MONTH"
+            | "MONTHS"
+            | "WEEK"
+            | "WEEKS"
+            | "DAY"
+            | "DAYS"
+            | "HOUR"
+            | "HOURS"
+            | "MINUTE"
+            | "MINUTES"
+            | "SECOND"
+            | "SECONDS"
+            | "MILLISECOND"
+            | "MILLISECONDS"
+            | "MICROSECOND"
+            | "MICROSECONDS"
+            | "NANOSECOND"
+            | "NANOSECONDS"
+    )
+}
+
 fn normalize_sqlite_raw_table_source_sql(
     sql: &str,
     source_dialect: Option<Dialect>,
@@ -2487,6 +2639,563 @@ impl Generator {
         }
     }
 
+    fn gen_sqlite_function_lowering(
+        &mut self,
+        name: &str,
+        args: &[Expr],
+        distinct: bool,
+        filter: Option<&Expr>,
+        over: Option<&WindowSpec>,
+    ) -> bool {
+        if !matches!(self.dialect, Some(Dialect::Sqlite)) {
+            return false;
+        }
+
+        let upper = name.to_ascii_uppercase();
+        let plain_call = !distinct && filter.is_none() && over.is_none();
+
+        if name.eq_ignore_ascii_case("LIKE") && plain_call && matches!(args.len(), 2 | 3) {
+            self.gen_expr(&args[1]);
+            self.write(" ");
+            self.write_keyword("LIKE ");
+            self.gen_expr(&args[0]);
+            if let Some(escape) = args.get(2) {
+                self.write(" ");
+                self.write_keyword("ESCAPE ");
+                self.gen_expr(escape);
+            }
+            return true;
+        }
+        if name.eq_ignore_ascii_case("GLOB") && plain_call && args.len() >= 2 {
+            self.gen_expr(&args[1]);
+            self.write(" ");
+            self.write_keyword("GLOB ");
+            self.gen_expr(&args[0]);
+            return true;
+        }
+        if name.eq_ignore_ascii_case("STRFTIME") && plain_call && args.len() == 1 {
+            self.write_keyword("STRFTIME(");
+            self.gen_expr(&args[0]);
+            self.write(", CURRENT_TIMESTAMP)");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("BTRIM") && plain_call && matches!(args.len(), 1 | 2) {
+            self.write_keyword("TRIM(");
+            self.gen_expr_list(args);
+            self.write(")");
+            return true;
+        }
+        if matches!(upper.as_str(), "JSONB_BUILD_OBJECT" | "JSON_BUILD_OBJECT") && plain_call {
+            self.write_keyword("JSON_OBJECT(");
+            self.gen_expr_list(args);
+            self.write(")");
+            return true;
+        }
+        if matches!(upper.as_str(), "JSONB_BUILD_ARRAY" | "JSON_BUILD_ARRAY") && plain_call {
+            self.write_keyword("JSON_ARRAY(");
+            self.gen_expr_list(args);
+            self.write(")");
+            return true;
+        }
+        if matches!(upper.as_str(), "JSONB_ARRAY_LENGTH" | "JSON_ARRAY_LENGTH")
+            && plain_call
+            && args.len() == 1
+        {
+            self.write_keyword("JSON_ARRAY_LENGTH(");
+            self.gen_expr(&args[0]);
+            self.write(")");
+            return true;
+        }
+        if matches!(upper.as_str(), "JSONB_TYPEOF" | "JSON_TYPEOF") && plain_call && args.len() == 1
+        {
+            self.gen_expr(&sqlite_postgres_json_typeof_expr(args[0].clone()));
+            return true;
+        }
+        if matches!(upper.as_str(), "INT64" | "INTEGER" | "INT") && plain_call && args.len() == 1 {
+            self.write_keyword("CAST(");
+            self.gen_expr(&args[0]);
+            self.write_keyword(" AS INTEGER)");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("XOR") && plain_call && args.len() == 2 {
+            self.gen_expr(&args[0]);
+            self.write(" XOR ");
+            self.gen_expr(&args[1]);
+            return true;
+        }
+        if name.eq_ignore_ascii_case("TRUNC") && plain_call && args.len() > 1 {
+            self.write_keyword("TRUNC(");
+            self.gen_expr(&args[0]);
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("POSITION") && plain_call && args.len() == 2 {
+            self.write_keyword("INSTR(");
+            self.gen_expr(&args[1]);
+            self.write(", ");
+            self.gen_expr(&args[0]);
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("POSITION") && plain_call && args.len() == 3 {
+            self.gen_expr(&sqlite_instr_with_position_expr(
+                args[1].clone(),
+                args[0].clone(),
+                args[2].clone(),
+            ));
+            return true;
+        }
+        if name.eq_ignore_ascii_case("CHARINDEX") && plain_call && args.len() == 2 {
+            self.write_keyword("INSTR(");
+            self.gen_expr(&args[1]);
+            self.write(", ");
+            self.gen_expr(&args[0]);
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("CHARINDEX") && plain_call && args.len() == 3 {
+            self.gen_expr(&sqlite_instr_with_position_expr(
+                args[1].clone(),
+                args[0].clone(),
+                args[2].clone(),
+            ));
+            return true;
+        }
+        if name.eq_ignore_ascii_case("INSTR") && plain_call && (args.len() == 3 || args.len() == 4)
+        {
+            self.gen_expr(&sqlite_instr_with_position_expr(
+                args[0].clone(),
+                args[1].clone(),
+                args[2].clone(),
+            ));
+            return true;
+        }
+        if matches!(upper.as_str(), "MAX_BY" | "MIN_BY")
+            && plain_call
+            && matches!(args.len(), 2 | 3)
+        {
+            self.write_keyword(if name.eq_ignore_ascii_case("MAX_BY") {
+                "ARG_MAX("
+            } else {
+                "ARG_MIN("
+            });
+            self.gen_expr_list(args);
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("TO_NUMBER") && plain_call && matches!(args.len(), 1..=3) {
+            self.write_keyword("CAST(");
+            self.gen_expr(&args[0]);
+            self.write_keyword(" AS REAL)");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("SAFE_DIVIDE") && plain_call && args.len() == 2 {
+            let needs_paren = |e: &Expr| !matches!(e, Expr::Number(_) | Expr::Column { .. });
+            let wrap = |e: Expr| {
+                if needs_paren(&e) {
+                    Expr::Nested(Box::new(e))
+                } else {
+                    e
+                }
+            };
+            let denominator = wrap(args[1].clone());
+            let lowered = Expr::If {
+                condition: Box::new(Expr::BinaryOp {
+                    left: Box::new(denominator.clone()),
+                    op: BinaryOperator::Neq,
+                    right: Box::new(Expr::Number("0".to_string())),
+                }),
+                true_val: Box::new(Expr::BinaryOp {
+                    left: Box::new(Expr::Cast {
+                        expr: Box::new(wrap(args[0].clone())),
+                        data_type: DataType::Unknown("REAL".to_string()),
+                    }),
+                    op: BinaryOperator::Divide,
+                    right: Box::new(denominator),
+                }),
+                false_val: Some(Box::new(Expr::Null)),
+            };
+            self.gen_expr(&lowered);
+            return true;
+        }
+        if matches!(upper.as_str(), "BOOLAND_AGG" | "BOOLOR_AGG") && !distinct && args.len() == 1 {
+            self.write_keyword(if name.eq_ignore_ascii_case("BOOLAND_AGG") {
+                "MIN("
+            } else {
+                "MAX("
+            });
+            self.gen_expr(&args[0]);
+            self.write(")");
+            self.gen_filter_and_over(filter, over);
+            return true;
+        }
+        if matches!(upper.as_str(), "BOOLAND" | "BOOLOR") && plain_call && args.len() == 2 {
+            self.write("(");
+            self.gen_expr(&Expr::Nested(Box::new(args[0].clone())));
+            self.write(if name.eq_ignore_ascii_case("BOOLAND") {
+                " AND "
+            } else {
+                " OR "
+            });
+            self.gen_expr(&Expr::Nested(Box::new(args[1].clone())));
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("DATEFROMPARTS") && plain_call {
+            self.write_keyword("DATE_FROM_PARTS(");
+            self.gen_expr_list(args);
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("LOCATE") && plain_call && (args.len() == 2 || args.len() == 3)
+        {
+            if args.len() == 2 {
+                self.write_keyword("INSTR(");
+                self.gen_expr(&args[1]);
+                self.write(", ");
+                self.gen_expr(&args[0]);
+                self.write(")");
+            } else {
+                self.gen_expr(&sqlite_instr_with_position_expr(
+                    args[1].clone(),
+                    args[0].clone(),
+                    args[2].clone(),
+                ));
+            }
+            return true;
+        }
+        if name.eq_ignore_ascii_case("STRPOS") && plain_call && args.len() == 3 {
+            self.gen_expr(&sqlite_instr_with_position_expr(
+                args[0].clone(),
+                args[1].clone(),
+                args[2].clone(),
+            ));
+            return true;
+        }
+        if name.eq_ignore_ascii_case("STR_POSITION") && plain_call && matches!(args.len(), 2..=4) {
+            if args.len() == 2 {
+                self.write_keyword("INSTR(");
+                self.gen_expr_list(args);
+                self.write(")");
+            } else {
+                self.gen_expr(&sqlite_instr_with_position_expr(
+                    args[0].clone(),
+                    args[1].clone(),
+                    args[2].clone(),
+                ));
+            }
+            return true;
+        }
+        if name.eq_ignore_ascii_case("NVL2") && plain_call && (args.len() == 2 || args.len() == 3) {
+            self.write_keyword("CASE WHEN NOT ");
+            self.gen_expr(&args[0]);
+            self.write_keyword(" IS NULL THEN ");
+            self.gen_expr(&args[1]);
+            if let Some(default) = args.get(2) {
+                self.write_keyword(" ELSE ");
+                self.gen_expr(default);
+            }
+            self.write_keyword(" END");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("DECODE") && plain_call && args.len() >= 3 {
+            let expr = args[0].clone();
+            let comparisons = &args[1..];
+            let has_default = comparisons.len() % 2 == 1;
+            let comparison_count = if has_default {
+                comparisons.len() - 1
+            } else {
+                comparisons.len()
+            };
+            let mut when_clauses = Vec::new();
+            for pair in comparisons[..comparison_count].chunks(2) {
+                let condition = if matches!(pair[0], Expr::Null) {
+                    Expr::IsNull {
+                        expr: Box::new(expr.clone()),
+                        negated: false,
+                    }
+                } else if sqlite_decode_uses_plain_equality(&pair[0]) {
+                    Expr::BinaryOp {
+                        left: Box::new(expr.clone()),
+                        op: BinaryOperator::Eq,
+                        right: Box::new(pair[0].clone()),
+                    }
+                } else {
+                    let search = sqlite_decode_search_expr(pair[0].clone());
+                    Expr::BinaryOp {
+                        left: Box::new(Expr::BinaryOp {
+                            left: Box::new(expr.clone()),
+                            op: BinaryOperator::Eq,
+                            right: Box::new(search.clone()),
+                        }),
+                        op: BinaryOperator::Or,
+                        right: Box::new(Expr::Nested(Box::new(Expr::BinaryOp {
+                            left: Box::new(Expr::IsNull {
+                                expr: Box::new(expr.clone()),
+                                negated: false,
+                            }),
+                            op: BinaryOperator::And,
+                            right: Box::new(Expr::IsNull {
+                                expr: Box::new(search),
+                                negated: false,
+                            }),
+                        }))),
+                    }
+                };
+                when_clauses.push((condition, pair[1].clone()));
+            }
+            let lowered = Expr::Case {
+                operand: None,
+                when_clauses,
+                else_clause: has_default
+                    .then(|| Box::new(comparisons[comparisons.len() - 1].clone())),
+            };
+            self.gen_expr(&lowered);
+            return true;
+        }
+        if name.eq_ignore_ascii_case("CONCAT") && plain_call {
+            self.gen_expr(&sqlite_concat_expr(args.to_vec()));
+            return true;
+        }
+        if matches!(upper.as_str(), "SCHEMA" | "CURRENT_SCHEMA") && plain_call && args.is_empty() {
+            self.write("'main'");
+            return true;
+        }
+        if matches!(upper.as_str(), "LOG2" | "LOG10") && plain_call && args.len() == 1 {
+            self.write_keyword("LOG(");
+            self.write(if name.eq_ignore_ascii_case("LOG2") {
+                "2"
+            } else {
+                "10"
+            });
+            self.write(", ");
+            self.gen_expr(&args[0]);
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("TIME_STR_TO_TIME") && plain_call && !args.is_empty() {
+            self.gen_expr(&args[0]);
+            return true;
+        }
+        if name.eq_ignore_ascii_case("DATE_STR_TO_DATE") && plain_call && args.len() == 1 {
+            self.gen_expr(&args[0]);
+            return true;
+        }
+        if name.eq_ignore_ascii_case("DATE_FROM_UNIX_DATE") && plain_call && args.len() == 1 {
+            let payload = match &args[0] {
+                Expr::Number(n) => format!("{n} DAY"),
+                other => format!("{other:?} DAY"),
+            };
+            self.write_keyword("DATE(DATE('1970-01-01'), ");
+            self.gen_expr(&Expr::StringLiteral(payload));
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("TS_OR_DS_TO_DATE_STR") && plain_call && args.len() == 1 {
+            let lowered = Expr::TypedFunction {
+                func: TypedFunction::Substring {
+                    expr: Box::new(Expr::Cast {
+                        expr: Box::new(args[0].clone()),
+                        data_type: DataType::Text,
+                    }),
+                    start: Box::new(Expr::Number("1".to_string())),
+                    length: Some(Box::new(Expr::Number("10".to_string()))),
+                },
+                filter: None,
+                over: None,
+            };
+            self.gen_expr(&lowered);
+            return true;
+        }
+        if matches!(
+            upper.as_str(),
+            "DATE_TO_DATE_STR" | "TIME_TO_TIME_STR" | "DATE_TO_TIME_STR"
+        ) && plain_call
+            && args.len() == 1
+        {
+            self.write_keyword("CAST(");
+            self.gen_expr(&args[0]);
+            self.write_keyword(" AS TEXT)");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("LEVENSHTEIN") && plain_call && args.len() == 2 {
+            self.write_keyword("EDITDIST3(");
+            self.gen_expr_list(args);
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("MEDIAN") && !distinct && args.len() == 1 {
+            self.write_keyword("PERCENTILE_CONT(");
+            self.gen_expr(&args[0]);
+            self.write(", 0.5)");
+            self.gen_filter_and_over(filter, over);
+            return true;
+        }
+        if name.eq_ignore_ascii_case("COUNT_IF") && !distinct && args.len() == 1 {
+            self.write_keyword("SUM(IIF(");
+            self.gen_expr(&args[0]);
+            self.write(", 1, 0))");
+            self.gen_filter_and_over(filter, over);
+            return true;
+        }
+        if matches!(upper.as_str(), "GENERATE_UUID" | "UUID_STRING") && plain_call {
+            self.write_keyword("UUID()");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("ENDSWITH") && plain_call && args.len() == 2 {
+            self.write_keyword("ENDS_WITH(");
+            self.gen_expr_list(args);
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("DATE_ADD") && plain_call && args.len() == 3 {
+            let mut payload = sqlite_render_for_date_add_payload(&args[1]);
+            payload.push(' ');
+            payload.push_str(&sqlite_render_for_date_add_payload(&args[2]));
+            self.write_keyword("DATE(");
+            self.gen_expr(&args[0]);
+            self.write(", ");
+            self.gen_expr(&Expr::StringLiteral(payload));
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("VAR_POP") && args.len() == 1 {
+            self.write_keyword("VARIANCE_POP(");
+            self.gen_expr(&args[0]);
+            self.write(")");
+            self.gen_filter_and_over(filter, over);
+            return true;
+        }
+        if name.eq_ignore_ascii_case("SPACE") && plain_call && args.len() == 1 {
+            self.write_keyword("REPEAT(' ', ");
+            self.gen_expr(&args[0]);
+            self.write(")");
+            return true;
+        }
+        if (name.eq_ignore_ascii_case("TIME_SLICE") || name.eq_ignore_ascii_case("TS_OR_DS_ADD"))
+            && plain_call
+            && (args.len() == 3 || args.len() == 4)
+        {
+            self.write_keyword(name);
+            self.write("(");
+            self.gen_expr(&args[0]);
+            self.write(", ");
+            self.gen_expr(&args[1]);
+            self.write(", ");
+            if let Expr::StringLiteral(unit) = &args[2]
+                && sqlite_is_recognized_interval_unit(unit)
+            {
+                self.write(&unit.to_ascii_uppercase());
+            } else {
+                self.gen_expr(&args[2]);
+            }
+            if let Some(arg) = args.get(3) {
+                self.write(", ");
+                self.gen_expr(arg);
+            }
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("LAST_DAY_OF_MONTH") && plain_call && args.len() == 1 {
+            self.write_keyword("LAST_DAY(");
+            self.gen_expr(&args[0]);
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("TO_CHAR") && plain_call && matches!(args.len(), 1 | 2) {
+            self.write_keyword("CAST(");
+            self.gen_expr(&args[0]);
+            self.write_keyword(" AS TEXT)");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("COUNTIF") && !distinct && over.is_none() && args.len() == 1 {
+            self.write_keyword("SUM(IIF(");
+            self.gen_expr(&args[0]);
+            self.write(", 1, 0))");
+            self.gen_filter_and_over(filter, None);
+            return true;
+        }
+        if name.eq_ignore_ascii_case("UNIX_SECONDS") && plain_call && args.len() == 1 {
+            self.write_keyword("TIMESTAMPDIFF(");
+            self.gen_expr(&args[0]);
+            self.write(", CAST('1970-01-01 00:00:00+00' AS TIMESTAMPTZ), SECONDS)");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("TIMESTAMP_DIFF") && plain_call && args.len() == 3 {
+            self.write_keyword("TIMESTAMPDIFF(");
+            self.gen_expr(&args[0]);
+            self.write(", ");
+            self.gen_expr(&args[1]);
+            self.write(", ");
+            if let Expr::Column {
+                table: None, name, ..
+            } = &args[2]
+            {
+                self.write(&name.to_ascii_uppercase());
+            } else {
+                self.gen_expr(&args[2]);
+            }
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("IS_ASCII") && plain_call && args.len() == 1 {
+            let glob_pattern = Expr::Cast {
+                expr: Box::new(Expr::HexString("2a5b5e012d7f5d2a".to_string())),
+                data_type: DataType::Unknown("TEXT".to_string()),
+            };
+            let lowered = Expr::Tuple(vec![Expr::UnaryOp {
+                op: UnaryOperator::Not,
+                expr: Box::new(Expr::BinaryOp {
+                    left: Box::new(args[0].clone()),
+                    op: BinaryOperator::Glob,
+                    right: Box::new(glob_pattern),
+                }),
+            }]);
+            self.gen_expr(&lowered);
+            return true;
+        }
+        if name.eq_ignore_ascii_case("STRING") && plain_call && args.len() == 1 {
+            self.write_keyword("CAST(");
+            self.gen_expr(&args[0]);
+            self.write_keyword(" AS TEXT)");
+            return true;
+        }
+        if matches!(upper.as_str(), "ISNAN" | "ISINF") && plain_call && args.len() == 1 {
+            self.write_keyword(if name.eq_ignore_ascii_case("ISNAN") {
+                "IS_NAN("
+            } else {
+                "IS_INF("
+            });
+            self.gen_expr(&args[0]);
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("INSERT") && plain_call && args.len() == 4 {
+            self.write_keyword("STUFF(");
+            self.gen_expr_list(args);
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("TRUNCATE") && plain_call && args.len() == 2 {
+            self.write_keyword("TRUNC(");
+            self.gen_expr(&args[0]);
+            self.write(")");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("CURRENT_TIMESTAMP") && plain_call {
+            self.write_keyword("CURRENT_TIMESTAMP");
+            return true;
+        }
+        if name.eq_ignore_ascii_case("JSON_EXTRACT_PATH_TEXT") && plain_call && args.len() >= 2 {
+            self.gen_expr(&args[0]);
+            self.write(" ->> ");
+            self.gen_sqlite_json_path(&sqlite_json_path_for_first_arg(&args[1]));
+            return true;
+        }
+
+        false
+    }
+
     fn gen_expr(&mut self, expr: &Expr) {
         match expr {
             Expr::Column {
@@ -2657,6 +3366,15 @@ impl Generator {
                     self.write("(");
                     self.gen_statement(query);
                     self.write(")");
+                    return;
+                }
+                if self.gen_sqlite_function_lowering(
+                    name,
+                    args,
+                    *distinct,
+                    filter.as_deref(),
+                    over.as_ref(),
+                ) {
                     return;
                 }
                 if matches!(
