@@ -362,7 +362,7 @@ fn eval_expr_impl(
             }
         }
 
-        Expr::ArrayLiteral(exprs) => {
+        Expr::ArrayLiteral(exprs) | Expr::SqliteArrayLiteral(exprs) => {
             let vals: Vec<String> = exprs
                 .iter()
                 .map(|e| eval_expr_impl(e, row, group, tables, ctes).map(|v| v.to_string()))
@@ -441,7 +441,7 @@ fn eval_binary_op(left: &Value, op: &BinaryOperator, right: &Value) -> Result<Va
         BinaryOperator::Plus => eval_arithmetic(left, right, |a, b| a + b, |a, b| a + b),
         BinaryOperator::Minus => eval_arithmetic(left, right, |a, b| a - b, |a, b| a - b),
         BinaryOperator::Multiply => eval_arithmetic(left, right, |a, b| a * b, |a, b| a * b),
-        BinaryOperator::Power => {
+        BinaryOperator::Power | BinaryOperator::PostgresPower => {
             let a = left
                 .to_f64()
                 .ok_or_else(|| SqlglotError::Internal("Invalid power operand".to_string()))?;
@@ -450,7 +450,7 @@ fn eval_binary_op(left: &Value, op: &BinaryOperator, right: &Value) -> Result<Va
                 .ok_or_else(|| SqlglotError::Internal("Invalid power operand".to_string()))?;
             Ok(Value::Float(a.powf(b)))
         }
-        BinaryOperator::Divide => {
+        BinaryOperator::Divide | BinaryOperator::MysqlDivide => {
             if let (Some(a), Some(b)) = (left.to_f64(), right.to_f64()) {
                 if b == 0.0 {
                     return Err(SqlglotError::Internal("Division by zero".to_string()));

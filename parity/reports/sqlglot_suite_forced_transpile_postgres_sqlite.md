@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11951 |
-| `mismatch` | 1023 |
+| `match` | 11955 |
+| `mismatch` | 1019 |
 | `oracle-error` | 1456 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -23,12 +23,12 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8592 |
-| `match` | `validate_identity` | 3248 |
+| `match` | `validate_all` | 8595 |
+| `match` | `validate_identity` | 3249 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 519 |
+| `mismatch` | `validate_identity` | 518 |
 | `oracle-error` | `validate_all` | 501 |
-| `mismatch` | `validate_all` | 441 |
+| `mismatch` | `validate_all` | 438 |
 | `rust-error` | `validate_identity` | 343 |
 | `rust-error` | `validate_all` | 243 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
@@ -51,7 +51,7 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 262 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 262 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 239 |
-| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 203 |
+| `match` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 204 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 176 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 172 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 142 |
@@ -65,7 +65,7 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 89 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 89 |
 | `match` | `tests/dialects/test_dialect.py` | `test_logarithm` | 86 |
-| `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 85 |
+| `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 86 |
 | `match` | `tests/dialects/test_snowflake.py` | `test_timestamps` | 85 |
 | `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 83 |
 

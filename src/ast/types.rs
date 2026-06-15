@@ -615,6 +615,10 @@ pub enum Expr {
     },
     /// Array literal: `ARRAY[1, 2, 3]` or `[1, 2, 3]`
     ArrayLiteral(Vec<Expr>),
+    /// SQLite-source array literal fallback. SQLGlot renders these as a
+    /// quoted comma-list for SQLite identity, but normal array syntax for
+    /// other targets.
+    SqliteArrayLiteral(Vec<Expr>),
     /// Struct literal / row constructor: `(1, 'a', true)`
     Tuple(Vec<Expr>),
     /// `COALESCE(a, b, c)` / `NVL(a, b)` / T-SQL `ISNULL(a, b)`.
@@ -643,6 +647,8 @@ pub enum Expr {
     Collate { expr: Box<Expr>, collation: String },
     /// Parameter / placeholder: `$1`, `?`, `:name`
     Parameter(String),
+    /// PostgreSQL positional parameter (`$1`) for target-specific rendering.
+    PostgresParameter(String),
     /// A type expression used in DDL contexts or CAST
     TypeExpr(DataType),
     /// `table.*` in expression context
@@ -653,6 +659,9 @@ pub enum Expr {
     Alias { expr: Box<Expr>, name: String },
     /// Array access: `expr[index]`
     ArrayIndex { expr: Box<Expr>, index: Box<Expr> },
+    /// PostgreSQL array access, whose indexes are one-based. Generators that
+    /// need zero-based indexes can lower the index without source branching.
+    PostgresArrayIndex { expr: Box<Expr>, index: Box<Expr> },
     /// JSON access: `expr->key` or `expr->>key`
     JsonAccess {
         expr: Box<Expr>,
@@ -1763,7 +1772,9 @@ pub enum BinaryOperator {
     Minus,
     Multiply,
     Divide,
+    MysqlDivide,
     Power,
+    PostgresPower,
     IntDiv,
     Modulo,
     Eq,
@@ -2438,7 +2449,10 @@ impl Expr {
             Expr::Cast { expr, .. } | Expr::TryCast { expr, .. } => expr.walk(visitor),
             Expr::Extract { expr, .. } => expr.walk(visitor),
             Expr::Interval { value, .. } => value.walk(visitor),
-            Expr::ArrayLiteral(items) | Expr::Tuple(items) | Expr::Coalesce { items, .. } => {
+            Expr::ArrayLiteral(items)
+            | Expr::SqliteArrayLiteral(items)
+            | Expr::Tuple(items)
+            | Expr::Coalesce { items, .. } => {
                 for item in items {
                     item.walk(visitor);
                 }
@@ -2461,6 +2475,10 @@ impl Expr {
             Expr::Collate { expr, .. } => expr.walk(visitor),
             Expr::Alias { expr, .. } => expr.walk(visitor),
             Expr::ArrayIndex { expr, index } => {
+                expr.walk(visitor);
+                index.walk(visitor);
+            }
+            Expr::PostgresArrayIndex { expr, index } => {
                 expr.walk(visitor);
                 index.walk(visitor);
             }
@@ -2498,6 +2516,7 @@ impl Expr {
             | Expr::Wildcard
             | Expr::Star
             | Expr::Parameter(_)
+            | Expr::PostgresParameter(_)
             | Expr::TypeExpr(_)
             | Expr::QualifiedWildcard { .. }
             | Expr::Default
@@ -2720,6 +2739,9 @@ impl Expr {
             Expr::ArrayLiteral(elems) => {
                 Expr::ArrayLiteral(elems.into_iter().map(|e| e.transform(func)).collect())
             }
+            Expr::SqliteArrayLiteral(elems) => {
+                Expr::SqliteArrayLiteral(elems.into_iter().map(|e| e.transform(func)).collect())
+            }
             Expr::Tuple(elems) => {
                 Expr::Tuple(elems.into_iter().map(|e| e.transform(func)).collect())
             }
@@ -2756,6 +2778,10 @@ impl Expr {
                 name,
             },
             Expr::ArrayIndex { expr, index } => Expr::ArrayIndex {
+                expr: Box::new(expr.transform(func)),
+                index: Box::new(index.transform(func)),
+            },
+            Expr::PostgresArrayIndex { expr, index } => Expr::PostgresArrayIndex {
                 expr: Box::new(expr.transform(func)),
                 index: Box::new(index.transform(func)),
             },

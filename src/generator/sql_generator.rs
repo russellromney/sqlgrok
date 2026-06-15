@@ -2595,7 +2595,9 @@ impl Generator {
             BinaryOperator::Minus => " - ",
             BinaryOperator::Multiply => " * ",
             BinaryOperator::Divide => " / ",
+            BinaryOperator::MysqlDivide => " / ",
             BinaryOperator::Power => " ^ ",
+            BinaryOperator::PostgresPower => " ^ ",
             BinaryOperator::IntDiv => " DIV ",
             BinaryOperator::Modulo => " % ",
             BinaryOperator::Eq => " = ",
@@ -3270,6 +3272,62 @@ impl Generator {
         }
     }
 
+    fn gen_sqlite_binary_op(&mut self, left: &Expr, op: &BinaryOperator, right: &Expr) -> bool {
+        if !matches!(self.dialect, Some(Dialect::Sqlite)) {
+            return false;
+        }
+
+        match op {
+            BinaryOperator::PostgresPower => {
+                self.write_keyword("POWER(");
+                self.gen_expr(left);
+                self.write(", ");
+                self.gen_expr(right);
+                self.write(")");
+                true
+            }
+            BinaryOperator::ArrayContainedBy => {
+                self.gen_expr(right);
+                self.write(Self::binary_op_str(&BinaryOperator::ArrayContains));
+                self.gen_expr(left);
+                true
+            }
+            BinaryOperator::MysqlDivide => {
+                self.write_keyword("CAST(");
+                self.gen_expr(left);
+                self.write_keyword(" AS REAL)");
+                self.write(Self::binary_op_str(&BinaryOperator::Divide));
+                self.gen_expr(right);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn gen_sqlite_zero_based_index(&mut self, index: &Expr) {
+        match index {
+            Expr::Number(n) => {
+                if let Ok(parsed) = n.parse::<i64>() {
+                    self.write(&(parsed - 1).to_string());
+                } else {
+                    self.write(n);
+                }
+            }
+            other => {
+                self.gen_expr(other);
+                self.write(" - 1");
+            }
+        }
+    }
+
+    fn render_array_body(&self, items: &[Expr]) -> String {
+        items
+            .iter()
+            .map(crate::generator::Generator::expr_to_sql)
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+
     fn gen_expr(&mut self, expr: &Expr) {
         match expr {
             Expr::Column {
@@ -3370,6 +3428,7 @@ impl Generator {
             Expr::BinaryOp { left, op, right } => {
                 if *op == BinaryOperator::IntDiv {
                     self.gen_int_div(left, right);
+                } else if self.gen_sqlite_binary_op(left, op, right) {
                 } else {
                     self.gen_expr(left);
                     self.write(Self::binary_op_str(op));
@@ -3965,14 +4024,40 @@ impl Generator {
                 }
             }
             Expr::ArrayLiteral(items) => {
-                self.write_keyword("ARRAY[");
-                self.gen_expr_list(items);
-                self.write("]");
+                if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                    self.write_keyword("ARRAY(");
+                    self.gen_expr_list(items);
+                    self.write(")");
+                } else {
+                    self.write_keyword("ARRAY[");
+                    self.gen_expr_list(items);
+                    self.write("]");
+                }
+            }
+            Expr::SqliteArrayLiteral(items) => {
+                if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                    self.write("\"");
+                    self.write(&self.render_array_body(items).replace('"', "\"\""));
+                    self.write("\"");
+                } else {
+                    self.write_keyword("ARRAY[");
+                    self.gen_expr_list(items);
+                    self.write("]");
+                }
             }
             Expr::Tuple(items) => {
                 self.write("(");
                 self.gen_expr_list(items);
                 self.write(")");
+            }
+            Expr::Parameter(p) => self.write(p),
+            Expr::PostgresParameter(p) => {
+                if matches!(self.dialect, Some(Dialect::Sqlite)) && p.starts_with('$') {
+                    self.write("@");
+                    self.write(&p[1..]);
+                } else {
+                    self.write(p);
+                }
             }
             Expr::Coalesce {
                 items,
@@ -4031,7 +4116,6 @@ impl Generator {
                 self.write_keyword("COLLATE ");
                 self.write(collation);
             }
-            Expr::Parameter(p) => self.write(p),
             Expr::TypeExpr(dt) => self.gen_data_type(dt),
             Expr::QualifiedWildcard { table } => {
                 self.write(table);
@@ -4047,6 +4131,16 @@ impl Generator {
                 self.gen_expr(expr);
                 self.write("[");
                 self.gen_expr(index);
+                self.write("]");
+            }
+            Expr::PostgresArrayIndex { expr, index } => {
+                self.gen_expr(expr);
+                self.write("[");
+                if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                    self.gen_sqlite_zero_based_index(index);
+                } else {
+                    self.gen_expr(index);
+                }
                 self.write("]");
             }
             Expr::JsonAccess {
@@ -5923,6 +6017,8 @@ fn render_expr_to_sql_for_dialect(expr: &Expr, dialect: Option<Dialect>) -> Stri
                 BinaryOperator::Minus => "-",
                 BinaryOperator::Multiply => "*",
                 BinaryOperator::Divide => "/",
+                BinaryOperator::MysqlDivide => "/",
+                BinaryOperator::PostgresPower => "^",
                 BinaryOperator::Modulo => "%",
                 _ => " ",
             };

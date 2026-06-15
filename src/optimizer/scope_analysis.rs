@@ -572,7 +572,10 @@ fn walk_expr_for_subqueries(expr: &Expr, scope: &mut Scope) {
         Expr::Cast { expr: inner, .. } | Expr::TryCast { expr: inner, .. } => {
             collect_subqueries_from_expr(inner, scope);
         }
-        Expr::Coalesce { items, .. } | Expr::ArrayLiteral(items) | Expr::Tuple(items) => {
+        Expr::Coalesce { items, .. }
+        | Expr::ArrayLiteral(items)
+        | Expr::SqliteArrayLiteral(items)
+        | Expr::Tuple(items) => {
             for item in items {
                 collect_subqueries_from_expr(item, scope);
             }
@@ -628,7 +631,8 @@ fn walk_expr_for_subqueries(expr: &Expr, scope: &mut Scope) {
             collect_subqueries_from_expr(inner, scope);
             collect_subqueries_from_expr(right, scope);
         }
-        Expr::ArrayIndex { expr: inner, index } => {
+        Expr::ArrayIndex { expr: inner, index }
+        | Expr::PostgresArrayIndex { expr: inner, index } => {
             collect_subqueries_from_expr(inner, scope);
             collect_subqueries_from_expr(index, scope);
         }

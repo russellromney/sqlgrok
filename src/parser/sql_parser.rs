@@ -6357,6 +6357,12 @@ impl<'a> Parser<'a> {
                 TokenType::BitwiseOr if self.peek_n_type(1) != &TokenType::Gt => {
                     Some(BinaryOperator::BitwiseOr)
                 }
+                TokenType::BitwiseXor
+                    if self.peek().value == "^"
+                        && crate::dialects::is_postgres_family(self.dialect) =>
+                {
+                    Some(BinaryOperator::PostgresPower)
+                }
                 TokenType::BitwiseXor if self.peek().value == "^" => Some(BinaryOperator::Power),
                 TokenType::BitwiseXor => Some(BinaryOperator::BitwiseXor),
                 TokenType::ShiftLeft => Some(BinaryOperator::ShiftLeft),
@@ -6383,6 +6389,9 @@ impl<'a> Parser<'a> {
         loop {
             let op = match self.peek_type() {
                 TokenType::Star => Some(BinaryOperator::Multiply),
+                TokenType::Slash if crate::dialects::is_mysql_family(self.dialect) => {
+                    Some(BinaryOperator::MysqlDivide)
+                }
                 TokenType::Slash => Some(BinaryOperator::Divide),
                 TokenType::Percent2 => Some(BinaryOperator::Modulo),
                 TokenType::BitwiseAnd => Some(BinaryOperator::BitwiseAnd),
@@ -6494,9 +6503,16 @@ impl<'a> Parser<'a> {
                 // Array index: expr[index]
                 let index = self.parse_expr()?;
                 self.expect(TokenType::RBracket)?;
-                expr = Expr::ArrayIndex {
-                    expr: Box::new(expr),
-                    index: Box::new(index),
+                expr = if crate::dialects::is_postgres_family(self.dialect) {
+                    Expr::PostgresArrayIndex {
+                        expr: Box::new(expr),
+                        index: Box::new(index),
+                    }
+                } else {
+                    Expr::ArrayIndex {
+                        expr: Box::new(expr),
+                        index: Box::new(index),
+                    }
                 };
             } else if self.match_token(TokenType::Collate) {
                 let (collation, quote_style) = self.expect_name_with_quote()?;
@@ -6948,11 +6964,16 @@ impl<'a> Parser<'a> {
             }
             TokenType::Parameter => {
                 self.advance();
-                Ok(Expr::Parameter(if token.value.starts_with('%') {
+                let param = if token.value.starts_with('%') {
                     "?".to_string()
                 } else {
                     token.value
-                }))
+                };
+                if crate::dialects::is_postgres_family(self.dialect) && param.starts_with('$') {
+                    Ok(Expr::PostgresParameter(param))
+                } else {
+                    Ok(Expr::Parameter(param))
+                }
             }
             TokenType::AtSign => {
                 self.advance();
@@ -7178,7 +7199,11 @@ impl<'a> Parser<'a> {
                         vec![]
                     };
                     self.expect(TokenType::RBracket)?;
-                    Ok(Expr::ArrayLiteral(items))
+                    if matches!(self.dialect, Dialect::Sqlite) {
+                        Ok(Expr::SqliteArrayLiteral(items))
+                    } else {
+                        Ok(Expr::ArrayLiteral(items))
+                    }
                 } else if self.match_token(TokenType::LParen) {
                     let args = if self.peek_type() == &TokenType::RParen {
                         vec![]
@@ -7214,7 +7239,11 @@ impl<'a> Parser<'a> {
                     vec![]
                 };
                 self.expect(TokenType::RBracket)?;
-                Ok(Expr::ArrayLiteral(items))
+                if matches!(self.dialect, Dialect::Sqlite) {
+                    Ok(Expr::SqliteArrayLiteral(items))
+                } else {
+                    Ok(Expr::ArrayLiteral(items))
+                }
             }
 
             // ── Struct literal: {'key': value, ...} ─────────────────

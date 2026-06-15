@@ -712,7 +712,10 @@ impl AstDiffer {
             (Expr::Coalesce { items: sa, .. }, Expr::Coalesce { items: ta, .. }) => {
                 self.diff_expr_lists(sa, ta)
             }
-            (Expr::ArrayLiteral(sa), Expr::ArrayLiteral(ta)) => self.diff_expr_lists(sa, ta),
+            (Expr::ArrayLiteral(sa), Expr::ArrayLiteral(ta))
+            | (Expr::SqliteArrayLiteral(sa), Expr::SqliteArrayLiteral(ta)) => {
+                self.diff_expr_lists(sa, ta)
+            }
             (Expr::Tuple(sa), Expr::Tuple(ta)) => self.diff_expr_lists(sa, ta),
             (Expr::TypedFunction { func: sf, .. }, Expr::TypedFunction { func: tf, .. })
                 if std::mem::discriminant(sf) == std::mem::discriminant(tf) && source == target =>

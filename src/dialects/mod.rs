@@ -1359,20 +1359,26 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 && filter.is_none()
                 && over.is_none()
                 && new_args.len() == 1
-                && let Expr::Function {
-                    name: inner_name,
-                    args: inner_args,
-                    ..
-                } = &new_args[0]
-                && inner_name.eq_ignore_ascii_case("ARRAY")
             {
-                return Expr::Function {
-                    name: "ARRAY".to_string(),
-                    args: inner_args.clone(),
-                    distinct: false,
-                    filter: None,
-                    over: None,
-                };
+                match &new_args[0] {
+                    Expr::Function {
+                        name: inner_name,
+                        args: inner_args,
+                        ..
+                    } if inner_name.eq_ignore_ascii_case("ARRAY") => {
+                        return Expr::Function {
+                            name: "ARRAY".to_string(),
+                            args: inner_args.clone(),
+                            distinct: false,
+                            filter: None,
+                            over: None,
+                        };
+                    }
+                    Expr::ArrayLiteral(items) | Expr::SqliteArrayLiteral(items) => {
+                        return Expr::ArrayLiteral(items.clone());
+                    }
+                    _ => {}
+                }
             }
             Expr::Function {
                 name,
@@ -1453,41 +1459,10 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         Expr::BinaryOp { left, op, right } => {
             let left = transform_expr(*left, source, target);
             let right = transform_expr(*right, source, target);
-            if matches!(target, Dialect::Sqlite)
-                && is_mysql_family(source)
-                && op == BinaryOperator::Divide
-            {
-                Expr::BinaryOp {
-                    left: Box::new(sqlite_real_cast(left)),
-                    op,
-                    right: Box::new(right),
-                }
-            } else if matches!(target, Dialect::Sqlite)
-                && is_postgres_family(source)
-                && op == BinaryOperator::Power
-            {
-                Expr::Function {
-                    name: "POWER".to_string(),
-                    args: vec![left, right],
-                    distinct: false,
-                    filter: None,
-                    over: None,
-                }
-            } else if matches!(target, Dialect::Sqlite)
-                && is_postgres_family(source)
-                && op == BinaryOperator::ArrayContainedBy
-            {
-                Expr::BinaryOp {
-                    left: Box::new(right),
-                    op: BinaryOperator::ArrayContains,
-                    right: Box::new(left),
-                }
-            } else {
-                Expr::BinaryOp {
-                    left: Box::new(left),
-                    op,
-                    right: Box::new(right),
-                }
+            Expr::BinaryOp {
+                left: Box::new(left),
+                op,
+                right: Box::new(right),
             }
         }
         Expr::UnaryOp { op, expr } => Expr::UnaryOp {
@@ -1527,59 +1502,23 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 .into_iter()
                 .map(|item| transform_expr(item, source, target))
                 .collect();
-            if matches!(target, Dialect::Sqlite) && matches!(source, Dialect::Sqlite) {
-                // Python SQLGlot represents [1, 2, 3] for sqlite as a
-                // double-quoted identifier with the rendered body.
-                let body = items
-                    .iter()
-                    .map(crate::generator::Generator::expr_to_sql)
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                Expr::Column {
-                    table: None,
-                    name: body,
-                    quote_style: crate::ast::QuoteStyle::DoubleQuote,
-                    table_quote_style: crate::ast::QuoteStyle::None,
-                }
-            } else if (is_postgres_family(source) || is_mysql_family(source))
-                && matches!(target, Dialect::Sqlite)
-            {
-                Expr::Function {
-                    name: "ARRAY".to_string(),
-                    args: items,
-                    distinct: false,
-                    filter: None,
-                    over: None,
-                }
-            } else {
-                Expr::ArrayLiteral(items)
-            }
+            Expr::ArrayLiteral(items)
         }
-        // Postgres source `col[N]` → sqlite `col[N-1]` (postgres uses
-        // 1-based array indexing; Python normalizes to 0-based for
-        // sqlite output).
-        Expr::ArrayIndex { expr, index }
-            if is_postgres_family(source) && matches!(target, Dialect::Sqlite) =>
-        {
-            let new_index = match *index {
-                Expr::Number(n) => {
-                    if let Ok(parsed) = n.parse::<i64>() {
-                        Expr::Number((parsed - 1).to_string())
-                    } else {
-                        Expr::Number(n)
-                    }
-                }
-                other => Expr::BinaryOp {
-                    left: Box::new(transform_expr(other, source, target)),
-                    op: BinaryOperator::Minus,
-                    right: Box::new(Expr::Number("1".to_string())),
-                },
-            };
-            Expr::ArrayIndex {
-                expr: Box::new(transform_expr(*expr, source, target)),
-                index: Box::new(new_index),
-            }
+        Expr::SqliteArrayLiteral(items) => {
+            let items: Vec<Expr> = items
+                .into_iter()
+                .map(|item| transform_expr(item, source, target))
+                .collect();
+            Expr::SqliteArrayLiteral(items)
         }
+        Expr::ArrayIndex { expr, index } => Expr::ArrayIndex {
+            expr: Box::new(transform_expr(*expr, source, target)),
+            index: Box::new(transform_expr(*index, source, target)),
+        },
+        Expr::PostgresArrayIndex { expr, index } => Expr::PostgresArrayIndex {
+            expr: Box::new(transform_expr(*expr, source, target)),
+            index: Box::new(transform_expr(*index, source, target)),
+        },
         Expr::JsonAccess {
             expr,
             path,
@@ -1620,13 +1559,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 over: over.map(|spec| transform_window_spec(spec, source, target)),
             }
         }
-        Expr::Parameter(param)
-            if is_postgres_family(source)
-                && matches!(target, Dialect::Sqlite)
-                && param.starts_with('$') =>
-        {
-            Expr::Parameter(format!("@{}", &param[1..]))
-        }
         // Transform quoting on column references
         Expr::Column {
             table,
@@ -1634,18 +1566,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             quote_style,
             table_quote_style,
         } => {
-            if table.is_none()
-                && is_postgres_family(source)
-                && matches!(target, Dialect::Sqlite)
-                && name.eq_ignore_ascii_case("current_date")
-            {
-                return Expr::Column {
-                    table: None,
-                    name: "CURRENT_DATE".to_string(),
-                    quote_style: QuoteStyle::None,
-                    table_quote_style: QuoteStyle::None,
-                };
-            }
             let new_qs = if quote_style.is_quoted() {
                 QuoteStyle::for_dialect(target)
             } else {
@@ -1694,13 +1614,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
 fn transform_expr_in_place(expr: &mut Expr, source: Dialect, target: Dialect) {
     let old = std::mem::replace(expr, Expr::Null);
     *expr = transform_expr(old, source, target);
-}
-
-fn sqlite_real_cast(expr: Expr) -> Expr {
-    Expr::Cast {
-        expr: Box::new(expr),
-        data_type: DataType::Real,
-    }
 }
 
 fn transform_window_spec(mut spec: WindowSpec, source: Dialect, target: Dialect) -> WindowSpec {

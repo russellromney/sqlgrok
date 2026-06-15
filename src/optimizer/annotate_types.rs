@@ -420,7 +420,10 @@ fn annotate_children<S: Schema>(
         }
         Expr::Extract { expr: e, .. } => annotate_expr(e, ctx, ann),
         Expr::Interval { value, .. } => annotate_expr(value, ctx, ann),
-        Expr::ArrayLiteral(items) | Expr::Tuple(items) | Expr::Coalesce { items, .. } => {
+        Expr::ArrayLiteral(items)
+        | Expr::SqliteArrayLiteral(items)
+        | Expr::Tuple(items)
+        | Expr::Coalesce { items, .. } => {
             for item in items {
                 annotate_expr(item, ctx, ann);
             }
@@ -442,7 +445,7 @@ fn annotate_children<S: Schema>(
         }
         Expr::Collate { expr: e, .. } => annotate_expr(e, ctx, ann),
         Expr::Alias { expr: e, .. } => annotate_expr(e, ctx, ann),
-        Expr::ArrayIndex { expr: e, index } => {
+        Expr::ArrayIndex { expr: e, index } | Expr::PostgresArrayIndex { expr: e, index } => {
             annotate_expr(e, ctx, ann);
             annotate_expr(index, ctx, ann);
         }
@@ -486,6 +489,7 @@ fn annotate_children<S: Schema>(
         | Expr::Wildcard
         | Expr::Star
         | Expr::Parameter(_)
+        | Expr::PostgresParameter(_)
         | Expr::TypeExpr(_)
         | Expr::QualifiedWildcard { .. }
         | Expr::Default
@@ -623,7 +627,7 @@ fn infer_type<S: Schema>(
         Expr::Interval { .. } => Some(DataType::Interval),
 
         // ── Array literal ────────────────────────────────────────────
-        Expr::ArrayLiteral(items) => {
+        Expr::ArrayLiteral(items) | Expr::SqliteArrayLiteral(items) => {
             let elem_types: Vec<&DataType> = items.iter().filter_map(|e| ann.get_type(e)).collect();
             let elem = common_type(&elem_types);
             Some(DataType::Array(elem.map(Box::new)))
@@ -639,10 +643,12 @@ fn infer_type<S: Schema>(
         }
 
         // ── Array index → element type ───────────────────────────────
-        Expr::ArrayIndex { expr: e, .. } => match ann.get_type(e.as_ref()) {
-            Some(DataType::Array(Some(elem))) => Some(elem.as_ref().clone()),
-            _ => None,
-        },
+        Expr::ArrayIndex { expr: e, .. } | Expr::PostgresArrayIndex { expr: e, .. } => {
+            match ann.get_type(e.as_ref()) {
+                Some(DataType::Array(Some(elem))) => Some(elem.as_ref().clone()),
+                _ => None,
+            }
+        }
 
         // ── JSON access ──────────────────────────────────────────────
         Expr::JsonAccess { as_text, .. } => {
@@ -668,6 +674,7 @@ fn infer_type<S: Schema>(
         | Expr::Star
         | Expr::QualifiedWildcard { .. }
         | Expr::Parameter(_)
+        | Expr::PostgresParameter(_)
         | Expr::Lambda { .. }
         | Expr::Default
         | Expr::Cube { .. }
@@ -718,7 +725,8 @@ fn infer_binary_op_type(
         Concat => Some(DataType::Varchar(None)),
 
         // Arithmetic → coerce operand types
-        Plus | Minus | Multiply | Divide | Power | IntDiv | Modulo => match (left, right) {
+        Plus | Minus | Multiply | Divide | MysqlDivide | Power | PostgresPower | IntDiv
+        | Modulo => match (left, right) {
             (Some(l), Some(r)) => Some(coerce_numeric(l, r)),
             (Some(l), None) => Some(l.clone()),
             (None, Some(r)) => Some(r.clone()),
