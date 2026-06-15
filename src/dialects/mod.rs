@@ -512,7 +512,6 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 if col.name_quote_style.is_quoted() {
                     col.name_quote_style = QuoteStyle::for_dialect(target);
                 }
-                col.data_type = map_data_type_for_source(col.data_type.clone(), source, target);
                 if let Some(default) = &mut col.default {
                     transform_expr_in_place(default, source, target);
                 }
@@ -536,18 +535,11 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             for action in &mut alt.actions {
                 match action {
                     AlterTableAction::AddColumn(col) => {
-                        col.data_type =
-                            map_data_type_for_source(col.data_type.clone(), source, target);
                         if let Some(default) = &mut col.default {
                             transform_expr_in_place(default, source, target);
                         }
                     }
-                    AlterTableAction::AlterColumnType { data_type, .. } => {
-                        *data_type = map_data_type_for_source(data_type.clone(), source, target);
-                    }
                     AlterTableAction::ChangeColumn { new_column, .. } => {
-                        new_column.data_type =
-                            map_data_type_for_source(new_column.data_type.clone(), source, target);
                         if let Some(default) = &mut new_column.default {
                             transform_expr_in_place(default, source, target);
                         }
@@ -2818,25 +2810,9 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         // Map data types in CAST
         Expr::Cast { expr, data_type } => {
             let expr = transform_expr(*expr, source, target);
-            let data_type = map_data_type_for_source(data_type, source, target);
-            let is_date = matches!(&data_type, DataType::Date)
-                || matches!(
-                    &data_type,
-                    DataType::Unknown(s) if s.eq_ignore_ascii_case("DATE")
-                );
-            if matches!(target, Dialect::Sqlite) && is_date {
-                Expr::Function {
-                    name: "DATE".to_string(),
-                    args: vec![expr],
-                    distinct: false,
-                    filter: None,
-                    over: None,
-                }
-            } else {
-                Expr::Cast {
-                    expr: Box::new(expr),
-                    data_type,
-                }
+            Expr::Cast {
+                expr: Box::new(expr),
+                data_type,
             }
         }
         Expr::Extract { field, expr } => Expr::Extract {
@@ -3785,6 +3761,28 @@ pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
     {
         return DataType::Unknown(mapped.to_string());
     }
+    if let DataType::Unknown(name) = &dt
+        && matches!(target, Dialect::Sqlite)
+    {
+        let upper = name.to_ascii_uppercase();
+        if let Some((base, rest)) = upper.split_once('(') {
+            // MEDIUMINT(n) is kept by SQLGlot (not folded to INTEGER(n)).
+            if matches!(base, "INT" | "INTEGER" | "BIGINT" | "SMALLINT" | "TINYINT") {
+                return DataType::Unknown(format!("INTEGER({rest}"));
+            }
+            // VARCHAR(MAX) / CHAR(MAX) → TEXT(MAX)
+            if matches!(base, "VARCHAR" | "CHAR") {
+                return DataType::Unknown(format!("TEXT({rest}"));
+            }
+            // DOUBLE(p, s) → REAL(p, s)
+            if base == "DOUBLE" {
+                return DataType::Unknown(format!("REAL({rest}"));
+            }
+        }
+        if let Some(inner) = strip_nullable_wrapper(name, &upper) {
+            return map_data_type(DataType::Unknown(inner), target);
+        }
+    }
     match (dt, target) {
         (
             DataType::Collate {
@@ -3839,12 +3837,77 @@ pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
             Some(n) => DataType::Unknown(format!("BLOB({n})")),
             None => DataType::Blob,
         },
+        (DataType::Unknown(name), Dialect::Sqlite)
+            if name.eq_ignore_ascii_case("INT UNSIGNED")
+                || name.eq_ignore_ascii_case("INT SIGNED") =>
+        {
+            if name.to_ascii_uppercase().contains("UNSIGNED") {
+                DataType::Unknown("UINT".to_string())
+            } else {
+                DataType::Unknown("INTEGER".to_string())
+            }
+        }
+        (DataType::Unknown(name), Dialect::Sqlite)
+            if name.eq_ignore_ascii_case("BIGINT UNSIGNED")
+                || name.eq_ignore_ascii_case("BIGINT SIGNED") =>
+        {
+            if name.to_ascii_uppercase().contains("UNSIGNED") {
+                DataType::Unknown("UBIGINT".to_string())
+            } else {
+                DataType::Unknown("BIGINT".to_string())
+            }
+        }
+        (DataType::Unknown(name), Dialect::Sqlite)
+            if name.to_ascii_uppercase().starts_with("STRING FORMAT ") =>
+        {
+            DataType::Unknown(format!("TEXT{}", &name["STRING".len()..]))
+        }
+        (DataType::Unknown(name), Dialect::Sqlite)
+            if name.to_ascii_uppercase().starts_with("STRING(") =>
+        {
+            DataType::Unknown(format!("TEXT{}", &name["STRING".len()..]))
+        }
+        (DataType::Unknown(name), Dialect::Sqlite)
+            if name.to_ascii_uppercase().starts_with("FLOAT(") =>
+        {
+            DataType::Unknown(format!("REAL{}", &name["FLOAT".len()..]))
+        }
+        (DataType::Unknown(name), Dialect::Sqlite)
+            if name.to_ascii_uppercase().starts_with("JSON(") =>
+        {
+            DataType::Unknown(rewrite_raw_type_params_for_sqlite(&name))
+        }
+        (DataType::Unknown(name), Dialect::Sqlite)
+            if name.to_ascii_uppercase().starts_with("JSONB(") =>
+        {
+            DataType::Unknown(rewrite_raw_type_params_for_sqlite(&name))
+        }
+        (DataType::Unknown(name), Dialect::Sqlite)
+            if matches!(
+                name.to_ascii_uppercase().as_str(),
+                "LONGVARCHAR" | "TINYTEXT" | "MEDIUMTEXT" | "LONGTEXT"
+            ) =>
+        {
+            DataType::Text
+        }
+        (DataType::Unknown(name), Dialect::Sqlite)
+            if matches!(
+                name.to_ascii_uppercase().as_str(),
+                "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB"
+            ) =>
+        {
+            DataType::Blob
+        }
 
         // ── TEXT / STRING ────────────────────────────────────────────────
         // TEXT → STRING for BigQuery, Hive, Spark, Databricks
         (DataType::Text, t) if matches!(t, Dialect::BigQuery) || is_hive_family(t) => {
             DataType::String
         }
+        (DataType::Varchar(Some(n)) | DataType::Char(Some(n)), Dialect::BigQuery) => {
+            DataType::Unknown(format!("STRING({n})"))
+        }
+        (DataType::Varchar(None) | DataType::Char(None), Dialect::BigQuery) => DataType::String,
         // STRING → TEXT for Postgres family, MySQL family, SQLite
         (DataType::String, t)
             if is_postgres_family(t) || is_mysql_family(t) || matches!(t, Dialect::Sqlite) =>
@@ -3859,9 +3922,19 @@ pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
         (DataType::Int, Dialect::BigQuery) => DataType::BigInt,
 
         // ── FLOAT → DOUBLE (BigQuery) ───────────────────────────────────
-        (DataType::Float, Dialect::BigQuery) => DataType::Double,
+        (DataType::Float | DataType::Real, Dialect::BigQuery) => DataType::Double,
+
+        // ── DECIMAL → NUMERIC (BigQuery) ────────────────────────────────
+        (DataType::Decimal { precision, scale }, Dialect::BigQuery) => {
+            DataType::Numeric { precision, scale }
+        }
+
+        // ── BOOLEAN → BOOL (BigQuery generator spelling) ────────────────
+        // The AST keeps the canonical Boolean variant; gen_data_type owns
+        // the target spelling.
 
         // ── BYTEA ↔ BLOB ────────────────────────────────────────────────
+        (DataType::Bytea | DataType::Blob, Dialect::BigQuery) => DataType::Bytes,
         (DataType::Bytea, t)
             if is_mysql_family(t)
                 || matches!(t, Dialect::Sqlite | Dialect::Oracle)
@@ -3933,123 +4006,6 @@ pub(crate) fn is_postgres_pseudo_type(upper: &str) -> bool {
             | "INT8RANGE"
             | "INT8MULTIRANGE"
     )
-}
-
-fn map_data_type_for_source(dt: DataType, source: Dialect, target: Dialect) -> DataType {
-    // Common type aliases that always map to the canonical sqlite-
-    // target name regardless of source. (Postgres pseudo-type/range-type
-    // uppercasing is a read-side normalization in the parser now.)
-    if let DataType::Unknown(name) = &dt
-        && matches!(target, Dialect::Sqlite)
-    {
-        let upper = name.to_ascii_uppercase();
-        // Pure name→name mappings are data in `rules::map_type`.
-        let mapped = rules::map_type(target, &upper).map(str::to_string);
-        // Signed integer types carrying a MySQL display width
-        // (INT(10), BIGINT(10), TINYINT(1), ...) all fold to
-        // INTEGER(width) for sqlite.
-        if mapped.is_none()
-            && let Some((base, rest)) = upper.split_once('(')
-        {
-            // MEDIUMINT(n) is kept by SQLGlot (not folded to INTEGER(n)).
-            if matches!(base, "INT" | "INTEGER" | "BIGINT" | "SMALLINT" | "TINYINT") {
-                return DataType::Unknown(format!("INTEGER({rest}"));
-            }
-            // VARCHAR(MAX) / CHAR(MAX) → TEXT(MAX)
-            if matches!(base, "VARCHAR" | "CHAR") {
-                return DataType::Unknown(format!("TEXT({rest}"));
-            }
-            // DOUBLE(p, s) → REAL(p, s)
-            if base == "DOUBLE" {
-                return DataType::Unknown(format!("REAL({rest}"));
-            }
-        }
-        if let Some(m) = mapped {
-            return DataType::Unknown(m);
-        }
-    }
-    // ClickHouse-style `Nullable(T)` wrappers: strip for sqlite output
-    // and recurse on the inner type (matching Python SQLGlot, which
-    // models nullability separately).
-    if let DataType::Unknown(name) = &dt
-        && matches!(target, Dialect::Sqlite)
-    {
-        let upper = name.to_ascii_uppercase();
-        if let Some(inner) = strip_nullable_wrapper(name, &upper) {
-            let inner_dt = DataType::Unknown(inner);
-            return map_data_type_for_source(inner_dt, source, target);
-        }
-    }
-    // MySQL SIGNED/UNSIGNED and tz-aware TIMESTAMP are read-side parser
-    // canonicalizations now (SQLGlot tokenizer keywords); the generator's
-    // Timestamp arm owns the per-target rendering.
-    match (&dt, source, target) {
-        (DataType::Unknown(name), _, Dialect::Sqlite)
-            if name.eq_ignore_ascii_case("INT UNSIGNED")
-                || name.eq_ignore_ascii_case("INT SIGNED") =>
-        {
-            if name.to_ascii_uppercase().contains("UNSIGNED") {
-                DataType::Unknown("UINT".to_string())
-            } else {
-                DataType::Unknown("INTEGER".to_string())
-            }
-        }
-        (DataType::Unknown(name), _, Dialect::Sqlite)
-            if name.eq_ignore_ascii_case("BIGINT UNSIGNED")
-                || name.eq_ignore_ascii_case("BIGINT SIGNED") =>
-        {
-            if name.to_ascii_uppercase().contains("UNSIGNED") {
-                DataType::Unknown("UBIGINT".to_string())
-            } else {
-                DataType::Unknown("BIGINT".to_string())
-            }
-        }
-        (DataType::Unknown(name), _, Dialect::Sqlite)
-            if name.to_ascii_uppercase().starts_with("STRING FORMAT ") =>
-        {
-            DataType::Unknown(format!("TEXT{}", &name["STRING".len()..]))
-        }
-        (DataType::Unknown(name), _, Dialect::Sqlite)
-            if name.to_ascii_uppercase().starts_with("STRING(") =>
-        {
-            DataType::Unknown(format!("TEXT{}", &name["STRING".len()..]))
-        }
-        (DataType::Unknown(name), _, Dialect::Sqlite)
-            if name.to_ascii_uppercase().starts_with("FLOAT(") =>
-        {
-            DataType::Unknown(format!("REAL{}", &name["FLOAT".len()..]))
-        }
-        (DataType::Unknown(name), _, Dialect::Sqlite)
-            if name.to_ascii_uppercase().starts_with("JSON(") =>
-        {
-            DataType::Unknown(rewrite_raw_type_params_for_sqlite(name))
-        }
-        (DataType::Unknown(name), _, Dialect::Sqlite)
-            if name.to_ascii_uppercase().starts_with("JSONB(") =>
-        {
-            DataType::Unknown(rewrite_raw_type_params_for_sqlite(name))
-        }
-        (DataType::Unknown(name), _, Dialect::Sqlite)
-            if matches!(
-                name.to_ascii_uppercase().as_str(),
-                "LONGVARCHAR" | "TINYTEXT" | "MEDIUMTEXT" | "LONGTEXT"
-            ) =>
-        {
-            DataType::Text
-        }
-        (DataType::Unknown(name), _, Dialect::Sqlite)
-            if matches!(
-                name.to_ascii_uppercase().as_str(),
-                "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB"
-            ) =>
-        {
-            DataType::Blob
-        }
-        // Pure name→name sqlite type mappings (INT8..64, INT128/256,
-        // BIGNUMERIC, TIMESTAMP_*TZ, ...) are data in `rules::map_type`,
-        // consulted at the top of this fn and inside map_data_type.
-        _ => map_data_type(dt, target),
-    }
 }
 
 fn sqlite_type_with_params(name: &str, precision: Option<u32>, scale: Option<u32>) -> DataType {

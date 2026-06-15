@@ -2110,8 +2110,8 @@ impl Generator {
     // ══════════════════════════════════════════════════════════════
 
     fn gen_data_type(&mut self, dt: &DataType) {
-        if matches!(self.dialect, Some(Dialect::Sqlite)) {
-            let mapped = dialects::map_data_type(dt.clone(), Dialect::Sqlite);
+        if let Some(dialect) = self.dialect {
+            let mapped = dialects::map_data_type(dt.clone(), dialect);
             if mapped != *dt {
                 self.gen_data_type(&mapped);
                 return;
@@ -2123,8 +2123,10 @@ impl Generator {
             DataType::SmallInt => self.write("SMALLINT"),
             DataType::Int if self.dialect == Some(Dialect::Sqlite) => self.write("INTEGER"),
             DataType::Int => self.write("INT"),
+            DataType::BigInt if self.dialect == Some(Dialect::BigQuery) => self.write("INT64"),
             DataType::BigInt => self.write("BIGINT"),
             DataType::Float => self.write("FLOAT"),
+            DataType::Double if self.dialect == Some(Dialect::BigQuery) => self.write("FLOAT64"),
             DataType::Double => self.write("DOUBLE"),
             DataType::Real => self.write("REAL"),
             DataType::Decimal { precision, scale } | DataType::Numeric { precision, scale } => {
@@ -2167,6 +2169,7 @@ impl Generator {
                     self.write(&format!("({n})"));
                 }
             }
+            DataType::Boolean if self.dialect == Some(Dialect::BigQuery) => self.write("BOOL"),
             DataType::Boolean => self.write("BOOLEAN"),
             DataType::Date => self.write("DATE"),
             DataType::Time { precision } => {
@@ -2880,6 +2883,18 @@ impl Generator {
                 self.write(")");
             }
             Expr::Cast { expr, data_type } => {
+                if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                    let sqlite_type = dialects::map_data_type(data_type.clone(), Dialect::Sqlite);
+                    if matches!(sqlite_type, DataType::Date)
+                        || matches!(sqlite_type, DataType::Unknown(name) if name.eq_ignore_ascii_case("DATE"))
+                    {
+                        self.write_keyword("DATE(");
+                        self.gen_expr(expr);
+                        self.write(")");
+                        return;
+                    }
+                }
+
                 if crate::dialects::is_postgres_family(self.dialect.unwrap_or(Dialect::Ansi))
                     && matches!(
                         data_type,
@@ -2939,6 +2954,57 @@ impl Generator {
                             }
                             _ => {}
                         }
+                    }
+                    if matches!(self.dialect, Some(Dialect::BigQuery)) {
+                        match data_type {
+                            DataType::TinyInt
+                            | DataType::SmallInt
+                            | DataType::Int
+                            | DataType::BigInt => {
+                                self.write("INT64");
+                                self.write(")");
+                                return;
+                            }
+                            DataType::Float | DataType::Double | DataType::Real => {
+                                self.write("FLOAT64");
+                                self.write(")");
+                                return;
+                            }
+                            DataType::Decimal { .. } | DataType::Numeric { .. } => {
+                                self.write("NUMERIC");
+                                self.write(")");
+                                return;
+                            }
+                            DataType::Varchar(_) | DataType::Char(_) | DataType::Text => {
+                                self.write("STRING");
+                                self.write(")");
+                                return;
+                            }
+                            DataType::Boolean => {
+                                self.write("BOOL");
+                                self.write(")");
+                                return;
+                            }
+                            DataType::Bytea | DataType::Blob | DataType::Bytes => {
+                                self.write("BYTES");
+                                self.write(")");
+                                return;
+                            }
+                            _ => {}
+                        }
+                    }
+                    if matches!(self.dialect, Some(Dialect::Mysql))
+                        && matches!(
+                            data_type,
+                            DataType::String
+                                | DataType::Text
+                                | DataType::Varchar(_)
+                                | DataType::Char(_)
+                        )
+                    {
+                        self.write("CHAR");
+                        self.write(")");
+                        return;
                     }
                     self.gen_data_type(data_type);
                     self.write(")");

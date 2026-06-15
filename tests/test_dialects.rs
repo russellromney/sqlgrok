@@ -626,7 +626,7 @@ fn test_string_to_text_sqlite() {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Data type mapping: INT → BIGINT (BigQuery)
+// Data type mapping: INT → INT64 (BigQuery)
 // (from Python test_bigquery.py)
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -634,14 +634,14 @@ fn test_string_to_text_sqlite() {
 fn test_int_to_bigint_bigquery() {
     assert_transpile(
         "SELECT CAST(x AS INT) FROM t",
-        "SELECT CAST(x AS BIGINT) FROM t",
+        "SELECT CAST(x AS INT64) FROM t",
         Dialect::Postgres,
         Dialect::BigQuery,
     );
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Data type mapping: FLOAT → DOUBLE (BigQuery)
+// Data type mapping: FLOAT → FLOAT64 (BigQuery)
 // (from Python test_bigquery.py)
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -649,7 +649,7 @@ fn test_int_to_bigint_bigquery() {
 fn test_float_to_double_bigquery() {
     assert_transpile(
         "SELECT CAST(x AS FLOAT) FROM t",
-        "SELECT CAST(x AS DOUBLE) FROM t",
+        "SELECT CAST(x AS FLOAT64) FROM t",
         Dialect::Postgres,
         Dialect::BigQuery,
     );
@@ -730,6 +730,20 @@ fn test_create_table_identity_each_dialect() {
             assert_transpile(
                 sql,
                 "CREATE TABLE t (id INTEGER, name TEXT(100))",
+                *dialect,
+                *dialect,
+            );
+        } else if *dialect == Dialect::BigQuery {
+            assert_transpile(
+                sql,
+                "CREATE TABLE t (id INT64, name STRING(100))",
+                *dialect,
+                *dialect,
+            );
+        } else if *dialect == Dialect::DuckDb {
+            assert_transpile(
+                sql,
+                "CREATE TABLE t (id INT, name TEXT)",
                 *dialect,
                 *dialect,
             );
@@ -2047,7 +2061,7 @@ fn test_materialize_identity() {
 fn test_create_table_type_mapping_postgres_to_bigquery() {
     assert_transpile(
         "CREATE TABLE t (id INT, name TEXT, data BYTEA)",
-        "CREATE TABLE t (id BIGINT, name STRING, data BYTEA)",
+        "CREATE TABLE t (id INT64, name STRING, data BYTES)",
         Dialect::Postgres,
         Dialect::BigQuery,
     );
@@ -2189,6 +2203,13 @@ fn test_alter_table_identity_all_dialects() {
                 *dialect,
                 *dialect,
             );
+        } else if *dialect == Dialect::BigQuery {
+            assert_transpile(
+                "ALTER TABLE t ADD COLUMN c INT",
+                "ALTER TABLE t ADD COLUMN c INT64",
+                *dialect,
+                *dialect,
+            );
         } else {
             assert_identity("ALTER TABLE t ADD COLUMN c INT", *dialect);
         }
@@ -2231,6 +2252,13 @@ fn test_complex_select_identity_all_dialects() {
             assert_transpile(
                 "SELECT CAST(a AS INT) FROM t",
                 "SELECT CAST(a AS SIGNED) FROM t",
+                *dialect,
+                *dialect,
+            );
+        } else if *dialect == Dialect::BigQuery {
+            assert_transpile(
+                "SELECT CAST(a AS INT) FROM t",
+                "SELECT CAST(a AS INT64) FROM t",
                 *dialect,
                 *dialect,
             );
@@ -2426,10 +2454,10 @@ fn test_postgres_array_type_with_bound_ignored() {
 
 #[test]
 fn test_postgres_array_type_to_bigquery() {
-    // PostgreSQL INT[] should become ARRAY<INT> for BigQuery
+    // PostgreSQL INT[] should become ARRAY<INT64> for BigQuery
     assert_transpile(
         "SELECT col::INT[]",
-        "SELECT CAST(col AS ARRAY<INT>)",
+        "SELECT CAST(col AS ARRAY<INT64>)",
         Dialect::Postgres,
         Dialect::BigQuery,
     );

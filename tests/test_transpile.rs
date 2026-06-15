@@ -2942,10 +2942,10 @@ fn test_transpile_type_mapping_string_to_text() {
 
 #[test]
 fn test_transpile_type_mapping_int_to_bigint() {
-    // INT → BIGINT for BigQuery
+    // INT → INT64 for BigQuery
     validate_with_dialect(
         "SELECT CAST(x AS INT) FROM t",
-        "SELECT CAST(x AS BIGINT) FROM t",
+        "SELECT CAST(x AS INT64) FROM t",
         Dialect::Postgres,
         Dialect::BigQuery,
     );
@@ -3131,10 +3131,10 @@ fn test_postgres_signed_cast_to_sqlite_preserves_unknown_type() {
 
 #[test]
 fn test_transpile_type_mapping_float_to_double() {
-    // FLOAT → DOUBLE for BigQuery
+    // FLOAT → FLOAT64 for BigQuery
     validate_with_dialect(
         "SELECT CAST(x AS FLOAT) FROM t",
-        "SELECT CAST(x AS DOUBLE) FROM t",
+        "SELECT CAST(x AS FLOAT64) FROM t",
         Dialect::Postgres,
         Dialect::BigQuery,
     );

@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7176 |
-| `mismatch` | 5798 |
+| `match` | 7180 |
+| `mismatch` | 5794 |
 | `oracle-error` | 1456 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -23,10 +23,10 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 4648 |
-| `mismatch` | `validate_all` | 4385 |
-| `match` | `validate_identity` | 2467 |
-| `mismatch` | `validate_identity` | 1300 |
+| `match` | `validate_all` | 4649 |
+| `mismatch` | `validate_all` | 4384 |
+| `match` | `validate_identity` | 2470 |
+| `mismatch` | `validate_identity` | 1297 |
 | `oracle-error` | `validate_identity` | 949 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 343 |
@@ -67,7 +67,7 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_oracle.py` | `test_trunc` | 88 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_array` | 85 |
 | `oracle-error` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 84 |
-| `oracle-error` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 80 |
+| `match` | `tests/dialects/test_postgres.py` | `test_ddl` | 83 |
 
 ## Examples
 
