@@ -3851,6 +3851,9 @@ pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
         {
             DataType::Text
         }
+        (DataType::Varchar(_) | DataType::Char(_) | DataType::String, Dialect::DuckDb) => {
+            DataType::Text
+        }
 
         // ── INT → BIGINT (BigQuery) ─────────────────────────────────────
         (DataType::Int, Dialect::BigQuery) => DataType::BigInt,

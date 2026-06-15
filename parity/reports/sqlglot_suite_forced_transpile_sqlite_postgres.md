@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7741 |
-| `mismatch` | 5154 |
+| `match` | 7751 |
+| `mismatch` | 5144 |
 | `oracle-error` | 1545 |
 | `rust-error` | 579 |
 | `unsupported-harness-shape` | 137 |
@@ -23,17 +23,17 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5235 |
-| `mismatch` | `validate_all` | 3769 |
-| `match` | `validate_identity` | 2441 |
-| `mismatch` | `validate_identity` | 1279 |
+| `match` | `validate_all` | 5240 |
+| `mismatch` | `validate_all` | 3764 |
+| `match` | `validate_identity` | 2444 |
+| `mismatch` | `validate_identity` | 1276 |
 | `oracle-error` | `validate_identity` | 995 |
 | `oracle-error` | `validate_all` | 541 |
 | `rust-error` | `validate_identity` | 344 |
 | `rust-error` | `validate_all` | 232 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `mismatch` | `validate` | 106 |
-| `match` | `validate` | 65 |
+| `mismatch` | `validate` | 104 |
+| `match` | `validate` | 67 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 9 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -101,26 +101,6 @@ Filtered by read/write: `0`
 - actual: ``
 - error: `ParseError: Expected table name but got <Token token_type: TokenType.SENTINEL, text: SENTINEL, line: 1, col: 1, start: 0, end: 0, comments: []>. Line 1, Col: 13.\n  SELECT x [4mjoin[0m`
 
-### `mismatch` `tests/test_transpile.py:750`
-
-- test: `test_alter`
-- helper: `validate`
-- read/write: `sqlite` -> `postgres`
-- sql: `ALTER TABLE integers ALTER i TYPE VARCHAR`
-- expected: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE VARCHAR`
-- actual: `ALTER TABLE integers ALTER COLUMN i TYPE VARCHAR`
-- error: ``
-
-### `mismatch` `tests/test_transpile.py:754`
-
-- test: `test_alter`
-- helper: `validate`
-- read/write: `sqlite` -> `postgres`
-- sql: `ALTER TABLE integers ALTER i TYPE VARCHAR COLLATE foo USING bar`
-- expected: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE VARCHAR COLLATE foo USING bar`
-- actual: `ALTER TABLE integers ALTER COLUMN i TYPE VARCHAR COLLATE foo`
-- error: ``
-
 ### `mismatch` `tests/test_transpile.py:645`
 
 - test: `test_comment_single_line_with_block_close`
@@ -170,4 +150,24 @@ Filtered by read/write: `0`
 - expected: ``
 - actual: ``
 - error: `ParseError: Required keyword: 'expression' missing for <class 'sqlglot.expressions.core.Mul'>. Line 1, Col: 33.\n  select /* asfd /* asdf */ asdf *[4m/[0m 1`
+
+### `mismatch` `tests/test_transpile.py:123`
+
+- test: `test_comments`
+- helper: `validate`
+- read/write: `sqlite` -> `postgres`
+- sql: `SELECT c /* foo */ AS alias`
+- expected: `SELECT c AS alias /* foo */`
+- actual: `SELECT c AS alias`
+- error: ``
+
+### `rust-error` `tests/test_transpile.py:127`
+
+- test: `test_comments`
+- helper: `validate`
+- read/write: `sqlite` -> `postgres`
+- sql: `SELECT c AS /* foo */ (a, b, c) FROM t`
+- expected: `SELECT c AS (a, b, c) /* foo */ FROM t`
+- actual: ``
+- error: `ValueError: Parser error: Expected identifier, got LParen ('(') at line 1 col 23`
 

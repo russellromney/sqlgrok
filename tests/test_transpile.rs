@@ -2398,6 +2398,40 @@ fn test_alter_table_constraints_to_sqlite() {
     }
 }
 
+#[test]
+fn test_alter_column_type_rendering() {
+    validate_with_dialect(
+        "ALTER TABLE integers ALTER i TYPE VARCHAR",
+        "ALTER TABLE integers ALTER COLUMN i SET DATA TYPE VARCHAR",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "ALTER TABLE integers ALTER i TYPE VARCHAR",
+        "ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "ALTER TABLE integers ALTER i TYPE VARCHAR COLLATE foo USING bar",
+        "ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT COLLATE foo USING bar",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "ALTER TABLE integers ALTER i TYPE VARCHAR COLLATE foo USING bar",
+        "ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT COLLATE foo USING bar",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "ALTER TABLE integers ALTER COLUMN i SET DATA TYPE VARCHAR",
+        "ALTER TABLE integers ALTER COLUMN i SET DATA TYPE VARCHAR",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – Transaction statements
 // (from Python identity.sql)

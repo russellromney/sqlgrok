@@ -5556,13 +5556,18 @@ impl<'a> Parser<'a> {
                 let _ = self.match_keyword("DATA");
                 let _ = self.match_keyword("TYPE");
                 let data_type = self.parse_data_type()?;
+                let mut tail_tokens: Vec<String> = Vec::new();
                 while !matches!(
                     self.peek_type(),
                     TokenType::Comma | TokenType::Semicolon | TokenType::Eof
                 ) {
-                    self.advance();
+                    tail_tokens.push(self.advance_text_owned());
                 }
-                Ok(AlterTableAction::AlterColumnType { name, data_type })
+                Ok(AlterTableAction::AlterColumnType {
+                    name,
+                    data_type,
+                    tail: tail_tokens.join(" "),
+                })
             } else {
                 // Collect the raw text of the tail.
                 let mut tail_tokens: Vec<String> = Vec::new();

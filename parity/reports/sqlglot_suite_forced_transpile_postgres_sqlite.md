@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11943 |
-| `mismatch` | 1031 |
+| `match` | 11944 |
+| `mismatch` | 1030 |
 | `oracle-error` | 1456 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -32,8 +32,8 @@ Filtered by read/write: `0`
 | `rust-error` | `validate_identity` | 343 |
 | `rust-error` | `validate_all` | 243 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `match` | `validate` | 110 |
-| `mismatch` | `validate` | 64 |
+| `match` | `validate` | 111 |
+| `mismatch` | `validate` | 63 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 6 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -101,16 +101,6 @@ Filtered by read/write: `0`
 - actual: ``
 - error: `ParseError: Expected table name but got <Token token_type: TokenType.SENTINEL, text: SENTINEL, line: 1, col: 1, start: 0, end: 0, comments: []>. Line 1, Col: 13.\n  SELECT x [4mjoin[0m`
 
-### `mismatch` `tests/test_transpile.py:754`
-
-- test: `test_alter`
-- helper: `validate`
-- read/write: `postgres` -> `sqlite`
-- sql: `ALTER TABLE integers ALTER i TYPE VARCHAR COLLATE foo USING bar`
-- expected: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT COLLATE foo USING bar`
-- actual: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT COLLATE foo`
-- error: ``
-
 ### `mismatch` `tests/test_transpile.py:645`
 
 - test: `test_comment_single_line_with_block_close`
@@ -170,4 +160,14 @@ Filtered by read/write: `0`
 - expected: `SELECT c AS alias /* foo */`
 - actual: `SELECT c AS alias`
 - error: ``
+
+### `rust-error` `tests/test_transpile.py:127`
+
+- test: `test_comments`
+- helper: `validate`
+- read/write: `postgres` -> `sqlite`
+- sql: `SELECT c AS /* foo */ (a, b, c) FROM t`
+- expected: `SELECT c AS (a, b, c) /* foo */ FROM t`
+- actual: ``
+- error: `ValueError: Parser error: Expected identifier, got LParen ('(') at line 1 col 23`
 

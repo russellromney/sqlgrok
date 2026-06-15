@@ -1876,18 +1876,20 @@ impl Generator {
                     self.write_keyword("TO ");
                     self.write(new_name);
                 }
-                AlterTableAction::AlterColumnType { name, data_type } => {
+                AlterTableAction::AlterColumnType {
+                    name,
+                    data_type,
+                    tail,
+                } => {
                     self.write_keyword("ALTER COLUMN ");
                     self.write(name);
                     self.write(" ");
-                    if matches!(self.dialect, Some(Dialect::Sqlite)) {
-                        // Python SQLGlot expands ALTER COLUMN ... TYPE foo to
-                        // ALTER COLUMN ... SET DATA TYPE foo for SQLite output.
-                        self.write_keyword("SET DATA TYPE ");
-                    } else {
-                        self.write_keyword("TYPE ");
-                    }
+                    self.write_keyword("SET DATA TYPE ");
                     self.gen_data_type(data_type);
+                    if !tail.is_empty() {
+                        self.write(" ");
+                        self.write(tail);
+                    }
                 }
                 AlterTableAction::AlterColumnRaw { name, tail } => {
                     self.write_keyword("ALTER COLUMN ");

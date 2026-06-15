@@ -2130,6 +2130,8 @@ pub enum AlterTableAction {
     AlterColumnType {
         name: String,
         data_type: DataType,
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        tail: String,
     },
     AlterColumnRaw {
         name: String,

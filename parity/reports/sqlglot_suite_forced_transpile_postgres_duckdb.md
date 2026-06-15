@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7051 |
-| `mismatch` | 5923 |
+| `match` | 7176 |
+| `mismatch` | 5798 |
 | `oracle-error` | 1456 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -23,17 +23,17 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 4560 |
-| `mismatch` | `validate_all` | 4473 |
-| `match` | `validate_identity` | 2432 |
-| `mismatch` | `validate_identity` | 1335 |
+| `match` | `validate_all` | 4648 |
+| `mismatch` | `validate_all` | 4385 |
+| `match` | `validate_identity` | 2467 |
+| `mismatch` | `validate_identity` | 1300 |
 | `oracle-error` | `validate_identity` | 949 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 343 |
 | `rust-error` | `validate_all` | 243 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
-| `mismatch` | `validate` | 115 |
-| `match` | `validate` | 59 |
+| `mismatch` | `validate` | 113 |
+| `match` | `validate` | 61 |
 | `unsupported-harness-shape` | `validate_identity` | 10 |
 | `oracle-error` | `validate` | 6 |
 | `unsupported-harness-shape` | `validate` | 5 |
@@ -43,22 +43,22 @@ Filtered by read/write: `0`
 
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
-| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 592 |
-| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 591 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 392 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 340 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 288 |
+| `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 594 |
+| `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 589 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 389 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 343 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 289 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 274 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 235 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 218 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 234 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 219 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 174 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 172 |
-| `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 159 |
-| `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 152 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 171 |
+| `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 158 |
+| `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 150 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 147 |
 | `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 116 |
-| `mismatch` | `tests/dialects/test_dialect.py` | `test_cast` | 110 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 106 |
+| `match` | `tests/dialects/test_dialect.py` | `test_cast` | 112 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 107 |
 | `mismatch` | `tests/dialects/test_presto.py` | `test_presto` | 105 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 104 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 102 |
@@ -121,26 +121,6 @@ Filtered by read/write: `0`
 - actual: ``
 - error: `ParseError: Expected table name but got <Token token_type: TokenType.SENTINEL, text: SENTINEL, line: 1, col: 1, start: 0, end: 0, comments: []>. Line 1, Col: 13.\n  SELECT x [4mjoin[0m`
 
-### `mismatch` `tests/test_transpile.py:750`
-
-- test: `test_alter`
-- helper: `validate`
-- read/write: `postgres` -> `duckdb`
-- sql: `ALTER TABLE integers ALTER i TYPE VARCHAR`
-- expected: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT`
-- actual: `ALTER TABLE integers ALTER COLUMN i TYPE VARCHAR`
-- error: ``
-
-### `mismatch` `tests/test_transpile.py:754`
-
-- test: `test_alter`
-- helper: `validate`
-- read/write: `postgres` -> `duckdb`
-- sql: `ALTER TABLE integers ALTER i TYPE VARCHAR COLLATE foo USING bar`
-- expected: `ALTER TABLE integers ALTER COLUMN i SET DATA TYPE TEXT COLLATE foo USING bar`
-- actual: `ALTER TABLE integers ALTER COLUMN i TYPE VARCHAR COLLATE foo`
-- error: ``
-
 ### `mismatch` `tests/test_transpile.py:645`
 
 - test: `test_comment_single_line_with_block_close`
@@ -169,5 +149,25 @@ Filtered by read/write: `0`
 - sql: `SELECT c /* c1 /* c2 */ c3 */`
 - expected: `SELECT c /* c1 / * c2 * / c3 */`
 - actual: `SELECT c`
+- error: ``
+
+### `mismatch` `tests/test_transpile.py:658`
+
+- test: `test_comment_single_line_with_block_close`
+- helper: `validate`
+- read/write: `postgres` -> `duckdb`
+- sql: `SELECT c /* c1 /* c2 /* c3 */ */ */`
+- expected: `SELECT c /* c1 / * c2 / * c3 * / * / */`
+- actual: `SELECT c`
+- error: ``
+
+### `mismatch` `tests/test_transpile.py:119`
+
+- test: `test_comments`
+- helper: `validate`
+- read/write: `postgres` -> `duckdb`
+- sql: `select /* asfd /* asdf */ asdf */ 1`
+- expected: `/* asfd / * asdf * / asdf */ SELECT 1`
+- actual: `SELECT 1`
 - error: ``
 

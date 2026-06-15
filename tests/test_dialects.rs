@@ -1369,7 +1369,7 @@ fn test_validate_all_cast_string_to_text() {
             (Dialect::Mysql, "SELECT CAST(a AS CHAR)"),
             (Dialect::Sqlite, "SELECT CAST(a AS TEXT)"),
             (Dialect::BigQuery, "SELECT CAST(a AS STRING)"),
-            (Dialect::DuckDb, "SELECT CAST(a AS STRING)"),
+            (Dialect::DuckDb, "SELECT CAST(a AS TEXT)"),
             (Dialect::Redshift, "SELECT CAST(a AS TEXT)"),
             (Dialect::Materialize, "SELECT CAST(a AS TEXT)"),
             (Dialect::RisingWave, "SELECT CAST(a AS TEXT)"),
