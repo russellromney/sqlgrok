@@ -864,7 +864,10 @@ fn test_sqlite_raw_create_table_pretty_parity() {
 fn test_pretty_raw_non_create_table_preserves_body() {
     let sql = "COPY t FROM STDIN\n    1\talpha\n    2\tbeta";
     let ast = parse(sql, Dialect::Sqlite).unwrap_or_else(|e| panic!("Parse failed: {}", e));
-    assert_eq!(generate_pretty(&ast, Dialect::Sqlite), sql);
+    assert_eq!(
+        generate_pretty(&ast, Dialect::Sqlite),
+        "COPY INTO t FROM STDIN\n    1\talpha\n    2\tbeta"
+    );
 }
 
 #[test]

@@ -1,5 +1,6 @@
 use crate::ast::*;
 use crate::dialects::{self, Dialect};
+use std::borrow::Cow;
 
 fn raw_args_contain_function_clause(raw_args: &str) -> bool {
     let upper = raw_args.to_ascii_uppercase();
@@ -15,6 +16,27 @@ fn sqlite_function_raw_args(raw_args: &str) -> String {
     raw_args
         .replace(" IGNORE NULLS", "")
         .replace(" RESPECT NULLS", "")
+}
+
+fn normalize_sqlite_raw_table_source_sql(sql: &str) -> Cow<'_, str> {
+    let mut normalized = match dialects::rewrite_unnest_with_offset(sql) {
+        Some(rewritten) => Cow::Owned(rewritten),
+        None => Cow::Borrowed(sql),
+    };
+    if normalized.contains('`') {
+        normalized = Cow::Owned(normalized.replace('`', "\""));
+    }
+    normalized = Cow::Owned(dialects::uppercase_function_names_in_raw_sql(&normalized));
+    Cow::Owned(dialects::normalize_typed_literals_in_raw_sql(&normalized))
+}
+
+fn normalize_sqlite_raw_statement_sql(sql: &str) -> Cow<'_, str> {
+    let trimmed = sql.trim_start().to_ascii_uppercase();
+    if trimmed.starts_with("PIVOT ") || trimmed.starts_with("UNPIVOT ") {
+        return Cow::Borrowed("");
+    }
+    let copied = dialects::normalize_postgres_copy_raw(sql);
+    Cow::Owned(dialects::normalize_insert_into_function(&copied))
 }
 
 fn should_render_nulls_ordering(dialect: Option<Dialect>, item: &OrderByItem) -> bool {
@@ -303,10 +325,15 @@ impl Generator {
             }
             Statement::Raw(s) => {
                 self.gen_comments(&s.comments);
-                if self.pretty && raw_starts_with_keyword(&s.sql, "CREATE TABLE") {
-                    self.write(&pretty_raw_sql(&s.sql));
+                let sql = if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                    normalize_sqlite_raw_statement_sql(&s.sql)
                 } else {
-                    self.write(&s.sql);
+                    Cow::Borrowed(s.sql.as_str())
+                };
+                if self.pretty && raw_starts_with_keyword(sql.as_ref(), "CREATE TABLE") {
+                    self.write(&pretty_raw_sql(sql.as_ref()));
+                } else {
+                    self.write(sql.as_ref());
                 }
             }
             Statement::Expression(e) => self.gen_expr(e),
@@ -684,6 +711,10 @@ impl Generator {
                 alias,
                 alias_quote_style,
             } => {
+                if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                    self.gen_table_source(source);
+                    return;
+                }
                 self.gen_table_source(source);
                 self.write(" ");
                 self.write_keyword("PIVOT");
@@ -713,6 +744,10 @@ impl Generator {
                 alias,
                 alias_quote_style,
             } => {
+                if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                    self.gen_table_source(source);
+                    return;
+                }
                 self.gen_table_source(source);
                 self.write(" ");
                 self.write_keyword("UNPIVOT");
@@ -757,6 +792,12 @@ impl Generator {
     }
 
     fn write_raw_table_source_sql(&mut self, sql: &str) {
+        let normalized = if matches!(self.dialect, Some(Dialect::Sqlite)) {
+            normalize_sqlite_raw_table_source_sql(sql)
+        } else {
+            Cow::Borrowed(sql)
+        };
+        let sql = normalized.as_ref();
         if matches!(self.dialect, Some(Dialect::Sqlite))
             && sql
                 .get(..10)

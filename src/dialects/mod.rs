@@ -359,14 +359,6 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             if let Some(having) = &mut sel.having {
                 transform_expr_in_place(having, source, target);
             }
-            if matches!(target, Dialect::Sqlite) {
-                if let Some(from) = &mut sel.from {
-                    strip_sqlite_unpivot_table_source(&mut from.source);
-                }
-                for join in &mut sel.joins {
-                    strip_sqlite_unpivot_table_source(&mut join.table);
-                }
-            }
             if matches!(source, Dialect::Sqlite) && matches!(target, Dialect::Sqlite) {
                 for join in &mut sel.joins {
                     if join.join_type == JoinType::Comma {
@@ -399,17 +391,6 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                     normalize_postgres_sqlite_raw_table_source(&mut join.table);
                 }
             }
-            // Rewrite `UNNEST(x) AS alias WITH OFFSET [AS pos]` into the
-            // postgres-style `UNNEST(x) WITH ORDINALITY AS alias` for any
-            // source dialect with sqlite target.
-            if matches!(target, Dialect::Sqlite) {
-                if let Some(from) = &mut sel.from {
-                    normalize_sqlite_unnest_with_offset_in_table_source(&mut from.source);
-                }
-                for join in &mut sel.joins {
-                    normalize_sqlite_unnest_with_offset_in_table_source(&mut join.table);
-                }
-            }
             // UNNEST([…]) inside a Raw table source needs source-specific
             // rewrites for sqlite output:
             //   - sqlite source: → UNNEST("…")  (quoted-id fallback)
@@ -420,22 +401,6 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 }
                 for join in &mut sel.joins {
                     rewrite_unnest_array_literal_in_table_source(&mut join.table, source);
-                }
-            }
-            // Replace backticks with double-quotes inside Raw table
-            // sources (e.g. `UNNEST(\`a\`.\`b\`)`) for sqlite target.
-            if matches!(target, Dialect::Sqlite) {
-                if let Some(from) = &mut sel.from {
-                    drop_pivot_in_table_source(&mut from.source);
-                    rewrite_backticks_in_table_source(&mut from.source);
-                    uppercase_function_names_in_table_source(&mut from.source);
-                    normalize_typed_literals_in_table_source(&mut from.source);
-                }
-                for join in &mut sel.joins {
-                    drop_pivot_in_table_source(&mut join.table);
-                    rewrite_backticks_in_table_source(&mut join.table);
-                    uppercase_function_names_in_table_source(&mut join.table);
-                    normalize_typed_literals_in_table_source(&mut join.table);
                 }
             }
             // Recurse into table sources to transform inner Expr nodes
@@ -570,26 +535,6 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             }
             if is_postgres_family(source) && matches!(target, Dialect::Sqlite) {
                 raw.sql = normalize_postgres_recursive_cte_raw(&raw.sql);
-            }
-            // COPY ... renders as COPY INTO ... for the sqlite target,
-            // regardless of source dialect.
-            if matches!(target, Dialect::Sqlite) {
-                raw.sql = normalize_postgres_copy_raw(&raw.sql);
-            }
-            // INSERT INTO [TABLE] FUNCTION <name>(...) — drop the TABLE
-            // keyword and uppercase the table-function name.
-            if matches!(target, Dialect::Sqlite) {
-                raw.sql = normalize_insert_into_function(&raw.sql);
-            }
-            // SQLite can't represent a DuckDB-style PIVOT/UNPIVOT statement;
-            // SQLGlot drops it entirely. (Only fires when the statement fell
-            // through to a raw passthrough; parsed pivots are handled in the
-            // table-source path.)
-            if matches!(target, Dialect::Sqlite) {
-                let trimmed = raw.sql.trim_start().to_ascii_uppercase();
-                if trimmed.starts_with("PIVOT ") || trimmed.starts_with("UNPIVOT ") {
-                    raw.sql = String::new();
-                }
             }
             // Python SQLGlot drops SHOW statements that the mysql parser
             // recognizes (TABLES, DATABASES, INDEX, COLUMNS, CREATE *,
@@ -756,7 +701,7 @@ fn normalize_postgres_recursive_cte_raw(sql: &str) -> String {
     out
 }
 
-fn normalize_postgres_copy_raw(sql: &str) -> String {
+pub(crate) fn normalize_postgres_copy_raw(sql: &str) -> String {
     let trimmed = sql.trim_start();
     // SQLGlot renders a COPY statement as `COPY INTO ...` for the sqlite
     // target. Insert INTO after COPY unless it's already there.
@@ -780,7 +725,7 @@ fn normalize_postgres_copy_raw(sql: &str) -> String {
 
 /// `INSERT INTO [TABLE] FUNCTION <name>(...)` drops the optional TABLE
 /// keyword and uppercases the table-function name for the sqlite target.
-fn normalize_insert_into_function(sql: &str) -> String {
+pub(crate) fn normalize_insert_into_function(sql: &str) -> String {
     let upper = sql.to_ascii_uppercase();
     let trimmed_upper = upper.trim_start();
     if !trimmed_upper.starts_with("INSERT INTO ") {
@@ -823,23 +768,6 @@ fn normalize_postgres_sqlite_raw_table_source(source: &mut TableSource) {
     }
 }
 
-fn normalize_sqlite_unnest_with_offset_in_table_source(source: &mut TableSource) {
-    match source {
-        TableSource::Raw { sql, .. } => {
-            if let Some(rewritten) = rewrite_unnest_with_offset(sql) {
-                *sql = rewritten;
-            }
-        }
-        TableSource::Lateral { source } => {
-            normalize_sqlite_unnest_with_offset_in_table_source(source);
-        }
-        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
-            normalize_sqlite_unnest_with_offset_in_table_source(source);
-        }
-        _ => {}
-    }
-}
-
 fn rewrite_unnest_array_literal_in_table_source(source: &mut TableSource, src_dialect: Dialect) {
     match source {
         TableSource::Raw { sql, .. } => {
@@ -865,47 +793,7 @@ fn rewrite_unnest_array_literal_in_table_source(source: &mut TableSource, src_di
     }
 }
 
-/// SQLite can't represent PIVOT/UNPIVOT, so SQLGlot drops the operator and
-/// keeps the underlying table source. Recursively unwrap any pivot wrapper.
-fn drop_pivot_in_table_source(source: &mut TableSource) {
-    loop {
-        match source {
-            TableSource::Pivot { source: inner, .. }
-            | TableSource::Unpivot { source: inner, .. } => {
-                let inner = std::mem::replace(
-                    inner.as_mut(),
-                    TableSource::Raw {
-                        sql: String::new(),
-                        alias: None,
-                        alias_quote_style: QuoteStyle::None,
-                    },
-                );
-                *source = inner;
-            }
-            TableSource::Lateral { source: inner } => {
-                drop_pivot_in_table_source(inner);
-                return;
-            }
-            _ => return,
-        }
-    }
-}
-
-fn rewrite_backticks_in_table_source(source: &mut TableSource) {
-    match source {
-        TableSource::Raw { sql, .. } if sql.contains('`') => {
-            *sql = sql.replace('`', "\"");
-        }
-        TableSource::Raw { .. } => {}
-        TableSource::Lateral { source } => rewrite_backticks_in_table_source(source),
-        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
-            rewrite_backticks_in_table_source(source);
-        }
-        _ => {}
-    }
-}
-
-fn uppercase_function_names_in_raw_sql(sql: &str) -> String {
+pub(crate) fn uppercase_function_names_in_raw_sql(sql: &str) -> String {
     // Walk the string; whenever we see an unquoted identifier
     // immediately followed by `(`, uppercase the identifier — unless
     // the identifier is acting as an alias (preceded by `AS `).
@@ -971,7 +859,7 @@ fn uppercase_function_names_in_raw_sql(sql: &str) -> String {
 ///   DATE 'literal'       → DATE('literal')
 ///   TIMESTAMP 'literal'  → CAST('literal' AS TIMESTAMP)
 ///   INTERVAL N UNIT      → INTERVAL 'N' UNIT  (number → string literal)
-fn normalize_typed_literals_in_raw_sql(sql: &str) -> String {
+pub(crate) fn normalize_typed_literals_in_raw_sql(sql: &str) -> String {
     let mut out = String::with_capacity(sql.len() + 16);
     let bytes = sql.as_bytes();
     let mut i = 0;
@@ -1077,36 +965,6 @@ fn normalize_typed_literals_in_raw_sql(sql: &str) -> String {
     out
 }
 
-fn normalize_typed_literals_in_table_source(source: &mut TableSource) {
-    match source {
-        TableSource::Raw { sql, .. } => {
-            *sql = normalize_typed_literals_in_raw_sql(sql);
-        }
-        TableSource::Lateral { source } => {
-            normalize_typed_literals_in_table_source(source);
-        }
-        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
-            normalize_typed_literals_in_table_source(source);
-        }
-        _ => {}
-    }
-}
-
-fn uppercase_function_names_in_table_source(source: &mut TableSource) {
-    match source {
-        TableSource::Raw { sql, .. } => {
-            *sql = uppercase_function_names_in_raw_sql(sql);
-        }
-        TableSource::Lateral { source } => {
-            uppercase_function_names_in_table_source(source);
-        }
-        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
-            uppercase_function_names_in_table_source(source);
-        }
-        _ => {}
-    }
-}
-
 /// For postgres/mysql source → sqlite target, `UNNEST([items])`
 /// becomes `UNNEST(ARRAY(items))` — Python SQLGlot wraps the
 /// bracketed list in an ARRAY function call. Handles nested brackets
@@ -1186,7 +1044,7 @@ fn rewrite_unnest_array_literal_sqlite(sql: &str) -> Option<String> {
 /// Rewrites BigQuery `UNNEST(expr) [AS alias] WITH OFFSET [AS pos]` into
 /// Postgres-style `UNNEST(expr) WITH ORDINALITY AS alias` (Python
 /// SQLGlot's sqlite output). The offset alias is dropped.
-fn rewrite_unnest_with_offset(sql: &str) -> Option<String> {
+pub(crate) fn rewrite_unnest_with_offset(sql: &str) -> Option<String> {
     let upper = sql.to_ascii_uppercase();
     let unnest_pos = upper.find("UNNEST")?;
     let with_offset_pos = find_case_insensitive(sql, "WITH OFFSET")?;
@@ -4245,19 +4103,5 @@ fn transform_quotes_in_table_source(source: &mut TableSource, target: Dialect) {
             transform_quotes_in_table_source(source, target);
         }
         TableSource::Unnest { .. } => {}
-    }
-}
-
-fn strip_sqlite_unpivot_table_source(source: &mut TableSource) {
-    match source {
-        TableSource::Unpivot { source: inner, .. } => {
-            let mut replacement = (**inner).clone();
-            strip_sqlite_unpivot_table_source(&mut replacement);
-            *source = replacement;
-        }
-        TableSource::Lateral { source } | TableSource::Pivot { source, .. } => {
-            strip_sqlite_unpivot_table_source(source);
-        }
-        _ => {}
     }
 }
