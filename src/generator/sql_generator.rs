@@ -3196,6 +3196,80 @@ impl Generator {
         false
     }
 
+    fn gen_sqlite_typed_function_lowering(
+        &mut self,
+        func: &TypedFunction,
+        filter: Option<&Expr>,
+        over: Option<&WindowSpec>,
+    ) -> bool {
+        if !matches!(self.dialect, Some(Dialect::Sqlite)) {
+            return false;
+        }
+
+        match func {
+            TypedFunction::Greatest { exprs } => {
+                if exprs.len() == 1 {
+                    self.gen_expr(&exprs[0]);
+                } else {
+                    self.write_keyword("MAX(");
+                    self.gen_expr_list(exprs);
+                    self.write(")");
+                    self.gen_filter_and_over(filter, over);
+                }
+                true
+            }
+            TypedFunction::Least { exprs } => {
+                if exprs.len() == 1 {
+                    self.gen_expr(&exprs[0]);
+                } else {
+                    self.write_keyword("MIN(");
+                    self.gen_expr_list(exprs);
+                    self.write(")");
+                    self.gen_filter_and_over(filter, over);
+                }
+                true
+            }
+            TypedFunction::ParseJSON { expr } => {
+                self.gen_expr(expr);
+                true
+            }
+            TypedFunction::Upper { expr } if filter.is_none() && over.is_none() => {
+                if matches!(
+                    expr.as_ref(),
+                    Expr::TypedFunction {
+                        func: TypedFunction::Hex { .. },
+                        ..
+                    }
+                ) {
+                    self.gen_expr(expr);
+                    true
+                } else {
+                    false
+                }
+            }
+            TypedFunction::Mod { left, right } if filter.is_none() && over.is_none() => {
+                let needs_paren = |e: &Expr| matches!(e, Expr::BinaryOp { .. });
+                if needs_paren(left) {
+                    self.write("(");
+                    self.gen_expr(left);
+                    self.write(")");
+                } else {
+                    self.gen_expr(left);
+                }
+                self.write(" % ");
+                if needs_paren(right) {
+                    self.write("(");
+                    self.gen_expr(right);
+                    self.write(")");
+                } else {
+                    self.gen_expr(right);
+                }
+                true
+            }
+            _ => false,
+        }
+    }
+
     fn gen_expr(&mut self, expr: &Expr) {
         match expr {
             Expr::Column {
@@ -3251,6 +3325,11 @@ impl Generator {
                 self.write("'");
             }
             Expr::StringLiteral(s) => {
+                self.write("'");
+                self.write(&s.replace('\'', "''"));
+                self.write("'");
+            }
+            Expr::JsonKey(s) => {
                 self.write("'");
                 self.write(&s.replace('\'', "''"));
                 self.write("'");
@@ -3999,6 +4078,9 @@ impl Generator {
                 self.gen_expr(body);
             }
             Expr::TypedFunction { func, filter, over } => {
+                if self.gen_sqlite_typed_function_lowering(func, filter.as_deref(), over.as_ref()) {
+                    return;
+                }
                 self.gen_typed_function(func);
 
                 if let Some(filter_expr) = filter {
@@ -4207,13 +4289,29 @@ impl Generator {
     }
 
     fn gen_sqlite_json_path(&mut self, path: &Expr) {
-        if let Expr::StringLiteral(s) = path {
-            let normalized = normalize_sqlite_json_path(s);
-            self.write("'");
-            self.write(&normalized.replace('\'', "''"));
-            self.write("'");
-        } else {
-            self.gen_expr(path);
+        match path {
+            Expr::StringLiteral(s) => {
+                let normalized = if s.starts_with('$') {
+                    normalize_sqlite_json_path(s)
+                } else {
+                    sqlite_json_key_path(s)
+                };
+                self.write("'");
+                self.write(&normalized.replace('\'', "''"));
+                self.write("'");
+            }
+            Expr::JsonKey(s) => {
+                let normalized = sqlite_json_key_path(s);
+                self.write("'");
+                self.write(&normalized.replace('\'', "''"));
+                self.write("'");
+            }
+            Expr::Number(index) => {
+                self.write("'$[");
+                self.write(index);
+                self.write("]'");
+            }
+            other => self.gen_expr(other),
         }
     }
 
@@ -4254,7 +4352,11 @@ impl Generator {
         if matches!(dialect, Some(Dialect::Sqlite)) {
             self.gen_expr(expr);
             self.write(if as_text { " ->> " } else { " -> " });
-            self.gen_sqlite_json_path(&path_expr);
+            if path_is_literal {
+                self.gen_sqlite_json_path(&path_expr);
+            } else {
+                self.gen_expr(&path_expr);
+            }
             return;
         }
 
@@ -5780,6 +5882,19 @@ fn normalize_sqlite_json_path(path: &str) -> String {
         s.truncate(s.len() - 2);
     }
     s
+}
+
+fn sqlite_json_key_path(key: &str) -> String {
+    if key.chars().all(|c| c == '_' || c.is_ascii_alphanumeric())
+        && key
+            .chars()
+            .next()
+            .is_some_and(|c| c == '_' || c.is_ascii_alphabetic())
+    {
+        format!("$.{key}")
+    } else {
+        format!("$.\"{}\"", key.replace('"', "\\\""))
+    }
 }
 
 /// Render an expression to a SQL-ish string for embedding inside string

@@ -6509,14 +6509,14 @@ impl<'a> Parser<'a> {
                     collation,
                 };
             } else if self.match_token(TokenType::Arrow) {
-                let path = self.parse_primary()?;
+                let path = self.parse_json_access_path(false)?;
                 expr = Expr::JsonAccess {
                     expr: Box::new(expr),
                     path: Box::new(path),
                     as_text: false,
                 };
             } else if self.match_token(TokenType::DoubleArrow) {
-                let path = self.parse_unary()?;
+                let path = self.parse_json_access_path(true)?;
                 expr = Expr::JsonAccess {
                     expr: Box::new(expr),
                     path: Box::new(path),
@@ -6629,6 +6629,22 @@ impl<'a> Parser<'a> {
         }
 
         Ok(expr)
+    }
+
+    fn parse_json_access_path(&mut self, allow_unary: bool) -> Result<Expr> {
+        let path = if allow_unary {
+            self.parse_unary()?
+        } else {
+            self.parse_primary()?
+        };
+
+        if crate::dialects::is_postgres_family(self.dialect)
+            && let Expr::StringLiteral(key) = path
+        {
+            Ok(Expr::JsonKey(key))
+        } else {
+            Ok(path)
+        }
     }
 
     fn parse_over_spec(&mut self) -> Result<WindowSpec> {

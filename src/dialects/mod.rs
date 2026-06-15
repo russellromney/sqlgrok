@@ -1386,108 +1386,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         // format strings are canonicalized by the parser and rendered by
         // the generator.
         Expr::TypedFunction { func, filter, over } => {
-            if matches!(target, Dialect::Sqlite) {
-                match func {
-                    TypedFunction::Greatest { exprs } => {
-                        if exprs.len() == 1 {
-                            let mut exprs = exprs;
-                            return transform_expr(exprs.remove(0), source, target);
-                        }
-                        return Expr::Function {
-                            name: "MAX".to_string(),
-                            args: exprs
-                                .into_iter()
-                                .map(|e| transform_expr(e, source, target))
-                                .collect(),
-                            distinct: false,
-                            filter,
-                            over,
-                        };
-                    }
-                    TypedFunction::Least { exprs } => {
-                        if exprs.len() == 1 {
-                            let mut exprs = exprs;
-                            return transform_expr(exprs.remove(0), source, target);
-                        }
-                        return Expr::Function {
-                            name: "MIN".to_string(),
-                            args: exprs
-                                .into_iter()
-                                .map(|e| transform_expr(e, source, target))
-                                .collect(),
-                            distinct: false,
-                            filter,
-                            over,
-                        };
-                    }
-                    TypedFunction::ParseJSON { expr } => {
-                        return transform_expr(*expr, source, target);
-                    }
-                    TypedFunction::Left { expr, n } if !matches!(target, Dialect::Sqlite) => {
-                        return Expr::Function {
-                            name: "SUBSTR".to_string(),
-                            args: vec![
-                                transform_expr(*expr, source, target),
-                                Expr::Number("1".to_string()),
-                                transform_expr(*n, source, target),
-                            ],
-                            distinct: false,
-                            filter,
-                            over,
-                        };
-                    }
-                    TypedFunction::Right { expr, n } if !matches!(target, Dialect::Sqlite) => {
-                        return Expr::Function {
-                            name: "SUBSTR".to_string(),
-                            args: vec![
-                                transform_expr(*expr, source, target),
-                                Expr::UnaryOp {
-                                    op: UnaryOperator::Minus,
-                                    expr: Box::new(transform_expr(*n, source, target)),
-                                },
-                            ],
-                            distinct: false,
-                            filter,
-                            over,
-                        };
-                    }
-                    // UPPER(HEX(x)) → HEX(x) for SQLite — HEX output is
-                    // already uppercase, so SQLGlot drops the outer UPPER.
-                    TypedFunction::Upper { expr }
-                        if matches!(target, Dialect::Sqlite)
-                            && filter.is_none()
-                            && over.is_none()
-                            && matches!(
-                                expr.as_ref(),
-                                Expr::TypedFunction {
-                                    func: TypedFunction::Hex { .. },
-                                    ..
-                                }
-                            ) =>
-                    {
-                        return transform_expr(*expr, source, target);
-                    }
-                    TypedFunction::Mod { left, right } if filter.is_none() && over.is_none() => {
-                        let left = transform_expr(*left, source, target);
-                        let right = transform_expr(*right, source, target);
-                        let needs_paren = |e: &Expr| matches!(e, Expr::BinaryOp { .. });
-                        let wrap = |e: Expr| {
-                            if needs_paren(&e) {
-                                Expr::Nested(Box::new(e))
-                            } else {
-                                e
-                            }
-                        };
-                        return Expr::BinaryOp {
-                            left: Box::new(wrap(left)),
-                            op: BinaryOperator::Modulo,
-                            right: Box::new(wrap(right)),
-                        };
-                    }
-                    _ => {}
-                }
-            }
-
             let transformed_func = transform_typed_function(func, source, target);
             Expr::TypedFunction {
                 func: transformed_func,
@@ -1688,7 +1586,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             as_text,
         } => Expr::JsonAccess {
             expr: Box::new(transform_expr(*expr, source, target)),
-            path: Box::new(normalize_json_access_path(*path, target)),
+            path: Box::new(transform_expr(*path, source, target)),
             as_text,
         },
         Expr::Alias { expr, name } => Expr::Alias {
@@ -2149,18 +2047,6 @@ fn parse_interval_unit(unit: &str) -> Option<DateTimeField> {
         "MILLISECOND" => Some(DateTimeField::Millisecond),
         "MICROSECOND" => Some(DateTimeField::Microsecond),
         _ => None,
-    }
-}
-
-fn normalize_json_access_path(path: Expr, target: Dialect) -> Expr {
-    if !matches!(target, Dialect::Sqlite) {
-        return path;
-    }
-
-    match path {
-        Expr::StringLiteral(key) => Expr::StringLiteral(sqlite_json_key_path(&key)),
-        Expr::Number(index) => Expr::StringLiteral(format!("$[{index}]")),
-        other => other,
     }
 }
 

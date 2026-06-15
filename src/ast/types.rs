@@ -477,6 +477,9 @@ pub enum Expr {
     HexString(String),
     /// A string literal.
     StringLiteral(String),
+    /// A JSON object-key literal used by dialects whose JSON access
+    /// operator treats a string operand as a key rather than a JSONPath.
+    JsonKey(String),
     /// A Postgres escape string literal, `E'...'`.
     EscapedStringLiteral(String),
     /// A boolean literal.
@@ -2488,6 +2491,7 @@ impl Expr {
             | Expr::Number(_)
             | Expr::HexString(_)
             | Expr::StringLiteral(_)
+            | Expr::JsonKey(_)
             | Expr::EscapedStringLiteral(_)
             | Expr::Boolean(_)
             | Expr::Null
