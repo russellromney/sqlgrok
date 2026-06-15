@@ -8267,6 +8267,14 @@ impl<'a> Parser<'a> {
             // source. CURRENT_TIMESTAMP(n) keeps its precision argument and
             // stays a generic function.
             "CURRENT_TIMESTAMP" if args.is_empty() => TypedFunction::CurrentTimestamp,
+            "CURRENT_VERSION" if args.is_empty() => TypedFunction::Version,
+            "VERSION"
+                if args.is_empty()
+                    && (crate::dialects::is_mysql_family(dialect)
+                        || crate::dialects::is_postgres_family(dialect)) =>
+            {
+                TypedFunction::Version
+            }
             "CONVERT_TZ" if args.len() == 3 && crate::dialects::is_mysql_family(dialect) => {
                 let mut it = args.into_iter();
                 let timestamp = it.next()?;

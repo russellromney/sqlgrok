@@ -5547,6 +5547,43 @@ fn test_cross_source_sqlite_function_rewrites() {
 }
 
 #[test]
+fn test_version_functions() {
+    for read in [Dialect::Mysql, Dialect::Postgres] {
+        validate_with_dialect(
+            "SELECT VERSION()",
+            "SELECT SQLITE_VERSION()",
+            read,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect("SELECT VERSION()", "SELECT VERSION()", read, read);
+        validate_with_dialect(
+            "SELECT CURRENT_VERSION()",
+            "SELECT SQLITE_VERSION()",
+            read,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            "SELECT CURRENT_VERSION()",
+            "SELECT VERSION()",
+            read,
+            Dialect::Postgres,
+        );
+    }
+    validate_with_dialect(
+        "SELECT VERSION()",
+        "SELECT VERSION()",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT CURRENT_VERSION()",
+        "SELECT SQLITE_VERSION()",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_cross_source_sqlite_more_rewrites() {
     let cases: &[(&str, &str)] = &[
         ("SELECT TO_NUMBER(x)", "SELECT CAST(x AS REAL)"),

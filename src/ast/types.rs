@@ -817,6 +817,8 @@ pub enum TypedFunction {
     CurrentDate,
     /// `CURRENT_TIMESTAMP` / `NOW()` / `GETDATE()`
     CurrentTimestamp,
+    /// `VERSION()` / `CURRENT_VERSION()`
+    Version,
     /// `CONVERT_TIMEZONE([source_tz,] target_tz, timestamp)` / `CONVERT_TZ`
     ConvertTimezone {
         source_tz: Option<Box<Expr>>,
@@ -1106,7 +1108,9 @@ impl TypedFunction {
                 target_tz.walk(visitor);
                 timestamp.walk(visitor);
             }
-            TypedFunction::CurrentDate | TypedFunction::CurrentTimestamp => {}
+            TypedFunction::CurrentDate
+            | TypedFunction::CurrentTimestamp
+            | TypedFunction::Version => {}
             TypedFunction::TimeFromParts { parts } => {
                 for part in parts {
                     part.walk(visitor);
@@ -1395,6 +1399,7 @@ impl TypedFunction {
             },
             TypedFunction::CurrentDate => TypedFunction::CurrentDate,
             TypedFunction::CurrentTimestamp => TypedFunction::CurrentTimestamp,
+            TypedFunction::Version => TypedFunction::Version,
             TypedFunction::ConvertTimezone {
                 source_tz,
                 target_tz,

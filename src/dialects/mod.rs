@@ -2594,23 +2594,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     over: None,
                 };
             }
-            // Mysql / Postgres VERSION() → SQLITE_VERSION() for sqlite.
-            if (is_mysql_family(source) || is_postgres_family(source))
-                && matches!(target, Dialect::Sqlite)
-                && name.eq_ignore_ascii_case("VERSION")
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-                && new_args.is_empty()
-            {
-                return Expr::Function {
-                    name: "SQLITE_VERSION".to_string(),
-                    args: vec![],
-                    distinct: false,
-                    filter: None,
-                    over: None,
-                };
-            }
             // INSERT(s, pos, len, repl) → STUFF(...) for sqlite target
             // (Python SQLGlot's IR name for the 4-arg INSERT function).
             if matches!(target, Dialect::Sqlite)
@@ -2656,21 +2639,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                     name: "CURRENT_TIMESTAMP".to_string(),
                     quote_style: QuoteStyle::None,
                     table_quote_style: QuoteStyle::None,
-                };
-            }
-            if matches!(target, Dialect::Sqlite)
-                && name.eq_ignore_ascii_case("CURRENT_VERSION")
-                && !distinct
-                && filter.is_none()
-                && over.is_none()
-                && new_args.is_empty()
-            {
-                return Expr::Function {
-                    name: "SQLITE_VERSION".to_string(),
-                    args: vec![],
-                    distinct: false,
-                    filter: None,
-                    over: None,
                 };
             }
             if matches!(target, Dialect::Sqlite)

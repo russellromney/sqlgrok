@@ -908,6 +908,7 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
                 with_tz: false,
             })
         }
+        TypedFunction::Version => Some(DataType::Varchar(None)),
         TypedFunction::TimeFromParts { .. } => Some(DataType::Time { precision: None }),
         TypedFunction::UnixToTime { .. } => Some(DataType::Timestamp {
             precision: None,

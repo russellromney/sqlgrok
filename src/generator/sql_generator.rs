@@ -3831,6 +3831,13 @@ impl Generator {
             TypedFunction::CurrentTimestamp => {
                 self.write_keyword(crate::dialects::rules::render_current_timestamp(dialect));
             }
+            TypedFunction::Version => {
+                if matches!(dialect, Some(Dialect::Sqlite)) {
+                    self.write_keyword("SQLITE_VERSION()");
+                } else {
+                    self.write_keyword("VERSION()");
+                }
+            }
             TypedFunction::ConvertTimezone {
                 source_tz,
                 target_tz,
