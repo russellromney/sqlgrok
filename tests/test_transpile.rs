@@ -3317,6 +3317,34 @@ fn test_postgres_create_function_tail_identity_to_sqlite() {
 }
 
 #[test]
+fn test_ddl_type_rendering_to_sqlite() {
+    validate_with_dialect(
+        "CREATE SEQUENCE s AS INT",
+        "CREATE SEQUENCE s AS INTEGER",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "CREATE SEQUENCE s AS BIGINT",
+        "CREATE SEQUENCE s AS INTEGER",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "CREATE FUNCTION f(x VARCHAR, y INT DEFAULT 1) AS RETURN x",
+        "CREATE FUNCTION f(x TEXT, y INTEGER DEFAULT 1) AS RETURN x",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "CREATE FUNCTION f(x VARCHAR, y INT DEFAULT 1) AS RETURN x",
+        "CREATE FUNCTION f(x VARCHAR, y INT DEFAULT 1) AS RETURN x",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+}
+
+#[test]
 fn test_postgres_tablesample_to_sqlite() {
     validate_with_dialect(
         "SELECT * FROM t TABLESAMPLE SYSTEM (50)",

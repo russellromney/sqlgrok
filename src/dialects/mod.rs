@@ -562,16 +562,8 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 transform_expr_in_place(predicate, source, target);
             }
         }
-        Statement::CreateSequence(seq) => {
-            if let Some(as_type) = &mut seq.as_type {
-                *as_type = map_data_type_for_source(as_type.clone(), source, target);
-            }
-        }
         Statement::CreateFunction(func) => {
             for param in &mut func.params {
-                if let Some(data_type) = &mut param.data_type {
-                    *data_type = map_data_type_for_source(data_type.clone(), source, target);
-                }
                 if let Some(default) = &mut param.default {
                     transform_expr_in_place(default, source, target);
                 }

@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::dialects::Dialect;
+use crate::dialects::{self, Dialect};
 
 fn raw_args_contain_function_clause(raw_args: &str) -> bool {
     let upper = raw_args.to_ascii_uppercase();
@@ -2108,6 +2108,14 @@ impl Generator {
     // ══════════════════════════════════════════════════════════════
 
     fn gen_data_type(&mut self, dt: &DataType) {
+        if matches!(self.dialect, Some(Dialect::Sqlite)) {
+            let mapped = dialects::map_data_type(dt.clone(), Dialect::Sqlite);
+            if mapped != *dt {
+                self.gen_data_type(&mapped);
+                return;
+            }
+        }
+
         match dt {
             DataType::TinyInt => self.write("TINYINT"),
             DataType::SmallInt => self.write("SMALLINT"),
