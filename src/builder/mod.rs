@@ -1148,6 +1148,7 @@ impl SelectBuilder {
             ascending,
             explicit_direction: !ascending,
             nulls_first,
+            implicit_nulls: false,
         });
         self
     }
@@ -1454,6 +1455,7 @@ fn parse_order_by_item(s: &str, dialect: Dialect) -> Option<OrderByItem> {
         ascending,
         explicit_direction: !ascending || s.to_uppercase().ends_with(" ASC"),
         nulls_first,
+        implicit_nulls: false,
     })
 }
 

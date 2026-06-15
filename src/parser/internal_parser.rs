@@ -253,6 +253,7 @@ impl<'sql> InternalParser<'sql> {
             ascending,
             explicit_direction,
             nulls_first: None,
+            implicit_nulls: false,
         })
     }
 

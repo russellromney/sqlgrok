@@ -2616,15 +2616,17 @@ impl<'a> Parser<'a> {
                 (true, false)
             };
 
-            let nulls_first = if self.match_token(TokenType::Nulls) {
+            let (nulls_first, implicit_nulls) = if self.match_token(TokenType::Nulls) {
                 if self.match_token(TokenType::First) {
-                    Some(true)
+                    (Some(true), false)
                 } else {
                     self.expect(TokenType::Identifier)?; // LAST
-                    Some(false)
+                    (Some(false), false)
                 }
+            } else if crate::dialects::is_postgres_family(self.dialect) {
+                (Some(!ascending), true)
             } else {
-                None
+                (None, false)
             };
 
             items.push(OrderByItem {
@@ -2632,6 +2634,7 @@ impl<'a> Parser<'a> {
                 ascending,
                 explicit_direction,
                 nulls_first,
+                implicit_nulls,
             });
             if !self.match_token(TokenType::Comma) {
                 break;

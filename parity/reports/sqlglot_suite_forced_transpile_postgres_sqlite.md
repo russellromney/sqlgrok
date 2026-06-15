@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 11931 |
-| `mismatch` | 1043 |
+| `match` | 11939 |
+| `mismatch` | 1035 |
 | `oracle-error` | 1456 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -23,12 +23,12 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 8583 |
-| `match` | `validate_identity` | 3238 |
+| `match` | `validate_all` | 8587 |
+| `match` | `validate_identity` | 3242 |
 | `oracle-error` | `validate_identity` | 949 |
-| `mismatch` | `validate_identity` | 529 |
+| `mismatch` | `validate_identity` | 525 |
 | `oracle-error` | `validate_all` | 501 |
-| `mismatch` | `validate_all` | 450 |
+| `mismatch` | `validate_all` | 446 |
 | `rust-error` | `validate_identity` | 343 |
 | `rust-error` | `validate_all` | 243 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
@@ -45,7 +45,7 @@ Filtered by read/write: `0`
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 1094 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 687 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 487 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 490 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 344 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 339 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 262 |
@@ -57,7 +57,7 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 142 |
 | `match` | `tests/dialects/test_dialect.py` | `test_array` | 126 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 124 |
-| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 111 |
+| `match` | `tests/dialects/test_tsql.py` | `test_tsql` | 112 |
 | `match` | `tests/dialects/test_dialect.py` | `test_json` | 107 |
 | `match` | `tests/dialects/test_oracle.py` | `test_oracle` | 107 |
 | `match` | `tests/dialects/test_databricks.py` | `test_databricks` | 92 |

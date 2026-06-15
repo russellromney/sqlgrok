@@ -436,6 +436,9 @@ pub struct OrderByItem {
     pub explicit_direction: bool,
     /// NULLS FIRST / NULLS LAST
     pub nulls_first: Option<bool>,
+    /// Whether NULLS FIRST / NULLS LAST was inferred from source dialect semantics.
+    #[serde(default)]
+    pub implicit_nulls: bool,
 }
 
 // ═══════════════════════════════════════════════════════════════════════

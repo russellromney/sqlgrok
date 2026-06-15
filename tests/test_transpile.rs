@@ -432,6 +432,18 @@ fn test_postgres_interval_literal_to_sqlite() {
 fn test_postgres_order_by_nulls_to_sqlite() {
     validate_with_dialect(
         "SELECT a FROM t ORDER BY b",
+        "SELECT a FROM t ORDER BY b",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT a FROM t ORDER BY b NULLS LAST",
+        "SELECT a FROM t ORDER BY b NULLS LAST",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT a FROM t ORDER BY b",
         "SELECT a FROM t ORDER BY b NULLS LAST",
         Dialect::Postgres,
         Dialect::Sqlite,

@@ -3280,12 +3280,6 @@ fn transform_window_spec(mut spec: WindowSpec, source: Dialect, target: Dialect)
 fn transform_order_by_items(items: &mut [OrderByItem], source: Dialect, target: Dialect) {
     for item in items {
         transform_expr_in_place(&mut item.expr, source, target);
-        if is_postgres_family(source)
-            && matches!(target, Dialect::Sqlite)
-            && item.nulls_first.is_none()
-        {
-            item.nulls_first = Some(!item.ascending);
-        }
     }
 }
 
@@ -3482,6 +3476,7 @@ fn rewrite_postgres_distinct_on(
                 ascending: true,
                 explicit_direction: false,
                 nulls_first: None,
+                implicit_nulls: false,
             })
             .collect()
     } else {

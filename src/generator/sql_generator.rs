@@ -17,6 +17,10 @@ fn sqlite_function_raw_args(raw_args: &str) -> String {
         .replace(" RESPECT NULLS", "")
 }
 
+fn should_render_nulls_ordering(dialect: Option<Dialect>, item: &OrderByItem) -> bool {
+    !item.implicit_nulls || matches!(dialect, Some(Dialect::Sqlite))
+}
+
 fn sqlite_promoted_primary_key(ct: &CreateTableStatement) -> Option<(usize, usize)> {
     let (constraint_index, column_name) =
         ct.constraints
@@ -887,7 +891,9 @@ impl Generator {
                 self.write(" ");
                 self.write_keyword("ASC");
             }
-            if let Some(nulls_first) = item.nulls_first {
+            if should_render_nulls_ordering(self.dialect, item)
+                && let Some(nulls_first) = item.nulls_first
+            {
                 if nulls_first {
                     self.write(" ");
                     self.write_keyword("NULLS FIRST");
@@ -1806,7 +1812,9 @@ impl Generator {
                 self.write(" ");
                 self.write_keyword("ASC");
             }
-            if let Some(nulls_first) = item.nulls_first {
+            if should_render_nulls_ordering(self.dialect, item)
+                && let Some(nulls_first) = item.nulls_first
+            {
                 self.write(" ");
                 if nulls_first {
                     self.write_keyword("NULLS FIRST");
@@ -2651,7 +2659,9 @@ impl Generator {
                         self.write(" ");
                         self.write_keyword("ASC");
                     }
-                    if let Some(nulls_first) = item.nulls_first {
+                    if should_render_nulls_ordering(self.dialect, item)
+                        && let Some(nulls_first) = item.nulls_first
+                    {
                         self.write(" ");
                         if nulls_first {
                             self.write_keyword("NULLS FIRST");
@@ -3182,7 +3192,9 @@ impl Generator {
                     self.write(" ");
                     self.write_keyword("ASC");
                 }
-                if let Some(nulls_first) = item.nulls_first {
+                if should_render_nulls_ordering(self.dialect, item)
+                    && let Some(nulls_first) = item.nulls_first
+                {
                     if nulls_first {
                         self.write(" ");
                         self.write_keyword("NULLS FIRST");

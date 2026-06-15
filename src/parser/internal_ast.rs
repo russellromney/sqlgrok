@@ -58,6 +58,7 @@ pub(crate) struct InternalOrderBy<'sql> {
     pub(crate) ascending: bool,
     pub(crate) explicit_direction: bool,
     pub(crate) nulls_first: Option<bool>,
+    pub(crate) implicit_nulls: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -209,6 +210,7 @@ impl<'sql> InternalOrderBy<'sql> {
             ascending: self.ascending,
             explicit_direction: self.explicit_direction,
             nulls_first: self.nulls_first,
+            implicit_nulls: self.implicit_nulls,
         }
     }
 }
@@ -356,6 +358,7 @@ mod tests {
                 ascending: false,
                 explicit_direction: true,
                 nulls_first: None,
+                implicit_nulls: false,
             }],
             limit: Some(InternalExpr::Number(SqlText::borrowed("5"))),
             offset: None,
