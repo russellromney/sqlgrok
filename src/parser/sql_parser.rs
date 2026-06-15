@@ -8444,6 +8444,78 @@ impl<'a> Parser<'a> {
                     expr: Box::new(it.next()?),
                 }
             }
+            "DAYOFMONTH" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                TypedFunction::DatePartAlias {
+                    name: DatePartFunction::DayOfMonth,
+                    expr: Box::new(wrap_mysql_date_part_arg(expr, dialect)),
+                }
+            }
+            "DAY_OF_MONTH" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                TypedFunction::DatePartAlias {
+                    name: DatePartFunction::DayOfMonth,
+                    expr: Box::new(expr),
+                }
+            }
+            "DAYOFYEAR" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                TypedFunction::DatePartAlias {
+                    name: DatePartFunction::DayOfYear,
+                    expr: Box::new(wrap_mysql_date_part_arg(expr, dialect)),
+                }
+            }
+            "DAY_OF_YEAR" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                TypedFunction::DatePartAlias {
+                    name: DatePartFunction::DayOfYear,
+                    expr: Box::new(expr),
+                }
+            }
+            "DAYOFWEEK" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                TypedFunction::DatePartAlias {
+                    name: DatePartFunction::DayOfWeek,
+                    expr: Box::new(wrap_mysql_date_part_arg(expr, dialect)),
+                }
+            }
+            "DAY_OF_WEEK" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                TypedFunction::DatePartAlias {
+                    name: DatePartFunction::DayOfWeek,
+                    expr: Box::new(expr),
+                }
+            }
+            "WEEKOFYEAR" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                TypedFunction::DatePartAlias {
+                    name: DatePartFunction::WeekOfYear,
+                    expr: Box::new(wrap_mysql_date_part_arg(expr, dialect)),
+                }
+            }
+            "WEEK_OF_YEAR" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                TypedFunction::DatePartAlias {
+                    name: DatePartFunction::WeekOfYear,
+                    expr: Box::new(expr),
+                }
+            }
+            "WEEK" if args.len() == 1 => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                TypedFunction::DatePartAlias {
+                    name: DatePartFunction::Week,
+                    expr: Box::new(wrap_mysql_date_part_arg(expr, dialect)),
+                }
+            }
             "YEAR" => {
                 let mut it = args.into_iter();
                 let expr = it.next()?;
@@ -9100,6 +9172,23 @@ fn concat_exprs(mut exprs: Vec<Expr>) -> Expr {
 
 fn wrap_mysql_date_part_arg(expr: Expr, dialect: Dialect) -> Expr {
     if crate::dialects::is_mysql_family(dialect) {
+        let already_date = matches!(
+            &expr,
+            Expr::TypedFunction {
+                func: TypedFunction::TsOrDsToDate { .. },
+                ..
+            }
+        ) || matches!(&expr, Expr::Function { name, .. } if name.eq_ignore_ascii_case("DATE"))
+            || matches!(
+                &expr,
+                Expr::Cast {
+                    data_type: DataType::Date,
+                    ..
+                }
+            );
+        if already_date {
+            return expr;
+        }
         Expr::TypedFunction {
             func: TypedFunction::TsOrDsToDate {
                 expr: Box::new(expr),

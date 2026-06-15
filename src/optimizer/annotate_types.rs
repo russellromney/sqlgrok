@@ -920,9 +920,10 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
             with_tz: false,
         }),
         TypedFunction::TimeToStr { .. } => Some(DataType::Varchar(None)),
-        TypedFunction::Year { .. } | TypedFunction::Month { .. } | TypedFunction::Day { .. } => {
-            Some(DataType::Int)
-        }
+        TypedFunction::DatePartAlias { .. }
+        | TypedFunction::Year { .. }
+        | TypedFunction::Month { .. }
+        | TypedFunction::Day { .. } => Some(DataType::Int),
 
         // ── String → Varchar ─────────────────────────────────────────
         TypedFunction::Trim { .. }

@@ -3217,6 +3217,23 @@ impl Generator {
         }
     }
 
+    fn gen_date_part_alias_arg(&mut self, expr: &Expr) {
+        if matches!(
+            self.dialect,
+            Some(Dialect::Postgres | Dialect::DuckDb | Dialect::Redshift)
+        ) && let Expr::Function { name, args, .. } = expr
+            && name.eq_ignore_ascii_case("DATE")
+            && args.len() == 1
+        {
+            self.write_keyword("CAST(");
+            self.gen_expr(&args[0]);
+            self.write(" ");
+            self.write_keyword("AS DATE)");
+            return;
+        }
+        self.gen_expr(expr);
+    }
+
     fn gen_filter_and_over(&mut self, filter: Option<&Expr>, over: Option<&WindowSpec>) {
         if let Some(filter_expr) = filter {
             self.write(" ");
@@ -4027,6 +4044,22 @@ impl Generator {
                     self.write(" ");
                     self.write_keyword("AS DATE)");
                 }
+            }
+            TypedFunction::DatePartAlias { name, expr } => {
+                let func_name = date_part_alias_name(*name, dialect);
+                self.write_keyword(func_name);
+                self.write("(");
+                if is_mysql
+                    && let Expr::TypedFunction {
+                        func: TypedFunction::TsOrDsToDate { expr: inner },
+                        ..
+                    } = expr.as_ref()
+                {
+                    self.gen_expr(inner);
+                } else {
+                    self.gen_date_part_alias_arg(expr);
+                }
+                self.write(")");
             }
             TypedFunction::Year { expr } => {
                 if is_mysql
@@ -4967,6 +5000,40 @@ fn datetime_field_keyword(field: &DateTimeField) -> String {
         DateTimeField::TimezoneMinute => "TIMEZONE_MINUTE",
     };
     name.to_string()
+}
+
+fn date_part_alias_name(name: DatePartFunction, dialect: Option<Dialect>) -> &'static str {
+    match name {
+        DatePartFunction::Week => "WEEK",
+        DatePartFunction::DayOfMonth => {
+            if matches!(dialect, Some(Dialect::Postgres | Dialect::Sqlite)) {
+                "DAY_OF_MONTH"
+            } else {
+                "DAYOFMONTH"
+            }
+        }
+        DatePartFunction::DayOfYear => {
+            if matches!(dialect, Some(Dialect::Postgres | Dialect::Sqlite)) {
+                "DAY_OF_YEAR"
+            } else {
+                "DAYOFYEAR"
+            }
+        }
+        DatePartFunction::DayOfWeek => {
+            if matches!(dialect, Some(Dialect::Postgres | Dialect::Sqlite)) {
+                "DAY_OF_WEEK"
+            } else {
+                "DAYOFWEEK"
+            }
+        }
+        DatePartFunction::WeekOfYear => {
+            if matches!(dialect, Some(Dialect::Postgres | Dialect::Sqlite)) {
+                "WEEK_OF_YEAR"
+            } else {
+                "WEEKOFYEAR"
+            }
+        }
+    }
 }
 
 /// Split an interval string like `"1 DAY"` into ("1", "DAY"). Returns None

@@ -763,6 +763,15 @@ pub enum TrimType {
     Both,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DatePartFunction {
+    DayOfMonth,
+    DayOfYear,
+    DayOfWeek,
+    WeekOfYear,
+    Week,
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // Typed function expressions
 // ═══════════════════════════════════════════════════════════════════════
@@ -840,6 +849,11 @@ pub enum TypedFunction {
     TimeToStr { expr: Box<Expr>, format: Box<Expr> },
     /// `TS_OR_DS_TO_DATE(expr)` — convert timestamp or date-string to date
     TsOrDsToDate { expr: Box<Expr> },
+    /// `DAYOFMONTH(expr)` / `DAY_OF_MONTH(expr)` and related date-part aliases
+    DatePartAlias {
+        name: DatePartFunction,
+        expr: Box<Expr>,
+    },
     /// `YEAR(expr)` — extract year from a date/timestamp
     Year { expr: Box<Expr> },
     /// `MONTH(expr)` — extract month from a date/timestamp
@@ -1129,6 +1143,7 @@ impl TypedFunction {
                 format.walk(visitor);
             }
             TypedFunction::TsOrDsToDate { expr }
+            | TypedFunction::DatePartAlias { expr, .. }
             | TypedFunction::Year { expr }
             | TypedFunction::Month { expr }
             | TypedFunction::Day { expr } => expr.walk(visitor),
@@ -1429,6 +1444,10 @@ impl TypedFunction {
                 format: Box::new(format.transform(func)),
             },
             TypedFunction::TsOrDsToDate { expr } => TypedFunction::TsOrDsToDate {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::DatePartAlias { name, expr } => TypedFunction::DatePartAlias {
+                name,
                 expr: Box::new(expr.transform(func)),
             },
             TypedFunction::Year { expr } => TypedFunction::Year {

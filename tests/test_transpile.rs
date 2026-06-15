@@ -1152,6 +1152,90 @@ fn test_mysql_date_function_maps_to_sqlite() {
 }
 
 #[test]
+fn test_date_part_alias_functions() {
+    let cases = [
+        ("DAYOFMONTH", "DAY_OF_MONTH"),
+        ("DAYOFYEAR", "DAY_OF_YEAR"),
+        ("DAYOFWEEK", "DAY_OF_WEEK"),
+        ("WEEKOFYEAR", "WEEK_OF_YEAR"),
+    ];
+    for (mysql_name, canonical_name) in cases {
+        validate_with_dialect(
+            &format!("SELECT {mysql_name}(x)"),
+            &format!("SELECT {mysql_name}(x)"),
+            Dialect::Mysql,
+            Dialect::Mysql,
+        );
+        validate_with_dialect(
+            &format!("SELECT {mysql_name}(x)"),
+            &format!("SELECT {canonical_name}(DATE(x))"),
+            Dialect::Mysql,
+            Dialect::Sqlite,
+        );
+        validate_with_dialect(
+            &format!("SELECT {mysql_name}(x)"),
+            &format!("SELECT {canonical_name}(CAST(x AS DATE))"),
+            Dialect::Mysql,
+            Dialect::Postgres,
+        );
+        validate_with_dialect(
+            &format!("SELECT {mysql_name}(x)"),
+            &format!("SELECT {mysql_name}(CAST(x AS DATE))"),
+            Dialect::Mysql,
+            Dialect::DuckDb,
+        );
+        validate_with_dialect(
+            &format!("SELECT {mysql_name}(x)"),
+            &format!("SELECT {canonical_name}(x)"),
+            Dialect::Postgres,
+            Dialect::Sqlite,
+        );
+    }
+    validate_with_dialect(
+        "SELECT WEEK(x)",
+        "SELECT WEEK(x)",
+        Dialect::Mysql,
+        Dialect::Mysql,
+    );
+    validate_with_dialect(
+        "SELECT WEEK(x)",
+        "SELECT WEEK(DATE(x))",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT WEEK(x)",
+        "SELECT WEEK(CAST(x AS DATE))",
+        Dialect::Mysql,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT DAYOFMONTH(DATE(x))",
+        "SELECT DAY_OF_MONTH(DATE(x))",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT DAYOFMONTH(DATE(x))",
+        "SELECT DAY_OF_MONTH(CAST(x AS DATE))",
+        Dialect::Mysql,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT WEEK(DATE(x))",
+        "SELECT WEEK(DATE(x))",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT WEEKOFYEAR(CAST('2025-01-01' AS DATE))",
+        "SELECT WEEK_OF_YEAR(DATE('2025-01-01'))",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_sqlite_datediff_unit_identity() {
     validate_with_dialect(
         "DATEDIFF(a, b, 'day')",

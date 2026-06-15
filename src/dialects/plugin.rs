@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use crate::ast::{DataType, Expr, QuoteStyle, Statement};
+use crate::ast::{DataType, DatePartFunction, Expr, QuoteStyle, Statement};
 
 /// Trait that external code can implement to define a custom SQL dialect.
 ///
@@ -307,6 +307,13 @@ fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
         TypedFunction::StrToTime { .. } => "STR_TO_TIME",
         TypedFunction::TimeToStr { .. } => "TIME_TO_STR",
         TypedFunction::TsOrDsToDate { .. } => "TS_OR_DS_TO_DATE",
+        TypedFunction::DatePartAlias { name, .. } => match name {
+            DatePartFunction::DayOfMonth => "DAY_OF_MONTH",
+            DatePartFunction::DayOfYear => "DAY_OF_YEAR",
+            DatePartFunction::DayOfWeek => "DAY_OF_WEEK",
+            DatePartFunction::WeekOfYear => "WEEK_OF_YEAR",
+            DatePartFunction::Week => "WEEK",
+        },
         TypedFunction::Year { .. } => "YEAR",
         TypedFunction::Month { .. } => "MONTH",
         TypedFunction::Day { .. } => "DAY",
@@ -412,6 +419,7 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         | TypedFunction::Md5 { expr }
         | TypedFunction::Sha { expr }
         | TypedFunction::TsOrDsToDate { expr }
+        | TypedFunction::DatePartAlias { expr, .. }
         | TypedFunction::Year { expr }
         | TypedFunction::Month { expr }
         | TypedFunction::Day { expr }
