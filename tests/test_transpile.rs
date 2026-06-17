@@ -1472,6 +1472,28 @@ fn test_forced_suite_offset_rows_fetch_to_sqlite() {
 }
 
 #[test]
+fn test_fetch_first_to_postgres() {
+    let postgres_cases = [
+        (
+            "SELECT x FROM y OFFSET 10 FETCH FIRST 3 ROWS ONLY",
+            "SELECT x FROM y OFFSET 10 FETCH FIRST 3 ROWS ONLY",
+        ),
+        (
+            "SELECT x FROM y OFFSET 10 ROWS FETCH FIRST 3 ROWS ONLY",
+            "SELECT x FROM y OFFSET 10 FETCH FIRST 3 ROWS ONLY",
+        ),
+        (
+            "SELECT * FROM x FETCH 1 ROW",
+            "SELECT * FROM x FETCH FIRST 1 ROWS ONLY",
+        ),
+    ];
+
+    for (sql, expected) in postgres_cases {
+        validate_with_dialect(sql, expected, Dialect::Postgres, Dialect::Postgres);
+    }
+}
+
+#[test]
 fn test_forced_suite_apply_to_sqlite() {
     let cases = [
         (

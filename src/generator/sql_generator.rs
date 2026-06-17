@@ -638,7 +638,7 @@ impl Generator {
 
         let dialect = self.dialect;
         let is_tsql = matches!(dialect, Some(Dialect::Tsql));
-        let is_oracle = matches!(dialect, Some(Dialect::Oracle));
+        let renders_fetch_first = matches!(dialect, Some(Dialect::Oracle | Dialect::Postgres));
         let effective_top = if is_tsql && sel.offset.is_none() {
             sel.top.as_deref().or_else(|| {
                 sel.limit_renders_as_tsql_top
@@ -655,12 +655,13 @@ impl Generator {
                 sel.limit.as_ref()
             }
         } else {
-            sel.limit
-                .as_ref()
-                .or(sel.top.as_deref())
-                .or(sel.fetch_first.as_ref())
+            sel.limit.as_ref().or(sel.top.as_deref()).or_else(|| {
+                (!renders_fetch_first)
+                    .then_some(sel.fetch_first.as_ref())
+                    .flatten()
+            })
         };
-        let effective_fetch = if is_oracle {
+        let effective_fetch = if renders_fetch_first {
             sel.fetch_first.as_ref()
         } else if is_tsql && sel.offset.is_some() && sel.limit_renders_as_tsql_top {
             sel.fetch_first.as_ref().or(sel.limit.as_ref())

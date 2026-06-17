@@ -324,9 +324,6 @@ pub fn transform_owned(statement: Statement, from: Dialect, to: Dialect) -> Stat
 fn transform_statement(statement: &mut Statement, source: Dialect, target: Dialect) {
     match statement {
         Statement::Select(sel) => {
-            // Transform identifier quoting for the target dialect
-            transform_quotes_in_select(sel, target);
-
             // Recurse into CTE bodies so inner SELECTs see the same
             // transforms (DATE 'x' → DATE('x'), ARRAY[…] → ARRAY(…), etc.).
             for cte in &mut sel.ctes {
@@ -451,9 +448,6 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
         // DDL: map data types in CREATE TABLE column definitions
         Statement::CreateTable(ct) => {
             for col in &mut ct.columns {
-                if col.name_quote_style.is_quoted() {
-                    col.name_quote_style = QuoteStyle::for_dialect(target);
-                }
                 if let Some(default) = &mut col.default {
                     transform_expr_in_place(default, source, target);
                 }
@@ -1251,24 +1245,12 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             name,
             quote_style,
             table_quote_style,
-        } => {
-            let new_qs = if quote_style.is_quoted() {
-                QuoteStyle::for_dialect(target)
-            } else {
-                QuoteStyle::None
-            };
-            let new_tqs = if table_quote_style.is_quoted() {
-                QuoteStyle::for_dialect(target)
-            } else {
-                QuoteStyle::None
-            };
-            Expr::Column {
-                table,
-                name,
-                quote_style: new_qs,
-                table_quote_style: new_tqs,
-            }
-        }
+        } => Expr::Column {
+            table,
+            name,
+            quote_style,
+            table_quote_style,
+        },
         Expr::Exists {
             mut subquery,
             negated,
@@ -1862,115 +1844,6 @@ fn rewrite_raw_type_params_for_sqlite(name: &str) -> String {
     output
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Quoted-identifier transform
-// ═══════════════════════════════════════════════════════════════════════════
-
-/// Convert any quoted identifiers in expressions to the target dialect's
-/// quoting convention.
-fn transform_quotes(expr: Expr, target: Dialect) -> Expr {
-    match expr {
-        Expr::Column {
-            table,
-            name,
-            quote_style,
-            table_quote_style,
-        } => {
-            let new_qs = if quote_style.is_quoted() {
-                QuoteStyle::for_dialect(target)
-            } else {
-                QuoteStyle::None
-            };
-            let new_tqs = if table_quote_style.is_quoted() {
-                QuoteStyle::for_dialect(target)
-            } else {
-                QuoteStyle::None
-            };
-            Expr::Column {
-                table,
-                name,
-                quote_style: new_qs,
-                table_quote_style: new_tqs,
-            }
-        }
-        // Recurse into sub-expressions
-        Expr::BinaryOp { left, op, right } => Expr::BinaryOp {
-            left: Box::new(transform_quotes(*left, target)),
-            op,
-            right: Box::new(transform_quotes(*right, target)),
-        },
-        Expr::UnaryOp { op, expr } => Expr::UnaryOp {
-            op,
-            expr: Box::new(transform_quotes(*expr, target)),
-        },
-        Expr::Function {
-            name,
-            args,
-            distinct,
-            raw_order_nulls,
-            filter,
-            over,
-        } => Expr::Function {
-            name,
-            args: args
-                .into_iter()
-                .map(|a| transform_quotes(a, target))
-                .collect(),
-            distinct,
-            raw_order_nulls,
-            filter: filter.map(|f| Box::new(transform_quotes(*f, target))),
-            over,
-        },
-        Expr::TypedFunction { func, filter, over } => Expr::TypedFunction {
-            func: func.transform_children(&|e| transform_quotes(e, target)),
-            filter: filter.map(|f| Box::new(transform_quotes(*f, target))),
-            over,
-        },
-        Expr::Nested(inner) => Expr::Nested(Box::new(transform_quotes(*inner, target))),
-        Expr::Alias { expr, name } => Expr::Alias {
-            expr: Box::new(transform_quotes(*expr, target)),
-            name,
-        },
-        other => other,
-    }
-}
-
-/// Transform quoting for all identifier-bearing nodes inside a SELECT.
-fn transform_quotes_in_select(sel: &mut SelectStatement, target: Dialect) {
-    // Columns in the select list
-    for item in &mut sel.columns {
-        if let SelectItem::Expr { expr, .. } = item {
-            *expr = transform_quotes(expr.clone(), target);
-        }
-    }
-    // WHERE
-    if let Some(wh) = &mut sel.where_clause {
-        *wh = transform_quotes(wh.clone(), target);
-    }
-    // GROUP BY
-    for gb in &mut sel.group_by {
-        *gb = transform_quotes(gb.clone(), target);
-    }
-    // HAVING
-    if let Some(having) = &mut sel.having {
-        *having = transform_quotes(having.clone(), target);
-    }
-    // ORDER BY
-    for ob in &mut sel.order_by {
-        ob.expr = transform_quotes(ob.expr.clone(), target);
-    }
-    // Table refs (FROM, JOINs)
-    if let Some(from) = &mut sel.from {
-        transform_quotes_in_table_source(&mut from.source, target);
-    }
-    for join in &mut sel.joins {
-        transform_quotes_in_table_source(&mut join.table, target);
-        if let Some(on) = &mut join.on {
-            *on = transform_quotes(on.clone(), target);
-        }
-    }
-}
-
 fn transform_exprs_in_table_source(ts: &mut TableSource, source: Dialect, target: Dialect) {
     match ts {
         TableSource::Table(_) => {}
@@ -1999,24 +1872,5 @@ fn transform_exprs_in_table_source(ts: &mut TableSource, source: Dialect, target
         TableSource::Unnest { expr, .. } => {
             transform_expr_in_place(expr, source, target);
         }
-    }
-}
-
-fn transform_quotes_in_table_source(source: &mut TableSource, target: Dialect) {
-    match source {
-        TableSource::Table(tref) => {
-            if tref.name_quote_style.is_quoted() {
-                tref.name_quote_style = QuoteStyle::for_dialect(target);
-            }
-        }
-        TableSource::Subquery { .. } => {}
-        TableSource::TableFunction { .. } => {}
-        TableSource::Raw { .. } => {}
-        TableSource::Values { .. } => {}
-        TableSource::Lateral { source } => transform_quotes_in_table_source(source, target),
-        TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {
-            transform_quotes_in_table_source(source, target);
-        }
-        TableSource::Unnest { .. } => {}
     }
 }
