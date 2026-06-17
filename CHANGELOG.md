@@ -5,6 +5,27 @@ this file records what landed.
 
 ## 2026-06-17
 
+### Architecture Port: ROWS FROM Table Sources
+
+- Added typed `TableSource::RowsFrom` with function entries, per-function
+  aliases, typed alias-column lists, table-level aliases, and
+  `WITH ORDINALITY`.
+- Parse SQLGlot's Postgres `ROWS FROM (...)` table-source shape into that AST
+  instead of the raw table-source carrier, while preserving fallback behavior
+  for stranger table tails.
+- Moved `ROWS FROM` rendering into the generator, including SQLite's dropping
+  of typed alias-column lists and non-SQLite preservation of those typed alias
+  columns.
+- Updated planner/optimizer helper passes to treat `ROWS FROM` as an opaque
+  table-function-like source with explicit alias registration.
+- Refreshed all seven forced-pair SQLGlot bridge reports. Exact matches are
+  unchanged: postgres -> sqlite `11973`, mysql -> sqlite `11739`,
+  sqlite -> sqlite `11911`, postgres -> postgres `8600`,
+  mysql -> postgres `7949`, sqlite -> postgres `7867`, and
+  postgres -> duckdb `7309`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes.
+
 ### Architecture Port: Command Statement Carriers
 
 - Added a semi-typed `Statement::Command` carrier with `CommandKind` for

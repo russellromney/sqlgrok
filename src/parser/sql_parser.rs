@@ -2076,7 +2076,7 @@ impl<'a> Parser<'a> {
         }
 
         if self.peek_type() == &TokenType::Rows {
-            return self.parse_raw_table_source_until_boundary();
+            return self.parse_rows_from_table_source();
         }
 
         if matches!(
@@ -2376,6 +2376,118 @@ impl<'a> Parser<'a> {
             use_generated_offset_alias,
             with_ordinality,
         })
+    }
+
+    fn parse_rows_from_table_source(&mut self) -> Result<TableSource> {
+        let start_pos = self.pos;
+        match self.parse_rows_from_table_source_inner() {
+            Ok(source) => Ok(source),
+            Err(_) => {
+                self.pos = start_pos;
+                self.parse_raw_table_source_until_boundary()
+            }
+        }
+    }
+
+    fn parse_rows_from_table_source_inner(&mut self) -> Result<TableSource> {
+        self.expect(TokenType::Rows)?;
+        self.expect(TokenType::From)?;
+        self.expect(TokenType::LParen)?;
+        let mut items = Vec::new();
+        if self.peek_type() != &TokenType::RParen {
+            loop {
+                items.push(self.parse_rows_from_item()?);
+                if !self.match_token(TokenType::Comma) {
+                    break;
+                }
+            }
+        }
+        self.expect(TokenType::RParen)?;
+        let with_ordinality = if self.match_token(TokenType::With) {
+            self.expect_keyword("ORDINALITY")?;
+            true
+        } else {
+            false
+        };
+        let (alias, alias_quote_style, alias_columns) =
+            if let Some((alias, alias_quote_style)) = self.parse_optional_alias()? {
+                let alias_columns = if self.match_token(TokenType::LParen) {
+                    self.parse_rows_from_alias_columns_after_open()?
+                } else {
+                    Vec::new()
+                };
+                (Some(alias), alias_quote_style, alias_columns)
+            } else {
+                (None, QuoteStyle::None, Vec::new())
+            };
+        Ok(TableSource::RowsFrom {
+            items,
+            with_ordinality,
+            alias,
+            alias_quote_style,
+            alias_columns,
+        })
+    }
+
+    fn parse_rows_from_item(&mut self) -> Result<RowsFromItem> {
+        let (name, name_quote_style) = self.expect_name_with_quote()?;
+        if !matches!(name_quote_style, QuoteStyle::None | QuoteStyle::DoubleQuote) {
+            return Err(SqlglotError::ParserError {
+                message: "unsupported ROWS FROM function quote style".to_string(),
+            });
+        }
+        self.expect(TokenType::LParen)?;
+        let args = if self.peek_type() != &TokenType::RParen {
+            self.parse_expr_list()?
+        } else {
+            vec![]
+        };
+        self.expect(TokenType::RParen)?;
+
+        let (alias, alias_quote_style, alias_columns) =
+            if let Some((alias, alias_quote_style)) = self.parse_optional_alias()? {
+                let alias_columns = if self.match_token(TokenType::LParen) {
+                    self.parse_rows_from_alias_columns_after_open()?
+                } else {
+                    Vec::new()
+                };
+                (Some(alias), alias_quote_style, alias_columns)
+            } else {
+                (None, QuoteStyle::None, Vec::new())
+            };
+
+        Ok(RowsFromItem {
+            name,
+            args,
+            alias,
+            alias_quote_style,
+            alias_columns,
+        })
+    }
+
+    fn parse_rows_from_alias_columns_after_open(&mut self) -> Result<Vec<RowsFromAliasColumn>> {
+        let mut columns = Vec::new();
+        if self.peek_type() != &TokenType::RParen {
+            loop {
+                let (name, quote_style) = self.expect_alias_name_with_quote()?;
+                let data_type = if matches!(self.peek_type(), TokenType::Comma | TokenType::RParen)
+                {
+                    None
+                } else {
+                    Some(self.parse_data_type()?)
+                };
+                columns.push(RowsFromAliasColumn {
+                    name,
+                    quote_style,
+                    data_type,
+                });
+                if !self.match_token(TokenType::Comma) {
+                    break;
+                }
+            }
+        }
+        self.expect(TokenType::RParen)?;
+        Ok(columns)
     }
 
     fn parse_raw_table_function_source(&mut self) -> Result<TableSource> {

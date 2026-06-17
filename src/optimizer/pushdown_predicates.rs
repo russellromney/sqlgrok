@@ -567,6 +567,9 @@ fn source_alias(source: &TableSource) -> Option<String> {
         TableSource::Subquery { alias, .. } => alias.clone(),
         TableSource::TableFunction { alias, .. } => alias.clone(),
         TableSource::Raw { alias, .. } => alias.clone(),
+        TableSource::RowsFrom { items, alias, .. } => alias
+            .clone()
+            .or_else(|| items.iter().find_map(|item| item.alias.clone())),
         TableSource::Values { alias, .. } => alias.clone(),
         TableSource::Unnest { alias, .. } => alias.clone(),
         TableSource::Lateral { source } => source_alias(source),

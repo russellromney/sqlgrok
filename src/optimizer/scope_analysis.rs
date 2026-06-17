@@ -400,6 +400,36 @@ fn process_table_source(source: &TableSource, scope: &mut Scope) {
                 );
             }
         }
+        TableSource::RowsFrom { items, alias, .. } => {
+            if let Some(alias) = alias {
+                scope.sources.insert(
+                    alias.clone(),
+                    Source::Table(TableRef {
+                        catalog: None,
+                        schema: None,
+                        name: alias.clone(),
+                        alias: None,
+                        name_quote_style: QuoteStyle::None,
+                        alias_quote_style: QuoteStyle::None,
+                    }),
+                );
+            }
+            for item in items {
+                if let Some(alias) = &item.alias {
+                    scope.sources.insert(
+                        alias.clone(),
+                        Source::Table(TableRef {
+                            catalog: None,
+                            schema: None,
+                            name: alias.clone(),
+                            alias: None,
+                            name_quote_style: QuoteStyle::None,
+                            alias_quote_style: QuoteStyle::None,
+                        }),
+                    );
+                }
+            }
+        }
         TableSource::Values { alias, .. } => {
             if let Some(alias) = alias {
                 scope.sources.insert(

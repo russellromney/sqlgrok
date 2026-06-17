@@ -568,6 +568,20 @@ impl PlanBuilder {
                 predicate: None,
                 dependencies: vec![],
             })),
+            TableSource::RowsFrom { items, alias, .. } => Ok(self.add_step(Step::Scan {
+                table: "ROWS FROM".to_string(),
+                alias: alias
+                    .clone()
+                    .or_else(|| items.iter().find_map(|item| item.alias.clone())),
+                projections: items
+                    .iter()
+                    .flat_map(|item| item.args.iter())
+                    .cloned()
+                    .map(|expr| Projection { expr, alias: None })
+                    .collect(),
+                predicate: None,
+                dependencies: vec![],
+            })),
             TableSource::Unnest { expr, alias, .. } => Ok(self.add_step(Step::Scan {
                 table: "UNNEST".to_string(),
                 alias: alias.clone(),

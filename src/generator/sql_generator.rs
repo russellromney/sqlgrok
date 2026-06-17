@@ -1250,6 +1250,35 @@ impl Generator {
                 self.write_keyword("LATERAL ");
                 self.gen_table_source(source);
             }
+            TableSource::RowsFrom {
+                items,
+                with_ordinality,
+                alias,
+                alias_quote_style,
+                alias_columns,
+            } => {
+                self.write_keyword("ROWS FROM");
+                self.write(" (");
+                for (i, item) in items.iter().enumerate() {
+                    if i > 0 {
+                        self.write(", ");
+                    }
+                    self.gen_rows_from_item(item);
+                }
+                self.write(")");
+                if *with_ordinality {
+                    self.write(" ");
+                    self.write_keyword("WITH ORDINALITY");
+                }
+                if let Some(alias) = alias {
+                    self.write(" ");
+                    self.write_keyword("AS ");
+                    self.write_quoted(alias, *alias_quote_style);
+                    if !matches!(self.dialect, Some(Dialect::Sqlite)) {
+                        self.gen_rows_from_alias_columns(alias_columns);
+                    }
+                }
+            }
             TableSource::Unnest {
                 expr,
                 alias,
@@ -1356,6 +1385,45 @@ impl Generator {
                 }
             }
         }
+    }
+
+    fn gen_rows_from_item(&mut self, item: &RowsFromItem) {
+        let name =
+            if !item.name.contains('.') && !item.name.contains('"') && !item.name.contains('`') {
+                item.name.to_ascii_uppercase()
+            } else {
+                item.name.clone()
+            };
+        self.write(&name);
+        self.write("(");
+        self.gen_expr_list(&item.args);
+        self.write(")");
+        if let Some(alias) = &item.alias {
+            self.write(" ");
+            self.write_keyword("AS ");
+            self.write_quoted(alias, item.alias_quote_style);
+            if !matches!(self.dialect, Some(Dialect::Sqlite)) {
+                self.gen_rows_from_alias_columns(&item.alias_columns);
+            }
+        }
+    }
+
+    fn gen_rows_from_alias_columns(&mut self, columns: &[RowsFromAliasColumn]) {
+        if columns.is_empty() {
+            return;
+        }
+        self.write("(");
+        for (i, column) in columns.iter().enumerate() {
+            if i > 0 {
+                self.write(", ");
+            }
+            self.write_quoted(&column.name, column.quote_style);
+            if let Some(data_type) = &column.data_type {
+                self.write(" ");
+                self.gen_data_type(data_type);
+            }
+        }
+        self.write(")");
     }
 
     fn gen_pivot_values(&mut self, values: &[PivotValue]) {

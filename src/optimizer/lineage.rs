@@ -878,6 +878,32 @@ fn register_table_source(source: &TableSource, ctx: &mut LineageContext) {
                 );
             }
         }
+        TableSource::RowsFrom { items, alias, .. } => {
+            if let Some(alias) = alias {
+                let normalized = normalize_name(alias, ctx.config.dialect);
+                ctx.sources.insert(
+                    normalized,
+                    SourceInfo {
+                        kind: SourceKind::Table,
+                        columns: None,
+                        statement: None,
+                    },
+                );
+            }
+            for item in items {
+                if let Some(alias) = &item.alias {
+                    let normalized = normalize_name(alias, ctx.config.dialect);
+                    ctx.sources.insert(
+                        normalized,
+                        SourceInfo {
+                            kind: SourceKind::Table,
+                            columns: None,
+                            statement: None,
+                        },
+                    );
+                }
+            }
+        }
         TableSource::Raw { alias, .. } => {
             if let Some(alias) = alias {
                 let normalized = normalize_name(alias, ctx.config.dialect);

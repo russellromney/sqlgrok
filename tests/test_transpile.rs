@@ -4424,6 +4424,23 @@ fn test_postgres_join_rust_error_report_batch_to_sqlite() {
         Dialect::Postgres,
         Dialect::Sqlite,
     );
+    let ast = parse(
+        "SELECT * FROM ROWS FROM (FUNC1(col1) AS alias1(\"col1\" TEXT), FUNC2(col2) AS alias2(\"col2\" INT)) WITH ORDINALITY",
+        Dialect::Postgres,
+    )
+    .unwrap();
+    assert!(matches!(
+        ast,
+        Statement::Select(ref select)
+            if matches!(
+                select.from.as_ref().map(|from| &from.source),
+                Some(TableSource::RowsFrom { items, with_ordinality, .. })
+                    if *with_ordinality
+                        && items.len() == 2
+                        && items[0].alias.as_deref() == Some("alias1")
+                        && items[0].alias_columns.len() == 1
+            )
+    ));
     validate_with_dialect(
         "SELECT * FROM UNNEST(ARRAY[1, 2], ARRAY['foo', 'bar', 'baz']) AS x(a, b)",
         "SELECT * FROM UNNEST(ARRAY(1, 2), ARRAY('foo', 'bar', 'baz')) AS x",

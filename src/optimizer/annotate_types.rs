@@ -293,6 +293,7 @@ fn register_table_source<S: Schema>(source: &TableSource, ctx: &mut AnnotationCo
         TableSource::Raw { alias, .. } => {
             let _ = alias;
         }
+        TableSource::RowsFrom { .. } => {}
         TableSource::Values { alias, .. } => {
             let _ = alias;
         }

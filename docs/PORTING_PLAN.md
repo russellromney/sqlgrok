@@ -210,9 +210,12 @@ of ordinary function rewrites.
    single-expression BigQuery/Postgres `UNNEST(...)`: alias column lists,
    `WITH OFFSET`, offset aliases, generated BigQuery offset aliases, and
    Postgres `WITH ORDINALITY` are now AST fields rendered by generators.
-   The remaining work is to eliminate raw string carriers for multi-argument
-   `UNNEST`, `ROWS FROM`, JSON/XML table sources, table-function tails, and
-   tokenizer fallback cases where forced-read syntax is not expression-shaped.
+   Another slice adds `TableSource::RowsFrom` for Postgres `ROWS FROM (...)`,
+   including function aliases, typed alias-column lists, table-level aliases,
+   and `WITH ORDINALITY`. The remaining work is to eliminate raw string
+   carriers for multi-argument `UNNEST`, JSON/XML table sources, table-function
+   tails, and tokenizer fallback cases where forced-read syntax is not
+   expression-shaped.
 3. **Raw statement normalization.**
    `RawStatement` still rewrites Postgres enum/raw recursive CTE/COPY, MySQL
    `SHOW`, raw `PIVOT`/`UNPIVOT`, and insert-into-function text. Add typed or

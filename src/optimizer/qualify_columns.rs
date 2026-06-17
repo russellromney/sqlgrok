@@ -105,6 +105,18 @@ fn collect_source_columns<S: Schema>(
                 source_map.insert(norm_alias, SourceColumns { columns: vec![] });
             }
         }
+        TableSource::RowsFrom { items, alias, .. } => {
+            if let Some(alias) = alias {
+                let norm_alias = normalize_identifier(alias, dialect);
+                source_map.insert(norm_alias, SourceColumns { columns: vec![] });
+            }
+            for item in items {
+                if let Some(alias) = &item.alias {
+                    let norm_alias = normalize_identifier(alias, dialect);
+                    source_map.insert(norm_alias, SourceColumns { columns: vec![] });
+                }
+            }
+        }
         TableSource::Subquery { query, alias, .. } => {
             if let Some(alias) = alias {
                 let norm_alias = normalize_identifier(alias, dialect);
@@ -251,6 +263,11 @@ fn source_key_for(source: &TableSource, dialect: Dialect) -> String {
             .unwrap_or_default(),
         TableSource::Raw { alias, .. } => alias
             .as_deref()
+            .map(|a| normalize_identifier(a, dialect))
+            .unwrap_or_default(),
+        TableSource::RowsFrom { items, alias, .. } => alias
+            .as_deref()
+            .or_else(|| items.iter().find_map(|item| item.alias.as_deref()))
             .map(|a| normalize_identifier(a, dialect))
             .unwrap_or_default(),
         TableSource::Values { alias, .. } => alias

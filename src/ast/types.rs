@@ -339,6 +339,28 @@ pub struct AliasColumn {
     pub quote_style: QuoteStyle,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RowsFromAliasColumn {
+    pub name: String,
+    #[serde(default)]
+    pub quote_style: QuoteStyle,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_type: Option<DataType>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RowsFromItem {
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub args: Vec<Expr>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alias: Option<String>,
+    #[serde(default)]
+    pub alias_quote_style: QuoteStyle,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub alias_columns: Vec<RowsFromAliasColumn>,
+}
+
 /// A table source can be a table reference, subquery, or table function.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TableSource {
@@ -375,6 +397,18 @@ pub enum TableSource {
     /// LATERAL subquery or function
     Lateral {
         source: Box<TableSource>,
+    },
+    /// ROWS FROM (func(...), ...)
+    RowsFrom {
+        items: Vec<RowsFromItem>,
+        #[serde(default)]
+        with_ordinality: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        alias: Option<String>,
+        #[serde(default)]
+        alias_quote_style: QuoteStyle,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        alias_columns: Vec<RowsFromAliasColumn>,
     },
     /// UNNEST(array_expr)
     Unnest {
@@ -3093,6 +3127,7 @@ fn collect_table_refs_from_source<'a>(source: &'a TableSource, tables: &mut Vec<
         TableSource::Subquery { .. } => {}
         TableSource::TableFunction { .. } => {}
         TableSource::Raw { .. } => {}
+        TableSource::RowsFrom { .. } => {}
         TableSource::Values { .. } => {}
         TableSource::Lateral { source } => collect_table_refs_from_source(source, tables),
         TableSource::Pivot { source, .. } | TableSource::Unpivot { source, .. } => {

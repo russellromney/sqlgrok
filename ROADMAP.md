@@ -119,12 +119,14 @@ Retirement sequence:
      `WITH OFFSET`, offset aliases, generated BigQuery offset aliases, and
      Postgres `WITH ORDINALITY`; generator-owned rendering covers SQLite,
      Postgres, DuckDB, and BigQuery shapes while unsupported bracket-array
-     forced-read cases stay on the raw passthrough path.
+     forced-read cases stay on the raw passthrough path. `ROWS FROM (...)` now
+     has a typed `TableSource::RowsFrom` carrier with function aliases,
+     table-level aliases, typed alias-column lists, and `WITH ORDINALITY`.
    - Exit: replace the remaining raw text with structured table-source fields
      where practical. Remaining table-source raw carriers are multi-argument
-     `UNNEST`, `ROWS FROM`, JSON/XML table sources, table-function tails, and
-     dialect fallback cases where the tokenizer still treats source syntax as
-     quoted identifiers rather than parseable expressions.
+     `UNNEST`, JSON/XML table sources, table-function tails, and dialect
+     fallback cases where the tokenizer still treats source syntax as quoted
+     identifiers rather than parseable expressions.
 
 3. **Raw statement normalization.**
    - Problem: `RawStatement` still carries rewrite behavior for Postgres enum
