@@ -460,6 +460,18 @@ fn test_postgres_order_by_nulls_to_sqlite() {
         Dialect::Postgres,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "SELECT ARRAY_AGG(x ORDER BY y, z DESC) FROM t",
+        "SELECT ARRAY_AGG(x ORDER BY y NULLS LAST, z DESC NULLS FIRST) FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT ARRAY_AGG(x ORDER BY y, z DESC) FROM t",
+        "SELECT ARRAY_AGG(x ORDER BY y, z DESC) FROM t",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
 }
 
 #[test]
@@ -5463,6 +5475,13 @@ fn test_forced_suite_table_source_tails_and_directed_join_to_sqlite() {
     for (sql, expected) in cases {
         validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
     }
+
+    validate_with_dialect(
+        "SELECT * FROM UNNEST([1, 2, 3])",
+        "SELECT * FROM UNNEST(\"1, 2, 3\")",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]

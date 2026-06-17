@@ -327,6 +327,7 @@ pub fn func(name: &str, args: Vec<Expr>) -> Expr {
         name: name.to_string(),
         args,
         distinct: false,
+        raw_order_nulls: None,
         filter: None,
         over: None,
     }
@@ -347,6 +348,7 @@ pub fn func_distinct(name: &str, args: Vec<Expr>) -> Expr {
         name: name.to_string(),
         args,
         distinct: true,
+        raw_order_nulls: None,
         filter: None,
         over: None,
     }

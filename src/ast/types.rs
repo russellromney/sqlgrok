@@ -184,6 +184,8 @@ pub struct RawStatement {
     pub comments: Vec<String>,
     pub sql: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub normalization: Option<RawStatementNormalization>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_dialect: Option<Dialect>,
 }
 
@@ -325,6 +327,8 @@ pub enum TableSource {
         #[serde(default)]
         alias_quote_style: QuoteStyle,
         #[serde(default, skip_serializing_if = "Option::is_none")]
+        normalization: Option<RawTableSourceNormalization>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         source_dialect: Option<Dialect>,
     },
     Values {
@@ -447,6 +451,58 @@ pub struct OrderByItem {
     pub implicit_nulls: bool,
 }
 
+/// Null-ordering semantics attached to raw aggregate/function argument text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RawOrderNullsPolicy {
+    /// PostgreSQL defaults: ascending/default sorts NULLS LAST, descending sorts
+    /// NULLS FIRST. This is parser-owned source semantics consumed by targets
+    /// that need explicit null ordering when rendering raw argument carriers.
+    PostgresDefault,
+}
+
+/// Array-literal rendering policy for raw `UNNEST(...)` table sources.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RawUnnestArrayLiteralPolicy {
+    /// `UNNEST([1, 2])` -> `UNNEST(ARRAY(1, 2))`.
+    ArrayCall,
+    /// `UNNEST([1, 2])` -> `UNNEST("1, 2")`.
+    SqliteQuotedString,
+}
+
+/// Parser-owned normalization flags for raw table-source text.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RawTableSourceNormalization {
+    #[serde(default)]
+    pub strip_postgres_values_column_aliases: bool,
+    #[serde(default)]
+    pub rewrite_unnest_with_offset: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unnest_array_literal: Option<RawUnnestArrayLiteralPolicy>,
+    #[serde(default)]
+    pub quote_backticks: bool,
+    #[serde(default)]
+    pub uppercase_function_names: bool,
+    #[serde(default)]
+    pub normalize_typed_literals: bool,
+}
+
+/// Parser-owned normalization flags for raw statement text.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RawStatementNormalization {
+    #[serde(default)]
+    pub normalize_postgres_create_type_enum: bool,
+    #[serde(default)]
+    pub normalize_postgres_recursive_cte: bool,
+    #[serde(default)]
+    pub drop_recognized_mysql_show: bool,
+    #[serde(default)]
+    pub drop_pivot_unpivot: bool,
+    #[serde(default)]
+    pub normalize_copy: bool,
+    #[serde(default)]
+    pub normalize_insert_into_function: bool,
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // Expressions (the core of the AST)
 // ═══════════════════════════════════════════════════════════════════════
@@ -499,6 +555,8 @@ pub enum Expr {
         name: String,
         args: Vec<Expr>,
         distinct: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        raw_order_nulls: Option<RawOrderNullsPolicy>,
         /// FILTER (WHERE expr) clause on aggregate
         filter: Option<Box<Expr>>,
         /// OVER window specification for window functions
@@ -2665,12 +2723,14 @@ impl Expr {
                 name,
                 args,
                 distinct,
+                raw_order_nulls,
                 filter,
                 over,
             } => Expr::Function {
                 name,
                 args: args.into_iter().map(|a| a.transform(func)).collect(),
                 distinct,
+                raw_order_nulls,
                 filter: filter.map(|f| Box::new(f.transform(func))),
                 over,
             },

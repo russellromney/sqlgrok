@@ -893,11 +893,28 @@ impl<'a> Parser<'a> {
             self.advance();
         }
         let end = self.char_pos_to_byte(self.peek().position);
+        let sql = self.sql[start..end].trim().to_string();
         Ok(Statement::Raw(RawStatement {
             comments: vec![],
-            sql: self.sql[start..end].trim().to_string(),
+            normalization: Some(self.raw_statement_normalization(&sql)),
+            sql,
             source_dialect: Some(self.dialect),
         }))
+    }
+
+    fn raw_statement_normalization(&self, sql: &str) -> RawStatementNormalization {
+        let trimmed_upper = sql.trim_start().to_ascii_uppercase();
+        let is_postgres = crate::dialects::is_postgres_family(self.dialect);
+        RawStatementNormalization {
+            normalize_postgres_create_type_enum: is_postgres,
+            normalize_postgres_recursive_cte: is_postgres,
+            drop_recognized_mysql_show: crate::dialects::is_mysql_family(self.dialect)
+                && trimmed_upper.starts_with("SHOW"),
+            drop_pivot_unpivot: trimmed_upper.starts_with("PIVOT ")
+                || trimmed_upper.starts_with("UNPIVOT "),
+            normalize_copy: true,
+            normalize_insert_into_function: true,
+        }
     }
 
     fn starts_raw_insert_shape(&self) -> bool {
@@ -1170,9 +1187,11 @@ impl<'a> Parser<'a> {
                     self.advance();
                 }
                 let end = self.char_pos_to_byte(self.peek().position);
+                let sql = self.sql[start..end].trim().to_string();
                 Ok(Statement::Raw(RawStatement {
                     comments: vec![],
-                    sql: self.sql[start..end].trim().to_string(),
+                    normalization: Some(self.raw_statement_normalization(&sql)),
+                    sql,
                     source_dialect: Some(self.dialect),
                 }))
             }
@@ -1587,6 +1606,7 @@ impl<'a> Parser<'a> {
                     name: "STRUCT".to_string(),
                     args: Self::select_items_to_function_args(items),
                     distinct: false,
+                    raw_order_nulls: None,
                     filter: None,
                     over: None,
                 },
@@ -1991,6 +2011,9 @@ impl<'a> Parser<'a> {
                 sql: self.sql[table_start..end].trim().to_string(),
                 alias: None,
                 alias_quote_style: QuoteStyle::None,
+                normalization: Some(
+                    self.raw_table_source_normalization(self.sql[table_start..end].trim()),
+                ),
                 source_dialect: Some(self.dialect),
             });
         }
@@ -2024,6 +2047,9 @@ impl<'a> Parser<'a> {
                 sql: self.sql[table_start..end].trim().to_string(),
                 alias: None,
                 alias_quote_style: QuoteStyle::None,
+                normalization: Some(
+                    self.raw_table_source_normalization(self.sql[table_start..end].trim()),
+                ),
                 source_dialect: Some(self.dialect),
             });
         }
@@ -2062,6 +2088,9 @@ impl<'a> Parser<'a> {
                 sql: self.sql[table_start..end].trim().to_string(),
                 alias: None,
                 alias_quote_style: QuoteStyle::None,
+                normalization: Some(
+                    self.raw_table_source_normalization(self.sql[table_start..end].trim()),
+                ),
                 source_dialect: Some(self.dialect),
             });
         }
@@ -2099,6 +2128,30 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn raw_table_source_normalization(&self, sql: &str) -> RawTableSourceNormalization {
+        let upper = sql.to_ascii_uppercase();
+        let unnest_array_literal = if upper.contains("UNNEST") {
+            match self.dialect {
+                Dialect::Sqlite => Some(RawUnnestArrayLiteralPolicy::SqliteQuotedString),
+                Dialect::Postgres | Dialect::Mysql | Dialect::SingleStore | Dialect::Doris => {
+                    Some(RawUnnestArrayLiteralPolicy::ArrayCall)
+                }
+                _ => None,
+            }
+        } else {
+            None
+        };
+        RawTableSourceNormalization {
+            strip_postgres_values_column_aliases: crate::dialects::is_postgres_family(self.dialect)
+                && upper.contains("VALUES"),
+            rewrite_unnest_with_offset: upper.contains("UNNEST") && upper.contains("WITH OFFSET"),
+            unnest_array_literal,
+            quote_backticks: sql.contains('`'),
+            uppercase_function_names: true,
+            normalize_typed_literals: true,
+        }
+    }
+
     fn parse_raw_table_function_source(&mut self) -> Result<TableSource> {
         let start = self.char_pos_to_byte(self.peek().position);
         self.advance();
@@ -2133,6 +2186,7 @@ impl<'a> Parser<'a> {
             None => (None, QuoteStyle::None),
         };
         Ok(TableSource::Raw {
+            normalization: Some(self.raw_table_source_normalization(&sql)),
             sql,
             alias,
             alias_quote_style,
@@ -2173,8 +2227,10 @@ impl<'a> Parser<'a> {
             .get(self.pos.saturating_sub(1))
             .map(|token| self.token_end_byte(token))
             .unwrap_or(start);
+        let sql = self.sql[start..end].trim().to_string();
         Ok(TableSource::Raw {
-            sql: self.sql[start..end].trim().to_string(),
+            normalization: Some(self.raw_table_source_normalization(&sql)),
+            sql,
             alias: None,
             alias_quote_style: QuoteStyle::None,
             source_dialect: Some(self.dialect),
@@ -2207,8 +2263,10 @@ impl<'a> Parser<'a> {
             .get(self.pos)
             .map(|token| self.char_pos_to_byte(token.position))
             .unwrap_or_else(|| self.sql.len());
+        let sql = self.sql[start..end].trim().to_string();
         Ok(TableSource::Raw {
-            sql: self.sql[start..end].trim().to_string(),
+            normalization: Some(self.raw_table_source_normalization(&sql)),
+            sql,
             alias: None,
             alias_quote_style: QuoteStyle::None,
             source_dialect: Some(self.dialect),
@@ -3373,6 +3431,7 @@ impl<'a> Parser<'a> {
                 prefix.push_str(&rendered_name);
                 return Ok(Statement::Raw(RawStatement {
                     comments: vec![],
+                    normalization: Some(self.raw_statement_normalization(&prefix)),
                     sql: prefix,
                     source_dialect: Some(self.dialect),
                 }));
@@ -3434,6 +3493,7 @@ impl<'a> Parser<'a> {
             sql.push_str(&name);
             return Ok(Statement::Raw(RawStatement {
                 comments: vec![],
+                normalization: Some(self.raw_statement_normalization(&sql)),
                 sql,
                 source_dialect: Some(self.dialect),
             }));
@@ -5959,6 +6019,7 @@ impl<'a> Parser<'a> {
                         name: "REGEXP_I_LIKE".to_string(),
                         args: vec![left, pattern],
                         distinct: false,
+                        raw_order_nulls: None,
                         filter: None,
                         over: None,
                     }
@@ -6452,6 +6513,7 @@ impl<'a> Parser<'a> {
                     name: "SQRT".to_string(),
                     args: vec![expr],
                     distinct: false,
+                    raw_order_nulls: None,
                     filter: None,
                     over: None,
                 })
@@ -6469,6 +6531,7 @@ impl<'a> Parser<'a> {
                     name: "CBRT".to_string(),
                     args: vec![expr],
                     distinct: false,
+                    raw_order_nulls: None,
                     filter: None,
                     over: None,
                 })
@@ -6566,6 +6629,7 @@ impl<'a> Parser<'a> {
                     name: "JSONB_EXTRACT".to_string(),
                     args: vec![expr, path],
                     distinct: false,
+                    raw_order_nulls: None,
                     filter: None,
                     over: None,
                 };
@@ -6575,6 +6639,7 @@ impl<'a> Parser<'a> {
                     name: "JSONB_EXTRACT_SCALAR".to_string(),
                     args: vec![expr, path],
                     distinct: false,
+                    raw_order_nulls: None,
                     filter: None,
                     over: None,
                 };
@@ -6626,6 +6691,7 @@ impl<'a> Parser<'a> {
                     name,
                     args,
                     distinct,
+                    raw_order_nulls,
                     over,
                     ..
                 } => {
@@ -6633,6 +6699,7 @@ impl<'a> Parser<'a> {
                         name,
                         args,
                         distinct,
+                        raw_order_nulls,
                         filter: Some(Box::new(filter_expr)),
                         over,
                     };
@@ -6707,11 +6774,13 @@ impl<'a> Parser<'a> {
                 args,
                 distinct,
                 filter,
+                raw_order_nulls,
                 ..
             } => Expr::Function {
                 name,
                 args,
                 distinct,
+                raw_order_nulls,
                 filter,
                 over: Some(spec),
             },
@@ -6939,6 +7008,7 @@ impl<'a> Parser<'a> {
                     name: "DATE".to_string(),
                     args: vec![Expr::StringLiteral(value)],
                     distinct: false,
+                    raw_order_nulls: None,
                     filter: None,
                     over: None,
                 })
@@ -7239,6 +7309,7 @@ impl<'a> Parser<'a> {
                         name: "ARRAY".to_string(),
                         args,
                         distinct: false,
+                        raw_order_nulls: None,
                         filter: None,
                         over: None,
                     })
@@ -7298,6 +7369,7 @@ impl<'a> Parser<'a> {
                     name: "STRUCT".to_string(),
                     args,
                     distinct: false,
+                    raw_order_nulls: None,
                     filter: None,
                     over: None,
                 })
@@ -7326,6 +7398,7 @@ impl<'a> Parser<'a> {
                         name,
                         args: vec![Expr::StringLiteral(value)],
                         distinct: false,
+                        raw_order_nulls: None,
                         filter: None,
                         over: None,
                     });
@@ -7450,6 +7523,7 @@ impl<'a> Parser<'a> {
                 name,
                 args: vec![Expr::StringLiteral(raw_args)],
                 distinct: false,
+                raw_order_nulls: None,
                 filter: None,
                 over: None,
             });
@@ -7463,6 +7537,7 @@ impl<'a> Parser<'a> {
                 name,
                 args: vec![Expr::StringLiteral(raw_args)],
                 distinct: false,
+                raw_order_nulls: None,
                 filter: None,
                 over: None,
             });
@@ -7481,10 +7556,18 @@ impl<'a> Parser<'a> {
         {
             let distinct = self.match_token(TokenType::Distinct);
             let raw_args = self.parse_raw_function_args()?;
+            let raw_order_nulls = if crate::dialects::is_postgres_family(self.dialect)
+                && raw_args.to_ascii_uppercase().contains(" ORDER BY ")
+            {
+                Some(RawOrderNullsPolicy::PostgresDefault)
+            } else {
+                None
+            };
             return Ok(Expr::Function {
                 name,
                 args: vec![Expr::StringLiteral(raw_args)],
                 distinct,
+                raw_order_nulls,
                 filter: None,
                 over: None,
             });
@@ -7554,6 +7637,7 @@ impl<'a> Parser<'a> {
                 name: "__RAW_EXPR__".to_string(),
                 args: vec![Expr::StringLiteral(self.sql[start..end].to_string())],
                 distinct: false,
+                raw_order_nulls: None,
                 filter: None,
                 over: None,
             });
@@ -7588,6 +7672,7 @@ impl<'a> Parser<'a> {
                 name: "COUNT".to_string(),
                 args,
                 distinct,
+                raw_order_nulls: None,
                 filter: None,
                 over: None,
             })
@@ -7600,6 +7685,7 @@ impl<'a> Parser<'a> {
                 name,
                 args,
                 distinct,
+                raw_order_nulls: None,
                 filter: None,
                 over: None,
             })
@@ -8046,6 +8132,7 @@ impl<'a> Parser<'a> {
                 name: name.to_string(),
                 args,
                 distinct: false,
+                raw_order_nulls: None,
                 filter: None,
                 over: None,
             })

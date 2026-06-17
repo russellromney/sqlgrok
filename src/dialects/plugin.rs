@@ -713,6 +713,7 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
                         name: new_name,
                         args,
                         distinct: false,
+                        raw_order_nulls: None,
                         filter: filter.map(|f| Box::new(transform_expr_plugin(*f, target))),
                         over,
                     };
@@ -743,6 +744,7 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
                         name: new_name,
                         args: new_items,
                         distinct: false,
+                        raw_order_nulls: None,
                         filter: None,
                         over: None,
                     };
@@ -759,6 +761,7 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
             name,
             args,
             distinct,
+            raw_order_nulls,
             filter,
             over,
         } => {
@@ -771,6 +774,7 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
                 name: new_name,
                 args: new_args,
                 distinct,
+                raw_order_nulls,
                 filter: filter.map(|f| Box::new(transform_expr_plugin(*f, target))),
                 over,
             }

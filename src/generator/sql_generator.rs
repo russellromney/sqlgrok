@@ -18,11 +18,74 @@ fn sqlite_function_raw_args(raw_args: &str) -> String {
         .replace(" RESPECT NULLS", "")
 }
 
+fn postgres_default_raw_order_nulls(raw: &str) -> String {
+    let upper = raw.to_ascii_uppercase();
+    let Some(order_by_pos) = upper.find(" ORDER BY ") else {
+        return raw.to_string();
+    };
+    let order_start = order_by_pos + " ORDER BY ".len();
+    let bytes = raw.as_bytes();
+    let upper_bytes = upper.as_bytes();
+    let mut depth: i32 = 0;
+    let mut end = raw.len();
+    let mut i = order_start;
+    while i < raw.len() {
+        match bytes[i] {
+            b'(' => depth += 1,
+            b')' => {
+                if depth == 0 {
+                    end = i;
+                    break;
+                }
+                depth -= 1;
+            }
+            _ if depth == 0
+                && (upper_bytes[i..].starts_with(b" LIMIT ")
+                    || upper_bytes[i..].starts_with(b" OFFSET ")) =>
+            {
+                end = i;
+                break;
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    let order_clause = &raw[order_start..end];
+    let rewritten = order_clause
+        .split(',')
+        .map(|item| {
+            let trimmed = item.trim_end();
+            let leading_spaces: String = item.chars().take_while(|c| c.is_whitespace()).collect();
+            let core = trimmed.trim_start();
+            let upper_core = core.to_ascii_uppercase();
+            let is_desc = upper_core.ends_with(" DESC");
+            let already_has_nulls =
+                upper_core.ends_with(" NULLS FIRST") || upper_core.ends_with(" NULLS LAST");
+            if already_has_nulls || core.is_empty() {
+                return format!("{leading_spaces}{core}");
+            }
+            let suffix = if is_desc {
+                " NULLS FIRST"
+            } else {
+                " NULLS LAST"
+            };
+            format!("{leading_spaces}{core}{suffix}")
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    let mut out = String::with_capacity(raw.len() + 32);
+    out.push_str(&raw[..order_start]);
+    out.push_str(&rewritten);
+    out.push_str(&raw[end..]);
+    out
+}
+
 fn sqlite_instr_with_position_expr(haystack: Expr, needle: Expr, position: Expr) -> Expr {
     let substring = Expr::Function {
         name: "SUBSTRING".to_string(),
         args: vec![haystack, position.clone()],
         distinct: false,
+        raw_order_nulls: None,
         filter: None,
         over: None,
     };
@@ -30,6 +93,7 @@ fn sqlite_instr_with_position_expr(haystack: Expr, needle: Expr, position: Expr)
         name: "INSTR".to_string(),
         args: vec![substring, needle],
         distinct: false,
+        raw_order_nulls: None,
         filter: None,
         over: None,
     };
@@ -100,6 +164,7 @@ fn sqlite_postgres_json_typeof_expr(expr: Expr) -> Expr {
             name: "JSON_TYPE".to_string(),
             args: vec![expr],
             distinct: false,
+            raw_order_nulls: None,
             filter: None,
             over: None,
         }
@@ -170,49 +235,73 @@ fn sqlite_is_recognized_interval_unit(unit: &str) -> bool {
     )
 }
 
-fn normalize_sqlite_raw_table_source_sql(
-    sql: &str,
-    source_dialect: Option<Dialect>,
-) -> Cow<'_, str> {
-    let mut normalized = if source_dialect.is_some_and(dialects::is_postgres_family) {
+fn normalize_sqlite_raw_table_source_sql<'a>(
+    sql: &'a str,
+    normalization: Option<&RawTableSourceNormalization>,
+) -> Cow<'a, str> {
+    let Some(normalization) = normalization else {
+        return Cow::Borrowed(sql);
+    };
+    let mut normalized = if normalization.strip_postgres_values_column_aliases {
         Cow::Owned(dialects::strip_postgres_values_column_aliases(sql))
     } else {
         Cow::Borrowed(sql)
     };
-    normalized = match dialects::rewrite_unnest_with_offset(&normalized) {
-        Some(rewritten) => Cow::Owned(rewritten),
-        None => normalized,
-    };
-    normalized = match source_dialect {
-        Some(Dialect::Sqlite) => dialects::rewrite_unnest_array_literal_sqlite(&normalized)
-            .map(Cow::Owned)
-            .unwrap_or(normalized),
-        Some(Dialect::Postgres | Dialect::Mysql | Dialect::SingleStore | Dialect::Doris) => {
+    if normalization.rewrite_unnest_with_offset {
+        normalized = match dialects::rewrite_unnest_with_offset(&normalized) {
+            Some(rewritten) => Cow::Owned(rewritten),
+            None => normalized,
+        };
+    }
+    normalized = match normalization.unnest_array_literal {
+        Some(RawUnnestArrayLiteralPolicy::SqliteQuotedString) => {
+            dialects::rewrite_unnest_array_literal_sqlite(&normalized)
+                .map(Cow::Owned)
+                .unwrap_or(normalized)
+        }
+        Some(RawUnnestArrayLiteralPolicy::ArrayCall) => {
             dialects::rewrite_unnest_array_literal_to_array_call(&normalized)
                 .map(Cow::Owned)
                 .unwrap_or(normalized)
         }
-        _ => normalized,
+        None => normalized,
     };
-    if normalized.contains('`') {
+    if normalization.quote_backticks && normalized.contains('`') {
         normalized = Cow::Owned(normalized.replace('`', "\""));
     }
-    normalized = Cow::Owned(dialects::uppercase_function_names_in_raw_sql(&normalized));
-    Cow::Owned(dialects::normalize_typed_literals_in_raw_sql(&normalized))
+    if normalization.uppercase_function_names {
+        normalized = Cow::Owned(dialects::uppercase_function_names_in_raw_sql(&normalized));
+    }
+    if normalization.normalize_typed_literals {
+        normalized = Cow::Owned(dialects::normalize_typed_literals_in_raw_sql(&normalized));
+    }
+    normalized
 }
 
-fn normalize_sqlite_raw_statement_sql(sql: &str, source_dialect: Option<Dialect>) -> Cow<'_, str> {
-    let mut normalized = if source_dialect.is_some_and(dialects::is_postgres_family) {
+fn normalize_sqlite_raw_statement_sql<'a>(
+    sql: &'a str,
+    normalization: Option<&RawStatementNormalization>,
+) -> Cow<'a, str> {
+    let Some(normalization) = normalization else {
+        return Cow::Borrowed(sql);
+    };
+    let mut normalized = if normalization.normalize_postgres_create_type_enum {
         let enum_normalized = dialects::normalize_postgres_create_type_enum(sql)
             .map(Cow::Owned)
             .unwrap_or(Cow::Borrowed(sql));
-        Cow::Owned(dialects::normalize_postgres_recursive_cte_raw(
-            &enum_normalized,
-        ))
+        if normalization.normalize_postgres_recursive_cte {
+            Cow::Owned(dialects::normalize_postgres_recursive_cte_raw(
+                &enum_normalized,
+            ))
+        } else {
+            enum_normalized
+        }
+    } else if normalization.normalize_postgres_recursive_cte {
+        Cow::Owned(dialects::normalize_postgres_recursive_cte_raw(sql))
     } else {
         Cow::Borrowed(sql)
     };
-    if source_dialect.is_some_and(dialects::is_mysql_family) {
+    if normalization.drop_recognized_mysql_show {
         let trimmed = normalized.trim_start();
         if trimmed
             .get(..4)
@@ -223,11 +312,18 @@ fn normalize_sqlite_raw_statement_sql(sql: &str, source_dialect: Option<Dialect>
         }
     }
     let trimmed = normalized.trim_start().to_ascii_uppercase();
-    if trimmed.starts_with("PIVOT ") || trimmed.starts_with("UNPIVOT ") {
+    if normalization.drop_pivot_unpivot
+        && (trimmed.starts_with("PIVOT ") || trimmed.starts_with("UNPIVOT "))
+    {
         return Cow::Borrowed("");
     }
-    normalized = Cow::Owned(dialects::normalize_postgres_copy_raw(&normalized));
-    Cow::Owned(dialects::normalize_insert_into_function(&normalized))
+    if normalization.normalize_copy {
+        normalized = Cow::Owned(dialects::normalize_postgres_copy_raw(&normalized));
+    }
+    if normalization.normalize_insert_into_function {
+        normalized = Cow::Owned(dialects::normalize_insert_into_function(&normalized));
+    }
+    normalized
 }
 
 fn should_render_nulls_ordering(dialect: Option<Dialect>, item: &OrderByItem) -> bool {
@@ -517,7 +613,7 @@ impl Generator {
             Statement::Raw(s) => {
                 self.gen_comments(&s.comments);
                 let sql = if matches!(self.dialect, Some(Dialect::Sqlite)) {
-                    normalize_sqlite_raw_statement_sql(&s.sql, s.source_dialect)
+                    normalize_sqlite_raw_statement_sql(&s.sql, s.normalization.as_ref())
                 } else {
                     Cow::Borrowed(s.sql.as_str())
                 };
@@ -835,9 +931,10 @@ impl Generator {
                 sql,
                 alias,
                 alias_quote_style,
-                source_dialect,
+                normalization,
+                ..
             } => {
-                self.write_raw_table_source_sql(sql, *source_dialect);
+                self.write_raw_table_source_sql(sql, normalization.as_ref());
                 if let Some(alias) = alias {
                     self.write(" ");
                     if !self.omit_table_alias_as() {
@@ -983,9 +1080,13 @@ impl Generator {
         matches!(self.dialect, Some(Dialect::Oracle))
     }
 
-    fn write_raw_table_source_sql(&mut self, sql: &str, source_dialect: Option<Dialect>) {
+    fn write_raw_table_source_sql(
+        &mut self,
+        sql: &str,
+        normalization: Option<&RawTableSourceNormalization>,
+    ) {
         let normalized = if matches!(self.dialect, Some(Dialect::Sqlite)) {
-            normalize_sqlite_raw_table_source_sql(sql, source_dialect)
+            normalize_sqlite_raw_table_source_sql(sql, normalization)
         } else {
             Cow::Borrowed(sql)
         };
@@ -3474,6 +3575,7 @@ impl Generator {
                 name,
                 args,
                 distinct,
+                raw_order_nulls,
                 filter,
                 over,
             } => {
@@ -3550,7 +3652,18 @@ impl Generator {
                         self.write_keyword("DISTINCT ");
                     }
                     if matches!(self.dialect, Some(Dialect::Sqlite)) {
-                        self.write(&sqlite_function_raw_args(raw_args));
+                        let raw_args = if matches!(
+                            raw_order_nulls,
+                            Some(RawOrderNullsPolicy::PostgresDefault)
+                        ) && !raw_args.contains("NULLS FIRST")
+                            && !raw_args.contains("NULLS LAST")
+                            && raw_args.to_ascii_uppercase().contains(" ORDER BY ")
+                        {
+                            Cow::Owned(postgres_default_raw_order_nulls(raw_args))
+                        } else {
+                            Cow::Borrowed(raw_args.as_str())
+                        };
+                        self.write(&sqlite_function_raw_args(&raw_args));
                     } else {
                         self.write(raw_args);
                     }

@@ -68,6 +68,100 @@ Phases (ratcheted on the forced suite, no real regressions, commit per slice):
 3. Delete the transform layer and the `(source, target)` signature.
 4. Port SQLGlot's per-target dicts to backfill thin non-sqlite generators.
 
+### Phase 3 retirement runway: draining the legacy path
+
+Status: active. Goal: retire `transform_owned(from, to)` as soon as the
+remaining behavior has a parser-owned or generator-owned home.
+
+The remaining work is no longer a broad expression-function migration. The
+function/date source gates have moved into typed parser/generator architecture.
+What remains is the structural legacy path: raw carriers, statement-level
+normalization, and target-only lowering passes that still run between parse and
+generate.
+
+Retirement sequence:
+
+1. **Raw aggregate ORDER BY carriers.**
+   - Problem: Postgres aggregate calls such as `ARRAY_AGG(x ORDER BY y)` can
+     still arrive as raw string args. The transform layer injects SQLite
+     `NULLS FIRST/LAST` semantics into that raw string.
+   - Fix: add typed aggregate argument ordering (`ORDER BY`, `LIMIT`, and
+     null-direction metadata) to function/aggregate AST nodes; parse it on the
+     read side; render it on the write side.
+   - Progress: `RawOrderNullsPolicy` now carries Postgres raw aggregate
+     null-ordering semantics from the parser to the SQLite generator, deleting
+     `propagate_nulls_direction` and the final source-gated branch in
+     `transform_expr`.
+   - Remaining: graduate the raw function argument text into structured
+     aggregate argument ordering fields where the parser can represent the
+     clause fully.
+
+2. **Raw table-source carriers.**
+   - Problem: `TableSource::Raw` still carries behavior, not only passthrough:
+     `UNNEST(...)` array literal rewrites, BigQuery `WITH OFFSET`, Postgres
+     VALUES alias cleanup, raw typed literal rewrites, and raw function
+     uppercasing.
+   - Fix: model the missing table-source structure directly: richer
+     `TableFunction`/`Unnest` fields for ordinality, offset aliases, alias
+     column lists, table-function tails, and `ROWS FROM`; typed carriers for
+     JSON/XML table sources where needed.
+   - Progress: `RawTableSourceNormalization` now carries the current raw
+     table-source rewrite policy from the parser to the SQLite generator,
+     including Postgres VALUES alias cleanup, BigQuery `WITH OFFSET`, UNNEST
+     array literal policy, backtick quoting, function uppercasing, and typed
+     literal normalization. The table-source transform no longer backfills
+     `source_dialect`, and SQLite raw table-source rendering no longer branches
+     on source dialect.
+   - Exit: replace the remaining raw text with structured table-source fields
+     where practical, leaving raw table sources as inert unsupported passthrough
+     only.
+
+3. **Raw statement normalization.**
+   - Problem: `RawStatement` still carries rewrite behavior for Postgres enum
+     and recursive CTE raw text, `COPY`, MySQL `SHOW`, raw `PIVOT`/`UNPIVOT`,
+     and insert-into-function cleanup.
+   - Fix: add typed or semi-typed statement variants (`CommandKind` where full
+     AST modeling is not worth it yet) so parsers classify the source behavior
+     and generators render or drop by target.
+   - Progress: `RawStatementNormalization` now carries the existing raw
+     statement rewrite policy from the parser to the SQLite generator. The
+     generator no longer branches on `source_dialect` for raw statements, and
+     `transform_statement` no longer backfills raw statement source dialect.
+   - Exit: replace the remaining raw statement text with typed or semi-typed
+     statement variants where practical, leaving raw statements as inert
+     unsupported passthrough only.
+
+4. **Target-only lowerings that still live in transform.**
+   - Problem: several target-only rewrites still require the transform pass:
+     `ILIKE` lowering, `DISTINCT ON` lowering, `SEMI`/`ANTI` join lowering,
+     SQLite `WITHIN GROUP` dropping for `GROUP_CONCAT`, limit/top/fetch
+     normalization, lock dropping, quote conversion, and SQLite identity join
+     cleanup.
+   - Fix: move target-only rendering decisions into the generator, or into
+     explicitly named parser canonicalizations where SQLGlot parses a different
+     IR shape.
+   - Exit: `transform_statement` only recurses, then disappears.
+
+5. **AST gap closure.**
+   - Problem: the remaining hard cases are places where the AST cannot yet
+     express SQLGlot's IR: raw table-source structure, aggregate arg ordering,
+     source-specific join/apply quirks, and parser fallback cases.
+   - Fix: add the missing AST fields first, then relocate behavior. Do not
+     move raw-text rewrites into another module and call that architecture.
+   - Exit: full matrix has no pair-keyed behavior; correctness factorizes into
+     parser lanes plus generator lanes.
+
+Final deletion plan:
+
+- Add a CI/helper check that fails new `source,target` behavior in
+  `transform_expr` and `transform_statement`.
+- Once the five items above are drained, replace `transform_owned` with a
+  no-op compatibility shim, run the full pair matrix once as the switch-over
+  proof, then delete the shim and the `(source, target)` transform signatures.
+- After deletion, change the scoreboard from seven pair lanes to dialect
+  identities plus a spanning parser/generator lane set, as described in the
+  measurement model below.
+
 ### Measurement model: pair lanes retire with Phase 3
 
 The dialect x dialect lane matrix is the right scoreboard only while

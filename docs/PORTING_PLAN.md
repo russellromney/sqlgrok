@@ -185,6 +185,56 @@ Each step ratcheted on the forced suite across all lanes (now including
 - **Phase 4 — port SQLGlot's per-target tables** to backfill thin generators;
   multi-target suite measures it. Adding a dialect = filling its tables.
 
+### Phase 3 retirement runway
+
+Phase 3 is now concrete: the remaining work is structural, not another sweep
+of ordinary function rewrites.
+
+1. **Raw aggregate ORDER BY carriers.**
+   Postgres aggregate calls with `ORDER BY` can still parse their args as raw
+   text, and the transform layer used to inject SQLite `NULLS FIRST/LAST`
+   semantics into that string. The first slice now carries that source
+   semantics as parser-owned `RawOrderNullsPolicy` and renders it in the
+   SQLite generator, deleting the source-gated `transform_expr` branch. The
+   remaining cleanup is to replace the raw string with structured aggregate
+   argument ordering fields where the parser can represent the clause fully.
+2. **Raw table-source carriers.**
+   `TableSource::Raw` still encodes behavior for `UNNEST(...)`, `WITH OFFSET`,
+   Postgres VALUES alias cleanup, typed literals, and raw function name
+   normalization. Replace those with richer table-source nodes/fields:
+   ordinality, offset aliases, alias column lists, table-function tails,
+   `ROWS FROM`, and JSON/XML table carriers as needed. The first execution
+   slice now moves the existing raw-text rewrite policy into parser-owned
+   `RawTableSourceNormalization`, so SQLite raw table-source rendering no
+   longer keys off `source_dialect`; the remaining work is to eliminate the raw
+   string carrier where the parser can model the structure directly.
+3. **Raw statement normalization.**
+   `RawStatement` still rewrites Postgres enum/raw recursive CTE/COPY, MySQL
+   `SHOW`, raw `PIVOT`/`UNPIVOT`, and insert-into-function text. Add typed or
+   semi-typed statement variants (`CommandKind` where full modeling is not
+   worth it yet) so raw passthrough is inert. The first execution slice now
+   carries the existing rewrite policy as parser-owned
+   `RawStatementNormalization`, so SQLite raw statement rendering no longer
+   keys off `source_dialect`; the remaining work is to replace raw text with
+   typed or semi-typed statement variants where practical.
+4. **Target-only lowerings still in transform.**
+   Move `ILIKE`, `DISTINCT ON`, `SEMI`/`ANTI` joins, SQLite `WITHIN GROUP`
+   dropping, limit/top/fetch normalization, lock dropping, quote conversion,
+   and SQLite identity join cleanup into generator-owned rendering or explicit
+   parser canonicalization.
+5. **AST gap closure.**
+   Do not relocate raw-text rewrites into another helper and call that done.
+   Add the missing AST shape first, then drain behavior. The transform layer
+   can disappear only when pair-keyed behavior has no place left to hide.
+
+Deletion gate:
+
+- Add a guard against new `(source, target)` behavior in transform code.
+- Run the full pair matrix once as switch-over proof.
+- Replace `transform_owned` with a no-op compatibility shim, then delete the
+  shim and `(source, target)` signatures once identities plus spanning
+  parser/generator lanes reproduce the same coverage.
+
 ## Standing decisions
 
 - Single `sql_generator.rs` branching on target with target-keyed data tables

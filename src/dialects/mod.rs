@@ -447,6 +447,7 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
             {
                 *statement = Statement::Raw(RawStatement {
                     comments: vec![],
+                    normalization: None,
                     sql: text,
                     source_dialect: Some(source),
                 });
@@ -507,9 +508,7 @@ fn transform_statement(statement: &mut Statement, source: Dialect, target: Diale
                 }
             }
         }
-        Statement::Raw(raw) if raw.source_dialect.is_none() => {
-            raw.source_dialect = Some(source);
-        }
+        Statement::Raw(_) => {}
         _ => {}
     }
 }
@@ -1085,6 +1084,7 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             name,
             args,
             distinct,
+            raw_order_nulls,
             filter,
             over,
         } => {
@@ -1092,44 +1092,11 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
                 .into_iter()
                 .map(|a| transform_expr(a, source, target))
                 .collect();
-            // Postgres source aggregate calls parsed with raw-string args
-            // (ARRAY_AGG, ANY_VALUE, ARG_MAX, JSON_ARRAYAGG, LAST_VALUE,
-            // LISTAGG, NTILE) — when the raw text contains an ORDER BY
-            // clause, propagate NULLS FIRST/LAST direction onto every
-            // explicit ORDER BY item (postgres semantics: ASC = NULLS
-            // LAST, DESC = NULLS FIRST). Python SQLGlot does this on
-            // sqlite output.
-            if is_postgres_family(source)
-                && matches!(target, Dialect::Sqlite)
-                && matches!(
-                    name.to_ascii_uppercase().as_str(),
-                    "ANY_VALUE"
-                        | "ARG_MAX"
-                        | "ARRAY_AGG"
-                        | "JSON_ARRAYAGG"
-                        | "LAST_VALUE"
-                        | "LISTAGG"
-                        | "NTILE"
-                )
-                && new_args.len() == 1
-                && let Expr::StringLiteral(raw) = &new_args[0]
-                && !raw.contains("NULLS FIRST")
-                && !raw.contains("NULLS LAST")
-                && raw.to_ascii_uppercase().contains(" ORDER BY ")
-            {
-                let rewritten = propagate_nulls_direction(raw);
-                return Expr::Function {
-                    name,
-                    args: vec![Expr::StringLiteral(rewritten)],
-                    distinct,
-                    filter,
-                    over,
-                };
-            }
             Expr::Function {
                 name,
                 args: new_args,
                 distinct,
+                raw_order_nulls,
                 filter: filter.map(|f| Box::new(transform_expr(*f, source, target))),
                 over: over.map(|spec| transform_window_spec(spec, source, target)),
             }
@@ -1378,75 +1345,6 @@ fn transform_order_by_items(items: &mut [OrderByItem], source: Dialect, target: 
 
 /// Rewrite `SEMI JOIN` / `ANTI JOIN` clauses to `WHERE EXISTS (...)`
 /// / `WHERE NOT EXISTS (...)` subqueries (Python SQLGlot's IR form).
-/// Add NULLS FIRST/LAST direction to each ORDER BY item in a raw
-/// aggregate-args string. Used for postgres source aggregates whose
-/// args are parsed as raw text (ARRAY_AGG with ORDER BY, etc.).
-fn propagate_nulls_direction(raw: &str) -> String {
-    let upper = raw.to_ascii_uppercase();
-    let Some(order_by_pos) = upper.find(" ORDER BY ") else {
-        return raw.to_string();
-    };
-    let order_start = order_by_pos + " ORDER BY ".len();
-    // The ORDER BY clause runs from order_start until the first LIMIT/
-    // OFFSET keyword at the top level (depth 0).
-    let bytes = raw.as_bytes();
-    let upper_bytes = upper.as_bytes();
-    let mut depth: i32 = 0;
-    let mut end = raw.len();
-    let mut i = order_start;
-    while i < raw.len() {
-        match bytes[i] {
-            b'(' => depth += 1,
-            b')' => {
-                if depth == 0 {
-                    end = i;
-                    break;
-                }
-                depth -= 1;
-            }
-            _ if depth == 0
-                && (upper_bytes[i..].starts_with(b" LIMIT ")
-                    || upper_bytes[i..].starts_with(b" OFFSET ")) =>
-            {
-                end = i;
-                break;
-            }
-            _ => {}
-        }
-        i += 1;
-    }
-    let order_clause = &raw[order_start..end];
-    let rewritten = order_clause
-        .split(',')
-        .map(|item| {
-            let trimmed = item.trim_end();
-            let leading_spaces: String = item.chars().take_while(|c| c.is_whitespace()).collect();
-            let core = trimmed.trim_start();
-            // Detect parenthesized expr like `(a + b) DESC` — strip
-            // any trailing direction keyword to decide.
-            let upper_core = core.to_ascii_uppercase();
-            let is_desc = upper_core.ends_with(" DESC");
-            let already_has_nulls =
-                upper_core.ends_with(" NULLS FIRST") || upper_core.ends_with(" NULLS LAST");
-            if already_has_nulls || core.is_empty() {
-                return format!("{leading_spaces}{core}");
-            }
-            let suffix = if is_desc {
-                " NULLS FIRST"
-            } else {
-                " NULLS LAST"
-            };
-            format!("{leading_spaces}{core}{suffix}")
-        })
-        .collect::<Vec<_>>()
-        .join(",");
-    let mut out = String::with_capacity(raw.len() + 32);
-    out.push_str(&raw[..order_start]);
-    out.push_str(&rewritten);
-    out.push_str(&raw[end..]);
-    out
-}
-
 fn rewrite_semi_anti_joins(sel: &mut SelectStatement) {
     let mut new_joins = Vec::with_capacity(sel.joins.len());
     for join in std::mem::take(&mut sel.joins) {
@@ -2083,6 +1981,7 @@ fn transform_quotes(expr: Expr, target: Dialect) -> Expr {
             name,
             args,
             distinct,
+            raw_order_nulls,
             filter,
             over,
         } => Expr::Function {
@@ -2092,6 +1991,7 @@ fn transform_quotes(expr: Expr, target: Dialect) -> Expr {
                 .map(|a| transform_quotes(a, target))
                 .collect(),
             distinct,
+            raw_order_nulls,
             filter: filter.map(|f| Box::new(transform_quotes(*f, target))),
             over,
         },
@@ -2148,11 +2048,7 @@ fn transform_quotes_in_select(sel: &mut SelectStatement, target: Dialect) {
 fn transform_exprs_in_table_source(ts: &mut TableSource, source: Dialect, target: Dialect) {
     match ts {
         TableSource::Table(_) => {}
-        TableSource::Raw { source_dialect, .. } => {
-            if source_dialect.is_none() {
-                *source_dialect = Some(source);
-            }
-        }
+        TableSource::Raw { .. } => {}
         TableSource::Subquery { query, .. } => {
             transform_statement(query, source, target);
         }

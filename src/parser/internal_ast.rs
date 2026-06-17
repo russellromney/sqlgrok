@@ -102,6 +102,7 @@ impl<'sql> InternalStatement<'sql> {
             Self::Select(select) => Statement::Select(select.into_public()),
             Self::RawIdentity(sql) => Statement::Raw(crate::ast::RawStatement {
                 comments: vec![],
+                normalization: None,
                 sql: sql.into_owned(),
                 source_dialect: None,
             }),
@@ -254,6 +255,7 @@ impl<'sql> InternalExpr<'sql> {
                         name,
                         args,
                         distinct,
+                        raw_order_nulls: None,
                         filter: None,
                         over: over.map(InternalWindowSpec::into_public),
                     }
