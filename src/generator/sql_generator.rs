@@ -522,45 +522,29 @@ fn normalize_sqlite_raw_statement_sql<'a>(
     let Some(normalization) = normalization else {
         return Cow::Borrowed(sql);
     };
-    let mut normalized = if normalization.normalize_postgres_create_type_enum {
-        let enum_normalized = dialects::normalize_postgres_create_type_enum(sql)
-            .map(Cow::Owned)
-            .unwrap_or(Cow::Borrowed(sql));
-        if normalization.normalize_postgres_recursive_cte {
-            Cow::Owned(dialects::normalize_postgres_recursive_cte_raw(
-                &enum_normalized,
-            ))
-        } else {
-            enum_normalized
-        }
-    } else if normalization.normalize_postgres_recursive_cte {
+    let mut normalized = if normalization.normalize_postgres_recursive_cte {
         Cow::Owned(dialects::normalize_postgres_recursive_cte_raw(sql))
     } else {
         Cow::Borrowed(sql)
     };
-    if normalization.drop_recognized_mysql_show {
-        let trimmed = normalized.trim_start();
-        if trimmed
-            .get(..4)
-            .is_some_and(|p| p.eq_ignore_ascii_case("SHOW"))
-            && dialects::mysql_show_is_recognized(trimmed)
-        {
-            return Cow::Borrowed("");
-        }
-    }
-    let trimmed = normalized.trim_start().to_ascii_uppercase();
-    if normalization.drop_pivot_unpivot
-        && (trimmed.starts_with("PIVOT ") || trimmed.starts_with("UNPIVOT "))
-    {
-        return Cow::Borrowed("");
-    }
-    if normalization.normalize_copy {
-        normalized = Cow::Owned(dialects::normalize_postgres_copy_raw(&normalized));
-    }
     if normalization.normalize_insert_into_function {
         normalized = Cow::Owned(dialects::normalize_insert_into_function(&normalized));
     }
     normalized
+}
+
+fn normalize_sqlite_command_statement_sql<'a>(command: &'a CommandStatement) -> Cow<'a, str> {
+    if command.drop_for_sqlite {
+        return Cow::Borrowed("");
+    }
+    match command.kind {
+        CommandKind::Copy => Cow::Owned(dialects::normalize_postgres_copy_raw(&command.sql)),
+        CommandKind::CreateTypeEnum => dialects::normalize_postgres_create_type_enum(&command.sql)
+            .map(Cow::Owned)
+            .unwrap_or(Cow::Borrowed(command.sql.as_str())),
+        CommandKind::Pivot | CommandKind::Unpivot => Cow::Borrowed(""),
+        CommandKind::Show | CommandKind::Generic => Cow::Borrowed(command.sql.as_str()),
+    }
 }
 
 fn should_render_nulls_ordering(dialect: Option<Dialect>, item: &OrderByItem) -> bool {
@@ -846,6 +830,15 @@ impl Generator {
             Statement::Merge(s) => {
                 self.gen_comments(&s.comments);
                 self.gen_merge(s);
+            }
+            Statement::Command(s) => {
+                self.gen_comments(&s.comments);
+                let sql = if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                    normalize_sqlite_command_statement_sql(s)
+                } else {
+                    Cow::Borrowed(s.sql.as_str())
+                };
+                self.write(sql.as_ref());
             }
             Statement::Raw(s) => {
                 self.gen_comments(&s.comments);

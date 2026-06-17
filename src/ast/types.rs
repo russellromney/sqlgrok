@@ -110,6 +110,9 @@ pub enum Statement {
     /// MERGE INTO ... USING ... WHEN MATCHED / WHEN NOT MATCHED
     Merge(MergeStatement),
     /// Opaque command preserved textually until sqlgrok grows a typed AST for it.
+    Command(CommandStatement),
+    /// Opaque fallback SQL preserved textually. New target behavior should move
+    /// to parser/generator-owned statement variants instead of this carrier.
     Raw(RawStatement),
     /// Raw / passthrough expression (for expressions that don't fit a specific statement type)
     Expression(Expr),
@@ -187,6 +190,27 @@ pub struct RawStatement {
     pub normalization: Option<RawStatementNormalization>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_dialect: Option<Dialect>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CommandKind {
+    Copy,
+    Show,
+    Pivot,
+    Unpivot,
+    CreateTypeEnum,
+    Generic,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CommandStatement {
+    /// Comments attached to this statement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<String>,
+    pub sql: String,
+    pub kind: CommandKind,
+    #[serde(default)]
+    pub drop_for_sqlite: bool,
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -514,15 +538,7 @@ pub struct RawTableSourceNormalization {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RawStatementNormalization {
     #[serde(default)]
-    pub normalize_postgres_create_type_enum: bool,
-    #[serde(default)]
     pub normalize_postgres_recursive_cte: bool,
-    #[serde(default)]
-    pub drop_recognized_mysql_show: bool,
-    #[serde(default)]
-    pub drop_pivot_unpivot: bool,
-    #[serde(default)]
-    pub normalize_copy: bool,
     #[serde(default)]
     pub normalize_insert_into_function: bool,
 }

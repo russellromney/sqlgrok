@@ -3,7 +3,7 @@
 /// These test parse→generate roundtrips (identity), normalization transforms,
 /// and basic cross-dialect transpilation. Modeled after the `validate` and
 /// `validate_identity` helpers in the Python test suite.
-use sqlgrok::ast::{CreateTableOption, Expr, SelectItem, TableSource};
+use sqlgrok::ast::{CommandKind, CreateTableOption, Expr, SelectItem, TableSource};
 use sqlgrok::{Dialect, Statement, generate, generate_pretty, parse, transpile};
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -163,6 +163,11 @@ fn test_postgres_grouping_modifiers_spacing_to_sqlite() {
 
 #[test]
 fn test_postgres_create_type_enum_to_sqlite() {
+    assert!(matches!(
+        parse("CREATE TYPE mood AS ENUM ('sad', 'ok')", Dialect::Postgres).unwrap(),
+        Statement::Command(command)
+            if command.kind == CommandKind::CreateTypeEnum && !command.drop_for_sqlite
+    ));
     validate_with_dialect(
         "CREATE TYPE mood AS ENUM ('sad', 'ok')",
         "CREATE TYPE mood AS ENUM('sad', 'ok')",
@@ -876,6 +881,10 @@ fn test_sqlite_raw_create_table_pretty_parity() {
 fn test_pretty_raw_non_create_table_preserves_body() {
     let sql = "COPY t FROM STDIN\n    1\talpha\n    2\tbeta";
     let ast = parse(sql, Dialect::Sqlite).unwrap_or_else(|e| panic!("Parse failed: {}", e));
+    assert!(matches!(
+        ast,
+        Statement::Command(ref command) if command.kind == CommandKind::Copy
+    ));
     assert_eq!(
         generate_pretty(&ast, Dialect::Sqlite),
         "COPY INTO t FROM STDIN\n    1\talpha\n    2\tbeta"
@@ -2724,6 +2733,10 @@ fn test_range_and_replace_expression_to_sqlite() {
     // and fall back to the Command parser, which re-renders with a space
     // before the open paren. Postgres preserves the original form.
     for dialect in [Dialect::Mysql, Dialect::Sqlite] {
+        assert!(matches!(
+            parse("REPLACE(subject, pattern)", dialect).unwrap(),
+            Statement::Command(command) if command.kind == CommandKind::Generic
+        ));
         validate_with_dialect(
             "REPLACE(subject, pattern)",
             "REPLACE (subject, pattern)",
@@ -4167,6 +4180,20 @@ fn test_pivot_with_join() {
     validate_identity(
         "SELECT * FROM sales PIVOT (SUM(amount) FOR quarter IN ('Q1', 'Q2')) AS pvt INNER JOIN regions ON pvt.region_id = regions.id",
     );
+}
+
+#[test]
+fn test_standalone_pivot_command_is_structured() {
+    let ast = parse(
+        "PIVOT Cities ON Year USING SUM(Population)",
+        Dialect::Sqlite,
+    )
+    .unwrap();
+    assert!(matches!(
+        ast,
+        Statement::Command(ref command) if command.kind == CommandKind::Pivot
+    ));
+    assert_eq!(generate(&ast, Dialect::Sqlite), "");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

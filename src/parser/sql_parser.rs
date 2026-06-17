@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::dialects::Dialect;
+use crate::dialects::{self, Dialect};
 use crate::errors::{Result, SqlglotError};
 use crate::parser::text::SqlText;
 use crate::tokens::{Token, TokenType, Tokenizer};
@@ -763,7 +763,8 @@ impl<'a> Parser<'a> {
         let comments = self.take_comments();
         let mut stmt = match self.peek_type() {
             TokenType::With => self.parse_with_statement(),
-            TokenType::Pivot | TokenType::Unpivot => self.parse_raw_statement(),
+            TokenType::Pivot => self.parse_command_statement(CommandKind::Pivot, false),
+            TokenType::Unpivot => self.parse_command_statement(CommandKind::Unpivot, false),
             TokenType::Select if self.starts_raw_set_operation_shape() => {
                 self.parse_raw_statement()
             }
@@ -791,7 +792,9 @@ impl<'a> Parser<'a> {
                     self.parse_expr().map(Statement::Expression)
                 }
             }
-            _ if self.check_keyword("COPY") => self.parse_raw_statement(),
+            _ if self.check_keyword("COPY") => {
+                self.parse_command_statement(CommandKind::Copy, false)
+            }
             _ if self.check_keyword("DECLARE") => self.parse_raw_statement(),
             _ if self.check_keyword("PRAGMA")
                 || self.check_keyword("ATTACH")
@@ -799,11 +802,10 @@ impl<'a> Parser<'a> {
             {
                 self.parse_sqlite_command_statement()
             }
-            TokenType::Set
-            | TokenType::Analyze
-            | TokenType::Grant
-            | TokenType::Revoke
-            | TokenType::Show => self.parse_raw_statement(),
+            TokenType::Set | TokenType::Analyze | TokenType::Grant | TokenType::Revoke => {
+                self.parse_raw_statement()
+            }
+            TokenType::Show => self.parse_show_command_statement(),
             TokenType::Comment => self.parse_comment_statement(),
             TokenType::Insert if self.peek_n_type(1) == &TokenType::Or => {
                 self.parse_raw_statement()
@@ -858,6 +860,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_create_or_raw(&mut self) -> Result<Statement> {
+        if crate::dialects::is_postgres_family(self.dialect)
+            && self.starts_create_type_enum_statement()
+        {
+            return self.parse_command_statement(CommandKind::CreateTypeEnum, false);
+        }
         let saved_pos = self.pos;
         match self.parse_create() {
             Ok(stmt) => Ok(stmt),
@@ -925,11 +932,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_sqlite_command_statement(&mut self) -> Result<Statement> {
-        let statement = self.parse_raw_statement()?;
+        let statement = self.parse_command_statement(CommandKind::Generic, false)?;
         Ok(match statement {
-            Statement::Raw(mut raw) => {
-                raw.sql = Self::normalize_sqlite_command(&raw.sql);
-                Statement::Raw(raw)
+            Statement::Command(mut command) => {
+                command.sql = Self::normalize_sqlite_command(&command.sql);
+                Statement::Command(command)
             }
             other => other,
         })
@@ -938,23 +945,53 @@ impl<'a> Parser<'a> {
     fn parse_replace_command_statement(&mut self) -> Result<Statement> {
         let expr = self.parse_expr()?;
         Ok(match replace_statement_to_command_form(&expr) {
-            Some(sql) => Statement::Raw(RawStatement {
+            Some(sql) => Statement::Command(CommandStatement {
                 comments: vec![],
-                normalization: None,
                 sql,
-                source_dialect: Some(self.dialect),
+                kind: CommandKind::Generic,
+                drop_for_sqlite: false,
             }),
             None => Statement::Expression(expr),
         })
     }
 
-    fn parse_raw_statement(&mut self) -> Result<Statement> {
+    fn capture_statement_sql_until_boundary(&mut self) -> String {
         let start = self.char_pos_to_byte(self.peek().position);
         while !matches!(self.peek_type(), TokenType::Semicolon | TokenType::Eof) {
             self.advance();
         }
         let end = self.char_pos_to_byte(self.peek().position);
-        let sql = self.sql[start..end].trim().to_string();
+        self.sql[start..end].trim().to_string()
+    }
+
+    fn parse_command_statement(
+        &mut self,
+        kind: CommandKind,
+        drop_for_sqlite: bool,
+    ) -> Result<Statement> {
+        let sql = self.capture_statement_sql_until_boundary();
+        Ok(Statement::Command(CommandStatement {
+            comments: vec![],
+            sql,
+            kind,
+            drop_for_sqlite,
+        }))
+    }
+
+    fn parse_show_command_statement(&mut self) -> Result<Statement> {
+        let sql = self.capture_statement_sql_until_boundary();
+        let drop_for_sqlite = crate::dialects::is_mysql_family(self.dialect)
+            && dialects::mysql_show_is_recognized(sql.trim_start());
+        Ok(Statement::Command(CommandStatement {
+            comments: vec![],
+            sql,
+            kind: CommandKind::Show,
+            drop_for_sqlite,
+        }))
+    }
+
+    fn parse_raw_statement(&mut self) -> Result<Statement> {
+        let sql = self.capture_statement_sql_until_boundary();
         Ok(Statement::Raw(RawStatement {
             comments: vec![],
             normalization: Some(self.raw_statement_normalization(&sql)),
@@ -967,15 +1004,56 @@ impl<'a> Parser<'a> {
         let trimmed_upper = sql.trim_start().to_ascii_uppercase();
         let is_postgres = crate::dialects::is_postgres_family(self.dialect);
         RawStatementNormalization {
-            normalize_postgres_create_type_enum: is_postgres,
             normalize_postgres_recursive_cte: is_postgres,
-            drop_recognized_mysql_show: crate::dialects::is_mysql_family(self.dialect)
-                && trimmed_upper.starts_with("SHOW"),
-            drop_pivot_unpivot: trimmed_upper.starts_with("PIVOT ")
-                || trimmed_upper.starts_with("UNPIVOT "),
-            normalize_copy: true,
-            normalize_insert_into_function: true,
+            normalize_insert_into_function: trimmed_upper.starts_with("INSERT INTO "),
         }
+    }
+
+    fn starts_create_type_enum_statement(&self) -> bool {
+        if self.peek_type() != &TokenType::Create {
+            return false;
+        }
+        let mut index = self.pos + 1;
+        if self
+            .tokens
+            .get(index)
+            .is_some_and(|token| token.value.eq_ignore_ascii_case("OR"))
+            && self
+                .tokens
+                .get(index + 1)
+                .is_some_and(|token| token.token_type == TokenType::Replace)
+        {
+            index += 2;
+        }
+        if !self
+            .tokens
+            .get(index)
+            .is_some_and(|token| token.value.eq_ignore_ascii_case("TYPE"))
+        {
+            return false;
+        }
+        let mut depth = 0usize;
+        while let Some(token) = self.tokens.get(index) {
+            match token.token_type {
+                TokenType::Semicolon | TokenType::Eof => break,
+                TokenType::LParen | TokenType::LBracket | TokenType::LBrace => depth += 1,
+                TokenType::RParen | TokenType::RBracket | TokenType::RBrace => {
+                    depth = depth.saturating_sub(1);
+                }
+                TokenType::As
+                    if depth == 0
+                        && self
+                            .tokens
+                            .get(index + 1)
+                            .is_some_and(|next| next.value.eq_ignore_ascii_case("ENUM")) =>
+                {
+                    return true;
+                }
+                _ => {}
+            }
+            index += 1;
+        }
+        false
     }
 
     fn starts_raw_insert_shape(&self) -> bool {
@@ -9813,6 +9891,7 @@ fn attach_comments_to_statement(stmt: &mut Statement, comments: Vec<String>) {
         Statement::Explain(s) => s.comments = comments,
         Statement::Use(s) => s.comments = comments,
         Statement::Merge(s) => s.comments = comments,
+        Statement::Command(s) => s.comments = comments,
         Statement::Raw(s) => s.comments = comments,
         // Transaction and Expression don't have comment fields
         Statement::Transaction(_) | Statement::Expression(_) => {}

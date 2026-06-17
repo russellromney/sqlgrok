@@ -221,7 +221,12 @@ of ordinary function rewrites.
    carries the existing rewrite policy as parser-owned
    `RawStatementNormalization`, so SQLite raw statement rendering no longer
    keys off `source_dialect`; the remaining work is to replace raw text with
-   typed or semi-typed statement variants where practical.
+   typed or semi-typed statement variants where practical. The next slice adds
+   `Statement::Command` / `CommandKind` for `COPY`, MySQL `SHOW`, standalone
+   `PIVOT` / `UNPIVOT`, statement-level `REPLACE(...)`, SQLite database
+   commands, and Postgres `CREATE TYPE ... AS ENUM`, slimming
+   `RawStatementNormalization` down to the remaining recursive CTE and
+   insert-into-function raw gaps.
 4. **Target-only generator lowerings.**
    `ILIKE`, `DISTINCT ON`, `SEMI`/`ANTI` joins, SQLite `WITHIN GROUP`
    dropping, limit/top/fetch normalization, lock dropping, quote conversion,

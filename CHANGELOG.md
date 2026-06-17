@@ -5,6 +5,29 @@ this file records what landed.
 
 ## 2026-06-17
 
+### Architecture Port: Command Statement Carriers
+
+- Added a semi-typed `Statement::Command` carrier with `CommandKind` for
+  command-shaped SQL that is not yet worth a full AST model.
+- Routed `COPY`, MySQL `SHOW`, standalone `PIVOT` / `UNPIVOT`, statement-level
+  `REPLACE(...)`, SQLite `PRAGMA` / database commands, and Postgres
+  `CREATE TYPE ... AS ENUM` through `CommandStatement` instead of behavioral
+  `RawStatement` fallback text.
+- Moved the corresponding SQLite command rendering into the generator:
+  `COPY` gains `INTO`, Postgres enum spacing is normalized, recognized MySQL
+  `SHOW` commands and standalone pivot/unpivot commands drop to an empty
+  statement, and generic command text passes through unchanged.
+- Slimmed `RawStatementNormalization` so remaining raw-statement behavior is
+  limited to known raw gaps: Postgres recursive CTE cleanup and
+  `INSERT INTO ... FUNCTION` text cleanup.
+- Refreshed all seven forced-pair SQLGlot bridge reports. Exact matches are
+  unchanged from the aggregate-carrier slice: postgres -> sqlite `11973`,
+  mysql -> sqlite `11739`, sqlite -> sqlite `11911`, postgres -> postgres
+  `8600`, mysql -> postgres `7949`, sqlite -> postgres `7867`, and
+  postgres -> duckdb `7309`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes.
+
 ### Architecture Port: Ordered Aggregate Argument Carriers
 
 - Added structured `Expr::Function` fields for function-local `ORDER BY` and

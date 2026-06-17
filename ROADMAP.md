@@ -137,9 +137,14 @@ Retirement sequence:
      statement rewrite policy from the parser to the SQLite generator. The
      generator no longer branches on `source_dialect` for raw statements, and
      `transform_statement` no longer backfills raw statement source dialect.
+     A first `Statement::Command` carrier now owns command-shaped cases for
+     `COPY`, MySQL `SHOW`, standalone `PIVOT` / `UNPIVOT`, statement-level
+     `REPLACE(...)`, SQLite database commands, and Postgres
+     `CREATE TYPE ... AS ENUM`, leaving `RawStatementNormalization` slimmer.
    - Exit: replace the remaining raw statement text with typed or semi-typed
      statement variants where practical, leaving raw statements as inert
-     unsupported passthrough only.
+     unsupported passthrough only. Remaining raw-statement behavior is mostly
+     Postgres recursive CTE cleanup and insert-into-function cleanup.
 
 4. **Target-only generator lowerings.**
    - Problem: target dialects beyond SQLite still need broader generator
