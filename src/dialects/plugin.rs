@@ -295,10 +295,13 @@ fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
         TypedFunction::DatePart { .. } => "DATE_PART",
         TypedFunction::ExtractPart { .. } => "EXTRACT",
         TypedFunction::DateTrunc { .. } => "DATE_TRUNC",
+        TypedFunction::DateTruncExpr { .. } => "DATE_TRUNC",
         TypedFunction::TimestampTrunc { .. } => "TIMESTAMP_TRUNC",
         TypedFunction::DateSub { .. } => "DATE_SUB",
         TypedFunction::CurrentDate => "CURRENT_DATE",
         TypedFunction::CurrentTimestamp => "NOW",
+        TypedFunction::UtcTime { .. } => "UTC_TIME",
+        TypedFunction::UtcTimestamp { .. } => "UTC_TIMESTAMP",
         TypedFunction::Version => "VERSION",
         TypedFunction::ConvertTimezone { .. } => "CONVERT_TIMEZONE",
         TypedFunction::TimeFromParts { .. } => "TIME_FROM_PARTS",
@@ -329,6 +332,7 @@ fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
         TypedFunction::Initcap { .. } => "INITCAP",
         TypedFunction::Length { .. } => "LENGTH",
         TypedFunction::Replace { .. } => "REPLACE",
+        TypedFunction::StartsWith { .. } => "STARTS_WITH",
         TypedFunction::Reverse { .. } => "REVERSE",
         TypedFunction::Left { .. } => "LEFT",
         TypedFunction::Right { .. } => "RIGHT",
@@ -349,6 +353,7 @@ fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
         TypedFunction::ArrayContains { .. } => "ARRAY_CONTAINS",
         TypedFunction::ArraySize { .. } => "ARRAY_SIZE",
         TypedFunction::Explode { .. } => "EXPLODE",
+        TypedFunction::ToArray { .. } => "TO_ARRAY",
         TypedFunction::GenerateSeries { .. } | TypedFunction::ExplodingGenerateSeries { .. } => {
             "GENERATE_SERIES"
         }
@@ -383,10 +388,13 @@ fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
         TypedFunction::Greatest { .. } => "GREATEST",
         TypedFunction::Least { .. } => "LEAST",
         TypedFunction::Mod { .. } => "MOD",
+        TypedFunction::NumberToStr { .. } => "NUMBER_TO_STR",
         TypedFunction::Hex { .. } => "HEX",
         TypedFunction::Unhex { .. } => "UNHEX",
         TypedFunction::Md5 { .. } => "MD5",
         TypedFunction::Sha { .. } => "SHA",
+        TypedFunction::Sha256 { .. } => "SHA256",
+        TypedFunction::Sha512 { .. } => "SHA512",
         TypedFunction::Sha2 { .. } => "SHA2",
     }
 }
@@ -396,6 +404,9 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
     match func {
         TypedFunction::CurrentDate | TypedFunction::CurrentTimestamp | TypedFunction::Version => {
             vec![]
+        }
+        TypedFunction::UtcTime { precision } | TypedFunction::UtcTimestamp { precision } => {
+            precision.iter().map(|p| *p.clone()).collect()
         }
         TypedFunction::RowNumber | TypedFunction::Rank | TypedFunction::DenseRank => vec![],
         TypedFunction::TimeFromParts { parts } => parts.clone(),
@@ -410,6 +421,7 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         | TypedFunction::Ln { expr }
         | TypedFunction::Sqrt { expr }
         | TypedFunction::Explode { expr }
+        | TypedFunction::ToArray { expr }
         | TypedFunction::Flatten { expr }
         | TypedFunction::ArraySize { expr }
         | TypedFunction::ParseJSON { expr }
@@ -418,6 +430,8 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         | TypedFunction::Unhex { expr }
         | TypedFunction::Md5 { expr }
         | TypedFunction::Sha { expr }
+        | TypedFunction::Sha256 { expr }
+        | TypedFunction::Sha512 { expr }
         | TypedFunction::TsOrDsToDate { expr }
         | TypedFunction::DatePartAlias { expr, .. }
         | TypedFunction::Year { expr }
@@ -440,6 +454,9 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         }
         TypedFunction::DateTrunc { unit, expr } | TypedFunction::TimestampTrunc { unit, expr } => {
             vec![Expr::StringLiteral(format!("{unit:?}")), *expr.clone()]
+        }
+        TypedFunction::DateTruncExpr { unit, expr, .. } => {
+            vec![*unit.clone(), *expr.clone()]
         }
         TypedFunction::DateAdd { expr, interval, .. }
         | TypedFunction::DateSub { expr, interval, .. } => {
@@ -518,6 +535,9 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         TypedFunction::Replace { expr, from, to } => {
             vec![*expr.clone(), *from.clone(), *to.clone()]
         }
+        TypedFunction::StartsWith { expr, prefix } => {
+            vec![*expr.clone(), *prefix.clone()]
+        }
         TypedFunction::Left { expr, n } | TypedFunction::Right { expr, n } => {
             vec![*expr.clone(), *n.clone()]
         }
@@ -594,6 +614,7 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
         TypedFunction::Pow { base, exponent } => vec![*base.clone(), *exponent.clone()],
         TypedFunction::Greatest { exprs } | TypedFunction::Least { exprs } => exprs.clone(),
         TypedFunction::Mod { left, right } => vec![*left.clone(), *right.clone()],
+        TypedFunction::NumberToStr { exprs } => exprs.clone(),
         TypedFunction::Sha2 { expr, bit_length } => vec![*expr.clone(), *bit_length.clone()],
     }
 }

@@ -4285,6 +4285,62 @@ impl Generator {
         self.gen_expr(expr);
     }
 
+    fn gen_mysql_interval_arg(&mut self, interval: &Expr, unit: &Option<DateTimeField>) {
+        self.write_keyword("INTERVAL ");
+        self.gen_expr(interval);
+        self.write(" ");
+        if let Some(u) = unit {
+            self.gen_datetime_field(u);
+        } else {
+            self.write_keyword("DAY");
+        }
+    }
+
+    fn interval_literal_payload(&self, interval: &Expr, unit: &Option<DateTimeField>) -> String {
+        let mut payload = match interval {
+            Expr::StringLiteral(s) | Expr::Number(s) => s.clone(),
+            Expr::UnaryOp {
+                op: UnaryOperator::Minus,
+                expr,
+            } => match expr.as_ref() {
+                Expr::StringLiteral(s) | Expr::Number(s) => format!("-{s}"),
+                other => format!("-{}", render_expr_to_sql_for_dialect(other, self.dialect)),
+            },
+            other => render_expr_to_sql_for_dialect(other, self.dialect),
+        };
+        if let Some(u) = unit {
+            payload.push(' ');
+            payload.push_str(&datetime_field_keyword(u));
+        }
+        payload
+    }
+
+    fn gen_date_delta_binary_interval(
+        &mut self,
+        expr: &Expr,
+        op: &str,
+        interval: &Expr,
+        unit: &Option<DateTimeField>,
+    ) {
+        self.gen_expr(expr);
+        self.write(" ");
+        self.write(op);
+        self.write(" ");
+        self.write_keyword("INTERVAL '");
+        self.write(&self.interval_literal_payload(interval, unit));
+        self.write("'");
+    }
+
+    fn date_trunc_expr_unit_sql(&self, unit: &Expr) -> String {
+        match unit {
+            Expr::Column {
+                table: None, name, ..
+            } => name.to_ascii_uppercase(),
+            Expr::StringLiteral(s) => s.to_ascii_uppercase(),
+            other => render_expr_to_sql_for_dialect(other, self.dialect),
+        }
+    }
+
     fn gen_filter_and_over(&mut self, filter: Option<&Expr>, over: Option<&WindowSpec>) {
         if let Some(filter_expr) = filter {
             self.write(" ");
@@ -4612,8 +4668,19 @@ impl Generator {
                 expr,
                 interval,
                 unit,
+                mysql_interval,
             } => {
-                if is_tsql || is_snowflake {
+                if is_mysql && *mysql_interval {
+                    self.write_keyword("DATE_ADD(");
+                    self.gen_expr(expr);
+                    self.write(", ");
+                    self.gen_mysql_interval_arg(interval, unit);
+                    self.write(")");
+                } else if *mysql_interval
+                    && (is_postgres_family || matches!(dialect, Some(Dialect::DuckDb)))
+                {
+                    self.gen_date_delta_binary_interval(expr, "+", interval, unit);
+                } else if is_tsql || is_snowflake {
                     self.write_keyword("DATEADD(");
                     if let Some(u) = unit {
                         self.gen_datetime_field(u);
@@ -4645,50 +4712,57 @@ impl Generator {
                     self.write_keyword("DATE(");
                     self.gen_expr(expr);
                     self.write(", ");
-                    let mut payload = String::new();
-                    match interval.as_ref() {
-                        Expr::Number(n) => payload.push_str(n),
-                        Expr::Interval {
-                            value,
-                            unit: interval_unit,
-                            ..
-                        } => {
-                            payload.push_str("INTERVAL ");
-                            match value.as_ref() {
-                                Expr::Number(n) => {
-                                    payload.push('\'');
-                                    payload.push_str(n);
-                                    payload.push('\'');
-                                }
-                                Expr::UnaryOp {
-                                    op: UnaryOperator::Minus,
-                                    expr: inner,
-                                } => {
-                                    if let Expr::Number(n) = inner.as_ref() {
+                    let payload = if *mysql_interval {
+                        self.interval_literal_payload(interval, unit)
+                    } else {
+                        let mut payload = String::new();
+                        match interval.as_ref() {
+                            Expr::Number(n) => payload.push_str(n),
+                            Expr::Interval {
+                                value,
+                                unit: interval_unit,
+                                ..
+                            } => {
+                                payload.push_str("INTERVAL ");
+                                match value.as_ref() {
+                                    Expr::Number(n) => {
                                         payload.push('\'');
-                                        payload.push('-');
                                         payload.push_str(n);
                                         payload.push('\'');
-                                    } else {
-                                        payload.push_str(&render_expr_to_sql_for_dialect(
-                                            inner, dialect,
-                                        ));
                                     }
+                                    Expr::UnaryOp {
+                                        op: UnaryOperator::Minus,
+                                        expr: inner,
+                                    } => {
+                                        if let Expr::Number(n) = inner.as_ref() {
+                                            payload.push('\'');
+                                            payload.push('-');
+                                            payload.push_str(n);
+                                            payload.push('\'');
+                                        } else {
+                                            payload.push_str(&render_expr_to_sql_for_dialect(
+                                                inner, dialect,
+                                            ));
+                                        }
+                                    }
+                                    other => payload
+                                        .push_str(&render_expr_to_sql_for_dialect(other, dialect)),
                                 }
-                                other => payload
-                                    .push_str(&render_expr_to_sql_for_dialect(other, dialect)),
+                                if let Some(u) = interval_unit {
+                                    payload.push(' ');
+                                    payload.push_str(&datetime_field_keyword(u));
+                                }
                             }
-                            if let Some(u) = interval_unit {
-                                payload.push(' ');
-                                payload.push_str(&datetime_field_keyword(u));
+                            other => {
+                                payload.push_str(&render_expr_to_sql_for_dialect(other, dialect));
                             }
                         }
-                        other => payload.push_str(&render_expr_to_sql_for_dialect(other, dialect)),
-                    }
-                    if let Some(u) = unit {
-                        payload.push(' ');
-                        payload.push_str(&datetime_field_keyword(u));
-                    }
+                        if let Some(u) = unit {
+                            payload.push(' ');
+                            payload.push_str(&datetime_field_keyword(u));
+                        }
+                        payload
+                    };
                     self.write("'");
                     self.write(&payload);
                     self.write("'");
@@ -4863,12 +4937,58 @@ impl Generator {
                     self.write(")");
                 }
             }
+            TypedFunction::DateTruncExpr {
+                unit,
+                expr,
+                timestamp,
+            } => {
+                if matches!(dialect, Some(Dialect::Sqlite)) && *timestamp {
+                    self.write_keyword("TIMESTAMP_TRUNC(");
+                    self.gen_expr(expr);
+                    self.write(", ");
+                    self.write(&self.date_trunc_expr_unit_sql(unit));
+                    self.write(")");
+                } else {
+                    self.write_keyword("DATE_TRUNC(");
+                    if matches!(dialect, Some(Dialect::Sqlite)) {
+                        self.write("'");
+                        self.write(&self.date_trunc_expr_unit_sql(unit));
+                        self.write("'");
+                    } else {
+                        self.gen_expr(unit);
+                    }
+                    self.write(", ");
+                    self.gen_expr(expr);
+                    self.write(")");
+                }
+            }
             TypedFunction::DateSub {
                 expr,
                 interval,
                 unit,
+                mysql_interval,
             } => {
-                if is_tsql || is_snowflake {
+                if is_mysql && *mysql_interval {
+                    self.write_keyword("DATE_SUB(");
+                    self.gen_expr(expr);
+                    self.write(", ");
+                    self.gen_mysql_interval_arg(interval, unit);
+                    self.write(")");
+                } else if *mysql_interval
+                    && (is_postgres_family || matches!(dialect, Some(Dialect::DuckDb)))
+                {
+                    self.gen_date_delta_binary_interval(expr, "-", interval, unit);
+                } else if matches!(dialect, Some(Dialect::Sqlite)) && *mysql_interval {
+                    self.write_keyword("DATE_SUB(");
+                    self.gen_expr(expr);
+                    self.write(", ");
+                    self.gen_expr(interval);
+                    if let Some(u) = unit {
+                        self.write(", ");
+                        self.gen_datetime_field(u);
+                    }
+                    self.write(")");
+                } else if is_tsql || is_snowflake {
                     self.write_keyword("DATEADD(");
                     if let Some(u) = unit {
                         self.gen_datetime_field(u);
@@ -4918,6 +5038,30 @@ impl Generator {
             }
             TypedFunction::CurrentTimestamp => {
                 self.write_keyword(crate::dialects::rules::render_current_timestamp(dialect));
+            }
+            TypedFunction::UtcTime { precision } => {
+                if is_mysql {
+                    self.write_keyword("UTC_TIME(");
+                    if let Some(precision) = precision {
+                        self.gen_expr(precision);
+                    }
+                    self.write(")");
+                } else if is_postgres_family {
+                    self.write_keyword("CURRENT_TIME('UTC')");
+                } else {
+                    self.write_keyword("CURRENT_TIME");
+                }
+            }
+            TypedFunction::UtcTimestamp { precision } => {
+                if is_mysql {
+                    self.write_keyword("UTC_TIMESTAMP(");
+                    if let Some(precision) = precision {
+                        self.gen_expr(precision);
+                    }
+                    self.write(")");
+                } else {
+                    self.write_keyword("CURRENT_TIMESTAMP");
+                }
             }
             TypedFunction::Version => {
                 if matches!(dialect, Some(Dialect::Sqlite)) {
@@ -5437,6 +5581,13 @@ impl Generator {
                 self.gen_expr(to);
                 self.write(")");
             }
+            TypedFunction::StartsWith { expr, prefix } => {
+                self.write_keyword("STARTS_WITH(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(prefix);
+                self.write(")");
+            }
             TypedFunction::Reverse { expr } => {
                 self.write_keyword("REVERSE(");
                 self.gen_expr(expr);
@@ -5638,10 +5789,35 @@ impl Generator {
                 self.write(")");
             }
             TypedFunction::Explode { expr } => {
-                self.write_keyword("EXPLODE(");
+                let name = if is_postgres_family || matches!(dialect, Some(Dialect::DuckDb)) {
+                    "UNNEST"
+                } else {
+                    "EXPLODE"
+                };
+                self.write_keyword(name);
+                self.write("(");
                 self.gen_expr(expr);
                 self.write(")");
             }
+            TypedFunction::ToArray { expr } => match expr.as_ref() {
+                Expr::ArrayLiteral(_) | Expr::SqliteArrayLiteral(_) => self.gen_expr(expr),
+                Expr::Function { name, args, .. } if name.eq_ignore_ascii_case("ARRAY") => {
+                    if matches!(dialect, Some(Dialect::Sqlite)) {
+                        self.write_keyword("ARRAY(");
+                        self.gen_expr_list(args);
+                        self.write(")");
+                    } else {
+                        self.write_keyword("ARRAY[");
+                        self.gen_expr_list(args);
+                        self.write("]");
+                    }
+                }
+                _ => {
+                    self.write_keyword("TO_ARRAY(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                }
+            },
             TypedFunction::GenerateSeries { start, stop, step } => {
                 self.gen_generate_series(start, stop, step.as_deref());
             }
@@ -5864,6 +6040,27 @@ impl Generator {
                 self.gen_expr(right);
                 self.write(")");
             }
+            TypedFunction::NumberToStr { exprs } => {
+                if is_mysql {
+                    self.write_keyword("FORMAT(");
+                    self.gen_expr_list(exprs);
+                    self.write(")");
+                } else if matches!(dialect, Some(Dialect::DuckDb))
+                    && exprs.len() == 2
+                    && let Expr::Number(precision) = &exprs[1]
+                {
+                    self.write_keyword("FORMAT(");
+                    self.write("'{:,.");
+                    self.write(precision);
+                    self.write("f}', ");
+                    self.gen_expr(&exprs[0]);
+                    self.write(")");
+                } else {
+                    self.write_keyword("NUMBER_TO_STR(");
+                    self.gen_expr_list(exprs);
+                    self.write(")");
+                }
+            }
 
             // ── Conversion ─────────────────────────────────────────────
             TypedFunction::Hex { expr } => {
@@ -5905,6 +6102,32 @@ impl Generator {
                 self.write("(");
                 self.gen_expr(expr);
                 self.write(")");
+            }
+            TypedFunction::Sha256 { expr } => {
+                if is_mysql || matches!(dialect, Some(Dialect::Sqlite)) {
+                    self.write_keyword("SHA2(");
+                    self.gen_expr(expr);
+                    self.write(", 256)");
+                } else {
+                    self.write_keyword("SHA256(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                }
+            }
+            TypedFunction::Sha512 { expr } => {
+                if is_mysql || matches!(dialect, Some(Dialect::Sqlite)) {
+                    self.write_keyword("SHA2(");
+                    self.gen_expr(expr);
+                    self.write(", 512)");
+                } else if matches!(dialect, Some(Dialect::DuckDb)) {
+                    self.write_keyword("SHA256(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                } else {
+                    self.write_keyword("SHA512(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                }
             }
             TypedFunction::Sha2 { expr, bit_length } => {
                 self.write_keyword("SHA2(");

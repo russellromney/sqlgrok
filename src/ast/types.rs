@@ -807,6 +807,8 @@ pub enum TypedFunction {
         expr: Box<Expr>,
         interval: Box<Expr>,
         unit: Option<DateTimeField>,
+        #[serde(default)]
+        mysql_interval: bool,
     },
     /// `DATE_DIFF(start, end)` — difference between two dates
     DateDiff {
@@ -829,6 +831,13 @@ pub enum TypedFunction {
         unit: DateTimeField,
         expr: Box<Expr>,
     },
+    /// `DATE_TRUNC(unit_expr, expr)` with a non-standard or expression-valued unit.
+    DateTruncExpr {
+        unit: Box<Expr>,
+        expr: Box<Expr>,
+        #[serde(default)]
+        timestamp: bool,
+    },
     /// `TIMESTAMP_TRUNC(expr, unit)`
     TimestampTrunc {
         unit: DateTimeField,
@@ -839,11 +848,17 @@ pub enum TypedFunction {
         expr: Box<Expr>,
         interval: Box<Expr>,
         unit: Option<DateTimeField>,
+        #[serde(default)]
+        mysql_interval: bool,
     },
     /// `CURRENT_DATE`
     CurrentDate,
     /// `CURRENT_TIMESTAMP` / `NOW()` / `GETDATE()`
     CurrentTimestamp,
+    /// `UTC_TIME`
+    UtcTime { precision: Option<Box<Expr>> },
+    /// `UTC_TIMESTAMP`
+    UtcTimestamp { precision: Option<Box<Expr>> },
     /// `VERSION()` / `CURRENT_VERSION()`
     Version,
     /// `CONVERT_TIMEZONE([source_tz,] target_tz, timestamp)` / `CONVERT_TZ`
@@ -943,6 +958,8 @@ pub enum TypedFunction {
         from: Box<Expr>,
         to: Box<Expr>,
     },
+    /// `STARTS_WITH(expr, prefix)`
+    StartsWith { expr: Box<Expr>, prefix: Box<Expr> },
     /// `REVERSE(expr)`
     Reverse { expr: Box<Expr> },
     /// `LEFT(expr, n)`
@@ -998,6 +1015,8 @@ pub enum TypedFunction {
     ArraySize { expr: Box<Expr> },
     /// `EXPLODE(expr)` — Hive/Spark array expansion
     Explode { expr: Box<Expr> },
+    /// `TO_ARRAY(expr)`
+    ToArray { expr: Box<Expr> },
     /// `GENERATE_SERIES(start, stop [, step])`
     GenerateSeries {
         start: Box<Expr>,
@@ -1087,6 +1106,8 @@ pub enum TypedFunction {
     Least { exprs: Vec<Expr> },
     /// `MOD(a, b)` — modulo function
     Mod { left: Box<Expr>, right: Box<Expr> },
+    /// `NUMBER_TO_STR(expr, decimals [, locale])`
+    NumberToStr { exprs: Vec<Expr> },
 
     // ── Conversion ─────────────────────────────────────────────────────
     /// `HEX(expr)` / `TO_HEX`
@@ -1097,6 +1118,10 @@ pub enum TypedFunction {
     Md5 { expr: Box<Expr> },
     /// `SHA(expr)` / `SHA1`
     Sha { expr: Box<Expr> },
+    /// `SHA256(expr)`
+    Sha256 { expr: Box<Expr> },
+    /// `SHA512(expr)`
+    Sha512 { expr: Box<Expr> },
     /// `SHA2(expr, bit_length)` — SHA-256/SHA-512
     Sha2 {
         expr: Box<Expr>,
@@ -1129,6 +1154,10 @@ impl TypedFunction {
             TypedFunction::DateTrunc { expr, .. } | TypedFunction::TimestampTrunc { expr, .. } => {
                 expr.walk(visitor);
             }
+            TypedFunction::DateTruncExpr { unit, expr, .. } => {
+                unit.walk(visitor);
+                expr.walk(visitor);
+            }
             TypedFunction::ConvertTimezone {
                 source_tz,
                 target_tz,
@@ -1143,6 +1172,11 @@ impl TypedFunction {
             TypedFunction::CurrentDate
             | TypedFunction::CurrentTimestamp
             | TypedFunction::Version => {}
+            TypedFunction::UtcTime { precision } | TypedFunction::UtcTimestamp { precision } => {
+                if let Some(precision) = precision {
+                    precision.walk(visitor);
+                }
+            }
             TypedFunction::TimeFromParts { parts } => {
                 for part in parts {
                     part.walk(visitor);
@@ -1241,6 +1275,10 @@ impl TypedFunction {
                 from.walk(visitor);
                 to.walk(visitor);
             }
+            TypedFunction::StartsWith { expr, prefix } => {
+                expr.walk(visitor);
+                prefix.walk(visitor);
+            }
             TypedFunction::Left { expr, n } | TypedFunction::Right { expr, n } => {
                 expr.walk(visitor);
                 n.walk(visitor);
@@ -1283,6 +1321,7 @@ impl TypedFunction {
             }
             TypedFunction::ArraySize { expr }
             | TypedFunction::Explode { expr }
+            | TypedFunction::ToArray { expr }
             | TypedFunction::Flatten { expr } => expr.walk(visitor),
             TypedFunction::GenerateSeries { start, stop, step }
             | TypedFunction::ExplodingGenerateSeries { start, stop, step } => {
@@ -1365,12 +1404,19 @@ impl TypedFunction {
                 left.walk(visitor);
                 right.walk(visitor);
             }
+            TypedFunction::NumberToStr { exprs } => {
+                for e in exprs {
+                    e.walk(visitor);
+                }
+            }
 
             // Conversion
             TypedFunction::Hex { expr }
             | TypedFunction::Unhex { expr }
             | TypedFunction::Md5 { expr }
-            | TypedFunction::Sha { expr } => expr.walk(visitor),
+            | TypedFunction::Sha { expr }
+            | TypedFunction::Sha256 { expr }
+            | TypedFunction::Sha512 { expr } => expr.walk(visitor),
             TypedFunction::Sha2 { expr, bit_length } => {
                 expr.walk(visitor);
                 bit_length.walk(visitor);
@@ -1390,10 +1436,12 @@ impl TypedFunction {
                 expr,
                 interval,
                 unit,
+                mysql_interval,
             } => TypedFunction::DateAdd {
                 expr: Box::new(expr.transform(func)),
                 interval: Box::new(interval.transform(func)),
                 unit,
+                mysql_interval,
             },
             TypedFunction::DateDiff { start, end, unit } => TypedFunction::DateDiff {
                 start: Box::new(start.transform(func)),
@@ -1417,6 +1465,15 @@ impl TypedFunction {
                 unit,
                 expr: Box::new(expr.transform(func)),
             },
+            TypedFunction::DateTruncExpr {
+                unit,
+                expr,
+                timestamp,
+            } => TypedFunction::DateTruncExpr {
+                unit: Box::new(unit.transform(func)),
+                expr: Box::new(expr.transform(func)),
+                timestamp,
+            },
             TypedFunction::TimestampTrunc { unit, expr } => TypedFunction::TimestampTrunc {
                 unit,
                 expr: Box::new(expr.transform(func)),
@@ -1425,13 +1482,21 @@ impl TypedFunction {
                 expr,
                 interval,
                 unit,
+                mysql_interval,
             } => TypedFunction::DateSub {
                 expr: Box::new(expr.transform(func)),
                 interval: Box::new(interval.transform(func)),
                 unit,
+                mysql_interval,
             },
             TypedFunction::CurrentDate => TypedFunction::CurrentDate,
             TypedFunction::CurrentTimestamp => TypedFunction::CurrentTimestamp,
+            TypedFunction::UtcTime { precision } => TypedFunction::UtcTime {
+                precision: precision.map(|p| Box::new(p.transform(func))),
+            },
+            TypedFunction::UtcTimestamp { precision } => TypedFunction::UtcTimestamp {
+                precision: precision.map(|p| Box::new(p.transform(func))),
+            },
             TypedFunction::Version => TypedFunction::Version,
             TypedFunction::ConvertTimezone {
                 source_tz,
@@ -1552,6 +1617,10 @@ impl TypedFunction {
                 from: Box::new(from.transform(func)),
                 to: Box::new(to.transform(func)),
             },
+            TypedFunction::StartsWith { expr, prefix } => TypedFunction::StartsWith {
+                expr: Box::new(expr.transform(func)),
+                prefix: Box::new(prefix.transform(func)),
+            },
             TypedFunction::Reverse { expr } => TypedFunction::Reverse {
                 expr: Box::new(expr.transform(func)),
             },
@@ -1626,6 +1695,9 @@ impl TypedFunction {
                 expr: Box::new(expr.transform(func)),
             },
             TypedFunction::Explode { expr } => TypedFunction::Explode {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::ToArray { expr } => TypedFunction::ToArray {
                 expr: Box::new(expr.transform(func)),
             },
             TypedFunction::GenerateSeries { start, stop, step } => TypedFunction::GenerateSeries {
@@ -1739,6 +1811,9 @@ impl TypedFunction {
                 left: Box::new(left.transform(func)),
                 right: Box::new(right.transform(func)),
             },
+            TypedFunction::NumberToStr { exprs } => TypedFunction::NumberToStr {
+                exprs: exprs.into_iter().map(|e| e.transform(func)).collect(),
+            },
 
             // Conversion
             TypedFunction::Hex { expr } => TypedFunction::Hex {
@@ -1751,6 +1826,12 @@ impl TypedFunction {
                 expr: Box::new(expr.transform(func)),
             },
             TypedFunction::Sha { expr } => TypedFunction::Sha {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Sha256 { expr } => TypedFunction::Sha256 {
+                expr: Box::new(expr.transform(func)),
+            },
+            TypedFunction::Sha512 { expr } => TypedFunction::Sha512 {
                 expr: Box::new(expr.transform(func)),
             },
             TypedFunction::Sha2 { expr, bit_length } => TypedFunction::Sha2 {

@@ -1319,6 +1319,12 @@ fn test_postgres_time_functions_to_sqlite() {
         Dialect::Sqlite,
     );
     validate_with_dialect(
+        "SELECT DATE_TRUNC(date, WEEK(MONDAY))",
+        "SELECT TIMESTAMP_TRUNC(WEEK(MONDAY), DATE)",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
         "SELECT DATE_PART('minute', timestamp '2023-01-04 04:05:06.789')",
         "SELECT EXTRACT(minute FROM CAST('2023-01-04 04:05:06.789' AS TIMESTAMP))",
         Dialect::Postgres,
@@ -1339,6 +1345,12 @@ fn test_postgres_time_functions_to_sqlite() {
     validate_with_dialect(
         "DATE_TRUNC('day', x)",
         "DATE_TRUNC('DAY', x)",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT DATE_TRUNC(date, WEEK(MONDAY))",
+        "SELECT DATE_TRUNC('DATE', WEEK(MONDAY))",
         Dialect::Sqlite,
         Dialect::Sqlite,
     );

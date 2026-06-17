@@ -906,6 +906,7 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
         TypedFunction::DateAdd { .. }
         | TypedFunction::DateSub { .. }
         | TypedFunction::DateTrunc { .. }
+        | TypedFunction::DateTruncExpr { .. }
         | TypedFunction::TimestampTrunc { .. }
         | TypedFunction::TsOrDsToDate { .. } => Some(DataType::Date),
         TypedFunction::DateDiff { .. }
@@ -913,12 +914,13 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
         | TypedFunction::DatePart { .. }
         | TypedFunction::ExtractPart { .. } => Some(DataType::Int),
         TypedFunction::CurrentDate => Some(DataType::Date),
-        TypedFunction::CurrentTimestamp | TypedFunction::ConvertTimezone { .. } => {
-            Some(DataType::Timestamp {
-                precision: None,
-                with_tz: false,
-            })
-        }
+        TypedFunction::CurrentTimestamp
+        | TypedFunction::UtcTimestamp { .. }
+        | TypedFunction::ConvertTimezone { .. } => Some(DataType::Timestamp {
+            precision: None,
+            with_tz: false,
+        }),
+        TypedFunction::UtcTime { .. } => Some(DataType::Time { precision: None }),
         TypedFunction::Version => Some(DataType::Varchar(None)),
         TypedFunction::TimeFromParts { .. } => Some(DataType::Time { precision: None }),
         TypedFunction::UnixToTime { .. } => Some(DataType::Timestamp {
@@ -948,7 +950,9 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
         | TypedFunction::Right { .. }
         | TypedFunction::Lpad { .. }
         | TypedFunction::Rpad { .. }
+        | TypedFunction::NumberToStr { .. }
         | TypedFunction::ConcatWs { .. } => Some(DataType::Varchar(None)),
+        TypedFunction::StartsWith { .. } => Some(DataType::Boolean),
         TypedFunction::Length { .. } => Some(DataType::Int),
         TypedFunction::RegexpLike { .. } => Some(DataType::Boolean),
         TypedFunction::RegexpExtract { .. } => Some(DataType::Varchar(None)),
@@ -986,6 +990,9 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
                 _ => None,
             }
         }
+        TypedFunction::ToArray { expr } => Some(DataType::Array(
+            ann.get_type(expr.as_ref()).cloned().map(Box::new),
+        )),
         TypedFunction::GenerateSeries { .. } | TypedFunction::ExplodingGenerateSeries { .. } => {
             Some(DataType::Int)
         }
@@ -1034,9 +1041,11 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
         }
 
         // ── Conversion ───────────────────────────────────────────────
-        TypedFunction::Hex { .. } | TypedFunction::Md5 { .. } | TypedFunction::Sha { .. } => {
-            Some(DataType::Varchar(None))
-        }
+        TypedFunction::Hex { .. }
+        | TypedFunction::Md5 { .. }
+        | TypedFunction::Sha { .. }
+        | TypedFunction::Sha256 { .. }
+        | TypedFunction::Sha512 { .. } => Some(DataType::Varchar(None)),
         TypedFunction::Sha2 { .. } => Some(DataType::Varchar(None)),
         TypedFunction::Unhex { .. } => Some(DataType::Varbinary(None)),
     }

@@ -149,6 +149,28 @@ fn mysql_format_contains_time(format: &str) -> bool {
     false
 }
 
+fn mysql_date_delta_interval_arg(
+    interval: Expr,
+    date_sub: bool,
+) -> (Expr, Option<DateTimeField>, bool) {
+    if let Expr::Interval { value, unit, .. } = interval {
+        let value = if date_sub {
+            match *value {
+                Expr::Number(n) => Expr::StringLiteral(n),
+                other => other,
+            }
+        } else {
+            match *value {
+                Expr::StringLiteral(s) => Expr::Number(s),
+                other => other,
+            }
+        };
+        (value, unit, true)
+    } else {
+        (interval, None, false)
+    }
+}
+
 fn data_type_is_json(data_type: &DataType) -> bool {
     matches!(data_type, DataType::Json | DataType::Jsonb)
         || matches!(data_type, DataType::Unknown(name) if name.eq_ignore_ascii_case("JSON") || name.eq_ignore_ascii_case("JSONB"))
@@ -7698,14 +7720,19 @@ impl<'a> Parser<'a> {
                 let _ = self.parse_primary()?;
             }
             if matches!(data_type, DataType::Date | DataType::Timestamp { .. }) {
-                return Ok(Expr::Function {
-                    name: if matches!(data_type, DataType::Timestamp { .. }) {
-                        "__SAFE_CAST_TIME_FORMAT".to_string()
+                let format = time_format_to_strftime(format, self.dialect);
+                return Ok(Expr::TypedFunction {
+                    func: if matches!(data_type, DataType::Timestamp { .. }) {
+                        TypedFunction::StrToTime {
+                            expr: Box::new(expr),
+                            format: Box::new(format),
+                        }
                     } else {
-                        "__SAFE_CAST_DATE_FORMAT".to_string()
+                        TypedFunction::StrToDate {
+                            expr: Box::new(expr),
+                            format: Box::new(format),
+                        }
                     },
-                    args: vec![expr, format],
-                    distinct: false,
                     filter: None,
                     over: None,
                 });
@@ -8193,15 +8220,23 @@ impl<'a> Parser<'a> {
                         expr: Box::new(first),
                         interval: Box::new(second),
                         unit,
+                        mysql_interval: false,
                     }
                 } else {
                     let mut it = args.into_iter();
                     let first = it.next()?;
                     let second = it.next()?;
+                    let (second, interval_unit, mysql_interval) =
+                        if crate::dialects::is_mysql_family(dialect) {
+                            mysql_date_delta_interval_arg(second, false)
+                        } else {
+                            (second, None, false)
+                        };
                     TypedFunction::DateAdd {
                         expr: Box::new(first),
                         interval: Box::new(second),
-                        unit: None,
+                        unit: interval_unit,
+                        mysql_interval,
                     }
                 }
             }
@@ -8268,9 +8303,16 @@ impl<'a> Parser<'a> {
                 let mut it = args.into_iter();
                 let part = it.next()?;
                 let expr = it.next()?;
-                TypedFunction::DatePart {
-                    part: Box::new(part),
-                    expr: Box::new(expr),
+                if matches!(dialect, Dialect::Postgres) {
+                    TypedFunction::ExtractPart {
+                        part: Box::new(part),
+                        expr: Box::new(expr),
+                    }
+                } else {
+                    TypedFunction::DatePart {
+                        part: Box::new(part),
+                        expr: Box::new(expr),
+                    }
                 }
             }
             "DATE_TRUNC" | "DATETRUNC" => {
@@ -8283,8 +8325,15 @@ impl<'a> Parser<'a> {
                 } else if let Some(u) = Self::expr_to_datetime_field(&second) {
                     (u, first)
                 } else {
-                    // Default: first = unit string, second = expr
-                    return None;
+                    return Some(Expr::TypedFunction {
+                        func: TypedFunction::DateTruncExpr {
+                            unit: Box::new(first),
+                            expr: Box::new(second),
+                            timestamp: crate::dialects::is_postgres_family(dialect),
+                        },
+                        filter: None,
+                        over: None,
+                    });
                 };
                 if crate::dialects::is_postgres_family(dialect) {
                     TypedFunction::TimestampTrunc {
@@ -8304,10 +8353,17 @@ impl<'a> Parser<'a> {
                 let second = it.next()?;
                 let third = it.next();
                 let unit = third.as_ref().and_then(Self::expr_to_datetime_field);
+                let (second, interval_unit, mysql_interval) =
+                    if crate::dialects::is_mysql_family(dialect) && third.is_none() {
+                        mysql_date_delta_interval_arg(second, true)
+                    } else {
+                        (second, None, false)
+                    };
                 TypedFunction::DateSub {
                     expr: Box::new(first),
                     interval: Box::new(second),
-                    unit,
+                    unit: unit.or(interval_unit),
+                    mysql_interval,
                 }
             }
             "CURRENT_DATE" | "CURDATE"
@@ -8327,6 +8383,12 @@ impl<'a> Parser<'a> {
             // source. CURRENT_TIMESTAMP(n) keeps its precision argument and
             // stays a generic function.
             "CURRENT_TIMESTAMP" if args.is_empty() => TypedFunction::CurrentTimestamp,
+            "UTC_TIME" if args.len() <= 1 => TypedFunction::UtcTime {
+                precision: args.into_iter().next().map(Box::new),
+            },
+            "UTC_TIMESTAMP" if args.len() <= 1 => TypedFunction::UtcTimestamp {
+                precision: args.into_iter().next().map(Box::new),
+            },
             "CURRENT_VERSION" if args.is_empty() => TypedFunction::Version,
             "VERSION"
                 if args.is_empty()
@@ -8488,6 +8550,9 @@ impl<'a> Parser<'a> {
                     expr: Box::new(expr),
                     format: Box::new(format),
                 }
+            }
+            "FORMAT" if crate::dialects::is_mysql_family(dialect) && args.len() >= 2 => {
+                TypedFunction::NumberToStr { exprs: args }
             }
             "TO_CHAR" if crate::dialects::is_postgres_family(dialect) && args.len() == 2 => {
                 let mut it = args.into_iter();
@@ -8742,6 +8807,15 @@ impl<'a> Parser<'a> {
                     to: Box::new(to),
                 }
             }
+            "STARTS_WITH" | "STARTSWITH" => {
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let prefix = it.next()?;
+                TypedFunction::StartsWith {
+                    expr: Box::new(expr),
+                    prefix: Box::new(prefix),
+                }
+            }
             "REVERSE" => {
                 let mut it = args.into_iter();
                 TypedFunction::Reverse {
@@ -8897,9 +8971,17 @@ impl<'a> Parser<'a> {
                     expr: Box::new(it.next()?),
                 }
             }
-            "EXPLODE" => {
+            "EXPLODE" | "UNNEST"
+                if upper == "EXPLODE" || crate::dialects::is_postgres_family(dialect) =>
+            {
                 let mut it = args.into_iter();
                 TypedFunction::Explode {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "TO_ARRAY" => {
+                let mut it = args.into_iter();
+                TypedFunction::ToArray {
                     expr: Box::new(it.next()?),
                 }
             }
@@ -9101,6 +9183,7 @@ impl<'a> Parser<'a> {
                     right: Box::new(right),
                 }
             }
+            "NUMBER_TO_STR" => TypedFunction::NumberToStr { exprs: args },
 
             // ── Conversion ─────────────────────────────────────────
             "HEX" | "TO_HEX" => {
@@ -9124,6 +9207,18 @@ impl<'a> Parser<'a> {
             "SHA" | "SHA1" => {
                 let mut it = args.into_iter();
                 TypedFunction::Sha {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "SHA256" if crate::dialects::is_postgres_family(dialect) => {
+                let mut it = args.into_iter();
+                TypedFunction::Sha256 {
+                    expr: Box::new(it.next()?),
+                }
+            }
+            "SHA512" if crate::dialects::is_postgres_family(dialect) => {
+                let mut it = args.into_iter();
+                TypedFunction::Sha512 {
                     expr: Box::new(it.next()?),
                 }
             }
