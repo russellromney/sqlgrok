@@ -995,6 +995,7 @@ impl SelectBuilder {
             table: TableSource::Table(table(table_name, None)),
             on: None,
             using: Vec::new(),
+            sqlite_identity_normalization: false,
         });
         self
     }
@@ -1008,6 +1009,7 @@ impl SelectBuilder {
             table: TableSource::Table(table(table_name, None)),
             on: on_expr,
             using: Vec::new(),
+            sqlite_identity_normalization: false,
         });
         self
     }
@@ -1020,6 +1022,7 @@ impl SelectBuilder {
             table: TableSource::Table(table(table_name, None)),
             on: None,
             using: columns.iter().map(|s| s.to_string()).collect(),
+            sqlite_identity_normalization: false,
         });
         self
     }
@@ -1043,6 +1046,7 @@ impl SelectBuilder {
             },
             on: on_expr,
             using: Vec::new(),
+            sqlite_identity_normalization: false,
         });
         self
     }
@@ -1362,6 +1366,7 @@ impl SelectStatement {
             table: TableSource::Table(table(table_name, None)),
             on: on_expr,
             using: Vec::new(),
+            sqlite_identity_normalization: false,
         });
     }
 
@@ -1395,6 +1400,7 @@ impl SelectStatement {
             },
             on: on_expr,
             using: Vec::new(),
+            sqlite_identity_normalization: false,
         });
     }
 

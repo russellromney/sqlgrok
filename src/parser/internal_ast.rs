@@ -137,6 +137,7 @@ impl<'sql> InternalSelect<'sql> {
                     table: TableSource::Table(table.into_public()),
                     on: None,
                     using: vec![],
+                    sqlite_identity_normalization: false,
                 })
                 .collect(),
             where_clause: self.where_clause.map(InternalExpr::into_public),

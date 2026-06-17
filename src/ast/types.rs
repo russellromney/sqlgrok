@@ -404,6 +404,10 @@ pub struct JoinClause {
     pub table: TableSource,
     pub on: Option<Expr>,
     pub using: Vec<String>,
+    /// SQLite parser metadata for identity rendering: comma joins become
+    /// CROSS JOIN and criteria-less joins render `ON TRUE`.
+    #[serde(default)]
+    pub sqlite_identity_normalization: bool,
 }
 
 /// The type of JOIN.
@@ -431,11 +435,9 @@ pub enum JoinType {
     OuterApply,
     /// MySQL STRAIGHT_JOIN
     Straight,
-    /// SEMI JOIN — keep left rows matched in right. Lowered to
-    /// `WHERE EXISTS (...)` during dialect transformation.
+    /// SEMI JOIN — keep left rows matched in right.
     Semi,
-    /// ANTI JOIN — keep left rows NOT matched in right. Lowered to
-    /// `WHERE NOT EXISTS (...)` during dialect transformation.
+    /// ANTI JOIN — keep left rows NOT matched in right.
     Anti,
 }
 

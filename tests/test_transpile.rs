@@ -983,6 +983,62 @@ fn test_mysql_comma_limit_to_sqlite() {
 }
 
 #[test]
+fn test_sqlite_identity_join_cleanup_is_generator_owned() {
+    validate_with_dialect(
+        "SELECT * FROM a, b",
+        "SELECT * FROM a CROSS JOIN b",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM a JOIN b",
+        "SELECT * FROM a JOIN b ON TRUE",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM a LEFT JOIN b",
+        "SELECT * FROM a LEFT JOIN b ON TRUE",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM a, b",
+        "SELECT * FROM a, b",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_semi_anti_joins_are_generator_lowered() {
+    validate_with_dialect(
+        "SELECT * FROM a SEMI JOIN b ON a.id = b.id",
+        "SELECT * FROM a WHERE EXISTS(SELECT 1 FROM b WHERE a.id = b.id)",
+        Dialect::Spark,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM a ANTI JOIN b ON a.id = b.id",
+        "SELECT * FROM a WHERE NOT EXISTS(SELECT 1 FROM b WHERE a.id = b.id)",
+        Dialect::Spark,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT * FROM a SEMI JOIN b ON a.id = b.id",
+        "SELECT * FROM a SEMI JOIN b ON a.id = b.id",
+        Dialect::Spark,
+        Dialect::Spark,
+    );
+    validate_with_dialect(
+        "SELECT * FROM a SEMI JOIN b ON a.id = b.id",
+        "SELECT * FROM a SEMI JOIN b ON a.id = b.id",
+        Dialect::Spark,
+        Dialect::DuckDb,
+    );
+}
+
+#[test]
 fn test_mysql_div_to_sqlite_int_cast() {
     validate_with_dialect(
         "SELECT 7 DIV 2",

@@ -230,6 +230,7 @@ fn try_unnest_exists(
             table: derived,
             on: Some(on_condition),
             using: vec![],
+            sqlite_identity_normalization: false,
         };
         let residual = Some(Expr::IsNull {
             expr: Box::new(null_check_col),
@@ -243,6 +244,7 @@ fn try_unnest_exists(
             table: derived,
             on: Some(on_condition),
             using: vec![],
+            sqlite_identity_normalization: false,
         };
         Some((join, None))
     }
@@ -304,6 +306,7 @@ fn try_unnest_in_subquery(
             table: derived,
             on: Some(on_condition),
             using: vec![],
+            sqlite_identity_normalization: false,
         };
         Some((join, Some(null_check)))
     } else {
@@ -313,6 +316,7 @@ fn try_unnest_in_subquery(
             table: derived,
             on: Some(on_condition),
             using: vec![],
+            sqlite_identity_normalization: false,
         };
         Some((join, None))
     }

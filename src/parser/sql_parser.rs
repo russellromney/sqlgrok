@@ -2626,6 +2626,7 @@ impl<'a> Parser<'a> {
                             },
                             on: None,
                             using: vec![],
+                            sqlite_identity_normalization: matches!(self.dialect, Dialect::Sqlite),
                         });
                         continue;
                     }
@@ -2644,6 +2645,7 @@ impl<'a> Parser<'a> {
                         },
                         on: None,
                         using: vec![],
+                        sqlite_identity_normalization: matches!(self.dialect, Dialect::Sqlite),
                     });
                     continue;
                 }
@@ -2697,6 +2699,7 @@ impl<'a> Parser<'a> {
                 table,
                 on,
                 using,
+                sqlite_identity_normalization: matches!(self.dialect, Dialect::Sqlite),
             });
         }
         Ok(joins)

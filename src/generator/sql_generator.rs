@@ -18,6 +18,237 @@ fn sqlite_function_raw_args(raw_args: &str) -> String {
         .replace(" RESPECT NULLS", "")
 }
 
+fn generator_supports_semi_anti_join(dialect: Option<Dialect>) -> bool {
+    matches!(
+        dialect,
+        None | Some(
+            Dialect::ClickHouse
+                | Dialect::Databricks
+                | Dialect::Doris
+                | Dialect::DuckDb
+                | Dialect::Hive
+                | Dialect::SingleStore
+                | Dialect::Spark
+                | Dialect::StarRocks
+        )
+    )
+}
+
+fn select_with_eliminated_semi_anti_joins(sel: &SelectStatement) -> Option<SelectStatement> {
+    let mut rewritten = sel.clone();
+    let mut new_joins = Vec::with_capacity(rewritten.joins.len());
+    let mut changed = false;
+
+    for mut join in std::mem::take(&mut rewritten.joins) {
+        let negated = match join.join_type {
+            JoinType::Semi => false,
+            JoinType::Anti => true,
+            _ => {
+                new_joins.push(join);
+                continue;
+            }
+        };
+        let Some(on) = join.on.take() else {
+            new_joins.push(join);
+            continue;
+        };
+
+        let subquery_select = SelectStatement {
+            comments: vec![],
+            ctes: vec![],
+            distinct: false,
+            distinct_on: vec![],
+            top: None,
+            columns: vec![SelectItem::Expr {
+                expr: Expr::Number("1".to_string()),
+                alias: None,
+                alias_quote_style: QuoteStyle::None,
+            }],
+            from: Some(FromClause { source: join.table }),
+            joins: vec![],
+            where_clause: Some(on),
+            group_by: vec![],
+            having: None,
+            order_by: vec![],
+            limit: None,
+            limit_renders_as_tsql_top: false,
+            offset: None,
+            limit_by: vec![],
+            fetch_first: None,
+            qualify: None,
+            window_definitions: vec![],
+            lock: None,
+        };
+        let exists_expr = Expr::Exists {
+            subquery: Box::new(Statement::Select(subquery_select)),
+            negated,
+        };
+        rewritten.where_clause = Some(match rewritten.where_clause.take() {
+            Some(existing) => Expr::BinaryOp {
+                left: Box::new(existing),
+                op: BinaryOperator::And,
+                right: Box::new(exists_expr),
+            },
+            None => exists_expr,
+        });
+        changed = true;
+    }
+
+    if changed {
+        rewritten.joins = new_joins;
+        Some(rewritten)
+    } else {
+        None
+    }
+}
+
+fn select_with_sqlite_distinct_on_lowering(sel: &SelectStatement) -> Option<SelectStatement> {
+    if sel.distinct_on.is_empty() {
+        return None;
+    }
+
+    let mut inner_columns = Vec::with_capacity(sel.columns.len() + 1);
+    let mut outer_columns = Vec::with_capacity(sel.columns.len());
+    let mut has_wildcard = false;
+
+    for item in &sel.columns {
+        match item {
+            SelectItem::Wildcard => {
+                has_wildcard = true;
+                inner_columns.push(SelectItem::Wildcard);
+            }
+            SelectItem::QualifiedWildcard { table } => {
+                has_wildcard = true;
+                inner_columns.push(SelectItem::QualifiedWildcard {
+                    table: table.clone(),
+                });
+            }
+            SelectItem::Expr { expr, alias, .. } if has_wildcard => {
+                inner_columns.push(SelectItem::Expr {
+                    expr: expr.clone(),
+                    alias: alias.clone(),
+                    alias_quote_style: QuoteStyle::None,
+                });
+            }
+            SelectItem::Expr { expr, alias, .. } => {
+                let output_name = alias
+                    .clone()
+                    .or_else(|| select_column_name(expr))
+                    .unwrap_or_else(|| generated_column_alias(inner_columns.len()));
+
+                inner_columns.push(SelectItem::Expr {
+                    expr: expr.clone(),
+                    alias: Some(output_name.clone()),
+                    alias_quote_style: QuoteStyle::None,
+                });
+                outer_columns.push(SelectItem::Expr {
+                    expr: column_expr(&output_name),
+                    alias: None,
+                    alias_quote_style: QuoteStyle::None,
+                });
+            }
+        }
+    }
+
+    if has_wildcard {
+        outer_columns = vec![SelectItem::Wildcard];
+    }
+
+    let order_by = if sel.order_by.is_empty() {
+        sel.distinct_on
+            .iter()
+            .cloned()
+            .map(|expr| OrderByItem {
+                expr,
+                ascending: true,
+                explicit_direction: false,
+                nulls_first: None,
+                implicit_nulls: false,
+            })
+            .collect()
+    } else {
+        sel.order_by.clone()
+    };
+
+    inner_columns.push(SelectItem::Expr {
+        expr: Expr::TypedFunction {
+            func: TypedFunction::RowNumber,
+            filter: None,
+            over: Some(WindowSpec {
+                window_ref: None,
+                partition_by: sel.distinct_on.clone(),
+                order_by,
+                frame: None,
+            }),
+        },
+        alias: Some("_row_number".to_string()),
+        alias_quote_style: QuoteStyle::None,
+    });
+
+    let mut inner = sel.clone();
+    inner.distinct = false;
+    inner.distinct_on.clear();
+    inner.columns = inner_columns;
+    inner.order_by.clear();
+
+    Some(SelectStatement {
+        comments: vec![],
+        ctes: vec![],
+        distinct: false,
+        distinct_on: vec![],
+        top: None,
+        columns: outer_columns,
+        from: Some(FromClause {
+            source: TableSource::Subquery {
+                query: Box::new(Statement::Select(inner)),
+                alias: Some("_t".to_string()),
+                alias_quote_style: QuoteStyle::None,
+            },
+        }),
+        joins: vec![],
+        where_clause: Some(Expr::BinaryOp {
+            left: Box::new(column_expr("_row_number")),
+            op: BinaryOperator::Eq,
+            right: Box::new(Expr::Number("1".to_string())),
+        }),
+        group_by: vec![],
+        having: None,
+        order_by: vec![],
+        limit: None,
+        limit_renders_as_tsql_top: false,
+        offset: None,
+        limit_by: vec![],
+        fetch_first: None,
+        qualify: None,
+        window_definitions: vec![],
+        lock: None,
+    })
+}
+
+fn select_column_name(expr: &Expr) -> Option<String> {
+    match expr {
+        Expr::Column { name, .. } => Some(name.clone()),
+        _ => None,
+    }
+}
+
+fn generated_column_alias(index: usize) -> String {
+    if index == 0 {
+        "_col".to_string()
+    } else {
+        format!("_col_{}", index + 1)
+    }
+}
+
+fn column_expr(name: &str) -> Expr {
+    Expr::Column {
+        table: None,
+        name: name.to_string(),
+        quote_style: QuoteStyle::None,
+        table_quote_style: QuoteStyle::None,
+    }
+}
+
 fn postgres_default_raw_order_nulls(raw: &str) -> String {
     let upper = raw.to_ascii_uppercase();
     let Some(order_by_pos) = upper.find(" ORDER BY ") else {
@@ -630,6 +861,20 @@ impl Generator {
     // ── SELECT ──────────────────────────────────────────────────
 
     fn gen_select(&mut self, sel: &SelectStatement) {
+        if !generator_supports_semi_anti_join(self.dialect)
+            && let Some(rewritten) = select_with_eliminated_semi_anti_joins(sel)
+        {
+            self.gen_select(&rewritten);
+            return;
+        }
+
+        if matches!(self.dialect, Some(Dialect::Sqlite))
+            && let Some(rewritten) = select_with_sqlite_distinct_on_lowering(sel)
+        {
+            self.gen_select(&rewritten);
+            return;
+        }
+
         // CTEs
         if !sel.ctes.is_empty() {
             self.gen_ctes(&sel.ctes);
@@ -1172,6 +1417,10 @@ impl Generator {
     }
 
     fn gen_join(&mut self, join: &JoinClause) {
+        let sqlite_identity_join =
+            self.dialect == Some(Dialect::Sqlite) && join.sqlite_identity_normalization;
+        let sqlite_identity_cross_join =
+            sqlite_identity_join && matches!(join.join_type, JoinType::Comma);
         let join_kw = match join.join_type {
             JoinType::Join => "JOIN",
             JoinType::Inner => "INNER JOIN",
@@ -1193,11 +1442,15 @@ impl Generator {
             JoinType::Semi => "SEMI JOIN",
             JoinType::Anti => "ANTI JOIN",
         };
-        if join.join_type == JoinType::Comma {
+        if join.join_type == JoinType::Comma && !sqlite_identity_cross_join {
             self.write(",");
         } else {
             self.sep();
-            self.write_keyword(join_kw);
+            self.write_keyword(if sqlite_identity_cross_join {
+                "CROSS JOIN"
+            } else {
+                join_kw
+            });
         }
         if self.pretty {
             self.indent_up();
@@ -1216,7 +1469,20 @@ impl Generator {
             self.write_keyword("ON ");
             self.gen_expr(on);
         } else if self.dialect == Some(Dialect::Sqlite)
-            && matches!(join.join_type, JoinType::CrossApply | JoinType::OuterApply)
+            && join.using.is_empty()
+            && (matches!(join.join_type, JoinType::CrossApply | JoinType::OuterApply)
+                || (sqlite_identity_join
+                    && matches!(
+                        join.join_type,
+                        JoinType::Join
+                            | JoinType::Inner
+                            | JoinType::Left
+                            | JoinType::LeftOuter
+                            | JoinType::Right
+                            | JoinType::RightOuter
+                            | JoinType::Full
+                            | JoinType::FullOuter
+                    )))
         {
             self.write(" ");
             self.write_keyword("ON TRUE");

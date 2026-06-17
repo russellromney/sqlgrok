@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 7244 |
-| `mismatch` | 5730 |
+| `match` | 7285 |
+| `mismatch` | 5689 |
 | `oracle-error` | 1456 |
 | `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
@@ -23,10 +23,10 @@ Filtered by read/write: `0`
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 4698 |
-| `mismatch` | `validate_all` | 4335 |
-| `match` | `validate_identity` | 2485 |
-| `mismatch` | `validate_identity` | 1282 |
+| `match` | `validate_all` | 4738 |
+| `mismatch` | `validate_all` | 4295 |
+| `match` | `validate_identity` | 2486 |
+| `mismatch` | `validate_identity` | 1281 |
 | `oracle-error` | `validate_identity` | 949 |
 | `oracle-error` | `validate_all` | 501 |
 | `rust-error` | `validate_identity` | 343 |
@@ -47,18 +47,18 @@ Filtered by read/write: `0`
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 586 |
 | `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 378 |
 | `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 354 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 290 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 330 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 274 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 233 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 222 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 193 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 174 |
 | `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 168 |
-| `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 158 |
+| `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 157 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 147 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 147 |
 | `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 116 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 112 |
-| `match` | `tests/dialects/test_spark.py` | `test_spark` | 107 |
+| `match` | `tests/dialects/test_spark.py` | `test_spark` | 108 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 104 |
 | `mismatch` | `tests/dialects/test_presto.py` | `test_presto` | 104 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 102 |
