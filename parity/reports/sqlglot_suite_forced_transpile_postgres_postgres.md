@@ -13,8 +13,8 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8594 |
-| `mismatch` | 4379 |
+| `match` | 8600 |
+| `mismatch` | 4373 |
 | `oracle-error` | 1456 |
 | `rust-error` | 590 |
 | `unsupported-harness-shape` | 137 |
@@ -25,8 +25,8 @@ Filtered by read/write: `0`
 | --- | --- | ---: |
 | `match` | `validate_all` | 5870 |
 | `mismatch` | `validate_all` | 3164 |
-| `match` | `validate_identity` | 2654 |
-| `mismatch` | `validate_identity` | 1111 |
+| `match` | `validate_identity` | 2660 |
+| `mismatch` | `validate_identity` | 1105 |
 | `oracle-error` | `validate_identity` | 951 |
 | `oracle-error` | `validate_all` | 499 |
 | `rust-error` | `validate_identity` | 343 |
@@ -44,11 +44,11 @@ Filtered by read/write: `0`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 900 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 472 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 473 |
 | `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 396 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 283 |
-| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 279 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 261 |
+| `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 282 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 260 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 230 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 169 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 146 |
@@ -59,9 +59,9 @@ Filtered by read/write: `0`
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 122 |
 | `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 122 |
 | `mismatch` | `tests/dialects/test_spark.py` | `test_spark` | 119 |
-| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 111 |
 | `match` | `tests/dialects/test_dialect.py` | `test_operators` | 109 |
 | `match` | `tests/dialects/test_hive.py` | `test_hive` | 109 |
+| `mismatch` | `tests/dialects/test_postgres.py` | `test_postgres` | 108 |
 | `match` | `tests/dialects/test_presto.py` | `test_presto` | 98 |
 | `match` | `tests/dialects/test_redshift.py` | `test_redshift` | 92 |
 | `match` | `tests/dialects/test_mysql.py` | `test_hexadecimal_literal` | 91 |

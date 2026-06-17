@@ -286,6 +286,7 @@ pub enum SetOperationType {
 
 /// An item in a SELECT list.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
 pub enum SelectItem {
     /// `*`
     Wildcard,
@@ -580,6 +581,10 @@ pub enum Expr {
         distinct: bool,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         raw_order_nulls: Option<RawOrderNullsPolicy>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        arg_order_by: Vec<OrderByItem>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        arg_limit: Option<Box<Expr>>,
         /// FILTER (WHERE expr) clause on aggregate
         filter: Option<Box<Expr>>,
         /// OVER window specification for window functions
@@ -2543,9 +2548,21 @@ impl Expr {
                 right.walk(visitor);
             }
             Expr::UnaryOp { expr, .. } => expr.walk(visitor),
-            Expr::Function { args, filter, .. } => {
+            Expr::Function {
+                args,
+                arg_order_by,
+                arg_limit,
+                filter,
+                ..
+            } => {
                 for arg in args {
                     arg.walk(visitor);
+                }
+                for item in arg_order_by {
+                    item.expr.walk(visitor);
+                }
+                if let Some(limit) = arg_limit {
+                    limit.walk(visitor);
                 }
                 if let Some(f) = filter {
                     f.walk(visitor);
@@ -2749,6 +2766,8 @@ impl Expr {
                 args,
                 distinct,
                 raw_order_nulls,
+                arg_order_by,
+                arg_limit,
                 filter,
                 over,
             } => Expr::Function {
@@ -2756,6 +2775,14 @@ impl Expr {
                 args: args.into_iter().map(|a| a.transform(func)).collect(),
                 distinct,
                 raw_order_nulls,
+                arg_order_by: arg_order_by
+                    .into_iter()
+                    .map(|mut item| {
+                        item.expr = item.expr.transform(func);
+                        item
+                    })
+                    .collect(),
+                arg_limit: arg_limit.map(|limit| Box::new(limit.transform(func))),
                 filter: filter.map(|f| Box::new(f.transform(func))),
                 over,
             },

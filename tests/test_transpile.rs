@@ -3,7 +3,7 @@
 /// These test parse→generate roundtrips (identity), normalization transforms,
 /// and basic cross-dialect transpilation. Modeled after the `validate` and
 /// `validate_identity` helpers in the Python test suite.
-use sqlgrok::ast::{CreateTableOption, TableSource};
+use sqlgrok::ast::{CreateTableOption, Expr, SelectItem, TableSource};
 use sqlgrok::{Dialect, Statement, generate, generate_pretty, parse, transpile};
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -5521,6 +5521,38 @@ fn test_forced_suite_function_clause_tails_to_sqlite() {
     for (sql, expected) in cases {
         validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
     }
+}
+
+#[test]
+fn test_ordered_aggregate_args_are_structured() {
+    let ast = parse(
+        "SELECT JSON_ARRAYAGG(name ORDER BY id ASC, name DESC LIMIT 2) FROM t",
+        Dialect::Sqlite,
+    )
+    .unwrap();
+    let Statement::Select(select) = ast else {
+        panic!("expected SELECT");
+    };
+    let SelectItem::Expr { expr, .. } = &select.columns[0] else {
+        panic!("expected select expression");
+    };
+    assert!(matches!(
+        expr,
+        Expr::Function {
+            name,
+            args,
+            arg_order_by,
+            arg_limit: Some(_),
+            ..
+        } if name == "JSON_ARRAYAGG" && args.len() == 1 && arg_order_by.len() == 2
+    ));
+
+    validate_with_dialect(
+        "SELECT ARRAY_AGG(x ORDER BY y, z DESC) FROM t",
+        "SELECT ARRAY_AGG(x ORDER BY y NULLS LAST, z DESC NULLS FIRST) FROM t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]

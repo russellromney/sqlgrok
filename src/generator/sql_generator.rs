@@ -317,6 +317,8 @@ fn sqlite_instr_with_position_expr(haystack: Expr, needle: Expr, position: Expr)
         args: vec![haystack, position.clone()],
         distinct: false,
         raw_order_nulls: None,
+        arg_order_by: vec![],
+        arg_limit: None,
         filter: None,
         over: None,
     };
@@ -325,6 +327,8 @@ fn sqlite_instr_with_position_expr(haystack: Expr, needle: Expr, position: Expr)
         args: vec![substring, needle],
         distinct: false,
         raw_order_nulls: None,
+        arg_order_by: vec![],
+        arg_limit: None,
         filter: None,
         over: None,
     };
@@ -396,6 +400,8 @@ fn sqlite_postgres_json_typeof_expr(expr: Expr) -> Expr {
             args: vec![expr],
             distinct: false,
             raw_order_nulls: None,
+            arg_order_by: vec![],
+            arg_limit: None,
             filter: None,
             over: None,
         }
@@ -1635,6 +1641,41 @@ impl Generator {
         }
         if self.pretty {
             self.indent_down();
+        }
+    }
+
+    fn gen_function_arg_modifiers(&mut self, order_by: &[OrderByItem], limit: Option<&Expr>) {
+        if !order_by.is_empty() {
+            self.write(" ");
+            self.write_keyword("ORDER BY ");
+            for (i, item) in order_by.iter().enumerate() {
+                if i > 0 {
+                    self.write(", ");
+                }
+                self.gen_expr(&item.expr);
+                if !item.ascending {
+                    self.write(" ");
+                    self.write_keyword("DESC");
+                } else if item.explicit_direction {
+                    self.write(" ");
+                    self.write_keyword("ASC");
+                }
+                if should_render_nulls_ordering(self.dialect, item)
+                    && let Some(nulls_first) = item.nulls_first
+                {
+                    self.write(" ");
+                    if nulls_first {
+                        self.write_keyword("NULLS FIRST");
+                    } else {
+                        self.write_keyword("NULLS LAST");
+                    }
+                }
+            }
+        }
+        if let Some(limit) = limit {
+            self.write(" ");
+            self.write_keyword("LIMIT ");
+            self.gen_expr(limit);
         }
     }
 
@@ -3972,6 +4013,8 @@ impl Generator {
                 args,
                 distinct,
                 raw_order_nulls,
+                arg_order_by,
+                arg_limit,
                 filter,
                 over,
             } => {
@@ -4004,13 +4047,16 @@ impl Generator {
                     self.write(")");
                     return;
                 }
-                if self.gen_sqlite_function_lowering(
-                    name,
-                    args,
-                    *distinct,
-                    filter.as_deref(),
-                    over.as_ref(),
-                ) {
+                if arg_order_by.is_empty()
+                    && arg_limit.is_none()
+                    && self.gen_sqlite_function_lowering(
+                        name,
+                        args,
+                        *distinct,
+                        filter.as_deref(),
+                        over.as_ref(),
+                    )
+                {
                     return;
                 }
                 if matches!(
@@ -4093,6 +4139,9 @@ impl Generator {
                     self.write_keyword("DISTINCT ");
                 }
                 self.gen_expr_list(args);
+                if !(matches!(self.dialect, Some(Dialect::Sqlite)) && upper == "GROUP_CONCAT") {
+                    self.gen_function_arg_modifiers(arg_order_by, arg_limit.as_deref());
+                }
                 self.write(")");
 
                 self.gen_filter_and_over(filter.as_deref(), over.as_ref());

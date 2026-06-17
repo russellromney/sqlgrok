@@ -194,8 +194,10 @@ of ordinary function rewrites.
    semantics into that string. The first slice now carries that source
    semantics as parser-owned `RawOrderNullsPolicy` and renders it in the
    SQLite generator, deleting the source-gated `transform_expr` branch. The
-   remaining cleanup is to replace the raw string with structured aggregate
-   argument ordering fields where the parser can represent the clause fully.
+   second slice adds structured `Expr::Function` fields for function-local
+   `ORDER BY` and `LIMIT`, with parser/generator ownership for the common
+   aggregate family. Remaining raw fallback is now limited to harder tails such
+   as `HAVING`, `IGNORE`/`RESPECT NULLS`, and comma-style `LIMIT`.
 2. **Raw table-source carriers.**
    `TableSource::Raw` still encodes behavior for `UNNEST(...)`, `WITH OFFSET`,
    Postgres VALUES alias cleanup, typed literals, and raw function name

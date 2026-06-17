@@ -41,6 +41,7 @@ pub enum ChangeAction {
 /// A wrapper around an AST node that can represent either statements or
 /// expressions, enabling uniform diff output.
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum AstNode {
     Statement(Box<Statement>),
     Expr(Expr),

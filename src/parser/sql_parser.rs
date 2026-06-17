@@ -1671,6 +1671,8 @@ impl<'a> Parser<'a> {
                     args: Self::select_items_to_function_args(items),
                     distinct: false,
                     raw_order_nulls: None,
+                    arg_order_by: vec![],
+                    arg_limit: None,
                     filter: None,
                     over: None,
                 },
@@ -6179,6 +6181,8 @@ impl<'a> Parser<'a> {
                         args: vec![left, pattern],
                         distinct: false,
                         raw_order_nulls: None,
+                        arg_order_by: vec![],
+                        arg_limit: None,
                         filter: None,
                         over: None,
                     }
@@ -6675,6 +6679,8 @@ impl<'a> Parser<'a> {
                     args: vec![expr],
                     distinct: false,
                     raw_order_nulls: None,
+                    arg_order_by: vec![],
+                    arg_limit: None,
                     filter: None,
                     over: None,
                 })
@@ -6693,6 +6699,8 @@ impl<'a> Parser<'a> {
                     args: vec![expr],
                     distinct: false,
                     raw_order_nulls: None,
+                    arg_order_by: vec![],
+                    arg_limit: None,
                     filter: None,
                     over: None,
                 })
@@ -6791,6 +6799,8 @@ impl<'a> Parser<'a> {
                     args: vec![expr, path],
                     distinct: false,
                     raw_order_nulls: None,
+                    arg_order_by: vec![],
+                    arg_limit: None,
                     filter: None,
                     over: None,
                 };
@@ -6801,6 +6811,8 @@ impl<'a> Parser<'a> {
                     args: vec![expr, path],
                     distinct: false,
                     raw_order_nulls: None,
+                    arg_order_by: vec![],
+                    arg_limit: None,
                     filter: None,
                     over: None,
                 };
@@ -6853,6 +6865,8 @@ impl<'a> Parser<'a> {
                     args,
                     distinct,
                     raw_order_nulls,
+                    arg_order_by,
+                    arg_limit,
                     over,
                     ..
                 } => {
@@ -6861,6 +6875,8 @@ impl<'a> Parser<'a> {
                         args,
                         distinct,
                         raw_order_nulls,
+                        arg_order_by,
+                        arg_limit,
                         filter: Some(Box::new(filter_expr)),
                         over,
                     };
@@ -6936,12 +6952,16 @@ impl<'a> Parser<'a> {
                 distinct,
                 filter,
                 raw_order_nulls,
+                arg_order_by,
+                arg_limit,
                 ..
             } => Expr::Function {
                 name,
                 args,
                 distinct,
                 raw_order_nulls,
+                arg_order_by,
+                arg_limit,
                 filter,
                 over: Some(spec),
             },
@@ -7170,6 +7190,8 @@ impl<'a> Parser<'a> {
                     args: vec![Expr::StringLiteral(value)],
                     distinct: false,
                     raw_order_nulls: None,
+                    arg_order_by: vec![],
+                    arg_limit: None,
                     filter: None,
                     over: None,
                 })
@@ -7471,6 +7493,8 @@ impl<'a> Parser<'a> {
                         args,
                         distinct: false,
                         raw_order_nulls: None,
+                        arg_order_by: vec![],
+                        arg_limit: None,
                         filter: None,
                         over: None,
                     })
@@ -7531,6 +7555,8 @@ impl<'a> Parser<'a> {
                     args,
                     distinct: false,
                     raw_order_nulls: None,
+                    arg_order_by: vec![],
+                    arg_limit: None,
                     filter: None,
                     over: None,
                 })
@@ -7560,6 +7586,8 @@ impl<'a> Parser<'a> {
                         args: vec![Expr::StringLiteral(value)],
                         distinct: false,
                         raw_order_nulls: None,
+                        arg_order_by: vec![],
+                        arg_limit: None,
                         filter: None,
                         over: None,
                     });
@@ -7685,6 +7713,8 @@ impl<'a> Parser<'a> {
                 args: vec![Expr::StringLiteral(raw_args)],
                 distinct: false,
                 raw_order_nulls: None,
+                arg_order_by: vec![],
+                arg_limit: None,
                 filter: None,
                 over: None,
             });
@@ -7699,6 +7729,8 @@ impl<'a> Parser<'a> {
                 args: vec![Expr::StringLiteral(raw_args)],
                 distinct: false,
                 raw_order_nulls: None,
+                arg_order_by: vec![],
+                arg_limit: None,
                 filter: None,
                 over: None,
             });
@@ -7714,6 +7746,7 @@ impl<'a> Parser<'a> {
                 | "LISTAGG"
                 | "NTILE"
         ) && self.function_args_contain_top_level_clause()
+            && self.function_args_contain_top_level_raw_only_clause()
         {
             let distinct = self.match_token(TokenType::Distinct);
             let raw_args = self.parse_raw_function_args()?;
@@ -7729,6 +7762,8 @@ impl<'a> Parser<'a> {
                 args: vec![Expr::StringLiteral(raw_args)],
                 distinct,
                 raw_order_nulls,
+                arg_order_by: vec![],
+                arg_limit: None,
                 filter: None,
                 over: None,
             });
@@ -7760,15 +7795,30 @@ impl<'a> Parser<'a> {
             return Ok(Expr::TryCast { expr, data_type });
         }
 
+        let mut arg_order_by = Vec::new();
+        let mut arg_limit = None;
+
         let args = if name.eq_ignore_ascii_case("GROUP_CONCAT") {
             self.parse_group_concat_args()?
         } else if name.eq_ignore_ascii_case("JSON_VALUE") {
             self.parse_json_value_args()?
         } else if matches!(
             upper.as_str(),
-            "ARRAY_AGG" | "ARRAY_CONCAT_AGG" | "JSON_AGG" | "STRING_AGG"
+            "ANY_VALUE"
+                | "ARG_MAX"
+                | "ARRAY_AGG"
+                | "ARRAY_CONCAT_AGG"
+                | "JSON_AGG"
+                | "JSON_ARRAYAGG"
+                | "LAST_VALUE"
+                | "LISTAGG"
+                | "NTILE"
+                | "STRING_AGG"
         ) {
-            self.parse_ordered_function_args()?
+            let (args, order_by, limit) = self.parse_ordered_function_args()?;
+            arg_order_by = order_by;
+            arg_limit = limit.map(Box::new);
+            args
         } else if name.eq_ignore_ascii_case("POSITION") {
             self.parse_position_args()?
         } else if name.eq_ignore_ascii_case("SUBSTRING") || name.eq_ignore_ascii_case("SUBSTR") {
@@ -7799,6 +7849,8 @@ impl<'a> Parser<'a> {
                 args: vec![Expr::StringLiteral(self.sql[start..end].to_string())],
                 distinct: false,
                 raw_order_nulls: None,
+                arg_order_by: vec![],
+                arg_limit: None,
                 filter: None,
                 over: None,
             });
@@ -7834,11 +7886,15 @@ impl<'a> Parser<'a> {
                 args,
                 distinct,
                 raw_order_nulls: None,
+                arg_order_by: vec![],
+                arg_limit: None,
                 filter: None,
                 over: None,
             })
-        } else if let Some(typed) =
-            Self::try_typed_function(&name, args.clone(), distinct, self.dialect)
+        } else if arg_order_by.is_empty()
+            && arg_limit.is_none()
+            && let Some(typed) =
+                Self::try_typed_function(&name, args.clone(), distinct, self.dialect)
         {
             Ok(typed)
         } else {
@@ -7847,6 +7903,8 @@ impl<'a> Parser<'a> {
                 args,
                 distinct,
                 raw_order_nulls: None,
+                arg_order_by,
+                arg_limit,
                 filter: None,
                 over: None,
             })
@@ -7937,6 +7995,56 @@ impl<'a> Parser<'a> {
                 }
                 TokenType::Having | TokenType::Limit | TokenType::Order if depth == 0 => {
                     return true;
+                }
+                _ => {}
+            }
+            pos += 1;
+        }
+        false
+    }
+
+    fn function_args_contain_top_level_raw_only_clause(&self) -> bool {
+        let mut depth = 0usize;
+        let mut pos = self.pos;
+        while pos < self.tokens.len() {
+            match self.tokens[pos].token_type {
+                TokenType::LParen | TokenType::LBracket | TokenType::LBrace => depth += 1,
+                TokenType::RParen => {
+                    if depth == 0 {
+                        return false;
+                    }
+                    depth -= 1;
+                }
+                TokenType::Having | TokenType::Ignore | TokenType::Respect if depth == 0 => {
+                    return true;
+                }
+                TokenType::Limit if depth == 0 => {
+                    let mut limit_depth = 0usize;
+                    let mut limit_pos = pos + 1;
+                    while limit_pos < self.tokens.len() {
+                        match self.tokens[limit_pos].token_type {
+                            TokenType::LParen | TokenType::LBracket | TokenType::LBrace => {
+                                limit_depth += 1;
+                            }
+                            TokenType::RParen => {
+                                if limit_depth == 0 {
+                                    break;
+                                }
+                                limit_depth -= 1;
+                            }
+                            TokenType::Comma if limit_depth == 0 => return true,
+                            _ => {}
+                        }
+                        limit_pos += 1;
+                    }
+                }
+                TokenType::Identifier if depth == 0 => {
+                    if matches!(
+                        self.tokens[pos].value.to_ascii_uppercase().as_str(),
+                        "IGNORE" | "RESPECT"
+                    ) {
+                        return true;
+                    }
                 }
                 _ => {}
             }
@@ -8198,9 +8306,11 @@ impl<'a> Parser<'a> {
         Ok(args)
     }
 
-    fn parse_ordered_function_args(&mut self) -> Result<Vec<Expr>> {
+    fn parse_ordered_function_args(
+        &mut self,
+    ) -> Result<(Vec<Expr>, Vec<OrderByItem>, Option<Expr>)> {
         if self.peek_type() == &TokenType::RParen {
-            return Ok(vec![]);
+            return Ok((vec![], vec![], None));
         }
 
         let mut args = vec![self.parse_expr()?];
@@ -8212,18 +8322,22 @@ impl<'a> Parser<'a> {
             args.push(self.parse_expr()?);
             self.consume_null_treatment();
         }
+        let mut order_by = Vec::new();
         if self.match_token(TokenType::Order) {
             self.expect(TokenType::By)?;
-            let _ = self.parse_order_by_items()?;
+            order_by = self.parse_order_by_items()?;
         }
         self.consume_null_treatment();
-        if self.match_token(TokenType::Limit) {
-            let _ = self.parse_expr()?;
+        let limit = if self.match_token(TokenType::Limit) {
+            let limit = self.parse_expr()?;
             if self.match_token(TokenType::Comma) {
                 let _ = self.parse_expr()?;
             }
-        }
-        Ok(args)
+            Some(limit)
+        } else {
+            None
+        };
+        Ok((args, order_by, limit))
     }
 
     fn parse_json_value_args(&mut self) -> Result<Vec<Expr>> {
@@ -8294,6 +8408,8 @@ impl<'a> Parser<'a> {
                 args,
                 distinct: false,
                 raw_order_nulls: None,
+                arg_order_by: vec![],
+                arg_limit: None,
                 filter: None,
                 over: None,
             })

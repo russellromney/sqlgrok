@@ -5,6 +5,27 @@ this file records what landed.
 
 ## 2026-06-17
 
+### Architecture Port: Ordered Aggregate Argument Carriers
+
+- Added structured `Expr::Function` fields for function-local `ORDER BY` and
+  `LIMIT` clauses, so common aggregate argument tails no longer have to travel
+  as raw function-argument text.
+- Parse ordered aggregate/function args for `ARRAY_AGG`, `JSON_AGG`,
+  `JSON_ARRAYAGG`, `STRING_AGG`, `LISTAGG`, `ANY_VALUE`, `ARG_MAX`,
+  `ARRAY_CONCAT_AGG`, `LAST_VALUE`, and `NTILE`, while preserving raw fallback
+  for still-unmodeled `HAVING`, `IGNORE`/`RESPECT NULLS`, and comma-style
+  `LIMIT` tails.
+- Moved generic rendering of those aggregate argument modifiers into the
+  generator, including SQLite's `GROUP_CONCAT` modifier dropping and explicit
+  Postgres default null-ordering where SQLGlot prints it.
+- Refreshed all seven forced-pair SQLGlot bridge reports. Exact matches now
+  stand at: postgres -> sqlite `11973`, mysql -> sqlite `11739`,
+  sqlite -> sqlite `11911`, postgres -> postgres `8600`,
+  mysql -> postgres `7949`, sqlite -> postgres `7867`, and
+  postgres -> duckdb `7309`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes, with 26 match improvements.
+
 ### Architecture Port: Typed UNNEST Table Sources
 
 - Added structured `TableSource::Unnest` fields for alias column lists,

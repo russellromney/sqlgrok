@@ -258,6 +258,8 @@ impl<'sql> InternalExpr<'sql> {
                         args,
                         distinct,
                         raw_order_nulls: None,
+                        arg_order_by: vec![],
+                        arg_limit: None,
                         filter: None,
                         over: over.map(InternalWindowSpec::into_public),
                     }

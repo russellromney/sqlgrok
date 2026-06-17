@@ -664,6 +664,8 @@ mod tests {
             args: vec![Expr::Star],
             distinct: false,
             raw_order_nulls: None,
+            arg_order_by: vec![],
+            arg_limit: None,
             filter: None,
             over: None,
         };
@@ -677,6 +679,8 @@ mod tests {
             args: vec![],
             distinct: false,
             raw_order_nulls: None,
+            arg_order_by: vec![],
+            arg_limit: None,
             filter: None,
             over: Some(WindowSpec {
                 window_ref: None,

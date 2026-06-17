@@ -713,6 +713,8 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
                         args,
                         distinct: false,
                         raw_order_nulls: None,
+                        arg_order_by: vec![],
+                        arg_limit: None,
                         filter: filter.map(|f| Box::new(transform_expr_plugin(*f, target))),
                         over,
                     };
@@ -744,6 +746,8 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
                         args: new_items,
                         distinct: false,
                         raw_order_nulls: None,
+                        arg_order_by: vec![],
+                        arg_limit: None,
                         filter: None,
                         over: None,
                     };
@@ -761,6 +765,8 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
             args,
             distinct,
             raw_order_nulls,
+            arg_order_by,
+            arg_limit,
             filter,
             over,
         } => {
@@ -769,11 +775,20 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
                 .into_iter()
                 .map(|a| transform_expr_plugin(a, target))
                 .collect();
+            let arg_order_by = arg_order_by
+                .into_iter()
+                .map(|mut item| {
+                    item.expr = transform_expr_plugin(item.expr, target);
+                    item
+                })
+                .collect();
             Expr::Function {
                 name: new_name,
                 args: new_args,
                 distinct,
                 raw_order_nulls,
+                arg_order_by,
+                arg_limit: arg_limit.map(|limit| Box::new(transform_expr_plugin(*limit, target))),
                 filter: filter.map(|f| Box::new(transform_expr_plugin(*f, target))),
                 over,
             }

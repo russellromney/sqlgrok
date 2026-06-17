@@ -92,10 +92,12 @@ Retirement sequence:
    - Progress: `RawOrderNullsPolicy` now carries Postgres raw aggregate
      null-ordering semantics from the parser to the SQLite generator, deleting
      `propagate_nulls_direction` and the final source-gated branch in
-     `transform_expr`.
-   - Remaining: graduate the raw function argument text into structured
-     aggregate argument ordering fields where the parser can represent the
-     clause fully.
+     `transform_expr`. `Expr::Function` also has structured function-local
+     `ORDER BY` and `LIMIT` fields, and the parser/generator round-trips those
+     tails for the common aggregate/function family without raw argument text.
+   - Remaining: model the harder nonstandard aggregate tails that still need
+     raw fallback: `HAVING`, `IGNORE`/`RESPECT NULLS`, and comma-style
+     `LIMIT`.
 
 2. **Raw table-source carriers.**
    - Problem: `TableSource::Raw` still carries behavior, not only passthrough:
