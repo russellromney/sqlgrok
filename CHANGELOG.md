@@ -3,6 +3,24 @@
 Quick summaries of completed sqlgrok work. The roadmap says what should happen next;
 this file records what landed.
 
+## 2026-06-17
+
+### Architecture Port: Legacy Transform Path Retirement
+
+- Retired the builtin dialect transform path. Public transpile APIs, CLI
+  transpile, benches, allocation profiling, and the Python binding path now run
+  the SQLGlot architecture directly: `generate(parse(sql, read), write)`.
+- Deleted the no-op `dialects::transform` / `transform_owned` compatibility
+  shim and removed the obsolete transform allocation/benchmark phase.
+- Kept custom dialect plugin transform hooks intact; built-in -> built-in
+  plugin transpile now passes the parsed AST directly to the generator.
+- Refreshed all seven forced-pair SQLGlot bridge reports. Exact matches remain:
+  postgres -> sqlite `11968`, mysql -> sqlite `11733`, sqlite -> sqlite
+  `11905`, postgres -> postgres `8580`, mysql -> postgres `7947`,
+  sqlite -> postgres `7865`, and postgres -> duckdb `7285`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes.
+
 ## 2026-06-14
 
 ### Architecture Port: SQLite CREATE TABLE Column Normalization

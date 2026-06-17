@@ -291,26 +291,6 @@ pub(crate) fn supports_ilike_builtin(d: Dialect) -> bool {
     )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Statement / expression transforms
-// ═══════════════════════════════════════════════════════════════════════════
-
-/// Transform a statement from one dialect to another.
-///
-/// Dialect behavior now lives in parser-owned canonicalization and
-/// generator-owned rendering. This compatibility entry point intentionally
-/// returns the parsed AST unchanged.
-#[must_use]
-pub fn transform(statement: &Statement, from: Dialect, to: Dialect) -> Statement {
-    transform_owned(statement.clone(), from, to)
-}
-
-/// Transform an owned statement from one dialect to another.
-#[must_use]
-pub fn transform_owned(statement: Statement, _from: Dialect, _to: Dialect) -> Statement {
-    statement
-}
-
 /// Returns true if a SHOW statement is one of the forms the mysql
 /// parser in Python SQLGlot recognizes (and therefore drops when
 /// transpiling to sqlite). Unrecognized SHOWs fall back to Command and

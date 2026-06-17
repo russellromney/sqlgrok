@@ -109,20 +109,18 @@ Each step ratcheted on the forced suite across all lanes (now including
   Concentrated in `transform_expr`.
   - **Prerequisite discovered (2026-06):** read-side canonicalization at parse
     time is *unsafe until function/type rendering moves into the generator*.
-    `transform_owned` has an identity short-circuit
-    (`if from == to && !sqlite { return statement }`), and function rendering
-    currently lives in `transform_expr` (`map_function_name_for_source` call).
-    So if the parser canonicalizes a source spelling to a neutral name (e.g.
-    mysql `BIT_AND` → `BITWISE_AND_AGG`), an identity transpile (mysql→mysql)
-    skips the transform and leaks the neutral name. Proven by a reverted
-    `BIT_*` spike: cross-dialect was correct, both identity cases regressed.
-    **Therefore Phase 2 must be preceded by Phase 1.5: relocate function (and
-    type) rendering from `transform_expr` into the generator**, which always
-    runs. The `rules::rename_function`/`map_type` tables already exist; only
-    the *call site* must move (transform → generator). Mind that making the
-    generator always render will change identity-transpile output for any name
-    currently left raw — verify against the suite, and reconcile with the
-    perf fast path which also handles identity.
+    The historical `transform_owned` identity short-circuit
+    (`if from == to && !sqlite { return statement }`) made read-side
+    canonicalization unsafe until function/type rendering moved into the
+    generator. If the parser canonicalized a source spelling to a neutral name
+    (e.g. mysql `BIT_AND` → `BITWISE_AND_AGG`), an identity transpile
+    (mysql→mysql) skipped transform and leaked the neutral name. Proven by a
+    reverted `BIT_*` spike: cross-dialect was correct, both identity cases
+    regressed. **That prerequisite has landed: built-in transpile is now
+    direct parse/generate, with rendering owned by generators**, which always
+    runs. The `rules::rename_function`/`map_type` tables are now consumed from
+    generator-owned rendering, so identity-transpile output is exercised on the
+    same path as cross-dialect output.
   - **Phase 1.5 status:** function-name rendering moved into the generator
     (`Expr::Function` emission consults `rules::rename_function(target)`),
     verified zero-movement and identity-safe. The verified-correct sqlite
@@ -217,11 +215,11 @@ of ordinary function rewrites.
    `RawStatementNormalization`, so SQLite raw statement rendering no longer
    keys off `source_dialect`; the remaining work is to replace raw text with
    typed or semi-typed statement variants where practical.
-4. **Target-only lowerings still in transform.**
-   Move `ILIKE`, `DISTINCT ON`, `SEMI`/`ANTI` joins, SQLite `WITHIN GROUP`
+4. **Target-only generator lowerings.**
+   `ILIKE`, `DISTINCT ON`, `SEMI`/`ANTI` joins, SQLite `WITHIN GROUP`
    dropping, limit/top/fetch normalization, lock dropping, quote conversion,
-   and SQLite identity join cleanup into generator-owned rendering or explicit
-   parser canonicalization. Current progress: `ILIKE` fallback, SQLite
+   and SQLite identity join cleanup now belong to generator-owned rendering or
+   explicit parser canonicalization. Current progress: `ILIKE` fallback, SQLite
    `GROUP_CONCAT`/`STRING_AGG` `WITHIN GROUP` omission, lock omission, and
    quoted identifier spelling, SQLite identity join cleanup, SQLite
    `DISTINCT ON` lowering, SEMI/ANTI join lowering for unsupported targets,
@@ -229,16 +227,18 @@ of ordinary function rewrites.
    style metadata preserving identity spelling where needed.
 5. **AST gap closure.**
    Do not relocate raw-text rewrites into another helper and call that done.
-   Add the missing AST shape first, then drain behavior. The transform layer
-   can disappear only when pair-keyed behavior has no place left to hide.
+   Add the missing AST shape first, then drain behavior from raw carriers and
+   parser fallbacks. The transform layer is gone; do not recreate pair-keyed
+   behavior elsewhere.
 
 Deletion gate:
 
-- Add a guard against new `(source, target)` behavior in transform code.
-- Run the full pair matrix once as switch-over proof.
-- Replace `transform_owned` with a no-op compatibility shim, then delete the
-  shim and `(source, target)` signatures once identities plus spanning
-  parser/generator lanes reproduce the same coverage.
+- Landed: replace `transform_owned` with a no-op compatibility shim and run
+  the full pair matrix as switch-over proof.
+- Landed: delete the shim and builtin `(source, target)` transform signatures.
+- Remaining guardrail: new dialect behavior must be parser-owned,
+  generator-owned, or backed by new AST structure. Do not reintroduce pair-keyed
+  builtin transform code.
 
 ## Standing decisions
 

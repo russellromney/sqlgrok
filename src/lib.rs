@@ -151,8 +151,7 @@ pub fn transpile(
     write_dialect: Dialect,
 ) -> errors::Result<String> {
     let ast = parse(sql, read_dialect)?;
-    let transformed = dialects::transform_owned(ast, read_dialect, write_dialect);
-    Ok(generate(&transformed, write_dialect))
+    Ok(generate(&ast, write_dialect))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -181,8 +180,7 @@ pub(crate) fn transpile_guarded_internal_experiment(
     write_dialect: Dialect,
 ) -> errors::Result<(String, InternalTranspileDecision)> {
     let ast = parse(sql, read_dialect)?;
-    let transformed = dialects::transform_owned(ast, read_dialect, write_dialect);
-    let public_output = generate(&transformed, write_dialect);
+    let public_output = generate(&ast, write_dialect);
 
     let Ok(Some(internal)) = parser::parse_internal(sql, read_dialect) else {
         return Ok((public_output, InternalTranspileDecision::FellBackToPublic));
@@ -265,8 +263,7 @@ pub fn transpile_statements(
     let stmts = parser::parse_statements(sql, read_dialect)?;
     let mut results = Vec::with_capacity(stmts.len());
     for stmt in stmts {
-        let transformed = dialects::transform_owned(stmt, read_dialect, write_dialect);
-        results.push(generate(&transformed, write_dialect));
+        results.push(generate(&stmt, write_dialect));
     }
     Ok(results)
 }
@@ -284,8 +281,7 @@ pub fn transpile_statements_pretty(
     let stmts = parser::parse_statements(sql, read_dialect)?;
     let mut results = Vec::with_capacity(stmts.len());
     for stmt in stmts {
-        let transformed = dialects::transform_owned(stmt, read_dialect, write_dialect);
-        results.push(generate_pretty(&transformed, write_dialect));
+        results.push(generate_pretty(&stmt, write_dialect));
     }
     Ok(results)
 }
@@ -349,8 +345,7 @@ pub fn transpile_with_comments(
     write_dialect: Dialect,
 ) -> errors::Result<String> {
     let ast = parse_with_comments(sql, read_dialect)?;
-    let transformed = dialects::transform_owned(ast, read_dialect, write_dialect);
-    Ok(generate(&transformed, write_dialect))
+    Ok(generate(&ast, write_dialect))
 }
 
 #[cfg(test)]

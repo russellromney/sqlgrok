@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
-use sqlgrok::{Dialect, dialects, generate, parse, tokens::Tokenizer};
+use sqlgrok::{Dialect, generate, parse, tokens::Tokenizer};
 
 struct CountingAllocator;
 
@@ -15,13 +15,12 @@ static DEALLOCATED_BYTES: AtomicU64 = AtomicU64::new(0);
 static ALLOCATIONS: AtomicU64 = AtomicU64::new(0);
 static DEALLOCATIONS: AtomicU64 = AtomicU64::new(0);
 
-const SCOPE_COUNT: usize = 6;
+const SCOPE_COUNT: usize = 5;
 const SCOPE_UNSCOPED: usize = 0;
 const SCOPE_TOKENIZE: usize = 1;
 const SCOPE_PARSE: usize = 2;
-const SCOPE_TRANSFORM: usize = 3;
-const SCOPE_GENERATE: usize = 4;
-const SCOPE_PREPARE: usize = 5;
+const SCOPE_GENERATE: usize = 3;
+const SCOPE_PREPARE: usize = 4;
 
 static CURRENT_SCOPE: AtomicU64 = AtomicU64::new(SCOPE_UNSCOPED as u64);
 static SCOPE_ALLOCATED_BYTES: [AtomicU64; SCOPE_COUNT] = [const { AtomicU64::new(0) }; SCOPE_COUNT];
@@ -77,7 +76,6 @@ struct Args {
 enum AllocationPhase {
     Tokenize,
     Parse,
-    Transform,
     Generate,
     Transpile,
 }
@@ -268,7 +266,7 @@ impl Args {
     }
 
     fn usage() -> String {
-        "usage: cargo run --release --bin sqlgrok_alloc_profile -- --cases benchmarks/cases/postgres_sqlite.jsonl [--phase tokenize|parse|transform|generate|transpile] [--iterations 1000] [--warmup 100] [--per-case] [--output benchmarks/reports/allocation_profile.md] [--json-output benchmarks/reports/allocation_profile.json] [--dry-run]".to_string()
+        "usage: cargo run --release --bin sqlgrok_alloc_profile -- --cases benchmarks/cases/postgres_sqlite.jsonl [--phase tokenize|parse|generate|transpile] [--iterations 1000] [--warmup 100] [--per-case] [--output benchmarks/reports/allocation_profile.md] [--json-output benchmarks/reports/allocation_profile.json] [--dry-run]".to_string()
     }
 }
 
@@ -277,11 +275,10 @@ impl AllocationPhase {
         match value {
             "tokenize" => Ok(Self::Tokenize),
             "parse" => Ok(Self::Parse),
-            "transform" => Ok(Self::Transform),
             "generate" => Ok(Self::Generate),
             "transpile" => Ok(Self::Transpile),
             _ => Err(format!(
-                "unknown allocation phase {value:?}; expected tokenize, parse, transform, generate, or transpile"
+                "unknown allocation phase {value:?}; expected tokenize, parse, generate, or transpile"
             )),
         }
     }
@@ -290,7 +287,6 @@ impl AllocationPhase {
         match self {
             Self::Tokenize => "tokenize",
             Self::Parse => "parse",
-            Self::Transform => "transform",
             Self::Generate => "generate",
             Self::Transpile => "transpile",
         }
@@ -420,7 +416,6 @@ fn scope_name(scope: usize) -> &'static str {
         SCOPE_UNSCOPED => "unscoped",
         SCOPE_TOKENIZE => "tokenize",
         SCOPE_PARSE => "parse",
-        SCOPE_TRANSFORM => "transform",
         SCOPE_GENERATE => "generate",
         SCOPE_PREPARE => "prepare",
         _ => "unknown",
@@ -486,7 +481,6 @@ fn profile_allocation_cases(
 enum PreparedCases {
     None,
     Parsed(Vec<sqlgrok::ast::Statement>),
-    Transformed(Vec<sqlgrok::ast::Statement>),
 }
 
 impl PreparedCases {
@@ -499,7 +493,7 @@ impl PreparedCases {
             AllocationPhase::Tokenize | AllocationPhase::Parse | AllocationPhase::Transpile => {
                 Ok(Self::None)
             }
-            AllocationPhase::Transform => {
+            AllocationPhase::Generate => {
                 let parsed = cases
                     .iter()
                     .zip(dialects)
@@ -510,19 +504,6 @@ impl PreparedCases {
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(Self::Parsed(parsed))
-            }
-            AllocationPhase::Generate => {
-                let transformed = cases
-                    .iter()
-                    .zip(dialects)
-                    .map(|(case, (read, write))| {
-                        let ast = parse(&case.sql, *read).map_err(|err| {
-                            format!("{}: allocation prepare parse failed: {err}", case.id)
-                        })?;
-                        Ok(dialects::transform_owned(ast, *read, *write))
-                    })
-                    .collect::<Result<Vec<_>, String>>()?;
-                Ok(Self::Transformed(transformed))
             }
         }
     }
@@ -553,23 +534,12 @@ fn run_phase_operation(
             std::hint::black_box(&ast);
             Ok(marker & 0xff)
         }
-        AllocationPhase::Transform => {
-            let PreparedCases::Parsed(parsed) = prepared else {
-                return Err("transform phase missing prepared parsed ASTs".to_string());
-            };
-            let transformed = scoped(SCOPE_TRANSFORM, || {
-                dialects::transform(std::hint::black_box(&parsed[index]), read, write)
-            });
-            let marker = (&transformed as *const _) as usize;
-            std::hint::black_box(&transformed);
-            Ok(marker & 0xff)
-        }
         AllocationPhase::Generate => {
-            let PreparedCases::Transformed(transformed) = prepared else {
-                return Err("generate phase missing prepared transformed ASTs".to_string());
+            let PreparedCases::Parsed(parsed) = prepared else {
+                return Err("generate phase missing prepared parsed ASTs".to_string());
             };
             let output = scoped(SCOPE_GENERATE, || {
-                generate(std::hint::black_box(&transformed[index]), write)
+                generate(std::hint::black_box(&parsed[index]), write)
             });
             Ok(output.len())
         }
@@ -577,10 +547,7 @@ fn run_phase_operation(
             let ast = scoped(SCOPE_PARSE, || {
                 parse(std::hint::black_box(&case.sql), read).map_err(|err| err.to_string())
             })?;
-            let transformed = scoped(SCOPE_TRANSFORM, || {
-                dialects::transform_owned(ast, read, write)
-            });
-            let output = scoped(SCOPE_GENERATE, || generate(&transformed, write));
+            let output = scoped(SCOPE_GENERATE, || generate(&ast, write));
             Ok(output.len())
         }
     }
@@ -687,8 +654,8 @@ fn render_report(
         AllocationPhase::Generate | AllocationPhase::Transpile => out.push_str(
             "- Counts include the output `String`, because normal callers also receive that allocation.\n",
         ),
-        AllocationPhase::Tokenize | AllocationPhase::Parse | AllocationPhase::Transform => out.push_str(
-            "- Counts exclude later phases; prepared inputs for transform/generate are built before counters are reset.\n",
+        AllocationPhase::Tokenize | AllocationPhase::Parse => out.push_str(
+            "- Counts exclude later phases; prepared inputs for generate are built before counters are reset.\n",
         ),
     }
     out.push_str(

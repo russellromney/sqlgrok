@@ -1,9 +1,9 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use serde::Deserialize;
 use sqlgrok::{
-    Dialect, InternalFastPathStatus, TranspileRequest, dialects, generate, parse,
-    tokens::Tokenizer, transpile, transpile_internal_fast_experiment,
-    transpile_internal_fast_guarded_status, transpile_many,
+    Dialect, InternalFastPathStatus, TranspileRequest, generate, parse, tokens::Tokenizer,
+    transpile, transpile_internal_fast_experiment, transpile_internal_fast_guarded_status,
+    transpile_many,
 };
 use std::fs;
 use std::hint::black_box;
@@ -212,12 +212,7 @@ fn bench_priority_phases(c: &mut Criterion) {
         });
 
         let ast = parse(sql, read).unwrap();
-        group.bench_with_input(BenchmarkId::new("transform", id), &ast, |b, ast| {
-            b.iter(|| dialects::transform(black_box(ast), read, write))
-        });
-
-        let transformed = dialects::transform(&ast, read, write);
-        group.bench_with_input(BenchmarkId::new("generate", id), &transformed, |b, ast| {
+        group.bench_with_input(BenchmarkId::new("generate", id), &ast, |b, ast| {
             b.iter(|| generate(black_box(ast), write))
         });
 

@@ -17,14 +17,13 @@ generators and port that knowledge directly; the forced suite is the
 scoreboard that proves each slice, not the to-do list that discovers it.
 
 1. Keep the Rust library, CLI, and curated parity regression corpus green.
-2. Phase 2: move the remaining source-branch arms in
-   `transform_expr`/`transform_statement` into the per-dialect parsers as
-   canonical-AST normalizations, family by family.
+2. Backfill the remaining parser-owned canonicalization and generator-owned
+   render/lowering gaps directly in the parse/generate architecture.
 3. Phase 4 backfill: transcribe SQLGlot's per-target generator dicts
    (TYPE_MAPPING, TRANSFORMS renames) into `rules.rs` tables and typed
    generator arms; the tables are already dict-shaped for this.
-4. Phase 3: delete `transform_owned(from, to)` and the `(source, target)`
-   signature once the arms drain.
+4. Keep the deleted legacy transform path from returning: new dialect behavior
+   must enter through parsers, AST fields, or generators.
 5. Ratchet every slice on the seven forced lanes with row-level diffs (zero
    regressions), not just status counts.
 6. Expand beyond transpilation into parse/generate, optimizer, and expression
@@ -36,7 +35,8 @@ scoreboard that proves each slice, not the to-do list that discovers it.
 
 ## Architecture Port (parse -> generate)
 
-Status: in progress. Full plan: [docs/PORTING_PLAN.md](docs/PORTING_PLAN.md).
+Status: active; the legacy transform path has been retired. Full plan:
+[docs/PORTING_PLAN.md](docs/PORTING_PLAN.md).
 
 The core architectural effort is converging sqlgrok onto SQLGlot's actual model:
 
@@ -65,19 +65,20 @@ Phases (ratcheted on the forced suite, no real regressions, commit per slice):
 2. Move the source-branching rules from `transform_expr`/`transform_statement`
    into the parser as canonical-AST normalizations (each a silent-wrong risk).
    Landed example: MySQL `||` -> logical OR at tokenize time.
-3. Delete the transform layer and the `(source, target)` signature.
+3. Delete the transform layer and the `(source, target)` signature. Landed.
 4. Port SQLGlot's per-target dicts to backfill thin non-sqlite generators.
 
 ### Phase 3 retirement runway: draining the legacy path
 
-Status: active. Goal: retire `transform_owned(from, to)` as soon as the
-remaining behavior has a parser-owned or generator-owned home.
+Status: landed. `transform_owned(from, to)` and the builtin
+`transform(source, target)` signatures have been deleted; public transpile
+paths now run `generate(parse(sql, read), write)` directly.
 
 The remaining work is no longer a broad expression-function migration. The
 function/date source gates have moved into typed parser/generator architecture.
-What remains is the structural legacy path: raw carriers, statement-level
-normalization, and target-only lowering passes that still run between parse and
-generate.
+What remains is parser/generator completeness: raw carriers that should become
+structured AST, statement-level command modeling, and generator coverage for
+targets that are still thinner than SQLite.
 
 Retirement sequence:
 
@@ -131,13 +132,10 @@ Retirement sequence:
      statement variants where practical, leaving raw statements as inert
      unsupported passthrough only.
 
-4. **Target-only lowerings that still live in transform.**
-   - Problem: several target-only rewrites still require the transform pass:
-     `ILIKE` lowering, `DISTINCT ON` lowering, `SEMI`/`ANTI` join lowering,
-     SQLite `WITHIN GROUP` dropping for `GROUP_CONCAT`, limit/top/fetch
-     normalization, lock dropping, quote conversion, and SQLite identity join
-     cleanup.
-   - Fix: move target-only rendering decisions into the generator, or into
+4. **Target-only generator lowerings.**
+   - Problem: target dialects beyond SQLite still need broader generator
+     coverage, and new target behavior must not revive a middle transform pass.
+   - Fix: keep target-only rendering decisions in the generator, or in
      explicitly named parser canonicalizations where SQLGlot parses a different
      IR shape.
    - Progress: generator-owned rendering now handles `ILIKE` fallback,
@@ -148,7 +146,8 @@ Retirement sequence:
      SQLite, and ordinary `LIMIT` targets. Parser-owned flags preserve identity
      behavior where a target dialect's identity lane keeps source `LIMIT`
      spelling. The transform no longer mutates those AST shapes.
-   - Exit: `transform_statement` only recurses, then disappears.
+   - Exit: target-only behavior is covered by generator tests and forced lanes,
+     with no builtin transform API available.
 
 5. **AST gap closure.**
    - Problem: the remaining hard cases are places where the AST cannot yet
@@ -159,16 +158,14 @@ Retirement sequence:
    - Exit: full matrix has no pair-keyed behavior; correctness factorizes into
      parser lanes plus generator lanes.
 
-Final deletion plan:
+Final deletion status:
 
-- Add a CI/helper check that fails new `source,target` behavior in
-  `transform_expr` and `transform_statement`.
-- Once the five items above are drained, replace `transform_owned` with a
-  no-op compatibility shim, run the full pair matrix once as the switch-over
-  proof, then delete the shim and the `(source, target)` transform signatures.
-- After deletion, change the scoreboard from seven pair lanes to dialect
-  identities plus a spanning parser/generator lane set, as described in the
-  measurement model below.
+- The no-op compatibility shim was proven on the seven forced lanes and then
+  removed.
+- `src/lib.rs`, CLI, Python binding path, benches, and allocation profiling now
+  use parse/generate directly for built-in dialects.
+- Remaining work is parser/generator completeness and AST expressiveness, not
+  transform-arm drainage.
 
 ### Measurement model: pair lanes retire with Phase 3
 
@@ -180,14 +177,12 @@ every lane with that read dialect, a write bug in every lane with that
 write target, and N^2 lanes just re-measure the same N parser and N
 generator bugs with quadratic suite runtime.
 
-Plan, attached to Phase 3 (delete `transform_owned`):
+Plan, after Phase 3 deletion:
 
-- **Until Phase 3 lands, keep the current seven pair lanes as the ratchet.**
-  The remaining `transform_expr` source arms and the identity short-circuit
-  (`from == to && !sqlite`) mean identity and cross-dialect paths still
-  genuinely differ, so pairs still fail independently. The lanes caught the
-  mysql `TIMESTAMP WITHOUT TIME ZONE` regression for exactly this reason.
-- **When Phase 3 deletes the transform layer, switch the scoreboard to:**
+- **Short term: keep the current seven pair lanes as the ratchet.**
+  They provide continuity across the retirement and protect against hidden
+  report swaps while parser/generator backfill continues.
+- **Next scoreboard model:**
   1. *Identity per dialect* (`d -> d`), one number per dialect — SQLGlot's
      own primary check (`validate_identity`), exercising one parser plus one
      generator with no cross-dialect noise. O(N).

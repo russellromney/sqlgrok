@@ -622,14 +622,13 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
 /// Transform a statement from one dialect to another, supporting custom
 /// dialect plugins.
 ///
-/// For built-in → built-in transforms this delegates to the existing
-/// [`super::transform`]. When either side is a custom dialect the plugin's
-/// transform hooks are applied.
+/// Built-in dialect behavior lives in parser-owned canonicalization and
+/// generator-owned rendering. When either side is a custom dialect the
+/// plugin's transform hooks are applied.
 #[must_use]
 pub fn transform(statement: &Statement, from: &DialectRef, to: &DialectRef) -> Statement {
-    // Fast path: both built-in → use existing logic
-    if let (DialectRef::BuiltIn(f), DialectRef::BuiltIn(t)) = (from, to) {
-        return super::transform(statement, *f, *t);
+    if let (DialectRef::BuiltIn(_), DialectRef::BuiltIn(_)) = (from, to) {
+        return statement.clone();
     }
 
     // If the target is a custom dialect with a full statement transform, try that first.
