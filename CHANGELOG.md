@@ -5,6 +5,25 @@ this file records what landed.
 
 ## 2026-06-17
 
+### Architecture Port: Typed UNNEST Table Sources
+
+- Added structured `TableSource::Unnest` fields for alias column lists,
+  `WITH OFFSET`, offset aliases, generated BigQuery offset aliases, and
+  Postgres `WITH ORDINALITY`.
+- Parse single-expression BigQuery/Postgres `UNNEST(...)` table sources into
+  that typed AST and leave unsupported multi-argument/bracket-quoted forced
+  read cases on the raw passthrough path.
+- Moved the corresponding UNNEST rendering into generators for SQLite,
+  Postgres, DuckDB, and BigQuery targets, including SQLite's alias-column
+  dropping for `WITH ORDINALITY`.
+- Refreshed all seven forced-pair SQLGlot bridge reports. Exact matches now
+  stand at: postgres -> sqlite `11970`, mysql -> sqlite `11733`,
+  sqlite -> sqlite `11905`, postgres -> postgres `8594`,
+  mysql -> postgres `7947`, sqlite -> postgres `7865`, and
+  postgres -> duckdb `7308`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes, with 17 match improvements.
+
 ### Architecture Port: Legacy Transform Path Retirement
 
 - Retired the builtin dialect transform path. Public transpile APIs, CLI

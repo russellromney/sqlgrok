@@ -306,6 +306,14 @@ pub struct FromClause {
     pub source: TableSource,
 }
 
+/// Column names attached to a table alias, e.g. `UNNEST(x) AS t(col)`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AliasColumn {
+    pub name: String,
+    #[serde(default)]
+    pub quote_style: QuoteStyle,
+}
+
 /// A table source can be a table reference, subquery, or table function.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TableSource {
@@ -349,7 +357,18 @@ pub enum TableSource {
         alias: Option<String>,
         #[serde(default)]
         alias_quote_style: QuoteStyle,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        alias_columns: Vec<AliasColumn>,
+        #[serde(default)]
         with_offset: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        offset_alias: Option<String>,
+        #[serde(default)]
+        offset_alias_quote_style: QuoteStyle,
+        #[serde(default)]
+        use_generated_offset_alias: bool,
+        #[serde(default)]
+        with_ordinality: bool,
     },
     /// PIVOT (aggregate FOR column IN (values))
     Pivot {

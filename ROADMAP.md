@@ -112,10 +112,17 @@ Retirement sequence:
      array literal policy, backtick quoting, function uppercasing, and typed
      literal normalization. The table-source transform no longer backfills
      `source_dialect`, and SQLite raw table-source rendering no longer branches
-     on source dialect.
+     on source dialect. Single-expression BigQuery/Postgres `UNNEST(...)`
+     now uses typed `TableSource::Unnest` fields for alias column lists,
+     `WITH OFFSET`, offset aliases, generated BigQuery offset aliases, and
+     Postgres `WITH ORDINALITY`; generator-owned rendering covers SQLite,
+     Postgres, DuckDB, and BigQuery shapes while unsupported bracket-array
+     forced-read cases stay on the raw passthrough path.
    - Exit: replace the remaining raw text with structured table-source fields
-     where practical, leaving raw table sources as inert unsupported passthrough
-     only.
+     where practical. Remaining table-source raw carriers are multi-argument
+     `UNNEST`, `ROWS FROM`, JSON/XML table sources, table-function tails, and
+     dialect fallback cases where the tokenizer still treats source syntax as
+     quoted identifiers rather than parseable expressions.
 
 3. **Raw statement normalization.**
    - Problem: `RawStatement` still carries rewrite behavior for Postgres enum

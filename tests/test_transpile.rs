@@ -3,7 +3,7 @@
 /// These test parse→generate roundtrips (identity), normalization transforms,
 /// and basic cross-dialect transpilation. Modeled after the `validate` and
 /// `validate_identity` helpers in the Python test suite.
-use sqlgrok::ast::CreateTableOption;
+use sqlgrok::ast::{CreateTableOption, TableSource};
 use sqlgrok::{Dialect, Statement, generate, generate_pretty, parse, transpile};
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -5521,6 +5521,66 @@ fn test_forced_suite_function_clause_tails_to_sqlite() {
     for (sql, expected) in cases {
         validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
     }
+}
+
+#[test]
+fn test_unnest_table_source_offsets_are_structured() {
+    let ast = parse(
+        "SELECT * FROM UNNEST([1, 2]) AS x WITH OFFSET AS pos",
+        Dialect::BigQuery,
+    )
+    .unwrap();
+    let Statement::Select(select) = ast else {
+        panic!("expected SELECT");
+    };
+    let Some(from) = select.from else {
+        panic!("expected FROM");
+    };
+    assert!(matches!(
+        from.source,
+        TableSource::Unnest {
+            with_offset: true,
+            offset_alias: Some(_),
+            ..
+        }
+    ));
+
+    validate_with_dialect(
+        "SELECT * FROM UNNEST([1, 2]) AS x WITH OFFSET AS pos",
+        "SELECT * FROM UNNEST(ARRAY(1, 2)) WITH ORDINALITY AS _t0",
+        Dialect::BigQuery,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM UNNEST([1, 2]) AS x WITH OFFSET AS pos",
+        "SELECT * FROM UNNEST(ARRAY[1, 2]) WITH ORDINALITY AS _t0(x, pos)",
+        Dialect::BigQuery,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT * FROM UNNEST([1, 2]) AS x WITH OFFSET",
+        "SELECT * FROM UNNEST([1, 2]) WITH ORDINALITY AS _t0(x, \"offset\")",
+        Dialect::BigQuery,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT * FROM UNNEST([1, 2]) AS x WITH OFFSET",
+        "SELECT * FROM UNNEST([1, 2]) AS x WITH OFFSET AS offset",
+        Dialect::BigQuery,
+        Dialect::BigQuery,
+    );
+    validate_with_dialect(
+        "SELECT * FROM UNNEST([1, 2]) WITH OFFSET AS pos",
+        "SELECT * FROM UNNEST(ARRAY(1, 2)) WITH ORDINALITY",
+        Dialect::BigQuery,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM UNNEST([1, 2]) WITH ORDINALITY AS x",
+        "SELECT * FROM UNNEST(ARRAY(1, 2)) WITH ORDINALITY AS x",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]

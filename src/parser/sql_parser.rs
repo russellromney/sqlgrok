@@ -1988,9 +1988,11 @@ impl<'a> Parser<'a> {
         }
 
         // UNNEST(expr)
-        if self.match_token(TokenType::Unnest) {
-            self.pos = self.pos.saturating_sub(1);
-            return self.parse_raw_table_source_until_boundary();
+        if self.peek_type() == &TokenType::Unnest {
+            if !matches!(self.dialect, Dialect::BigQuery | Dialect::Postgres) {
+                return self.parse_raw_table_source_until_boundary();
+            }
+            return self.parse_unnest_table_source();
         }
 
         if self.peek_type() == &TokenType::Rows {
@@ -2222,6 +2224,80 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_unnest_table_source(&mut self) -> Result<TableSource> {
+        let start_pos = self.pos;
+        self.expect(TokenType::Unnest)?;
+        self.expect(TokenType::LParen)?;
+        if self.peek_type() == &TokenType::LBracket && !matches!(self.dialect, Dialect::BigQuery) {
+            self.pos = start_pos;
+            return self.parse_raw_table_source_until_boundary();
+        }
+        let expr = self.parse_expr()?;
+        if !matches!(self.dialect, Dialect::BigQuery)
+            && matches!(
+                &expr,
+                Expr::Column {
+                    quote_style: QuoteStyle::Bracket,
+                    ..
+                }
+            )
+        {
+            self.pos = start_pos;
+            return self.parse_raw_table_source_until_boundary();
+        }
+        if self.match_token(TokenType::Comma) {
+            self.pos = start_pos;
+            return self.parse_raw_table_source_until_boundary();
+        }
+        if self.expect(TokenType::RParen).is_err() {
+            self.pos = start_pos;
+            return self.parse_raw_table_source_until_boundary();
+        }
+
+        let (mut alias, mut alias_quote_style, mut alias_columns) =
+            self.parse_table_alias_with_column_list_detail()?;
+        let mut with_offset = false;
+        let mut offset_alias = None;
+        let mut offset_alias_quote_style = QuoteStyle::None;
+        let mut with_ordinality = false;
+        let use_generated_offset_alias = matches!(self.dialect, Dialect::BigQuery);
+
+        if self.match_token(TokenType::With) {
+            if self.match_token(TokenType::Offset) {
+                with_offset = true;
+                if self.match_token(TokenType::As) {
+                    let (name, quote_style) = self.expect_alias_name_with_quote()?;
+                    offset_alias = Some(name);
+                    offset_alias_quote_style = quote_style;
+                }
+            } else if self.match_keyword("ORDINALITY") {
+                with_ordinality = true;
+                let (parsed_alias, parsed_quote_style, parsed_alias_columns) =
+                    self.parse_table_alias_with_column_list_detail()?;
+                if parsed_alias.is_some() {
+                    alias = parsed_alias;
+                    alias_quote_style = parsed_quote_style;
+                    alias_columns = parsed_alias_columns;
+                }
+            } else {
+                self.pos = start_pos;
+                return self.parse_raw_table_source_until_boundary();
+            }
+        }
+
+        Ok(TableSource::Unnest {
+            expr: Box::new(expr),
+            alias,
+            alias_quote_style,
+            alias_columns,
+            with_offset,
+            offset_alias,
+            offset_alias_quote_style,
+            use_generated_offset_alias,
+            with_ordinality,
+        })
+    }
+
     fn parse_raw_table_function_source(&mut self) -> Result<TableSource> {
         let start = self.char_pos_to_byte(self.peek().position);
         self.advance();
@@ -2390,22 +2466,32 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_table_alias_with_column_list(&mut self) -> Result<(Option<String>, QuoteStyle)> {
+        let (alias, alias_quote_style, _) = self.parse_table_alias_with_column_list_detail()?;
+        Ok((alias, alias_quote_style))
+    }
+
+    fn parse_table_alias_with_column_list_detail(
+        &mut self,
+    ) -> Result<(Option<String>, QuoteStyle, Vec<AliasColumn>)> {
         let (alias, alias_quote_style) = match self.parse_optional_alias()? {
             Some((name, qs)) => (Some(name), qs),
             None => (None, QuoteStyle::None),
         };
+        let mut alias_columns = Vec::new();
         if self.match_token(TokenType::LParen) {
             if self.peek_type() != &TokenType::RParen {
-                let _ = self.expect_alias_name_with_quote()?;
+                let (name, quote_style) = self.expect_alias_name_with_quote()?;
+                alias_columns.push(AliasColumn { name, quote_style });
                 self.consume_alias_column_type_tail();
                 while self.match_token(TokenType::Comma) {
-                    let _ = self.expect_alias_name_with_quote()?;
+                    let (name, quote_style) = self.expect_alias_name_with_quote()?;
+                    alias_columns.push(AliasColumn { name, quote_style });
                     self.consume_alias_column_type_tail();
                 }
             }
             self.expect(TokenType::RParen)?;
         }
-        Ok((alias, alias_quote_style))
+        Ok((alias, alias_quote_style, alias_columns))
     }
 
     fn consume_alias_column_type_tail(&mut self) {

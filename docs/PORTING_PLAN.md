@@ -204,8 +204,13 @@ of ordinary function rewrites.
    `ROWS FROM`, and JSON/XML table carriers as needed. The first execution
    slice now moves the existing raw-text rewrite policy into parser-owned
    `RawTableSourceNormalization`, so SQLite raw table-source rendering no
-   longer keys off `source_dialect`; the remaining work is to eliminate the raw
-   string carrier where the parser can model the structure directly.
+   longer keys off `source_dialect`. The next slice structures
+   single-expression BigQuery/Postgres `UNNEST(...)`: alias column lists,
+   `WITH OFFSET`, offset aliases, generated BigQuery offset aliases, and
+   Postgres `WITH ORDINALITY` are now AST fields rendered by generators.
+   The remaining work is to eliminate raw string carriers for multi-argument
+   `UNNEST`, `ROWS FROM`, JSON/XML table sources, table-function tails, and
+   tokenizer fallback cases where forced-read syntax is not expression-shaped.
 3. **Raw statement normalization.**
    `RawStatement` still rewrites Postgres enum/raw recursive CTE/COPY, MySQL
    `SHOW`, raw `PIVOT`/`UNPIVOT`, and insert-into-function text. Add typed or

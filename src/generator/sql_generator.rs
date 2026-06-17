@@ -1255,21 +1255,39 @@ impl Generator {
                 expr,
                 alias,
                 alias_quote_style,
+                alias_columns,
                 with_offset,
+                offset_alias,
+                offset_alias_quote_style,
+                use_generated_offset_alias,
+                with_ordinality,
             } => {
                 self.write_keyword("UNNEST(");
-                self.gen_expr(expr);
+                self.gen_unnest_expr(expr);
                 self.write(")");
-                if let Some(alias) = alias {
-                    self.write(" ");
-                    if !self.omit_table_alias_as() {
-                        self.write_keyword("AS ");
-                    }
-                    self.write_quoted(alias, *alias_quote_style);
-                }
                 if *with_offset {
-                    self.write(" ");
-                    self.write_keyword("WITH OFFSET");
+                    self.gen_unnest_with_offset_alias(
+                        alias.as_deref(),
+                        *alias_quote_style,
+                        offset_alias.as_deref(),
+                        *offset_alias_quote_style,
+                        *use_generated_offset_alias,
+                    );
+                } else {
+                    if *with_ordinality {
+                        self.write(" ");
+                        self.write_keyword("WITH ORDINALITY");
+                    }
+                    if let Some(alias) = alias {
+                        self.write(" ");
+                        if !self.omit_table_alias_as() {
+                            self.write_keyword("AS ");
+                        }
+                        self.write_quoted(alias, *alias_quote_style);
+                        if !matches!(self.dialect, Some(Dialect::Sqlite)) {
+                            self.gen_alias_columns(alias_columns);
+                        }
+                    }
                 }
             }
             TableSource::Pivot {
@@ -1353,6 +1371,83 @@ impl Generator {
                 self.write_quoted(alias, pv.alias_quote_style);
             }
         }
+    }
+
+    fn gen_unnest_expr(&mut self, expr: &Expr) {
+        if matches!(self.dialect, Some(Dialect::BigQuery | Dialect::DuckDb))
+            && let Expr::ArrayLiteral(items) = expr
+        {
+            self.write("[");
+            self.gen_expr_list(items);
+            self.write("]");
+            return;
+        }
+        self.gen_expr(expr);
+    }
+
+    fn gen_unnest_with_offset_alias(
+        &mut self,
+        alias: Option<&str>,
+        alias_quote_style: QuoteStyle,
+        offset_alias: Option<&str>,
+        offset_alias_quote_style: QuoteStyle,
+        use_generated_offset_alias: bool,
+    ) {
+        if matches!(self.dialect, Some(Dialect::BigQuery)) {
+            if let Some(alias) = alias {
+                self.write(" ");
+                if !self.omit_table_alias_as() {
+                    self.write_keyword("AS ");
+                }
+                self.write_quoted(alias, alias_quote_style);
+            }
+            self.write(" ");
+            self.write_keyword("WITH OFFSET AS ");
+            self.write_quoted(offset_alias.unwrap_or("offset"), offset_alias_quote_style);
+            return;
+        }
+
+        self.write(" ");
+        self.write_keyword("WITH ORDINALITY");
+        let Some(alias) = alias else {
+            return;
+        };
+        self.write(" ");
+        if !self.omit_table_alias_as() {
+            self.write_keyword("AS ");
+        }
+        if use_generated_offset_alias {
+            self.write("_t0");
+        } else {
+            self.write_quoted(alias, alias_quote_style);
+            return;
+        }
+        if matches!(self.dialect, Some(Dialect::Sqlite)) {
+            return;
+        }
+        self.write("(");
+        self.write_quoted(alias, alias_quote_style);
+        self.write(", ");
+        if offset_alias.is_none() && matches!(self.dialect, Some(Dialect::DuckDb)) {
+            self.write_quoted("offset", QuoteStyle::DoubleQuote);
+        } else {
+            self.write_quoted(offset_alias.unwrap_or("offset"), offset_alias_quote_style);
+        }
+        self.write(")");
+    }
+
+    fn gen_alias_columns(&mut self, alias_columns: &[AliasColumn]) {
+        if alias_columns.is_empty() {
+            return;
+        }
+        self.write("(");
+        for (i, column) in alias_columns.iter().enumerate() {
+            if i > 0 {
+                self.write(", ");
+            }
+            self.write_quoted(&column.name, column.quote_style);
+        }
+        self.write(")");
     }
 
     /// Returns true if the target dialect forbids `AS` in table aliases.
