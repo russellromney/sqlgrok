@@ -101,6 +101,49 @@ fn is_reserved_implicit_alias_keyword(value: &str) -> bool {
     .any(|keyword| value.eq_ignore_ascii_case(keyword))
 }
 
+fn replace_statement_to_command_form(expr: &Expr) -> Option<String> {
+    match expr {
+        Expr::Function { name, args, .. } if name.eq_ignore_ascii_case("REPLACE") => {
+            let mut buf = String::from("REPLACE (");
+            for (i, arg) in args.iter().enumerate() {
+                if i > 0 {
+                    buf.push_str(", ");
+                }
+                render_replace_command_arg(arg, &mut buf);
+            }
+            buf.push(')');
+            Some(buf)
+        }
+        Expr::TypedFunction {
+            func: TypedFunction::Replace { expr, from, to },
+            ..
+        } => {
+            let mut buf = String::from("REPLACE (");
+            render_replace_command_arg(expr, &mut buf);
+            buf.push_str(", ");
+            render_replace_command_arg(from, &mut buf);
+            buf.push_str(", ");
+            render_replace_command_arg(to, &mut buf);
+            buf.push(')');
+            Some(buf)
+        }
+        _ => None,
+    }
+}
+
+fn render_replace_command_arg(expr: &Expr, out: &mut String) {
+    match expr {
+        Expr::Column { name, .. } => out.push_str(name),
+        Expr::StringLiteral(s) => {
+            out.push('\'');
+            out.push_str(&s.replace('\'', "''"));
+            out.push('\'');
+        }
+        Expr::Number(n) => out.push_str(n),
+        _ => out.push_str(&format!("{expr:?}")),
+    }
+}
+
 fn data_type_with_format(data_type: DataType, format: &Expr) -> DataType {
     let Expr::StringLiteral(format) = format else {
         return data_type;
@@ -767,7 +810,11 @@ impl<'a> Parser<'a> {
             }
             TokenType::Insert if self.starts_raw_insert_shape() => self.parse_raw_statement(),
             TokenType::Replace if self.peek_n_type(1) == &TokenType::LParen => {
-                self.parse_expr().map(Statement::Expression)
+                if crate::dialects::is_postgres_family(self.dialect) {
+                    self.parse_expr().map(Statement::Expression)
+                } else {
+                    self.parse_replace_command_statement()
+                }
             }
             TokenType::Replace if self.peek_n_type(1) == &TokenType::View => {
                 self.parse_raw_statement()
@@ -885,6 +932,19 @@ impl<'a> Parser<'a> {
                 Statement::Raw(raw)
             }
             other => other,
+        })
+    }
+
+    fn parse_replace_command_statement(&mut self) -> Result<Statement> {
+        let expr = self.parse_expr()?;
+        Ok(match replace_statement_to_command_form(&expr) {
+            Some(sql) => Statement::Raw(RawStatement {
+                comments: vec![],
+                normalization: None,
+                sql,
+                source_dialect: Some(self.dialect),
+            }),
+            None => Statement::Expression(expr),
         })
     }
 

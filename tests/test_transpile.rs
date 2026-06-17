@@ -2736,6 +2736,12 @@ fn test_range_and_replace_expression_to_sqlite() {
             dialect,
             Dialect::Sqlite,
         );
+        validate_with_dialect(
+            "REPLACE(subject, pattern)",
+            "REPLACE (subject, pattern)",
+            dialect,
+            Dialect::Postgres,
+        );
     }
     validate_with_dialect(
         "REPLACE(subject, pattern)",
