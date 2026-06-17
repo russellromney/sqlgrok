@@ -221,7 +221,10 @@ of ordinary function rewrites.
    Move `ILIKE`, `DISTINCT ON`, `SEMI`/`ANTI` joins, SQLite `WITHIN GROUP`
    dropping, limit/top/fetch normalization, lock dropping, quote conversion,
    and SQLite identity join cleanup into generator-owned rendering or explicit
-   parser canonicalization.
+   parser canonicalization. Current progress: `ILIKE` fallback, SQLite
+   `GROUP_CONCAT`/`STRING_AGG` `WITHIN GROUP` omission, lock omission, and
+   limit/top/fetch normalization are now generator-owned, with parser-owned
+   style metadata preserving identity spelling where needed.
 5. **AST gap closure.**
    Do not relocate raw-text rewrites into another helper and call that done.
    Add the missing AST shape first, then drain behavior. The transform layer

@@ -140,6 +140,12 @@ Retirement sequence:
    - Fix: move target-only rendering decisions into the generator, or into
      explicitly named parser canonicalizations where SQLGlot parses a different
      IR shape.
+   - Progress: generator-owned rendering now handles `ILIKE` fallback,
+     SQLite `GROUP_CONCAT`/`STRING_AGG` `WITHIN GROUP` omission, SQLite lock
+     omission, and limit/top/fetch normalization across T-SQL, SQLite, and
+     ordinary `LIMIT` targets. Parser-owned flags preserve identity behavior
+     where a target dialect's identity lane keeps source `LIMIT` spelling. The
+     transform no longer mutates those AST shapes.
    - Exit: `transform_statement` only recurses, then disappears.
 
 5. **AST gap closure.**

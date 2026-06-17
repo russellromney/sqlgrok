@@ -218,6 +218,8 @@ pub struct SelectStatement {
     pub having: Option<Expr>,
     pub order_by: Vec<OrderByItem>,
     pub limit: Option<Expr>,
+    #[serde(default)]
+    pub limit_renders_as_tsql_top: bool,
     pub offset: Option<Expr>,
     /// ClickHouse-style LIMIT n BY expr, ...
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -620,6 +622,8 @@ pub enum Expr {
         expr: Box<Expr>,
         pattern: Box<Expr>,
         negated: bool,
+        #[serde(default)]
+        lower_on_ansi: bool,
         escape: Option<Box<Expr>>,
     },
     /// `expr SIMILAR TO pattern [ESCAPE escape_char]` (PostgreSQL)
@@ -2844,11 +2848,13 @@ impl Expr {
                 expr,
                 pattern,
                 negated,
+                lower_on_ansi,
                 escape,
             } => Expr::ILike {
                 expr: Box::new(expr.transform(func)),
                 pattern: Box::new(pattern.transform(func)),
                 negated,
+                lower_on_ansi,
                 escape: escape.map(|e| Box::new(e.transform(func))),
             },
             Expr::SimilarTo {

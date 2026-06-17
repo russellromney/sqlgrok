@@ -151,6 +151,7 @@ impl<'sql> InternalSelect<'sql> {
                 .into_iter()
                 .map(InternalOrderBy::into_public)
                 .collect(),
+            limit_renders_as_tsql_top: self.limit.is_some(),
             limit: self.limit.map(InternalExpr::into_public),
             offset: self.offset.map(InternalExpr::into_public),
             limit_by: vec![],

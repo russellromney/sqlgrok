@@ -392,6 +392,7 @@ fn make_select_star_limit_zero(source: TableRef) -> SelectStatement {
         having: None,
         order_by: vec![],
         limit: Some(Expr::Number("0".to_string())),
+        limit_renders_as_tsql_top: false,
         offset: None,
         limit_by: vec![],
         fetch_first: None,
@@ -1286,6 +1287,7 @@ impl<'a> Parser<'a> {
             having: None,
             order_by: vec![],
             limit: None,
+            limit_renders_as_tsql_top: false,
             offset: None,
             limit_by: vec![],
             fetch_first: None,
@@ -1326,6 +1328,7 @@ impl<'a> Parser<'a> {
 
         if self.match_token(TokenType::Limit) {
             let (limit, offset) = self.parse_limit_offset_pair()?;
+            select.limit_renders_as_tsql_top = limit.is_some() && self.dialect != Dialect::Tsql;
             select.limit = limit;
             select.offset = offset;
             select.limit_by = self.parse_limit_by()?;
@@ -1338,6 +1341,7 @@ impl<'a> Parser<'a> {
         }
 
         if let Some(fetch) = self.parse_fetch_first_clause()? {
+            select.limit_renders_as_tsql_top = self.dialect != Dialect::Tsql;
             select.fetch_first = Some(fetch);
         }
 
@@ -1666,8 +1670,10 @@ impl<'a> Parser<'a> {
             vec![]
         };
 
+        let mut limit_renders_as_tsql_top = false;
         let (limit, offset, mut limit_by) = if self.match_token(TokenType::Limit) {
             let (limit, offset) = self.parse_limit_offset_pair()?;
+            limit_renders_as_tsql_top = limit.is_some() && self.dialect != Dialect::Tsql;
             (limit, offset, self.parse_limit_by()?)
         } else {
             (None, None, vec![])
@@ -1684,6 +1690,9 @@ impl<'a> Parser<'a> {
 
         // FETCH FIRST|NEXT n ROWS ONLY/WITH TIES (Oracle / ANSI SQL:2008)
         let fetch_first = self.parse_fetch_first_clause()?;
+        if fetch_first.is_some() {
+            limit_renders_as_tsql_top = self.dialect != Dialect::Tsql;
+        }
 
         let lock = self.parse_select_lock();
 
@@ -1701,6 +1710,7 @@ impl<'a> Parser<'a> {
             having,
             order_by,
             limit,
+            limit_renders_as_tsql_top,
             offset,
             limit_by,
             fetch_first,
@@ -6064,6 +6074,7 @@ impl<'a> Parser<'a> {
                         expr: Box::new(left),
                         pattern: Box::new(pattern),
                         negated,
+                        lower_on_ansi: self.dialect != Dialect::Ansi,
                         escape: None,
                     }
                 } else {
@@ -6277,6 +6288,7 @@ impl<'a> Parser<'a> {
                         expr: Box::new(left),
                         pattern: Box::new(pattern),
                         negated,
+                        lower_on_ansi: self.dialect != Dialect::Ansi,
                         escape,
                     };
                 } else if self.match_token(TokenType::Similar) {

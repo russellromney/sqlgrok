@@ -788,6 +788,7 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
             pattern,
             negated,
             escape,
+            ..
         } if !target.supports_ilike() => Expr::Like {
             expr: Box::new(Expr::TypedFunction {
                 func: crate::ast::TypedFunction::Lower {

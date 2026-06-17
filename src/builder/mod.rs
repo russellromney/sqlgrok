@@ -862,6 +862,7 @@ impl SelectBuilder {
                 having: None,
                 order_by: Vec::new(),
                 limit: None,
+                limit_renders_as_tsql_top: false,
                 offset: None,
                 limit_by: Vec::new(),
                 fetch_first: None,

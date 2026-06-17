@@ -324,11 +324,6 @@ pub fn transform_owned(statement: Statement, from: Dialect, to: Dialect) -> Stat
 fn transform_statement(statement: &mut Statement, source: Dialect, target: Dialect) {
     match statement {
         Statement::Select(sel) => {
-            // Transform LIMIT / TOP / FETCH FIRST for the target dialect
-            transform_limit(sel, target);
-            if matches!(target, Dialect::Sqlite) {
-                sel.lock = None;
-            }
             // Transform identifier quoting for the target dialect
             transform_quotes_in_select(sel, target);
 
@@ -1123,29 +1118,18 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
             negated,
             escape: escape.map(|e| Box::new(transform_expr(*e, source, target))),
         },
-        // ILIKE → LOWER(expr) LIKE LOWER(pattern) for non-supporting dialects
         Expr::ILike {
             expr,
             pattern,
             negated,
+            lower_on_ansi,
             escape,
-        } if !supports_ilike_builtin(target) => Expr::Like {
-            expr: Box::new(Expr::TypedFunction {
-                func: TypedFunction::Lower {
-                    expr: Box::new(transform_expr(*expr, source, target)),
-                },
-                filter: None,
-                over: None,
-            }),
-            pattern: Box::new(Expr::TypedFunction {
-                func: TypedFunction::Lower {
-                    expr: Box::new(transform_expr(*pattern, source, target)),
-                },
-                filter: None,
-                over: None,
-            }),
+        } => Expr::ILike {
+            expr: Box::new(transform_expr(*expr, source, target)),
+            pattern: Box::new(transform_expr(*pattern, source, target)),
             negated,
-            escape,
+            lower_on_ansi,
+            escape: escape.map(|e| Box::new(transform_expr(*e, source, target))),
         },
         Expr::SimilarTo {
             expr,
@@ -1254,17 +1238,6 @@ fn transform_expr(expr: Expr, source: Dialect, target: Dialect) -> Expr {
         } => {
             transform_order_by_items(&mut order_by, source, target);
             let inner = transform_expr(*expr, source, target);
-            // SQLite GROUP_CONCAT (the lowered form of STRING_AGG) doesn't
-            // support WITHIN GROUP; SQLGlot drops the clause for that
-            // function only. Other functions (PERCENTILE_CONT, LISTAGG,
-            // etc.) keep WITHIN GROUP.
-            if matches!(target, Dialect::Sqlite)
-                && let Expr::Function { name, .. } = &inner
-                && (name.eq_ignore_ascii_case("GROUP_CONCAT")
-                    || name.eq_ignore_ascii_case("STRING_AGG"))
-            {
-                return inner;
-            }
             Expr::WithinGroup {
                 expr: Box::new(inner),
                 order_by,
@@ -1375,6 +1348,7 @@ fn rewrite_semi_anti_joins(sel: &mut SelectStatement) {
             having: None,
             order_by: vec![],
             limit: None,
+            limit_renders_as_tsql_top: false,
             offset: None,
             limit_by: vec![],
             fetch_first: None,
@@ -1519,6 +1493,7 @@ fn rewrite_postgres_distinct_on(
         having: None,
         order_by: vec![],
         limit: None,
+        limit_renders_as_tsql_top: false,
         offset: None,
         limit_by: vec![],
         fetch_first: None,
@@ -1885,55 +1860,6 @@ fn rewrite_raw_type_params_for_sqlite(name: &str) -> String {
         }
     }
     output
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// LIMIT / TOP / FETCH FIRST transform
-// ═══════════════════════════════════════════════════════════════════════════
-
-/// Transform LIMIT / TOP / FETCH FIRST between dialects.
-///
-/// - T-SQL family:  `LIMIT n` → `TOP n` (OFFSET + FETCH handled separately)
-/// - Oracle:        `LIMIT n` → `FETCH FIRST n ROWS ONLY`
-/// - All others:    `TOP n` / `FETCH FIRST n` → `LIMIT n`
-fn transform_limit(sel: &mut SelectStatement, target: Dialect) {
-    if is_tsql_family(target) {
-        // Move LIMIT → TOP for T-SQL (only when there's no OFFSET)
-        if let Some(limit) = sel.limit.take() {
-            if sel.offset.is_none() {
-                sel.top = Some(Box::new(limit));
-            } else {
-                // T-SQL with OFFSET uses OFFSET n ROWS FETCH NEXT m ROWS ONLY
-                sel.fetch_first = Some(limit);
-            }
-        }
-        // Also move fetch_first → top when no offset
-        if sel.offset.is_none()
-            && let Some(fetch) = sel.fetch_first.take()
-        {
-            sel.top = Some(Box::new(fetch));
-        }
-    } else if matches!(target, Dialect::Oracle) {
-        // Oracle prefers FETCH FIRST n ROWS ONLY (SQL:2008 syntax)
-        if let Some(limit) = sel.limit.take() {
-            sel.fetch_first = Some(limit);
-        }
-        if let Some(top) = sel.top.take() {
-            sel.fetch_first = Some(*top);
-        }
-    } else {
-        // All other dialects: normalize to LIMIT
-        if let Some(top) = sel.top.take()
-            && sel.limit.is_none()
-        {
-            sel.limit = Some(*top);
-        }
-        if let Some(fetch) = sel.fetch_first.take()
-            && sel.limit.is_none()
-        {
-            sel.limit = Some(fetch);
-        }
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

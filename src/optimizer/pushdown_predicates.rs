@@ -705,6 +705,7 @@ mod tests {
                 having: None,
                 order_by: vec![],
                 limit: None,
+                limit_renders_as_tsql_top: false,
                 offset: None,
                 limit_by: vec![],
                 fetch_first: None,

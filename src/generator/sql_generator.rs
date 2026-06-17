@@ -636,6 +636,38 @@ impl Generator {
             self.sep();
         }
 
+        let dialect = self.dialect;
+        let is_tsql = matches!(dialect, Some(Dialect::Tsql));
+        let is_oracle = matches!(dialect, Some(Dialect::Oracle));
+        let effective_top = if is_tsql && sel.offset.is_none() {
+            sel.top.as_deref().or_else(|| {
+                sel.limit_renders_as_tsql_top
+                    .then(|| sel.limit.as_ref().or(sel.fetch_first.as_ref()))
+                    .flatten()
+            })
+        } else {
+            None
+        };
+        let effective_limit = if is_tsql {
+            if sel.limit_renders_as_tsql_top {
+                None
+            } else {
+                sel.limit.as_ref()
+            }
+        } else {
+            sel.limit
+                .as_ref()
+                .or(sel.top.as_deref())
+                .or(sel.fetch_first.as_ref())
+        };
+        let effective_fetch = if is_oracle {
+            sel.fetch_first.as_ref()
+        } else if is_tsql && sel.offset.is_some() && sel.limit_renders_as_tsql_top {
+            sel.fetch_first.as_ref().or(sel.limit.as_ref())
+        } else {
+            None
+        };
+
         self.write_keyword("SELECT");
         if sel.distinct {
             self.write(" ");
@@ -648,7 +680,7 @@ impl Generator {
                 self.write(")");
             }
         }
-        if let Some(top) = &sel.top {
+        if let Some(top) = effective_top {
             self.write(" ");
             self.write_keyword("TOP ");
             self.gen_expr(top);
@@ -769,13 +801,13 @@ impl Generator {
 
         // SQLite has no LIMIT ALL; SQLGlot drops the LIMIT entirely.
         let is_limit_all = matches!(
-            sel.limit.as_ref(),
+            effective_limit,
             Some(Expr::Column { name, .. }) if name.eq_ignore_ascii_case("ALL")
         );
         let effective_limit = if matches!(self.dialect, Some(Dialect::Sqlite)) && is_limit_all {
             None
         } else {
-            sel.limit.as_ref()
+            effective_limit
         };
 
         // SQLite requires LIMIT to appear with OFFSET. SQLGlot emits a
@@ -804,7 +836,7 @@ impl Generator {
             self.gen_expr_list(&sel.limit_by);
         }
 
-        if let Some(fetch) = &sel.fetch_first {
+        if let Some(fetch) = effective_fetch {
             self.sep();
             self.write_keyword("FETCH FIRST ");
             self.gen_expr(fetch);
@@ -812,7 +844,9 @@ impl Generator {
             self.write_keyword("ROWS ONLY");
         }
 
-        if let Some(lock) = &sel.lock {
+        if !matches!(self.dialect, Some(Dialect::Sqlite))
+            && let Some(lock) = &sel.lock
+        {
             self.sep();
             self.write_keyword(lock);
         }
@@ -3707,6 +3741,14 @@ impl Generator {
                 filter,
                 over,
             } => {
+                if matches!(self.dialect, Some(Dialect::Sqlite))
+                    && let Expr::Function { name, .. } = expr.as_ref()
+                    && (name.eq_ignore_ascii_case("GROUP_CONCAT")
+                        || name.eq_ignore_ascii_case("STRING_AGG"))
+                {
+                    self.gen_expr(expr);
+                    return;
+                }
                 self.gen_expr(expr);
                 self.write(" ");
                 self.write_keyword("WITHIN GROUP (ORDER BY ");
@@ -3857,16 +3899,35 @@ impl Generator {
                 expr,
                 pattern,
                 negated,
+                lower_on_ansi,
                 escape,
             } => {
-                self.gen_expr(expr);
-                if *negated {
+                if self.dialect.is_some_and(|dialect| {
+                    crate::dialects::supports_ilike_builtin(dialect)
+                        || (matches!(dialect, Dialect::Ansi) && !lower_on_ansi)
+                }) {
+                    self.gen_expr(expr);
+                    if *negated {
+                        self.write(" ");
+                        self.write_keyword("NOT");
+                    }
                     self.write(" ");
-                    self.write_keyword("NOT");
+                    self.write_keyword("ILIKE ");
+                    self.gen_expr(pattern);
+                } else {
+                    self.write_keyword("LOWER(");
+                    self.gen_expr(expr);
+                    self.write(")");
+                    if *negated {
+                        self.write(" ");
+                        self.write_keyword("NOT");
+                    }
+                    self.write(" ");
+                    self.write_keyword("LIKE ");
+                    self.write_keyword("LOWER(");
+                    self.gen_expr(pattern);
+                    self.write(")");
                 }
-                self.write(" ");
-                self.write_keyword("ILIKE ");
-                self.gen_expr(pattern);
                 if let Some(esc) = escape {
                     self.write(" ");
                     self.write_keyword("ESCAPE ");
