@@ -810,6 +810,9 @@ impl<'a> Parser<'a> {
             TokenType::Insert if self.peek_n_type(1) == &TokenType::Or => {
                 self.parse_raw_statement()
             }
+            TokenType::Insert if self.starts_insert_into_function_shape() => {
+                self.parse_command_statement(CommandKind::InsertIntoFunction, false)
+            }
             TokenType::Insert if self.starts_raw_insert_shape() => self.parse_raw_statement(),
             TokenType::Replace if self.peek_n_type(1) == &TokenType::LParen => {
                 if crate::dialects::is_postgres_family(self.dialect) {
@@ -994,19 +997,8 @@ impl<'a> Parser<'a> {
         let sql = self.capture_statement_sql_until_boundary();
         Ok(Statement::Raw(RawStatement {
             comments: vec![],
-            normalization: Some(self.raw_statement_normalization(&sql)),
             sql,
-            source_dialect: Some(self.dialect),
         }))
-    }
-
-    fn raw_statement_normalization(&self, sql: &str) -> RawStatementNormalization {
-        let trimmed_upper = sql.trim_start().to_ascii_uppercase();
-        let is_postgres = crate::dialects::is_postgres_family(self.dialect);
-        RawStatementNormalization {
-            normalize_postgres_recursive_cte: is_postgres,
-            normalize_insert_into_function: trimmed_upper.starts_with("INSERT INTO "),
-        }
     }
 
     fn starts_create_type_enum_statement(&self) -> bool {
@@ -1108,6 +1100,30 @@ impl<'a> Parser<'a> {
         }
 
         false
+    }
+
+    fn starts_insert_into_function_shape(&self) -> bool {
+        if self.peek_type() != &TokenType::Insert {
+            return false;
+        }
+
+        let mut pos = self.pos + 1;
+        if self
+            .tokens
+            .get(pos)
+            .is_some_and(|token| token.token_type == TokenType::Into)
+        {
+            pos += 1;
+        }
+
+        self.tokens.get(pos).is_some_and(|token| {
+            token.value.eq_ignore_ascii_case("FUNCTION")
+                || token.value.eq_ignore_ascii_case("TABLE")
+                    && self
+                        .tokens
+                        .get(pos + 1)
+                        .is_some_and(|next| next.value.eq_ignore_ascii_case("FUNCTION"))
+        })
     }
 
     fn starts_raw_set_operation_shape(&self) -> bool {
@@ -1327,12 +1343,19 @@ impl<'a> Parser<'a> {
                 }
                 let end = self.char_pos_to_byte(self.peek().position);
                 let sql = self.sql[start..end].trim().to_string();
-                Ok(Statement::Raw(RawStatement {
-                    comments: vec![],
-                    normalization: Some(self.raw_statement_normalization(&sql)),
-                    sql,
-                    source_dialect: Some(self.dialect),
-                }))
+                if crate::dialects::is_postgres_family(self.dialect) {
+                    Ok(Statement::Command(CommandStatement {
+                        comments: vec![],
+                        sql,
+                        kind: CommandKind::RecursiveCte,
+                        drop_for_sqlite: false,
+                    }))
+                } else {
+                    Ok(Statement::Raw(RawStatement {
+                        comments: vec![],
+                        sql,
+                    }))
+                }
             }
             _ => Err(SqlglotError::ParserError {
                 message: "Expected SELECT or INSERT after WITH clause".into(),
@@ -2069,7 +2092,15 @@ impl<'a> Parser<'a> {
 
         // UNNEST(expr)
         if self.peek_type() == &TokenType::Unnest {
-            if !matches!(self.dialect, Dialect::BigQuery | Dialect::Postgres) {
+            if matches!(self.dialect, Dialect::Sqlite)
+                && self.peek_n_type(2) != &TokenType::LBracket
+            {
+                return self.parse_raw_table_source_until_boundary();
+            }
+            if !matches!(
+                self.dialect,
+                Dialect::BigQuery | Dialect::Postgres | Dialect::Sqlite
+            ) {
                 return self.parse_raw_table_source_until_boundary();
             }
             return self.parse_unnest_table_source();
@@ -2304,9 +2335,6 @@ impl<'a> Parser<'a> {
                 && upper.contains("VALUES"),
             rewrite_unnest_with_offset: upper.contains("UNNEST") && upper.contains("WITH OFFSET"),
             unnest_array_literal,
-            quote_backticks: sql.contains('`'),
-            uppercase_function_names: true,
-            normalize_typed_literals: true,
         }
     }
 
@@ -2314,10 +2342,6 @@ impl<'a> Parser<'a> {
         let start_pos = self.pos;
         self.expect(TokenType::Unnest)?;
         self.expect(TokenType::LParen)?;
-        if self.peek_type() == &TokenType::LBracket && !matches!(self.dialect, Dialect::BigQuery) {
-            self.pos = start_pos;
-            return self.parse_raw_table_source_until_boundary();
-        }
         let expr = self.parse_expr()?;
         let mut extra_exprs = Vec::new();
         while self.match_token(TokenType::Comma) {
@@ -3092,6 +3116,7 @@ impl<'a> Parser<'a> {
             } else {
                 (None, false)
             };
+            self.consume_null_treatment();
 
             items.push(OrderByItem {
                 expr,
@@ -3807,9 +3832,7 @@ impl<'a> Parser<'a> {
                 prefix.push_str(&rendered_name);
                 return Ok(Statement::Raw(RawStatement {
                     comments: vec![],
-                    normalization: Some(self.raw_statement_normalization(&prefix)),
                     sql: prefix,
-                    source_dialect: Some(self.dialect),
                 }));
             }
         }
@@ -3869,9 +3892,7 @@ impl<'a> Parser<'a> {
             sql.push_str(&name);
             return Ok(Statement::Raw(RawStatement {
                 comments: vec![],
-                normalization: Some(self.raw_statement_normalization(&sql)),
                 sql,
-                source_dialect: Some(self.dialect),
             }));
         }
 
@@ -8230,7 +8251,10 @@ impl<'a> Parser<'a> {
                     }
                     depth -= 1;
                 }
-                TokenType::Having | TokenType::Ignore | TokenType::Respect if depth == 0 => {
+                TokenType::Having if depth == 0 => return true,
+                TokenType::Ignore | TokenType::Respect
+                    if depth == 0 && !matches!(self.dialect, Dialect::Sqlite) =>
+                {
                     return true;
                 }
                 TokenType::Limit if depth == 0 => {
@@ -8253,7 +8277,7 @@ impl<'a> Parser<'a> {
                         limit_pos += 1;
                     }
                 }
-                TokenType::Identifier if depth == 0 => {
+                TokenType::Identifier if depth == 0 && !matches!(self.dialect, Dialect::Sqlite) => {
                     if matches!(
                         self.tokens[pos].value.to_ascii_uppercase().as_str(),
                         "IGNORE" | "RESPECT"

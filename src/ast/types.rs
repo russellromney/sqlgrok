@@ -186,10 +186,6 @@ pub struct RawStatement {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub comments: Vec<String>,
     pub sql: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub normalization: Option<RawStatementNormalization>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub source_dialect: Option<Dialect>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -199,6 +195,8 @@ pub enum CommandKind {
     Pivot,
     Unpivot,
     CreateTypeEnum,
+    RecursiveCte,
+    InsertIntoFunction,
     Generic,
 }
 
@@ -582,21 +580,6 @@ pub struct RawTableSourceNormalization {
     pub rewrite_unnest_with_offset: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unnest_array_literal: Option<RawUnnestArrayLiteralPolicy>,
-    #[serde(default)]
-    pub quote_backticks: bool,
-    #[serde(default)]
-    pub uppercase_function_names: bool,
-    #[serde(default)]
-    pub normalize_typed_literals: bool,
-}
-
-/// Parser-owned normalization flags for raw statement text.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RawStatementNormalization {
-    #[serde(default)]
-    pub normalize_postgres_recursive_cte: bool,
-    #[serde(default)]
-    pub normalize_insert_into_function: bool,
 }
 
 // ═══════════════════════════════════════════════════════════════════════

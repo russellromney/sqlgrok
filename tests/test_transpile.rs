@@ -989,6 +989,27 @@ fn test_sqlite_suite_identity_expression_ratchet() {
     for (sql, expected) in cases {
         validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
     }
+
+    let last_value_ast = parse(
+        "SELECT LAST_VALUE(x ORDER BY x IGNORE NULLS) OVER (ORDER BY x) FROM t",
+        Dialect::Sqlite,
+    )
+    .unwrap();
+    assert!(matches!(
+        last_value_ast,
+        Statement::Select(ref select)
+            if matches!(
+                &select.columns[0],
+                SelectItem::Expr {
+                    expr: Expr::Function {
+                        name,
+                        arg_order_by,
+                        ..
+                    },
+                    ..
+                } if name == "LAST_VALUE" && arg_order_by.len() == 1
+            )
+    ));
 }
 
 #[test]
@@ -3024,6 +3045,23 @@ fn test_opaque_command_parse_carriers() {
         Dialect::Sqlite,
         Dialect::Sqlite,
     );
+
+    let insert_function = parse(
+        "INSERT INTO TABLE FUNCTION hdfs('hdfs://x', 'TSV') VALUES ('a')",
+        Dialect::Postgres,
+    )
+    .unwrap();
+    assert!(matches!(
+        insert_function,
+        Statement::Command(ref command)
+            if command.kind == CommandKind::InsertIntoFunction
+    ));
+    validate_with_dialect(
+        "INSERT INTO TABLE FUNCTION hdfs('hdfs://x', 'TSV') VALUES ('a')",
+        "INSERT INTO FUNCTION HDFS('hdfs://x', 'TSV') VALUES ('a')",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]
@@ -4625,6 +4663,15 @@ fn test_postgres_join_rust_error_report_batch_to_sqlite() {
         Dialect::Postgres,
         Dialect::Sqlite,
     );
+    let recursive_search = parse(
+        "WITH RECURSIVE search_tree(id, link, data) AS (SELECT t.id, t.link, t.data FROM tree AS t UNION ALL SELECT t.id, t.link, t.data FROM tree AS t, search_tree AS st WHERE t.id = st.link) SEARCH DEPTH FIRST BY id SET ordercol SELECT * FROM search_tree ORDER BY ordercol",
+        Dialect::Postgres,
+    )
+    .unwrap();
+    assert!(matches!(
+        recursive_search,
+        Statement::Command(ref command) if command.kind == CommandKind::RecursiveCte
+    ));
     validate_with_dialect(
         "WITH RECURSIVE search_graph(id, link, data, depth) AS (SELECT g.id, g.link, g.data, 1 FROM graph AS g UNION ALL SELECT g.id, g.link, g.data, sg.depth + 1 FROM graph AS g, search_graph AS sg WHERE g.id = sg.link) CYCLE id SET is_cycle USING path SELECT * FROM search_graph",
         "WITH RECURSIVE search_graph(id, link, data, depth) AS (SELECT g.id, g.link, g.data, 1 FROM graph AS g UNION ALL SELECT g.id, g.link, g.data, sg.depth + 1 FROM graph AS g, search_graph AS sg WHERE g.id = sg.link) CYCLE id SET is_cycle USING path SELECT * FROM search_graph",
@@ -5652,6 +5699,12 @@ fn test_ordered_aggregate_args_are_structured() {
         Dialect::Postgres,
         Dialect::Sqlite,
     );
+    validate_with_dialect(
+        "SELECT LAST_VALUE(x ORDER BY x IGNORE NULLS) OVER (ORDER BY x) FROM t",
+        "SELECT LAST_VALUE(x ORDER BY x IGNORE NULLS) OVER (ORDER BY x) FROM t",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
 }
 
 #[test]
@@ -5712,6 +5765,30 @@ fn test_unnest_table_source_offsets_are_structured() {
             )
     ));
 
+    let sqlite_array_ast = parse("SELECT * FROM UNNEST([1, 2, 3])", Dialect::Sqlite).unwrap();
+    assert!(matches!(
+        sqlite_array_ast,
+        Statement::Select(ref select)
+            if matches!(
+                select.from.as_ref().map(|from| &from.source),
+                Some(TableSource::Unnest { .. })
+            )
+    ));
+
+    let postgres_bracket_array_ast = parse(
+        "SELECT * FROM UNNEST([1, 2]) WITH ORDINALITY AS x",
+        Dialect::Postgres,
+    )
+    .unwrap();
+    assert!(matches!(
+        postgres_bracket_array_ast,
+        Statement::Select(ref select)
+            if matches!(
+                select.from.as_ref().map(|from| &from.source),
+                Some(TableSource::Unnest { with_ordinality: true, .. })
+            )
+    ));
+
     validate_with_dialect(
         "SELECT * FROM UNNEST([1, 2]) AS x WITH OFFSET AS pos",
         "SELECT * FROM UNNEST(ARRAY(1, 2)) WITH ORDINALITY AS _t0",
@@ -5747,6 +5824,12 @@ fn test_unnest_table_source_offsets_are_structured() {
         "SELECT * FROM UNNEST(ARRAY(1, 2)) WITH ORDINALITY AS x",
         Dialect::Postgres,
         Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM UNNEST([1, 2]) AS x",
+        "SELECT * FROM UNNEST(ARRAY[1, 2]) AS x",
+        Dialect::Postgres,
+        Dialect::Postgres,
     );
     validate_with_dialect(
         "SELECT * FROM UNNEST(ARRAY[1, 2], ARRAY[3, 4]) AS t(a, b)",
@@ -5855,6 +5938,12 @@ fn test_forced_suite_table_source_tails_and_directed_join_to_sqlite() {
     validate_with_dialect(
         "SELECT * FROM UNNEST([1, 2, 3])",
         "SELECT * FROM UNNEST(\"1, 2, 3\")",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, DATE_TRUNC(CURRENT_DATE, MONTH), INTERVAL '1' MONTH)) AS mnth",
+        "SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, DATE_TRUNC(CURRENT_DATE, MONTH), INTERVAL '1' MONTH)) AS mnth",
         Dialect::Sqlite,
         Dialect::Sqlite,
     );

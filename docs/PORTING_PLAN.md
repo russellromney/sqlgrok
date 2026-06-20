@@ -196,8 +196,10 @@ of ordinary function rewrites.
    SQLite generator, deleting the source-gated `transform_expr` branch. The
    second slice adds structured `Expr::Function` fields for function-local
    `ORDER BY` and `LIMIT`, with parser/generator ownership for the common
-   aggregate family. Remaining raw fallback is now limited to harder tails such
-   as `HAVING`, `IGNORE`/`RESPECT NULLS`, and comma-style `LIMIT`.
+   aggregate family. Function-local `ORDER BY ... IGNORE/RESPECT NULLS` now
+   stays structured and drops the null-treatment marker through parser-owned
+   normalization. Remaining raw fallback is now limited to harder tails such
+   as `HAVING` and comma-style `LIMIT`.
 2. **Raw table-source carriers.**
    `TableSource::Raw` still encodes behavior for `UNNEST(...)`, `WITH OFFSET`,
    Postgres VALUES alias cleanup, typed literals, and raw function name
@@ -232,16 +234,14 @@ of ordinary function rewrites.
    `RawStatement` still rewrites Postgres enum/raw recursive CTE/COPY, MySQL
    `SHOW`, raw `PIVOT`/`UNPIVOT`, and insert-into-function text. Add typed or
    semi-typed statement variants (`CommandKind` where full modeling is not
-   worth it yet) so raw passthrough is inert. The first execution slice now
-   carries the existing rewrite policy as parser-owned
-   `RawStatementNormalization`, so SQLite raw statement rendering no longer
-   keys off `source_dialect`; the remaining work is to replace raw text with
-   typed or semi-typed statement variants where practical. The next slice adds
-   `Statement::Command` / `CommandKind` for `COPY`, MySQL `SHOW`, standalone
-   `PIVOT` / `UNPIVOT`, statement-level `REPLACE(...)`, SQLite database
-   commands, and Postgres `CREATE TYPE ... AS ENUM`, slimming
-   `RawStatementNormalization` down to the remaining recursive CTE and
-   insert-into-function raw gaps.
+   worth it yet) so raw passthrough is inert. Earlier slices moved rewrite
+   policy out of source-keyed transforms and added `Statement::Command` /
+   `CommandKind` for `COPY`, MySQL `SHOW`, standalone `PIVOT` / `UNPIVOT`,
+   statement-level `REPLACE(...)`, SQLite database commands, and Postgres
+   `CREATE TYPE ... AS ENUM`. The latest slice deletes
+   `RawStatementNormalization`: Postgres recursive CTE search/cycle rendering
+   and `INSERT INTO [TABLE] FUNCTION ...` cleanup are owned by dedicated
+   command carriers, leaving `Statement::Raw` as inert passthrough text.
 4. **Target-only generator lowerings.**
    `ILIKE`, `DISTINCT ON`, `SEMI`/`ANTI` joins, SQLite `WITHIN GROUP`
    dropping, limit/top/fetch normalization, lock dropping, quote conversion,
@@ -251,7 +251,12 @@ of ordinary function rewrites.
    quoted identifier spelling, SQLite identity join cleanup, SQLite
    `DISTINCT ON` lowering, SEMI/ANTI join lowering for unsupported targets,
    and limit/top/fetch normalization are now generator-owned, with parser-owned
-   style metadata preserving identity spelling where needed.
+   style metadata preserving identity spelling where needed. Raw table-source
+   metadata has also been narrowed so unconditional SQLite raw rendering
+   choices such as backtick quoting, raw function-name uppercasing, and
+   typed-literal spelling live in the generator rather than parser flags; and
+   SQLite/Postgres `UNNEST([..])` now uses structured `TableSource::Unnest`
+   plus normal array-literal generation.
 5. **AST gap closure.**
    Do not relocate raw-text rewrites into another helper and call that done.
    Add the missing AST shape first, then drain behavior from raw carriers and

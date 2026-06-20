@@ -503,33 +503,11 @@ fn normalize_sqlite_raw_table_source_sql<'a>(
         }
         None => normalized,
     };
-    if normalization.quote_backticks && normalized.contains('`') {
+    if normalized.contains('`') {
         normalized = Cow::Owned(normalized.replace('`', "\""));
     }
-    if normalization.uppercase_function_names {
-        normalized = Cow::Owned(dialects::uppercase_function_names_in_raw_sql(&normalized));
-    }
-    if normalization.normalize_typed_literals {
-        normalized = Cow::Owned(dialects::normalize_typed_literals_in_raw_sql(&normalized));
-    }
-    normalized
-}
-
-fn normalize_sqlite_raw_statement_sql<'a>(
-    sql: &'a str,
-    normalization: Option<&RawStatementNormalization>,
-) -> Cow<'a, str> {
-    let Some(normalization) = normalization else {
-        return Cow::Borrowed(sql);
-    };
-    let mut normalized = if normalization.normalize_postgres_recursive_cte {
-        Cow::Owned(dialects::normalize_postgres_recursive_cte_raw(sql))
-    } else {
-        Cow::Borrowed(sql)
-    };
-    if normalization.normalize_insert_into_function {
-        normalized = Cow::Owned(dialects::normalize_insert_into_function(&normalized));
-    }
+    normalized = Cow::Owned(dialects::uppercase_function_names_in_raw_sql(&normalized));
+    normalized = Cow::Owned(dialects::normalize_typed_literals_in_raw_sql(&normalized));
     normalized
 }
 
@@ -543,6 +521,12 @@ fn normalize_sqlite_command_statement_sql<'a>(command: &'a CommandStatement) -> 
             .map(Cow::Owned)
             .unwrap_or(Cow::Borrowed(command.sql.as_str())),
         CommandKind::Pivot | CommandKind::Unpivot => Cow::Borrowed(""),
+        CommandKind::RecursiveCte => {
+            Cow::Owned(dialects::normalize_postgres_recursive_cte_raw(&command.sql))
+        }
+        CommandKind::InsertIntoFunction => {
+            Cow::Owned(dialects::normalize_insert_into_function(&command.sql))
+        }
         CommandKind::Show | CommandKind::Generic => Cow::Borrowed(command.sql.as_str()),
     }
 }
@@ -842,15 +826,10 @@ impl Generator {
             }
             Statement::Raw(s) => {
                 self.gen_comments(&s.comments);
-                let sql = if matches!(self.dialect, Some(Dialect::Sqlite)) {
-                    normalize_sqlite_raw_statement_sql(&s.sql, s.normalization.as_ref())
+                if self.pretty && raw_starts_with_keyword(&s.sql, "CREATE TABLE") {
+                    self.write(&pretty_raw_sql(&s.sql));
                 } else {
-                    Cow::Borrowed(s.sql.as_str())
-                };
-                if self.pretty && raw_starts_with_keyword(sql.as_ref(), "CREATE TABLE") {
-                    self.write(&pretty_raw_sql(sql.as_ref()));
-                } else {
-                    self.write(sql.as_ref());
+                    self.write(&s.sql);
                 }
             }
             Statement::Expression(e) => self.gen_expr(e),

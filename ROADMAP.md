@@ -95,9 +95,11 @@ Retirement sequence:
      `transform_expr`. `Expr::Function` also has structured function-local
      `ORDER BY` and `LIMIT` fields, and the parser/generator round-trips those
      tails for the common aggregate/function family without raw argument text.
+     Function-local `ORDER BY ... IGNORE/RESPECT NULLS` now stays structured
+     and drops the null-treatment marker through parser-owned normalization
+     instead of raw argument fallback.
    - Remaining: model the harder nonstandard aggregate tails that still need
-     raw fallback: `HAVING`, `IGNORE`/`RESPECT NULLS`, and comma-style
-     `LIMIT`.
+     raw fallback: `HAVING` and comma-style `LIMIT`.
 
 2. **Raw table-source carriers.**
    - Problem: `TableSource::Raw` still carries behavior, not only passthrough:
@@ -134,7 +136,13 @@ Retirement sequence:
      `PARTITION (...)`, SQLite `INDEXED BY ...`, and `NOT INDEXED` also use
      `TableSource::TableWithTails` instead of full raw table-source text, with
      parser-owned raw-tail normalization metadata preserved for SQLite
-     generator rendering.
+     generator rendering. SQLite/Postgres `UNNEST([..])` bracket-array inputs
+     now stay on structured `TableSource::Unnest`, relying on normal
+     `ArrayLiteral` / `SqliteArrayLiteral` target rendering instead of raw
+     table-source array rewrites. Raw table-source metadata has been narrowed
+     so unconditional SQLite rendering choices such as backtick quoting,
+     function-name uppercasing, and typed-literal spelling are generator-owned
+     rather than parser flags.
    - Exit: replace the remaining raw text with structured table-source fields
      where practical. Remaining table-source raw carriers are
      parenthesized/table-function fallback shapes and dialect fallback cases
@@ -148,18 +156,16 @@ Retirement sequence:
    - Fix: add typed or semi-typed statement variants (`CommandKind` where full
      AST modeling is not worth it yet) so parsers classify the source behavior
      and generators render or drop by target.
-   - Progress: `RawStatementNormalization` now carries the existing raw
-     statement rewrite policy from the parser to the SQLite generator. The
-     generator no longer branches on `source_dialect` for raw statements, and
-     `transform_statement` no longer backfills raw statement source dialect.
-     A first `Statement::Command` carrier now owns command-shaped cases for
+   - Progress: A first `Statement::Command` carrier now owns command-shaped cases for
      `COPY`, MySQL `SHOW`, standalone `PIVOT` / `UNPIVOT`, statement-level
      `REPLACE(...)`, SQLite database commands, and Postgres
-     `CREATE TYPE ... AS ENUM`, leaving `RawStatementNormalization` slimmer.
-   - Exit: replace the remaining raw statement text with typed or semi-typed
-     statement variants where practical, leaving raw statements as inert
-     unsupported passthrough only. Remaining raw-statement behavior is mostly
-     Postgres recursive CTE cleanup and insert-into-function cleanup.
+     `CREATE TYPE ... AS ENUM`. `RawStatementNormalization` has now been
+     deleted: Postgres recursive CTE search/cycle rendering and
+     `INSERT INTO [TABLE] FUNCTION ...` cleanup are owned by dedicated
+     `CommandKind` carriers, and `Statement::Raw` is inert statement text.
+   - Exit: replace any future raw statement behavior with typed or semi-typed
+     statement variants where practical. Raw statements should remain inert
+     unsupported passthrough only.
 
 4. **Target-only generator lowerings.**
    - Problem: target dialects beyond SQLite still need broader generator
