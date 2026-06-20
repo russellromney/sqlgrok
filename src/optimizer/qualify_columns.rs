@@ -111,9 +111,13 @@ fn collect_source_columns<S: Schema>(
                 source_map.insert(norm_alias, SourceColumns { columns: vec![] });
             }
         }
-        TableSource::TableWithTails { table, .. } => {
+        TableSource::TableWithTails { table, tails, .. } => {
             let key = table.alias.as_deref().unwrap_or(&table.name).to_string();
             let norm_key = normalize_identifier(&key, dialect);
+            if is_row_producing_table_tail(tails) {
+                source_map.insert(norm_key, SourceColumns { columns: vec![] });
+                return;
+            }
             let path = build_table_path(table, dialect);
             let path_refs: Vec<&str> = path.iter().map(|s| s.as_str()).collect();
             if let Ok(cols) = schema.column_names(&path_refs) {
@@ -171,6 +175,15 @@ fn collect_source_columns<S: Schema>(
             }
         }
     }
+}
+
+fn is_row_producing_table_tail(tails: &str) -> bool {
+    let mut words = tails.split_whitespace();
+    matches!(
+        (words.next(), words.next()),
+        (Some(first), Some(second))
+            if first.eq_ignore_ascii_case("LATERAL") && second.eq_ignore_ascii_case("VIEW")
+    )
 }
 
 /// Build a normalized table path for schema lookup.

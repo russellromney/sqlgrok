@@ -5697,6 +5697,21 @@ fn test_unnest_table_source_offsets_are_structured() {
         } if extra_exprs.len() == 1
     ));
 
+    let raw_extra_arg_ast = parse(
+        "SELECT * FROM UNNEST(ARRAY[1], TABLE foo) AS t(a, b)",
+        Dialect::Postgres,
+    )
+    .unwrap();
+    assert!(matches!(
+        raw_extra_arg_ast,
+        Statement::Select(ref select)
+            if matches!(
+                select.from.as_ref().map(|from| &from.source),
+                Some(TableSource::Raw { sql, .. })
+                    if sql == "UNNEST(ARRAY[1], TABLE foo) AS t(a, b)"
+            )
+    ));
+
     validate_with_dialect(
         "SELECT * FROM UNNEST([1, 2]) AS x WITH OFFSET AS pos",
         "SELECT * FROM UNNEST(ARRAY(1, 2)) WITH ORDINALITY AS _t0",

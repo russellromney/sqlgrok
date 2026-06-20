@@ -625,6 +625,27 @@ fn test_qc_qualify_join_on_clause() {
     );
 }
 
+#[test]
+fn test_qc_lateral_view_tail_does_not_qualify_tail_outputs_as_base_columns() {
+    let mut s = MappingSchema::new(Dialect::Ansi);
+    s.add_table(
+        &["x"],
+        vec![
+            ("a".to_string(), DataType::Int),
+            ("y".to_string(), DataType::Int),
+        ],
+    )
+    .unwrap();
+    assert_eq!(
+        qualify_sql("SELECT a FROM x LATERAL VIEW EXPLODE(y) t AS a", &s),
+        "SELECT a FROM x LATERAL VIEW EXPLODE(y) t AS a"
+    );
+    assert_eq!(
+        qualify_sql("SELECT a FROM x LATERAL\nVIEW EXPLODE(y) t AS a", &s),
+        "SELECT a FROM x LATERAL\nVIEW EXPLODE(y) t AS a"
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Predicate Pushdown – derived table pushdown
 // (from Python test_optimizer.py::test_pushdown_predicates)
