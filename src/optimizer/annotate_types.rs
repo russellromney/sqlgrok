@@ -293,6 +293,7 @@ fn register_table_source<S: Schema>(source: &TableSource, ctx: &mut AnnotationCo
         TableSource::RawTableFunction { alias, .. } => {
             let _ = alias;
         }
+        TableSource::TableWithTails { table, .. } => ctx.register_table(table),
         TableSource::Raw { alias, .. } => {
             let _ = alias;
         }

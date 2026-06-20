@@ -891,6 +891,15 @@ fn register_table_source(source: &TableSource, ctx: &mut LineageContext) {
                 );
             }
         }
+        TableSource::TableWithTails { table, .. } => {
+            let key = table.alias.as_ref().unwrap_or(&table.name).clone();
+            let normalized = normalize_name(&key, ctx.config.dialect);
+            ctx.sources.entry(normalized).or_insert(SourceInfo {
+                kind: SourceKind::Table,
+                columns: None,
+                statement: None,
+            });
+        }
         TableSource::RowsFrom { items, alias, .. } => {
             if let Some(alias) = alias {
                 let normalized = normalize_name(alias, ctx.config.dialect);

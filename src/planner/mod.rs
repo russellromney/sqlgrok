@@ -570,6 +570,13 @@ impl PlanBuilder {
                 predicate: None,
                 dependencies: vec![],
             })),
+            TableSource::TableWithTails { table, tails } => Ok(self.add_step(Step::Scan {
+                table: format!("{} {}", fully_qualified_name(table), tails),
+                alias: table.alias.clone(),
+                projections: vec![],
+                predicate: None,
+                dependencies: vec![],
+            })),
             TableSource::Raw { sql, alias, .. } => Ok(self.add_step(Step::Scan {
                 table: sql.clone(),
                 alias: alias.clone(),

@@ -3,6 +3,26 @@
 Quick summaries of completed sqlgrok work. The roadmap says what should happen next;
 this file records what landed.
 
+## 2026-06-20
+
+### Architecture Port: Table Source Tail Carriers
+
+- Added `TableSource::TableWithTails` for base-table sources followed by raw
+  dialect tail clauses such as `LATERAL VIEW`, `AT`, `BEFORE`, and `CHANGES`.
+- Parse those table tails as a structural base `TableRef` plus raw tail text
+  instead of collapsing the whole source into `TableSource::Raw`.
+- Moved rendering into the generator: the base table renders structurally and
+  the tail text is appended unchanged.
+- Updated planner/optimizer helper passes to register and reason about the
+  base table instead of treating the whole source as opaque raw SQL.
+- Refreshed all seven forced-pair SQLGlot bridge reports. Exact matches are
+  unchanged: postgres -> sqlite `11973`, mysql -> sqlite `11739`,
+  sqlite -> sqlite `11911`, postgres -> postgres `8600`,
+  mysql -> postgres `7949`, sqlite -> postgres `7867`, and
+  postgres -> duckdb `7309`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes.
+
 ## 2026-06-17
 
 ### Architecture Port: JSON/XML Table Function Carriers

@@ -1222,6 +1222,13 @@ impl Generator {
                     self.write_quoted(alias, *alias_quote_style);
                 }
             }
+            TableSource::TableWithTails { table, tails } => {
+                self.gen_table_ref(table);
+                if !tails.is_empty() {
+                    self.write(" ");
+                    self.write(tails);
+                }
+            }
             TableSource::Raw {
                 sql,
                 alias,

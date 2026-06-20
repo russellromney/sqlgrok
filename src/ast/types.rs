@@ -392,6 +392,10 @@ pub enum TableSource {
         #[serde(default)]
         alias_quote_style: QuoteStyle,
     },
+    TableWithTails {
+        table: TableRef,
+        tails: String,
+    },
     Raw {
         sql: String,
         alias: Option<String>,
@@ -3141,6 +3145,7 @@ fn collect_table_refs_from_source<'a>(source: &'a TableSource, tables: &mut Vec<
         TableSource::Subquery { .. } => {}
         TableSource::TableFunction { .. } => {}
         TableSource::RawTableFunction { .. } => {}
+        TableSource::TableWithTails { table, .. } => tables.push(table),
         TableSource::Raw { .. } => {}
         TableSource::RowsFrom { .. } => {}
         TableSource::Values { .. } => {}

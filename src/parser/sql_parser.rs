@@ -2189,20 +2189,21 @@ impl<'a> Parser<'a> {
         }
 
         if self.starts_raw_table_tail() {
+            let tail_start = self
+                .tokens
+                .get(self.pos)
+                .map(|token| self.char_pos_to_byte(token.position))
+                .unwrap_or_else(|| self.sql.len());
             self.consume_raw_table_tail();
             let end = self
                 .tokens
                 .get(self.pos)
                 .map(|token| self.char_pos_to_byte(token.position))
                 .unwrap_or_else(|| self.sql.len());
-            return Ok(TableSource::Raw {
-                sql: self.sql[table_start..end].trim().to_string(),
-                alias: None,
-                alias_quote_style: QuoteStyle::None,
-                normalization: Some(
-                    self.raw_table_source_normalization(self.sql[table_start..end].trim()),
-                ),
-                source_dialect: Some(self.dialect),
+            let tails = self.sql[tail_start..end].trim().to_string();
+            return Ok(TableSource::TableWithTails {
+                table: table_ref,
+                tails,
             });
         }
 

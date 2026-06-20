@@ -415,6 +415,10 @@ fn process_table_source(source: &TableSource, scope: &mut Scope) {
                 );
             }
         }
+        TableSource::TableWithTails { table, .. } => {
+            let key = table.alias.as_deref().unwrap_or(&table.name).to_string();
+            scope.sources.insert(key, Source::Table(table.clone()));
+        }
         TableSource::RowsFrom { items, alias, .. } => {
             if let Some(alias) = alias {
                 scope.sources.insert(

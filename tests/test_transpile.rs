@@ -5732,6 +5732,36 @@ fn test_forced_suite_table_source_tails_and_directed_join_to_sqlite() {
         validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
     }
 
+    let lateral_ast = parse(
+        "SELECT a FROM x LATERAL VIEW EXPLODE(y) t AS a",
+        Dialect::Sqlite,
+    )
+    .unwrap();
+    assert!(matches!(
+        lateral_ast,
+        Statement::Select(ref select)
+            if matches!(
+                select.from.as_ref().map(|from| &from.source),
+                Some(TableSource::TableWithTails { table, tails })
+                    if table.name == "x" && tails.starts_with("LATERAL VIEW")
+            )
+    ));
+
+    let at_ast = parse(
+        "SELECT * FROM my_table AT (STATEMENT => $query_id_var)",
+        Dialect::Sqlite,
+    )
+    .unwrap();
+    assert!(matches!(
+        at_ast,
+        Statement::Select(ref select)
+            if matches!(
+                select.from.as_ref().map(|from| &from.source),
+                Some(TableSource::TableWithTails { table, tails })
+                    if table.name == "my_table" && tails.starts_with("AT ")
+            )
+    ));
+
     validate_with_dialect(
         "SELECT * FROM UNNEST([1, 2, 3])",
         "SELECT * FROM UNNEST(\"1, 2, 3\")",

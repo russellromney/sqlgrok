@@ -215,10 +215,13 @@ of ordinary function rewrites.
    and `WITH ORDINALITY`. Another slice adds a semi-typed
    `TableSource::RawTableFunction` carrier for `JSON_TABLE(...)` and
    `XMLTABLE(...)`, keeping the complex inner body textual while moving alias
-   handling and SQLite type normalization into parser/generator ownership. The
-   remaining work is to eliminate raw string carriers for multi-argument
-   `UNNEST`, table-function tails, and tokenizer fallback cases where
-   forced-read syntax is not expression-shaped.
+   handling and SQLite type normalization into parser/generator ownership.
+   Another slice adds `TableSource::TableWithTails` for base tables followed
+   by raw dialect tails such as `LATERAL VIEW`, `AT`, `BEFORE`, and `CHANGES`,
+   letting helper passes see the structural base table while generators own
+   tail rendering. The remaining work is to eliminate raw string carriers for
+   multi-argument `UNNEST`, parenthesized/table-function fallback shapes, and
+   tokenizer fallback cases where forced-read syntax is not expression-shaped.
 3. **Raw statement normalization.**
    `RawStatement` still rewrites Postgres enum/raw recursive CTE/COPY, MySQL
    `SHOW`, raw `PIVOT`/`UNPIVOT`, and insert-into-function text. Add typed or

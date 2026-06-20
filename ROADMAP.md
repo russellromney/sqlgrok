@@ -124,12 +124,15 @@ Retirement sequence:
      table-level aliases, typed alias-column lists, and `WITH ORDINALITY`.
      JSON/XML table functions now use a semi-typed
      `TableSource::RawTableFunction` carrier with structured alias handling and
-     generator-owned SQLite type normalization.
+     generator-owned SQLite type normalization. Base tables with raw dialect
+     tails such as `LATERAL VIEW`, `AT`, `BEFORE`, and `CHANGES` now use
+     `TableSource::TableWithTails`, so planner/optimizer helper passes can see
+     the structural base table while generators own tail rendering.
    - Exit: replace the remaining raw text with structured table-source fields
      where practical. Remaining table-source raw carriers are multi-argument
-     `UNNEST`, table-function tails, and dialect fallback cases where the
-     tokenizer still treats source syntax as quoted identifiers rather than
-     parseable expressions.
+     `UNNEST`, parenthesized/table-function fallback shapes, and dialect
+     fallback cases where the tokenizer still treats source syntax as quoted
+     identifiers rather than parseable expressions.
 
 3. **Raw statement normalization.**
    - Problem: `RawStatement` still carries rewrite behavior for Postgres enum
