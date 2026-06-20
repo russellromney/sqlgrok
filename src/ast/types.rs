@@ -395,6 +395,8 @@ pub enum TableSource {
     TableWithTails {
         table: TableRef,
         tails: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        normalization: Option<RawTableSourceNormalization>,
     },
     Raw {
         sql: String,

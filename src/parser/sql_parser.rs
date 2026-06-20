@@ -2164,9 +2164,11 @@ impl<'a> Parser<'a> {
                 .get(self.pos)
                 .map(|token| self.char_pos_to_byte(token.position))
                 .unwrap_or_else(|| self.sql.len());
+            let tails = self.sql[tail_start..end].trim().to_string();
             return Ok(TableSource::TableWithTails {
                 table: table_ref,
-                tails: self.sql[tail_start..end].trim().to_string(),
+                normalization: Some(self.raw_table_source_normalization(&tails)),
+                tails,
             });
         }
         self.consume_table_sample()?;
@@ -2203,6 +2205,7 @@ impl<'a> Parser<'a> {
             let tails = self.sql[tail_start..end].trim().to_string();
             return Ok(TableSource::TableWithTails {
                 table: table_ref,
+                normalization: Some(self.raw_table_source_normalization(&tails)),
                 tails,
             });
         }
@@ -2242,9 +2245,11 @@ impl<'a> Parser<'a> {
                 .get(self.pos)
                 .map(|token| self.char_pos_to_byte(token.position))
                 .unwrap_or_else(|| self.sql.len());
+            let tails = self.sql[tail_start..end].trim().to_string();
             return Ok(TableSource::TableWithTails {
                 table: table_ref,
-                tails: self.sql[tail_start..end].trim().to_string(),
+                normalization: Some(self.raw_table_source_normalization(&tails)),
+                tails,
             });
         }
 
@@ -2316,7 +2321,11 @@ impl<'a> Parser<'a> {
         let expr = self.parse_expr()?;
         let mut extra_exprs = Vec::new();
         while self.match_token(TokenType::Comma) {
-            extra_exprs.push(self.parse_expr()?);
+            let Ok(extra_expr) = self.parse_expr() else {
+                self.pos = start_pos;
+                return self.parse_raw_table_source_until_boundary();
+            };
+            extra_exprs.push(extra_expr);
         }
         if !matches!(self.dialect, Dialect::BigQuery)
             && matches!(

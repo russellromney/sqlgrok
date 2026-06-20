@@ -223,8 +223,9 @@ of ordinary function rewrites.
    `extra_exprs`, so multi-argument `UNNEST(a, b, ...)` no longer bails to raw
    table-source text for expression-shaped Postgres/BigQuery inputs. Another
    slice reuses `TableSource::TableWithTails` for `PARTITION (...)`,
-   `INDEXED BY ...`, and `NOT INDEXED` base-table tails. The remaining work is
-   to eliminate raw string carriers for
+   `INDEXED BY ...`, and `NOT INDEXED` base-table tails, while preserving
+   parser-owned raw-tail normalization metadata for SQLite generator
+   rendering. The remaining work is to eliminate raw string carriers for
    parenthesized/table-function fallback shapes and tokenizer fallback cases
    where forced-read syntax is not expression-shaped.
 3. **Raw statement normalization.**

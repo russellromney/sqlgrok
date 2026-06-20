@@ -858,12 +858,18 @@ fn test_sqlite_pragma_and_database_commands() {
         Statement::Select(ref select)
             if matches!(
                 select.from.as_ref().map(|from| &from.source),
-                Some(TableSource::TableWithTails { table, tails })
+                Some(TableSource::TableWithTails { table, tails, .. })
                     if table.name == "t"
                         && table.alias.as_deref() == Some("tt")
                         && tails == "INDEXED BY s.i"
             )
     ));
+    validate_with_dialect(
+        "SELECT * FROM t INDEXED BY `idx`",
+        "SELECT * FROM t INDEXED BY \"idx\"",
+        Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
 }
 
 #[test]
@@ -5794,7 +5800,7 @@ fn test_forced_suite_table_source_tails_and_directed_join_to_sqlite() {
         Statement::Select(ref select)
             if matches!(
                 select.from.as_ref().map(|from| &from.source),
-                Some(TableSource::TableWithTails { table, tails })
+                Some(TableSource::TableWithTails { table, tails, .. })
                     if table.name == "x" && tails.starts_with("LATERAL VIEW")
             )
     ));
@@ -5809,7 +5815,7 @@ fn test_forced_suite_table_source_tails_and_directed_join_to_sqlite() {
         Statement::Select(ref select)
             if matches!(
                 select.from.as_ref().map(|from| &from.source),
-                Some(TableSource::TableWithTails { table, tails })
+                Some(TableSource::TableWithTails { table, tails, .. })
                     if table.name == "my_table" && tails.starts_with("AT ")
             )
     ));
@@ -5820,10 +5826,16 @@ fn test_forced_suite_table_source_tails_and_directed_join_to_sqlite() {
         Statement::Select(ref select)
             if matches!(
                 select.from.as_ref().map(|from| &from.source),
-                Some(TableSource::TableWithTails { table, tails })
+                Some(TableSource::TableWithTails { table, tails, .. })
                     if table.name == "t" && tails == "PARTITION (p0, p1)"
             )
     ));
+    validate_with_dialect(
+        "SELECT * FROM t PARTITION (`p0`)",
+        "SELECT * FROM t PARTITION (\"p0\")",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
 
     validate_with_dialect(
         "SELECT * FROM UNNEST([1, 2, 3])",

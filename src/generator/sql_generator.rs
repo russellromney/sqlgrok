@@ -1222,11 +1222,20 @@ impl Generator {
                     self.write_quoted(alias, *alias_quote_style);
                 }
             }
-            TableSource::TableWithTails { table, tails } => {
+            TableSource::TableWithTails {
+                table,
+                tails,
+                normalization,
+            } => {
                 self.gen_table_ref(table);
-                if !tails.is_empty() {
+                let normalized = if matches!(self.dialect, Some(Dialect::Sqlite)) {
+                    normalize_sqlite_raw_table_source_sql(tails, normalization.as_ref())
+                } else {
+                    Cow::Borrowed(tails.as_str())
+                };
+                if !normalized.is_empty() {
                     self.write(" ");
-                    self.write(tails);
+                    self.write(&normalized);
                 }
             }
             TableSource::Raw {

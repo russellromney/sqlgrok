@@ -12,14 +12,19 @@ this file records what landed.
 - Removed two more full `TableSource::Raw` exits from table-source parsing;
   the base table now stays structural while the dialect hint/tail text remains
   an inert generator-rendered suffix.
+- Added raw-tail normalization metadata to `TableSource::TableWithTails`, so
+  SQLite-targeted rendering keeps the old raw-carrier behavior for backtick
+  quoting, raw function uppercasing, and typed-literal normalization.
+- Restored raw fallback for multi-argument `UNNEST` when a later argument is
+  not parseable as an expression.
 - Refreshed all seven forced-pair SQLGlot bridge reports through the debug
   bridge because local release builds were killed under memory pressure. Exact
-  matches are unchanged from the multi-argument UNNEST slice: postgres ->
-  sqlite `11976`, mysql -> sqlite `11739`, sqlite -> sqlite `11911`,
+  matches now stand at: postgres -> sqlite `11977`,
+  mysql -> sqlite `11740`, sqlite -> sqlite `11912`,
   postgres -> postgres `8612`, mysql -> postgres `7949`, sqlite -> postgres
   `7867`, and postgres -> duckdb `7316`.
 - Verified zero row-level regressions across old matched rows in all seven
-  lanes.
+  lanes, with 3 keyed row-level improvements.
 
 ### Architecture Port: Multi-Argument UNNEST
 
