@@ -5652,9 +5652,30 @@ fn test_unnest_table_source_offsets_are_structured() {
         from.source,
         TableSource::Unnest {
             with_offset: true,
+            extra_exprs,
             offset_alias: Some(_),
             ..
-        }
+        } if extra_exprs.is_empty()
+    ));
+
+    let multi_ast = parse(
+        "SELECT * FROM UNNEST(ARRAY[1, 2], ARRAY[3, 4]) AS t(a, b)",
+        Dialect::Postgres,
+    )
+    .unwrap();
+    let Statement::Select(select) = multi_ast else {
+        panic!("expected SELECT");
+    };
+    let Some(from) = select.from else {
+        panic!("expected FROM");
+    };
+    assert!(matches!(
+        from.source,
+        TableSource::Unnest {
+            extra_exprs,
+            alias: Some(_),
+            ..
+        } if extra_exprs.len() == 1
     ));
 
     validate_with_dialect(
@@ -5692,6 +5713,24 @@ fn test_unnest_table_source_offsets_are_structured() {
         "SELECT * FROM UNNEST(ARRAY(1, 2)) WITH ORDINALITY AS x",
         Dialect::Postgres,
         Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM UNNEST(ARRAY[1, 2], ARRAY[3, 4]) AS t(a, b)",
+        "SELECT * FROM UNNEST(ARRAY(1, 2), ARRAY(3, 4)) AS t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM UNNEST(ARRAY[1, 2], ARRAY[3, 4]) AS t(a, b)",
+        "SELECT * FROM UNNEST([1, 2], [3, 4]) AS t(a, b)",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT * FROM UNNEST(ARRAY[1, 2], ARRAY[3, 4]) AS t(a, b)",
+        "SELECT * FROM UNNEST(ARRAY[1, 2], ARRAY[3, 4]) AS t(a, b)",
+        Dialect::Postgres,
+        Dialect::Postgres,
     );
 }
 

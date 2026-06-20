@@ -598,13 +598,19 @@ impl PlanBuilder {
                 predicate: None,
                 dependencies: vec![],
             })),
-            TableSource::Unnest { expr, alias, .. } => Ok(self.add_step(Step::Scan {
+            TableSource::Unnest {
+                expr,
+                extra_exprs,
+                alias,
+                ..
+            } => Ok(self.add_step(Step::Scan {
                 table: "UNNEST".to_string(),
                 alias: alias.clone(),
-                projections: vec![Projection {
-                    expr: *expr.clone(),
-                    alias: None,
-                }],
+                projections: std::iter::once(expr.as_ref())
+                    .chain(extra_exprs.iter())
+                    .cloned()
+                    .map(|expr| Projection { expr, alias: None })
+                    .collect(),
                 predicate: None,
                 dependencies: vec![],
             })),

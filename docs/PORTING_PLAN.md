@@ -219,9 +219,12 @@ of ordinary function rewrites.
    Another slice adds `TableSource::TableWithTails` for base tables followed
    by raw dialect tails such as `LATERAL VIEW`, `AT`, `BEFORE`, and `CHANGES`,
    letting helper passes see the structural base table while generators own
-   tail rendering. The remaining work is to eliminate raw string carriers for
-   multi-argument `UNNEST`, parenthesized/table-function fallback shapes, and
-   tokenizer fallback cases where forced-read syntax is not expression-shaped.
+   tail rendering. Another slice extends `TableSource::Unnest` with
+   `extra_exprs`, so multi-argument `UNNEST(a, b, ...)` no longer bails to raw
+   table-source text for expression-shaped Postgres/BigQuery inputs. The
+   remaining work is to eliminate raw string carriers for
+   parenthesized/table-function fallback shapes and tokenizer fallback cases
+   where forced-read syntax is not expression-shaped.
 3. **Raw statement normalization.**
    `RawStatement` still rewrites Postgres enum/raw recursive CTE/COPY, MySQL
    `SHOW`, raw `PIVOT`/`UNPIVOT`, and insert-into-function text. Add typed or

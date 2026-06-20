@@ -128,11 +128,14 @@ Retirement sequence:
      tails such as `LATERAL VIEW`, `AT`, `BEFORE`, and `CHANGES` now use
      `TableSource::TableWithTails`, so planner/optimizer helper passes can see
      the structural base table while generators own tail rendering.
+     Multi-argument `UNNEST(a, b, ...)` now stays on `TableSource::Unnest`
+     through `extra_exprs`, removing the comma-triggered raw fallback for
+     expression-shaped Postgres/BigQuery inputs.
    - Exit: replace the remaining raw text with structured table-source fields
-     where practical. Remaining table-source raw carriers are multi-argument
-     `UNNEST`, parenthesized/table-function fallback shapes, and dialect
-     fallback cases where the tokenizer still treats source syntax as quoted
-     identifiers rather than parseable expressions.
+     where practical. Remaining table-source raw carriers are
+     parenthesized/table-function fallback shapes and dialect fallback cases
+     where the tokenizer still treats source syntax as quoted identifiers
+     rather than parseable expressions.
 
 3. **Raw statement normalization.**
    - Problem: `RawStatement` still carries rewrite behavior for Postgres enum

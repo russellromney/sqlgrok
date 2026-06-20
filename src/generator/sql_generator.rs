@@ -1304,6 +1304,7 @@ impl Generator {
             }
             TableSource::Unnest {
                 expr,
+                extra_exprs,
                 alias,
                 alias_quote_style,
                 alias_columns,
@@ -1315,6 +1316,10 @@ impl Generator {
             } => {
                 self.write_keyword("UNNEST(");
                 self.gen_unnest_expr(expr);
+                for extra_expr in extra_exprs {
+                    self.write(", ");
+                    self.gen_unnest_expr(extra_expr);
+                }
                 self.write(")");
                 if *with_offset {
                     self.gen_unnest_with_offset_alias(

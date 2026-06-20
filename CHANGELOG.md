@@ -5,6 +5,27 @@ this file records what landed.
 
 ## 2026-06-20
 
+### Architecture Port: Multi-Argument UNNEST
+
+- Extended `TableSource::Unnest` with structured `extra_exprs`, so
+  `UNNEST(a, b, ...)` no longer falls back to raw table-source text when the
+  read dialect parses expression-shaped arguments.
+- Parse multi-argument Postgres/BigQuery `UNNEST` into the existing typed
+  carrier, preserving alias columns, `WITH OFFSET`, and `WITH ORDINALITY`
+  behavior.
+- Moved comma-separated UNNEST rendering into the generator; SQLite still
+  drops alias-column lists while Postgres and DuckDB render the structured
+  alias columns.
+- Updated planner projection extraction so all UNNEST expressions remain
+  visible to plan consumers.
+- Refreshed all seven forced-pair SQLGlot bridge reports. Exact matches now
+  stand at: postgres -> sqlite `11976`, mysql -> sqlite `11739`,
+  sqlite -> sqlite `11911`, postgres -> postgres `8612`,
+  mysql -> postgres `7949`, sqlite -> postgres `7867`, and
+  postgres -> duckdb `7316`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes, with 6 keyed row-level improvements.
+
 ### Architecture Port: Table Source Tail Carriers
 
 - Added `TableSource::TableWithTails` for base-table sources followed by raw

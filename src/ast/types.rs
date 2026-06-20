@@ -431,6 +431,8 @@ pub enum TableSource {
     /// UNNEST(array_expr)
     Unnest {
         expr: Box<Expr>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        extra_exprs: Vec<Expr>,
         alias: Option<String>,
         #[serde(default)]
         alias_quote_style: QuoteStyle,

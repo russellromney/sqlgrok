@@ -2314,6 +2314,10 @@ impl<'a> Parser<'a> {
             return self.parse_raw_table_source_until_boundary();
         }
         let expr = self.parse_expr()?;
+        let mut extra_exprs = Vec::new();
+        while self.match_token(TokenType::Comma) {
+            extra_exprs.push(self.parse_expr()?);
+        }
         if !matches!(self.dialect, Dialect::BigQuery)
             && matches!(
                 &expr,
@@ -2323,10 +2327,6 @@ impl<'a> Parser<'a> {
                 }
             )
         {
-            self.pos = start_pos;
-            return self.parse_raw_table_source_until_boundary();
-        }
-        if self.match_token(TokenType::Comma) {
             self.pos = start_pos;
             return self.parse_raw_table_source_until_boundary();
         }
@@ -2368,6 +2368,7 @@ impl<'a> Parser<'a> {
 
         Ok(TableSource::Unnest {
             expr: Box::new(expr),
+            extra_exprs,
             alias,
             alias_quote_style,
             alias_columns,
