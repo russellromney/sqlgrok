@@ -122,11 +122,14 @@ Retirement sequence:
      forced-read cases stay on the raw passthrough path. `ROWS FROM (...)` now
      has a typed `TableSource::RowsFrom` carrier with function aliases,
      table-level aliases, typed alias-column lists, and `WITH ORDINALITY`.
+     JSON/XML table functions now use a semi-typed
+     `TableSource::RawTableFunction` carrier with structured alias handling and
+     generator-owned SQLite type normalization.
    - Exit: replace the remaining raw text with structured table-source fields
      where practical. Remaining table-source raw carriers are multi-argument
-     `UNNEST`, JSON/XML table sources, table-function tails, and dialect
-     fallback cases where the tokenizer still treats source syntax as quoted
-     identifiers rather than parseable expressions.
+     `UNNEST`, table-function tails, and dialect fallback cases where the
+     tokenizer still treats source syntax as quoted identifiers rather than
+     parseable expressions.
 
 3. **Raw statement normalization.**
    - Problem: `RawStatement` still carries rewrite behavior for Postgres enum

@@ -5,6 +5,26 @@ this file records what landed.
 
 ## 2026-06-17
 
+### Architecture Port: JSON/XML Table Function Carriers
+
+- Added `TableSource::RawTableFunction` with `RawTableFunctionKind` for
+  `JSON_TABLE(...)` and `XMLTABLE(...)` shapes whose inner grammar is still
+  carried textually.
+- Parse JSON/XML table functions into that semi-typed table-source carrier
+  instead of generic `TableSource::Raw`, preserving aliases structurally.
+- Moved SQLite-targeted JSON/XML type normalization into generator-owned
+  `RawTableFunction` rendering, so raw table-source rendering no longer
+  sniffs `JSON_TABLE` / `XMLTABLE` prefixes.
+- Updated planner/optimizer helper passes to treat JSON/XML table functions as
+  opaque table-function-like sources with alias registration.
+- Refreshed all seven forced-pair SQLGlot bridge reports. Exact matches are
+  unchanged: postgres -> sqlite `11973`, mysql -> sqlite `11739`,
+  sqlite -> sqlite `11911`, postgres -> postgres `8600`,
+  mysql -> postgres `7949`, sqlite -> postgres `7867`, and
+  postgres -> duckdb `7309`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes.
+
 ### Architecture Port: ROWS FROM Table Sources
 
 - Added typed `TableSource::RowsFrom` with function entries, per-function

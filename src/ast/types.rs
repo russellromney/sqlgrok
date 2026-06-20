@@ -361,6 +361,12 @@ pub struct RowsFromItem {
     pub alias_columns: Vec<RowsFromAliasColumn>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RawTableFunctionKind {
+    JsonTable,
+    XmlTable,
+}
+
 /// A table source can be a table reference, subquery, or table function.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TableSource {
@@ -374,6 +380,14 @@ pub enum TableSource {
     TableFunction {
         name: String,
         args: Vec<Expr>,
+        alias: Option<String>,
+        #[serde(default)]
+        alias_quote_style: QuoteStyle,
+    },
+    RawTableFunction {
+        kind: RawTableFunctionKind,
+        name: String,
+        body: String,
         alias: Option<String>,
         #[serde(default)]
         alias_quote_style: QuoteStyle,
@@ -3126,6 +3140,7 @@ fn collect_table_refs_from_source<'a>(source: &'a TableSource, tables: &mut Vec<
         TableSource::Table(table_ref) => tables.push(table_ref),
         TableSource::Subquery { .. } => {}
         TableSource::TableFunction { .. } => {}
+        TableSource::RawTableFunction { .. } => {}
         TableSource::Raw { .. } => {}
         TableSource::RowsFrom { .. } => {}
         TableSource::Values { .. } => {}

@@ -1206,6 +1206,22 @@ impl Generator {
                     self.write_quoted(alias, *alias_quote_style);
                 }
             }
+            TableSource::RawTableFunction {
+                kind,
+                name,
+                body,
+                alias,
+                alias_quote_style,
+            } => {
+                self.gen_raw_table_function(*kind, name, body);
+                if let Some(alias) = alias {
+                    self.write(" ");
+                    if !self.omit_table_alias_as() {
+                        self.write_keyword("AS ");
+                    }
+                    self.write_quoted(alias, *alias_quote_style);
+                }
+            }
             TableSource::Raw {
                 sql,
                 alias,
@@ -1387,6 +1403,22 @@ impl Generator {
         }
     }
 
+    fn gen_raw_table_function(&mut self, kind: RawTableFunctionKind, name: &str, body: &str) {
+        let sql = format!("{name}({body})");
+        if matches!(self.dialect, Some(Dialect::Sqlite)) {
+            match kind {
+                RawTableFunctionKind::JsonTable => {
+                    self.write(&rewrite_json_table_sqlite_types(&sql));
+                }
+                RawTableFunctionKind::XmlTable => {
+                    self.write(&rewrite_raw_table_sqlite_types(&sql));
+                }
+            }
+        } else {
+            self.write(&sql);
+        }
+    }
+
     fn gen_rows_from_item(&mut self, item: &RowsFromItem) {
         let name =
             if !item.name.contains('.') && !item.name.contains('"') && !item.name.contains('`') {
@@ -1534,18 +1566,6 @@ impl Generator {
         };
         let sql = normalized.as_ref();
         if matches!(self.dialect, Some(Dialect::Sqlite))
-            && sql
-                .get(..10)
-                .is_some_and(|prefix| prefix.eq_ignore_ascii_case("JSON_TABLE"))
-        {
-            self.write(&rewrite_json_table_sqlite_types(sql));
-        } else if matches!(self.dialect, Some(Dialect::Sqlite))
-            && sql
-                .get(..8)
-                .is_some_and(|prefix| prefix.eq_ignore_ascii_case("XMLTABLE"))
-        {
-            self.write(&rewrite_raw_table_sqlite_types(sql));
-        } else if matches!(self.dialect, Some(Dialect::Sqlite))
             && (sql
                 .get(..9)
                 .is_some_and(|prefix| prefix.eq_ignore_ascii_case("ROWS FROM"))

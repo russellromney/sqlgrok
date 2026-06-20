@@ -400,6 +400,21 @@ fn process_table_source(source: &TableSource, scope: &mut Scope) {
                 );
             }
         }
+        TableSource::RawTableFunction { alias, .. } => {
+            if let Some(alias) = alias {
+                scope.sources.insert(
+                    alias.clone(),
+                    Source::Table(TableRef {
+                        catalog: None,
+                        schema: None,
+                        name: alias.clone(),
+                        alias: None,
+                        name_quote_style: QuoteStyle::None,
+                        alias_quote_style: QuoteStyle::None,
+                    }),
+                );
+            }
+        }
         TableSource::RowsFrom { items, alias, .. } => {
             if let Some(alias) = alias {
                 scope.sources.insert(

@@ -2491,9 +2491,23 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_raw_table_function_source(&mut self) -> Result<TableSource> {
-        let start = self.char_pos_to_byte(self.peek().position);
-        self.advance();
+        let name_token = self.advance().clone();
+        let name = name_token.value.to_ascii_uppercase();
+        let kind = match name.as_str() {
+            "JSON_TABLE" => RawTableFunctionKind::JsonTable,
+            "XMLTABLE" => RawTableFunctionKind::XmlTable,
+            _ => {
+                return Err(SqlglotError::ParserError {
+                    message: format!("Unsupported raw table function {name}"),
+                });
+            }
+        };
         self.expect(TokenType::LParen)?;
+        let body_start = self
+            .tokens
+            .get(self.pos)
+            .map(|token| self.char_pos_to_byte(token.position))
+            .unwrap_or_else(|| self.sql.len());
         let mut depth = 1;
         while depth > 0 && self.peek_type() != &TokenType::Eof {
             if self.match_token(TokenType::LParen) {
@@ -2513,22 +2527,22 @@ impl<'a> Parser<'a> {
                 ),
             });
         }
-        let end = self
+        let body_end = self
             .tokens
             .get(self.pos.saturating_sub(1))
-            .map(|token| self.token_end_byte(token))
-            .unwrap_or(start);
-        let sql = self.sql[start..end].trim().to_string();
+            .map(|token| self.char_pos_to_byte(token.position))
+            .unwrap_or(body_start);
+        let body = self.sql[body_start..body_end].trim().to_string();
         let (alias, alias_quote_style) = match self.parse_optional_alias()? {
             Some((name, qs)) => (Some(name), qs),
             None => (None, QuoteStyle::None),
         };
-        Ok(TableSource::Raw {
-            normalization: Some(self.raw_table_source_normalization(&sql)),
-            sql,
+        Ok(TableSource::RawTableFunction {
+            kind,
+            name,
+            body,
             alias,
             alias_quote_style,
-            source_dialect: Some(self.dialect),
         })
     }
 

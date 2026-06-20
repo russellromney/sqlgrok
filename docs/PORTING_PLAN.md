@@ -212,10 +212,13 @@ of ordinary function rewrites.
    Postgres `WITH ORDINALITY` are now AST fields rendered by generators.
    Another slice adds `TableSource::RowsFrom` for Postgres `ROWS FROM (...)`,
    including function aliases, typed alias-column lists, table-level aliases,
-   and `WITH ORDINALITY`. The remaining work is to eliminate raw string
-   carriers for multi-argument `UNNEST`, JSON/XML table sources, table-function
-   tails, and tokenizer fallback cases where forced-read syntax is not
-   expression-shaped.
+   and `WITH ORDINALITY`. Another slice adds a semi-typed
+   `TableSource::RawTableFunction` carrier for `JSON_TABLE(...)` and
+   `XMLTABLE(...)`, keeping the complex inner body textual while moving alias
+   handling and SQLite type normalization into parser/generator ownership. The
+   remaining work is to eliminate raw string carriers for multi-argument
+   `UNNEST`, table-function tails, and tokenizer fallback cases where
+   forced-read syntax is not expression-shaped.
 3. **Raw statement normalization.**
    `RawStatement` still rewrites Postgres enum/raw recursive CTE/COPY, MySQL
    `SHOW`, raw `PIVOT`/`UNPIVOT`, and insert-into-function text. Add typed or

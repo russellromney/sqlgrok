@@ -878,6 +878,19 @@ fn register_table_source(source: &TableSource, ctx: &mut LineageContext) {
                 );
             }
         }
+        TableSource::RawTableFunction { alias, .. } => {
+            if let Some(alias) = alias {
+                let normalized = normalize_name(alias, ctx.config.dialect);
+                ctx.sources.insert(
+                    normalized,
+                    SourceInfo {
+                        kind: SourceKind::Table,
+                        columns: None,
+                        statement: None,
+                    },
+                );
+            }
+        }
         TableSource::RowsFrom { items, alias, .. } => {
             if let Some(alias) = alias {
                 let normalized = normalize_name(alias, ctx.config.dialect);

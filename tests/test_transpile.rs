@@ -3,7 +3,9 @@
 /// These test parse→generate roundtrips (identity), normalization transforms,
 /// and basic cross-dialect transpilation. Modeled after the `validate` and
 /// `validate_identity` helpers in the Python test suite.
-use sqlgrok::ast::{CommandKind, CreateTableOption, Expr, SelectItem, TableSource};
+use sqlgrok::ast::{
+    CommandKind, CreateTableOption, Expr, RawTableFunctionKind, SelectItem, TableSource,
+};
 use sqlgrok::{Dialect, Statement, generate, generate_pretty, parse, transpile};
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -4412,6 +4414,23 @@ fn test_postgres_join_rust_error_report_batch_to_sqlite() {
         Dialect::Postgres,
         Dialect::Sqlite,
     );
+    let xml_ast = parse(
+        "SELECT id, name FROM xml_data AS t, XMLTABLE('/root/user' PASSING t.xml COLUMNS id INT PATH '@id', name TEXT PATH 'name/text()') AS x",
+        Dialect::Postgres,
+    )
+    .unwrap();
+    assert!(matches!(
+        xml_ast,
+        Statement::Select(ref select)
+            if matches!(
+                select.joins.first().map(|join| &join.table),
+                Some(TableSource::RawTableFunction {
+                    kind: RawTableFunctionKind::XmlTable,
+                    alias,
+                    ..
+                }) if alias.as_deref() == Some("x")
+            )
+    ));
     validate_with_dialect(
         "SELECT * FROM ROWS FROM (FUNC1(col1, col2))",
         "SELECT * FROM ROWS FROM (FUNC1(col1, col2))",
@@ -4990,6 +5009,23 @@ fn test_mysql_trim_variants_to_sqlite() {
 
 #[test]
 fn test_mysql_json_table_carrier_to_sqlite() {
+    let ast = parse(
+        "SELECT * FROM source, JSON_TABLE(source.links, '$.org[*]' COLUMNS(row_id FOR ORDINALITY, link VARCHAR(255) PATH '$.link')) AS links",
+        Dialect::Mysql,
+    )
+    .expect("JSON_TABLE table source should parse");
+    assert!(matches!(
+        ast,
+        Statement::Select(ref select)
+            if matches!(
+                select.joins.first().map(|join| &join.table),
+                Some(TableSource::RawTableFunction {
+                    kind: RawTableFunctionKind::JsonTable,
+                    alias,
+                    ..
+                }) if alias.as_deref() == Some("links")
+            )
+    ));
     let result = transpile(
         "SELECT * FROM source, JSON_TABLE(source.links, '$.org[*]' COLUMNS(row_id FOR ORDINALITY, link VARCHAR(255) PATH '$.link')) AS links",
         Dialect::Mysql,
