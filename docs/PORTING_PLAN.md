@@ -209,13 +209,13 @@ of ordinary function rewrites.
    Postgres VALUES alias cleanup, typed literals, and raw function name
    normalization. Replace those with richer table-source nodes/fields:
    ordinality, offset aliases, alias column lists, table-function tails,
-   `ROWS FROM`, and JSON/XML table carriers as needed. The first execution
-   slice now moves the existing raw-text rewrite policy into parser-owned
-   `RawTableSourceNormalization`, so SQLite raw table-source rendering no
-   longer keys off `source_dialect`. The next slice structures
-   single-expression BigQuery/Postgres `UNNEST(...)`: alias column lists,
-   `WITH OFFSET`, offset aliases, generated BigQuery offset aliases, and
-   Postgres `WITH ORDINALITY` are now AST fields rendered by generators.
+   `ROWS FROM`, and JSON/XML table carriers as needed. The
+   `RawTableSourceNormalization` bridge and
+   `rewrite_postgres_table_function_sqlite` raw table-function rewrite hook
+   have now been deleted. Single-expression BigQuery/Postgres `UNNEST(...)`:
+   alias column lists, `WITH OFFSET`, offset aliases, generated BigQuery offset
+   aliases, and Postgres `WITH ORDINALITY` are now AST fields rendered by
+   generators.
    Another slice adds `TableSource::RowsFrom` for Postgres `ROWS FROM (...)`,
    including function aliases, typed alias-column lists, table-level aliases,
    and `WITH ORDINALITY`. Another slice adds a semi-typed
@@ -230,10 +230,11 @@ of ordinary function rewrites.
    `extra_exprs`, so multi-argument `UNNEST(a, b, ...)` no longer bails to raw
    table-source text for expression-shaped Postgres/BigQuery inputs. Another
    slice reuses `TableSource::TableWithTails` for `PARTITION (...)`,
-   `INDEXED BY ...`, and `NOT INDEXED` base-table tails, while preserving
-   parser-owned raw-tail normalization metadata for SQLite generator
-   rendering. The remaining work is to eliminate raw string carriers for
-   parenthesized/table-function fallback shapes and tokenizer fallback cases
+   `INDEXED BY ...`, and `NOT INDEXED` base-table tails. Another slice keeps
+   oddball `UNNEST` arguments such as `TABLE foo` inside structured
+   `TableSource::Unnest` with a raw expression carrier instead of demoting the
+   whole table source to raw SQL. The remaining work is to eliminate raw string
+   carriers for parenthesized fallback shapes and tokenizer fallback cases
    where forced-read syntax is not expression-shaped.
 3. **Raw statement normalization.**
    `RawStatement` still rewrites Postgres enum/raw recursive CTE/COPY, MySQL
@@ -246,7 +247,10 @@ of ordinary function rewrites.
    `CREATE TYPE ... AS ENUM`. The latest slice deletes
    `RawStatementNormalization`: Postgres recursive CTE search/cycle rendering
    and `INSERT INTO [TABLE] FUNCTION ...` cleanup are owned by dedicated
-   command carriers, leaving `Statement::Raw` as inert passthrough text.
+   command carriers. `COMMENT ON` dollar-quote normalization, simple
+   `CREATE TRIGGER` collapse, and `CREATE SCHEMA` / `CREATE DATABASE` option
+   dropping are also owned by command carriers, leaving `Statement::Raw` as
+   inert passthrough text.
 4. **Target-only generator lowerings.**
    `ILIKE`, `DISTINCT ON`, `SEMI`/`ANTI` joins, SQLite `WITHIN GROUP`
    dropping, limit/top/fetch normalization, lock dropping, quote conversion,

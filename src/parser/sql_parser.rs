@@ -1222,14 +1222,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_comment_statement(&mut self) -> Result<Statement> {
-        let statement = self.parse_raw_statement()?;
-        Ok(match statement {
-            Statement::Raw(mut raw) => {
-                raw.sql = normalize_dollar_quoted_strings(&raw.sql);
-                Statement::Raw(raw)
-            }
-            other => other,
-        })
+        let sql = self.capture_statement_sql_until_boundary();
+        Ok(Statement::Command(CommandStatement {
+            comments: vec![],
+            sql: normalize_dollar_quoted_strings(&sql),
+            kind: CommandKind::Comment,
+            drop_for_sqlite: false,
+        }))
     }
 
     fn char_pos_to_byte(&self, char_pos: usize) -> usize {
@@ -2212,7 +2211,6 @@ impl<'a> Parser<'a> {
             let tails = self.sql[tail_start..end].trim().to_string();
             return Ok(TableSource::TableWithTails {
                 table: table_ref,
-                normalization: Some(self.raw_table_source_normalization(&tails)),
                 tails,
             });
         }
@@ -2250,7 +2248,6 @@ impl<'a> Parser<'a> {
             let tails = self.sql[tail_start..end].trim().to_string();
             return Ok(TableSource::TableWithTails {
                 table: table_ref,
-                normalization: Some(self.raw_table_source_normalization(&tails)),
                 tails,
             });
         }
@@ -2293,7 +2290,6 @@ impl<'a> Parser<'a> {
             let tails = self.sql[tail_start..end].trim().to_string();
             return Ok(TableSource::TableWithTails {
                 table: table_ref,
-                normalization: Some(self.raw_table_source_normalization(&tails)),
                 tails,
             });
         }
@@ -2331,37 +2327,34 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn raw_table_source_normalization(&self, sql: &str) -> RawTableSourceNormalization {
-        let upper = sql.to_ascii_uppercase();
-        let unnest_array_literal = if upper.contains("UNNEST") {
-            match self.dialect {
-                Dialect::Sqlite => Some(RawUnnestArrayLiteralPolicy::SqliteQuotedString),
-                Dialect::Postgres | Dialect::Mysql | Dialect::SingleStore | Dialect::Doris => {
-                    Some(RawUnnestArrayLiteralPolicy::ArrayCall)
-                }
-                _ => None,
-            }
-        } else {
-            None
-        };
-        RawTableSourceNormalization {
-            strip_postgres_values_column_aliases: crate::dialects::is_postgres_family(self.dialect)
-                && upper.contains("VALUES"),
-            rewrite_unnest_with_offset: upper.contains("UNNEST") && upper.contains("WITH OFFSET"),
-            unnest_array_literal,
-        }
-    }
-
     fn parse_unnest_table_source(&mut self) -> Result<TableSource> {
         let start_pos = self.pos;
         self.expect(TokenType::Unnest)?;
         self.expect(TokenType::LParen)?;
-        let expr = self.parse_expr()?;
+        let expr = if self.peek_type() == &TokenType::Table {
+            self.parse_raw_unnest_arg_expr()?
+        } else {
+            match self.parse_expr() {
+                Ok(expr) => expr,
+                Err(_) => {
+                    self.pos = start_pos + 2;
+                    self.parse_raw_unnest_arg_expr()?
+                }
+            }
+        };
         let mut extra_exprs = Vec::new();
         while self.match_token(TokenType::Comma) {
-            let Ok(extra_expr) = self.parse_expr() else {
-                self.pos = start_pos;
-                return self.parse_raw_table_source_until_boundary();
+            let arg_start_pos = self.pos;
+            let extra_expr = if self.peek_type() == &TokenType::Table {
+                self.parse_raw_unnest_arg_expr()?
+            } else {
+                match self.parse_expr() {
+                    Ok(expr) => expr,
+                    Err(_) => {
+                        self.pos = arg_start_pos;
+                        self.parse_raw_unnest_arg_expr()?
+                    }
+                }
             };
             extra_exprs.push(extra_expr);
         }
@@ -2424,6 +2417,59 @@ impl<'a> Parser<'a> {
             offset_alias_quote_style,
             use_generated_offset_alias,
             with_ordinality,
+        })
+    }
+
+    fn parse_raw_unnest_arg_expr(&mut self) -> Result<Expr> {
+        let start = self
+            .tokens
+            .get(self.pos)
+            .map(|token| self.char_pos_to_byte(token.position))
+            .unwrap_or_else(|| self.sql.len());
+        let mut depth = 0usize;
+        while self.peek_type() != &TokenType::Eof {
+            if depth == 0 && matches!(self.peek_type(), TokenType::Comma | TokenType::RParen) {
+                break;
+            }
+            match self.peek_type() {
+                TokenType::LParen | TokenType::LBracket | TokenType::LBrace => {
+                    depth += 1;
+                    self.advance();
+                }
+                TokenType::RParen | TokenType::RBracket | TokenType::RBrace => {
+                    if depth == 0 {
+                        break;
+                    }
+                    depth -= 1;
+                    self.advance();
+                }
+                _ => {
+                    self.advance();
+                }
+            }
+        }
+        let end = self
+            .tokens
+            .get(self.pos)
+            .map(|token| self.char_pos_to_byte(token.position))
+            .unwrap_or_else(|| self.sql.len());
+        let raw_sql = self.sql[start..end].trim();
+        if raw_sql.is_empty() {
+            return Err(SqlglotError::ParserError {
+                message: "Expected UNNEST argument".to_string(),
+            });
+        }
+        Ok(Expr::Function {
+            name: "__RAW_EXPR__".to_string(),
+            args: vec![Expr::StringLiteral(raw_sql.to_string())],
+            distinct: false,
+            raw_order_nulls: None,
+            arg_order_by: vec![],
+            arg_limit: None,
+            arg_limit_offset: None,
+            arg_null_treatment: None,
+            filter: None,
+            over: None,
         })
     }
 
@@ -2651,7 +2697,6 @@ impl<'a> Parser<'a> {
             .unwrap_or(start);
         let sql = self.sql[start..end].trim().to_string();
         Ok(TableSource::Raw {
-            normalization: Some(self.raw_table_source_normalization(&sql)),
             sql,
             alias: None,
             alias_quote_style: QuoteStyle::None,
@@ -2687,7 +2732,6 @@ impl<'a> Parser<'a> {
             .unwrap_or_else(|| self.sql.len());
         let sql = self.sql[start..end].trim().to_string();
         Ok(TableSource::Raw {
-            normalization: Some(self.raw_table_source_normalization(&sql)),
             sql,
             alias: None,
             alias_quote_style: QuoteStyle::None,
@@ -3889,9 +3933,11 @@ impl<'a> Parser<'a> {
                     _ => name,
                 };
                 prefix.push_str(&rendered_name);
-                return Ok(Statement::Raw(RawStatement {
+                return Ok(Statement::Command(CommandStatement {
                     comments: vec![],
                     sql: prefix,
+                    kind: CommandKind::CreateTrigger,
+                    drop_for_sqlite: false,
                 }));
             }
         }
@@ -3949,9 +3995,11 @@ impl<'a> Parser<'a> {
                 sql.push_str("IF NOT EXISTS ");
             }
             sql.push_str(&name);
-            return Ok(Statement::Raw(RawStatement {
+            return Ok(Statement::Command(CommandStatement {
                 comments: vec![],
                 sql,
+                kind: CommandKind::CreateSchema,
+                drop_for_sqlite: false,
             }));
         }
 

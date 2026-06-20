@@ -115,18 +115,14 @@ Retirement sequence:
      `TableFunction`/`Unnest` fields for ordinality, offset aliases, alias
      column lists, table-function tails, and `ROWS FROM`; typed carriers for
      JSON/XML table sources where needed.
-   - Progress: `RawTableSourceNormalization` now carries the current raw
-     table-source rewrite policy from the parser to the SQLite generator,
-     including Postgres VALUES alias cleanup, BigQuery `WITH OFFSET`, UNNEST
-     array literal policy, backtick quoting, function uppercasing, and typed
-     literal normalization. The table-source transform no longer backfills
-     `source_dialect`, and SQLite raw table-source rendering no longer branches
-     on source dialect. Single-expression BigQuery/Postgres `UNNEST(...)`
+   - Progress: `RawTableSourceNormalization` has been deleted, along with the
+     old `rewrite_postgres_table_function_sqlite` raw table-function rewrite
+     hook. The table-source transform no longer backfills `source_dialect`.
+     Single-expression BigQuery/Postgres `UNNEST(...)`
      now uses typed `TableSource::Unnest` fields for alias column lists,
      `WITH OFFSET`, offset aliases, generated BigQuery offset aliases, and
      Postgres `WITH ORDINALITY`; generator-owned rendering covers SQLite,
-     Postgres, DuckDB, and BigQuery shapes while unsupported bracket-array
-     forced-read cases stay on the raw passthrough path. `ROWS FROM (...)` now
+     Postgres, DuckDB, and BigQuery shapes. `ROWS FROM (...)` now
      has a typed `TableSource::RowsFrom` carrier with function aliases,
      table-level aliases, typed alias-column lists, and `WITH ORDINALITY`.
      JSON/XML table functions now use a semi-typed
@@ -139,13 +135,14 @@ Retirement sequence:
      through `extra_exprs`, removing the comma-triggered raw fallback for
      expression-shaped Postgres/BigQuery inputs. Base-table hint tails such as
      `PARTITION (...)`, SQLite `INDEXED BY ...`, and `NOT INDEXED` also use
-     `TableSource::TableWithTails` instead of full raw table-source text, with
-     parser-owned raw-tail normalization metadata preserved for SQLite
-     generator rendering. SQLite/Postgres `UNNEST([..])` bracket-array inputs
+     `TableSource::TableWithTails` instead of full raw table-source text.
+     SQLite/Postgres `UNNEST([..])` bracket-array inputs
      now stay on structured `TableSource::Unnest`, relying on normal
      `ArrayLiteral` / `SqliteArrayLiteral` target rendering instead of raw
-     table-source array rewrites. Raw table-source metadata has been narrowed
-     so unconditional SQLite rendering choices such as backtick quoting,
+     table-source array rewrites. Oddball `UNNEST` argument forms such as
+     `TABLE foo` now use a raw expression carrier inside structured
+     `TableSource::Unnest` instead of demoting the whole table source to raw
+     SQL. Unconditional SQLite rendering choices such as backtick quoting,
      function-name uppercasing, and typed-literal spelling are generator-owned
      rather than parser flags. `OPENJSON(...) [WITH (...)]` now joins
      `JSON_TABLE` and `XMLTABLE` on the semi-typed
@@ -171,7 +168,10 @@ Retirement sequence:
      `CREATE TYPE ... AS ENUM`. `RawStatementNormalization` has now been
      deleted: Postgres recursive CTE search/cycle rendering and
      `INSERT INTO [TABLE] FUNCTION ...` cleanup are owned by dedicated
-     `CommandKind` carriers, and `Statement::Raw` is inert statement text.
+     `CommandKind` carriers. `COMMENT ON` dollar-quote normalization, simple
+     `CREATE TRIGGER` collapse, and `CREATE SCHEMA` / `CREATE DATABASE` option
+     dropping have also moved to `CommandKind` carriers, leaving
+     `Statement::Raw` as inert statement text.
    - Exit: replace any future raw statement behavior with typed or semi-typed
      statement variants where practical. Raw statements should remain inert
      unsupported passthrough only.

@@ -3504,6 +3504,17 @@ fn test_postgres_truncate_options_to_sqlite() {
 
 #[test]
 fn test_postgres_comment_on_to_sqlite() {
+    let ast = parse(
+        "COMMENT ON TABLE mytable IS $$doc this$$",
+        Dialect::Postgres,
+    )
+    .unwrap();
+    assert!(matches!(
+        ast,
+        Statement::Command(ref command)
+            if command.kind == CommandKind::Comment
+                && command.sql == "COMMENT ON TABLE mytable IS 'doc this'"
+    ));
     validate_with_dialect(
         "COMMENT ON TABLE mytable IS 'this'",
         "COMMENT ON TABLE mytable IS 'this'",
@@ -3520,6 +3531,48 @@ fn test_postgres_comment_on_to_sqlite() {
         "COMMENT ON TABLE mytable IS $$doc this$$",
         "COMMENT ON TABLE mytable IS 'doc this'",
         Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_create_trigger_collapse_is_command_carrier() {
+    let ast = parse(
+        "CREATE CONSTRAINT TRIGGER trig AFTER INSERT ON t EXECUTE FUNCTION f()",
+        Dialect::Postgres,
+    )
+    .unwrap();
+    assert!(matches!(
+        ast,
+        Statement::Command(ref command)
+            if command.kind == CommandKind::CreateTrigger
+                && command.sql == "CREATE CONSTRAINT TRIGGER trig"
+    ));
+    validate_with_dialect(
+        "CREATE CONSTRAINT TRIGGER trig AFTER INSERT ON t EXECUTE FUNCTION f()",
+        "CREATE CONSTRAINT TRIGGER trig",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_create_schema_collapse_is_command_carrier() {
+    let ast = parse(
+        "CREATE SCHEMA IF NOT EXISTS analytics DEFAULT COLLATE utf8",
+        Dialect::Mysql,
+    )
+    .unwrap();
+    assert!(matches!(
+        ast,
+        Statement::Command(ref command)
+            if command.kind == CommandKind::CreateSchema
+                && command.sql == "CREATE SCHEMA IF NOT EXISTS analytics"
+    ));
+    validate_with_dialect(
+        "CREATE SCHEMA IF NOT EXISTS analytics DEFAULT COLLATE utf8",
+        "CREATE SCHEMA IF NOT EXISTS analytics",
+        Dialect::Mysql,
         Dialect::Sqlite,
     );
 }
@@ -5877,10 +5930,16 @@ fn test_unnest_table_source_offsets_are_structured() {
         Statement::Select(ref select)
             if matches!(
                 select.from.as_ref().map(|from| &from.source),
-                Some(TableSource::Raw { sql, .. })
-                    if sql == "UNNEST(ARRAY[1], TABLE foo) AS t(a, b)"
+                Some(TableSource::Unnest { extra_exprs, alias, .. })
+                    if alias.as_deref() == Some("t") && extra_exprs.len() == 1
             )
     ));
+    validate_with_dialect(
+        "SELECT * FROM UNNEST(ARRAY[1], TABLE foo) AS t(a, b)",
+        "SELECT * FROM UNNEST(ARRAY(1), TABLE foo) AS t",
+        Dialect::Postgres,
+        Dialect::Sqlite,
+    );
 
     let sqlite_array_ast = parse("SELECT * FROM UNNEST([1, 2, 3])", Dialect::Sqlite).unwrap();
     assert!(matches!(
@@ -6062,6 +6121,18 @@ fn test_forced_suite_table_source_tails_and_directed_join_to_sqlite() {
         "SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, DATE_TRUNC(CURRENT_DATE, MONTH), INTERVAL '1' MONTH)) AS mnth",
         "SELECT id, mnth FROM t CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(start_month, DATE_TRUNC(CURRENT_DATE, MONTH), INTERVAL '1' MONTH)) AS mnth",
         Dialect::Sqlite,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT a FROM x CROSS JOIN UNNEST(y) AS t (a)",
+        "SELECT a FROM x CROSS JOIN UNNEST(y) AS t",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT * FROM UNNEST(ARRAY[1, 2]) AS x(a)",
+        "SELECT * FROM UNNEST(ARRAY(1, 2)) AS x",
+        Dialect::Mysql,
         Dialect::Sqlite,
     );
 }

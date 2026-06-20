@@ -479,43 +479,69 @@ fn sqlite_is_recognized_interval_unit(unit: &str) -> bool {
     )
 }
 
-fn normalize_sqlite_raw_table_source_sql<'a>(
+fn normalize_sqlite_raw_passthrough_sql<'a>(
     sql: &'a str,
-    normalization: Option<&RawTableSourceNormalization>,
+    source_dialect: Option<Dialect>,
 ) -> Cow<'a, str> {
-    let Some(normalization) = normalization else {
-        return Cow::Borrowed(sql);
-    };
-    let mut normalized = if normalization.strip_postgres_values_column_aliases {
+    let upper = sql.to_ascii_uppercase();
+    let mut normalized = if source_dialect.is_some_and(crate::dialects::is_postgres_family)
+        && upper.contains("VALUES")
+    {
         Cow::Owned(dialects::strip_postgres_values_column_aliases(sql))
     } else {
         Cow::Borrowed(sql)
     };
-    if normalization.rewrite_unnest_with_offset {
+    if upper.contains("UNNEST") && upper.contains("WITH OFFSET") {
         normalized = match dialects::rewrite_unnest_with_offset(&normalized) {
             Some(rewritten) => Cow::Owned(rewritten),
             None => normalized,
         };
     }
-    normalized = match normalization.unnest_array_literal {
-        Some(RawUnnestArrayLiteralPolicy::SqliteQuotedString) => {
-            dialects::rewrite_unnest_array_literal_sqlite(&normalized)
+    normalized = if upper.contains("UNNEST") {
+        match source_dialect {
+            Some(Dialect::Sqlite) => dialects::rewrite_unnest_array_literal_sqlite(&normalized)
                 .map(Cow::Owned)
-                .unwrap_or(normalized)
+                .unwrap_or(normalized),
+            Some(Dialect::Postgres | Dialect::Mysql | Dialect::SingleStore | Dialect::Doris) => {
+                dialects::rewrite_unnest_array_literal_to_array_call(&normalized)
+                    .map(Cow::Owned)
+                    .unwrap_or(normalized)
+            }
+            _ => normalized,
         }
-        Some(RawUnnestArrayLiteralPolicy::ArrayCall) => {
-            dialects::rewrite_unnest_array_literal_to_array_call(&normalized)
-                .map(Cow::Owned)
-                .unwrap_or(normalized)
-        }
-        None => normalized,
+    } else {
+        normalized
     };
+    let normalized = normalize_sqlite_raw_tail_text(normalized);
+    if raw_table_function_fallback_needs_sqlite_cleanup(&normalized) {
+        Cow::Owned(normalize_sqlite_raw_table_function_fallback(&normalized))
+    } else {
+        normalized
+    }
+}
+
+fn normalize_sqlite_table_tails(tails: &str) -> Cow<'_, str> {
+    normalize_sqlite_raw_tail_text(Cow::Borrowed(tails))
+}
+
+fn normalize_sqlite_raw_tail_text(sql: Cow<'_, str>) -> Cow<'_, str> {
+    let mut normalized = sql;
     if normalized.contains('`') {
         normalized = Cow::Owned(normalized.replace('`', "\""));
     }
     normalized = Cow::Owned(dialects::uppercase_function_names_in_raw_sql(&normalized));
     normalized = Cow::Owned(dialects::normalize_typed_literals_in_raw_sql(&normalized));
     normalized
+}
+
+fn raw_table_function_fallback_needs_sqlite_cleanup(sql: &str) -> bool {
+    let trimmed = sql.trim_start();
+    trimmed
+        .get(..9)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("ROWS FROM"))
+        || trimmed
+            .get(..6)
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("UNNEST"))
 }
 
 fn normalize_sqlite_command_statement_sql<'a>(command: &'a CommandStatement) -> Cow<'a, str> {
@@ -534,7 +560,11 @@ fn normalize_sqlite_command_statement_sql<'a>(command: &'a CommandStatement) -> 
         CommandKind::InsertIntoFunction => {
             Cow::Owned(dialects::normalize_insert_into_function(&command.sql))
         }
-        CommandKind::Show | CommandKind::Generic => Cow::Borrowed(command.sql.as_str()),
+        CommandKind::Comment
+        | CommandKind::CreateSchema
+        | CommandKind::CreateTrigger
+        | CommandKind::Show
+        | CommandKind::Generic => Cow::Borrowed(command.sql.as_str()),
     }
 }
 
@@ -1209,14 +1239,10 @@ impl Generator {
                     self.write_quoted(alias, *alias_quote_style);
                 }
             }
-            TableSource::TableWithTails {
-                table,
-                tails,
-                normalization,
-            } => {
+            TableSource::TableWithTails { table, tails } => {
                 self.gen_table_ref(table);
                 let normalized = if matches!(self.dialect, Some(Dialect::Sqlite)) {
-                    normalize_sqlite_raw_table_source_sql(tails, normalization.as_ref())
+                    normalize_sqlite_table_tails(tails)
                 } else {
                     Cow::Borrowed(tails.as_str())
                 };
@@ -1229,10 +1255,10 @@ impl Generator {
                 sql,
                 alias,
                 alias_quote_style,
-                normalization,
+                source_dialect,
                 ..
             } => {
-                self.write_raw_table_source_sql(sql, normalization.as_ref());
+                self.write_raw_table_source_sql(sql, *source_dialect);
                 if let Some(alias) = alias {
                     self.write(" ");
                     if !self.omit_table_alias_as() {
@@ -1603,29 +1629,13 @@ impl Generator {
         matches!(self.dialect, Some(Dialect::Oracle))
     }
 
-    fn write_raw_table_source_sql(
-        &mut self,
-        sql: &str,
-        normalization: Option<&RawTableSourceNormalization>,
-    ) {
+    fn write_raw_table_source_sql(&mut self, sql: &str, source_dialect: Option<Dialect>) {
         let normalized = if matches!(self.dialect, Some(Dialect::Sqlite)) {
-            normalize_sqlite_raw_table_source_sql(sql, normalization)
+            normalize_sqlite_raw_passthrough_sql(sql, source_dialect)
         } else {
             Cow::Borrowed(sql)
         };
-        let sql = normalized.as_ref();
-        if matches!(self.dialect, Some(Dialect::Sqlite))
-            && (sql
-                .get(..9)
-                .is_some_and(|prefix| prefix.eq_ignore_ascii_case("ROWS FROM"))
-                || sql
-                    .get(..6)
-                    .is_some_and(|prefix| prefix.eq_ignore_ascii_case("UNNEST")))
-        {
-            self.write(&rewrite_postgres_table_function_sqlite(sql));
-        } else {
-            self.write(sql);
-        }
+        self.write(normalized.as_ref());
     }
 
     fn gen_table_ref(&mut self, table: &TableRef) {
@@ -7302,8 +7312,8 @@ fn rewrite_raw_table_sqlite_types(sql: &str) -> String {
     out
 }
 
-fn rewrite_postgres_table_function_sqlite(sql: &str) -> String {
-    let sql = rewrite_array_constructors_sqlite(&rewrite_raw_table_sqlite_types(sql));
+fn normalize_sqlite_raw_table_function_fallback(sql: &str) -> String {
+    let sql = rewrite_array_bracket_constructors_sqlite(&rewrite_raw_table_sqlite_types(sql));
     let bytes = sql.as_bytes();
     let mut out = String::with_capacity(sql.len());
     let mut i = 0;
@@ -7332,8 +7342,6 @@ fn rewrite_postgres_table_function_sqlite(sql: &str) -> String {
                 .get(i + 2)
                 .is_none_or(|b| !b.is_ascii_alphanumeric() && *b != b'_')
         {
-            // Normalize the alias keyword to uppercase `AS`, matching SQLGlot
-            // (the source may spell it `as`).
             out.push_str("AS");
             i += 2;
             while i < bytes.len() && bytes[i].is_ascii_whitespace() {
@@ -7351,7 +7359,7 @@ fn rewrite_postgres_table_function_sqlite(sql: &str) -> String {
                 j += 1;
             }
             if j < bytes.len() && bytes[j] == b'(' {
-                i = skip_balanced_bytes(bytes, j);
+                i = skip_balanced_parenthesized_bytes(bytes, j);
             }
             continue;
         }
@@ -7363,7 +7371,7 @@ fn rewrite_postgres_table_function_sqlite(sql: &str) -> String {
     out
 }
 
-fn rewrite_array_constructors_sqlite(sql: &str) -> String {
+fn rewrite_array_bracket_constructors_sqlite(sql: &str) -> String {
     let bytes = sql.as_bytes();
     let mut out = String::with_capacity(sql.len());
     let mut i = 0;
@@ -7390,7 +7398,7 @@ fn rewrite_array_constructors_sqlite(sql: &str) -> String {
             out.push_str("ARRAY(");
             i += 6;
             let inner_start = i;
-            i = copy_until_matching_bracket(bytes, inner_start, &mut out);
+            i = copy_until_matching_array_bracket(bytes, inner_start, &mut out);
             out.push(')');
             continue;
         }
@@ -7402,7 +7410,7 @@ fn rewrite_array_constructors_sqlite(sql: &str) -> String {
     out
 }
 
-fn copy_until_matching_bracket(bytes: &[u8], start: usize, out: &mut String) -> usize {
+fn copy_until_matching_array_bracket(bytes: &[u8], start: usize, out: &mut String) -> usize {
     let mut i = start;
     let mut depth = 1usize;
     let mut in_single_quote = false;
@@ -7434,7 +7442,7 @@ fn copy_until_matching_bracket(bytes: &[u8], start: usize, out: &mut String) -> 
     i
 }
 
-fn skip_balanced_bytes(bytes: &[u8], start: usize) -> usize {
+fn skip_balanced_parenthesized_bytes(bytes: &[u8], start: usize) -> usize {
     let mut i = start;
     let mut depth = 0usize;
     let mut in_single_quote = false;

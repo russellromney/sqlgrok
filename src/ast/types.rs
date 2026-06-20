@@ -190,7 +190,10 @@ pub struct RawStatement {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CommandKind {
+    Comment,
     Copy,
+    CreateSchema,
+    CreateTrigger,
     Show,
     Pivot,
     Unpivot,
@@ -396,16 +399,12 @@ pub enum TableSource {
     TableWithTails {
         table: TableRef,
         tails: String,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        normalization: Option<RawTableSourceNormalization>,
     },
     Raw {
         sql: String,
         alias: Option<String>,
         #[serde(default)]
         alias_quote_style: QuoteStyle,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        normalization: Option<RawTableSourceNormalization>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         source_dialect: Option<Dialect>,
     },
@@ -572,26 +571,6 @@ pub enum RawOrderNullsPolicy {
 pub enum NullTreatment {
     Ignore,
     Respect,
-}
-
-/// Array-literal rendering policy for raw `UNNEST(...)` table sources.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum RawUnnestArrayLiteralPolicy {
-    /// `UNNEST([1, 2])` -> `UNNEST(ARRAY(1, 2))`.
-    ArrayCall,
-    /// `UNNEST([1, 2])` -> `UNNEST("1, 2")`.
-    SqliteQuotedString,
-}
-
-/// Parser-owned normalization flags for raw table-source text.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RawTableSourceNormalization {
-    #[serde(default)]
-    pub strip_postgres_values_column_aliases: bool,
-    #[serde(default)]
-    pub rewrite_unnest_with_offset: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub unnest_array_literal: Option<RawUnnestArrayLiteralPolicy>,
 }
 
 // ═══════════════════════════════════════════════════════════════════════
