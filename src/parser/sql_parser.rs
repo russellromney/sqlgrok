@@ -3093,6 +3093,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_order_by_items(&mut self) -> Result<Vec<OrderByItem>> {
+        self.parse_order_by_items_with_null_treatment(false)
+    }
+
+    fn parse_order_by_items_with_null_treatment(
+        &mut self,
+        consume_null_treatment: bool,
+    ) -> Result<Vec<OrderByItem>> {
         let mut items = Vec::new();
         loop {
             let expr = self.parse_expr()?;
@@ -3116,7 +3123,9 @@ impl<'a> Parser<'a> {
             } else {
                 (None, false)
             };
-            self.consume_null_treatment();
+            if consume_null_treatment {
+                self.consume_null_treatment();
+            }
 
             items.push(OrderByItem {
                 expr,
@@ -8564,7 +8573,7 @@ impl<'a> Parser<'a> {
         let mut order_by = Vec::new();
         if self.match_token(TokenType::Order) {
             self.expect(TokenType::By)?;
-            order_by = self.parse_order_by_items()?;
+            order_by = self.parse_order_by_items_with_null_treatment(true)?;
         }
         self.consume_null_treatment();
         let limit = if self.match_token(TokenType::Limit) {
