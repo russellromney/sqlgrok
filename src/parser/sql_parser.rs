@@ -2152,6 +2152,11 @@ impl<'a> Parser<'a> {
         let mut table_ref = self.parse_table_ref()?;
         self.consume_mysql_index_hints()?;
         if self.match_token(TokenType::Partition) {
+            let tail_start = self
+                .tokens
+                .get(self.pos.saturating_sub(1))
+                .map(|token| self.char_pos_to_byte(token.position))
+                .unwrap_or(table_start);
             self.expect(TokenType::LParen)?;
             self.consume_balanced_parentheses_after_open();
             let end = self
@@ -2159,14 +2164,9 @@ impl<'a> Parser<'a> {
                 .get(self.pos)
                 .map(|token| self.char_pos_to_byte(token.position))
                 .unwrap_or_else(|| self.sql.len());
-            return Ok(TableSource::Raw {
-                sql: self.sql[table_start..end].trim().to_string(),
-                alias: None,
-                alias_quote_style: QuoteStyle::None,
-                normalization: Some(
-                    self.raw_table_source_normalization(self.sql[table_start..end].trim()),
-                ),
-                source_dialect: Some(self.dialect),
+            return Ok(TableSource::TableWithTails {
+                table: table_ref,
+                tails: self.sql[tail_start..end].trim().to_string(),
             });
         }
         self.consume_table_sample()?;
@@ -2226,6 +2226,11 @@ impl<'a> Parser<'a> {
         }
 
         if self.check_keyword("INDEXED") || self.peek_type() == &TokenType::Not {
+            let tail_start = self
+                .tokens
+                .get(self.pos)
+                .map(|token| self.char_pos_to_byte(token.position))
+                .unwrap_or_else(|| self.sql.len());
             if self.match_keyword("INDEXED") {
                 self.expect(TokenType::By)?;
                 let _ = self.parse_table_ref_no_alias()?;
@@ -2237,14 +2242,9 @@ impl<'a> Parser<'a> {
                 .get(self.pos)
                 .map(|token| self.char_pos_to_byte(token.position))
                 .unwrap_or_else(|| self.sql.len());
-            return Ok(TableSource::Raw {
-                sql: self.sql[table_start..end].trim().to_string(),
-                alias: None,
-                alias_quote_style: QuoteStyle::None,
-                normalization: Some(
-                    self.raw_table_source_normalization(self.sql[table_start..end].trim()),
-                ),
-                source_dialect: Some(self.dialect),
+            return Ok(TableSource::TableWithTails {
+                table: table_ref,
+                tails: self.sql[tail_start..end].trim().to_string(),
             });
         }
 

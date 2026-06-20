@@ -130,7 +130,9 @@ Retirement sequence:
      the structural base table while generators own tail rendering.
      Multi-argument `UNNEST(a, b, ...)` now stays on `TableSource::Unnest`
      through `extra_exprs`, removing the comma-triggered raw fallback for
-     expression-shaped Postgres/BigQuery inputs.
+     expression-shaped Postgres/BigQuery inputs. Base-table hint tails such as
+     `PARTITION (...)`, SQLite `INDEXED BY ...`, and `NOT INDEXED` also use
+     `TableSource::TableWithTails` instead of full raw table-source text.
    - Exit: replace the remaining raw text with structured table-source fields
      where practical. Remaining table-source raw carriers are
      parenthesized/table-function fallback shapes and dialect fallback cases

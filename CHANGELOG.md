@@ -5,6 +5,22 @@ this file records what landed.
 
 ## 2026-06-20
 
+### Architecture Port: Table Hint Tail Carriers
+
+- Reused `TableSource::TableWithTails` for base-table `PARTITION (...)`,
+  SQLite `INDEXED BY ...`, and `NOT INDEXED` tails.
+- Removed two more full `TableSource::Raw` exits from table-source parsing;
+  the base table now stays structural while the dialect hint/tail text remains
+  an inert generator-rendered suffix.
+- Refreshed all seven forced-pair SQLGlot bridge reports through the debug
+  bridge because local release builds were killed under memory pressure. Exact
+  matches are unchanged from the multi-argument UNNEST slice: postgres ->
+  sqlite `11976`, mysql -> sqlite `11739`, sqlite -> sqlite `11911`,
+  postgres -> postgres `8612`, mysql -> postgres `7949`, sqlite -> postgres
+  `7867`, and postgres -> duckdb `7316`.
+- Verified zero row-level regressions across old matched rows in all seven
+  lanes.
+
 ### Architecture Port: Multi-Argument UNNEST
 
 - Extended `TableSource::Unnest` with structured `extra_exprs`, so

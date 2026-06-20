@@ -851,6 +851,19 @@ fn test_sqlite_pragma_and_database_commands() {
     for (sql, expected) in cases {
         validate_with_dialect(sql, expected, Dialect::Sqlite, Dialect::Sqlite);
     }
+
+    let indexed_ast = parse("SELECT * FROM t AS tt INDEXED BY s.i", Dialect::Sqlite).unwrap();
+    assert!(matches!(
+        indexed_ast,
+        Statement::Select(ref select)
+            if matches!(
+                select.from.as_ref().map(|from| &from.source),
+                Some(TableSource::TableWithTails { table, tails })
+                    if table.name == "t"
+                        && table.alias.as_deref() == Some("tt")
+                        && tails == "INDEXED BY s.i"
+            )
+    ));
 }
 
 #[test]
@@ -5798,6 +5811,17 @@ fn test_forced_suite_table_source_tails_and_directed_join_to_sqlite() {
                 select.from.as_ref().map(|from| &from.source),
                 Some(TableSource::TableWithTails { table, tails })
                     if table.name == "my_table" && tails.starts_with("AT ")
+            )
+    ));
+
+    let partition_ast = parse("SELECT * FROM t PARTITION (p0, p1)", Dialect::Mysql).unwrap();
+    assert!(matches!(
+        partition_ast,
+        Statement::Select(ref select)
+            if matches!(
+                select.from.as_ref().map(|from| &from.source),
+                Some(TableSource::TableWithTails { table, tails })
+                    if table.name == "t" && tails == "PARTITION (p0, p1)"
             )
     ));
 
