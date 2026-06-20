@@ -2733,6 +2733,62 @@ fn test_array_function_args_to_sqlite() {
 }
 
 #[test]
+fn test_array_constructor_function_to_postgres_and_duckdb() {
+    validate_with_dialect(
+        "SELECT ARRAY(1, 2, 3)",
+        "SELECT ARRAY[1, 2, 3]",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT ARRAY(1, 2, 3)",
+        "SELECT ARRAY[1, 2, 3]",
+        Dialect::Mysql,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT ARRAY(1, 2, 3)",
+        "SELECT [1, 2, 3]",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT ARRAY[1, 2, 3]",
+        "SELECT [1, 2, 3]",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT ARRAY(SELECT 1)",
+        "SELECT ARRAY(SELECT 1)",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT ARRAY(SELECT 1)",
+        "SELECT ARRAY(SELECT 1)",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+}
+
+#[test]
+fn test_sqlite_array_literal_to_non_sqlite_targets() {
+    validate_with_dialect(
+        "SELECT [1, 2, 3]",
+        "SELECT \"1, 2, 3\"",
+        Dialect::Sqlite,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT [1, 2, 3]",
+        "SELECT \"1, 2, 3\"",
+        Dialect::Sqlite,
+        Dialect::DuckDb,
+    );
+}
+
+#[test]
 fn test_fat_arrow_named_args_to_sqlite() {
     for dialect in [Dialect::Postgres, Dialect::Mysql, Dialect::Sqlite] {
         validate_with_dialect(

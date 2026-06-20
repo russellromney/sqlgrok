@@ -3370,6 +3370,54 @@ impl Generator {
         }
     }
 
+    fn gen_array_constructor_function(&mut self, args: &[Expr]) -> bool {
+        match self.dialect {
+            Some(dialect) if crate::dialects::is_postgres_family(dialect) => {
+                if let [Expr::Subquery(query)] = args {
+                    self.write_keyword("ARRAY(");
+                    self.gen_statement(query);
+                    self.write(")");
+                } else {
+                    self.write_keyword("ARRAY[");
+                    self.gen_expr_list(args);
+                    self.write("]");
+                }
+                true
+            }
+            Some(Dialect::DuckDb) => {
+                if let [Expr::Subquery(query)] = args {
+                    self.write_keyword("ARRAY(");
+                    self.gen_statement(query);
+                    self.write(")");
+                } else if args.len() == 1 && Self::array_constructor_arg_is_query(&args[0]) {
+                    self.write_keyword("ARRAY(");
+                    self.gen_expr(&args[0]);
+                    self.write(")");
+                } else {
+                    self.write("[");
+                    self.gen_expr_list(args);
+                    self.write("]");
+                }
+                true
+            }
+            _ if let [Expr::Subquery(query)] = args => {
+                self.write_keyword("ARRAY(");
+                self.gen_statement(query);
+                self.write(")");
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn array_constructor_arg_is_query(arg: &Expr) -> bool {
+        match arg {
+            Expr::Subquery(_) => true,
+            Expr::Nested(inner) => matches!(inner.as_ref(), Expr::Subquery(_)),
+            _ => false,
+        }
+    }
+
     fn gen_sqlite_function_lowering(
         &mut self,
         name: &str,
@@ -4230,14 +4278,7 @@ impl Generator {
                     self.write(raw_sql);
                     return;
                 }
-                if name.eq_ignore_ascii_case("ARRAY")
-                    && args.len() == 1
-                    && let Expr::Subquery(query) = &args[0]
-                {
-                    self.write(name);
-                    self.write("(");
-                    self.gen_statement(query);
-                    self.write(")");
+                if upper == "ARRAY" && self.gen_array_constructor_function(args) {
                     return;
                 }
                 if matches!(self.dialect, Some(Dialect::DuckDb))
@@ -4832,6 +4873,10 @@ impl Generator {
                     self.write_keyword("ARRAY(");
                     self.gen_expr_list(items);
                     self.write(")");
+                } else if matches!(self.dialect, Some(Dialect::DuckDb | Dialect::BigQuery)) {
+                    self.write("[");
+                    self.gen_expr_list(items);
+                    self.write("]");
                 } else {
                     self.write_keyword("ARRAY[");
                     self.gen_expr_list(items);
@@ -4839,15 +4884,9 @@ impl Generator {
                 }
             }
             Expr::SqliteArrayLiteral(items) => {
-                if matches!(self.dialect, Some(Dialect::Sqlite)) {
-                    self.write("\"");
-                    self.write(&self.render_array_body(items).replace('"', "\"\""));
-                    self.write("\"");
-                } else {
-                    self.write_keyword("ARRAY[");
-                    self.gen_expr_list(items);
-                    self.write("]");
-                }
+                self.write("\"");
+                self.write(&self.render_array_body(items).replace('"', "\"\""));
+                self.write("\"");
             }
             Expr::Tuple(items) => {
                 self.write("(");
