@@ -213,6 +213,7 @@ impl<'sql> InternalOrderBy<'sql> {
             explicit_direction: self.explicit_direction,
             nulls_first: self.nulls_first,
             implicit_nulls: self.implicit_nulls,
+            null_treatment: None,
         }
     }
 }
@@ -258,6 +259,8 @@ impl<'sql> InternalExpr<'sql> {
                         raw_order_nulls: None,
                         arg_order_by: vec![],
                         arg_limit: None,
+                        arg_limit_offset: None,
+                        arg_null_treatment: None,
                         filter: None,
                         over: over.map(InternalWindowSpec::into_public),
                     }

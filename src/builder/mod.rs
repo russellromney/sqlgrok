@@ -330,6 +330,8 @@ pub fn func(name: &str, args: Vec<Expr>) -> Expr {
         raw_order_nulls: None,
         arg_order_by: vec![],
         arg_limit: None,
+        arg_limit_offset: None,
+        arg_null_treatment: None,
         filter: None,
         over: None,
     }
@@ -353,6 +355,8 @@ pub fn func_distinct(name: &str, args: Vec<Expr>) -> Expr {
         raw_order_nulls: None,
         arg_order_by: vec![],
         arg_limit: None,
+        arg_limit_offset: None,
+        arg_null_treatment: None,
         filter: None,
         over: None,
     }
@@ -1160,6 +1164,7 @@ impl SelectBuilder {
             explicit_direction: !ascending,
             nulls_first,
             implicit_nulls: false,
+            null_treatment: None,
         });
         self
     }
@@ -1469,6 +1474,7 @@ fn parse_order_by_item(s: &str, dialect: Dialect) -> Option<OrderByItem> {
         explicit_direction: !ascending || s.to_uppercase().ends_with(" ASC"),
         nulls_first,
         implicit_nulls: false,
+        null_treatment: None,
     })
 }
 

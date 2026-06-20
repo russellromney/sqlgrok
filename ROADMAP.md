@@ -97,9 +97,14 @@ Retirement sequence:
      tails for the common aggregate/function family without raw argument text.
      Function-local `ORDER BY ... IGNORE/RESPECT NULLS` now stays structured
      and drops the null-treatment marker through parser-owned normalization
-     instead of raw argument fallback.
-   - Remaining: model the harder nonstandard aggregate tails that still need
-     raw fallback: `HAVING` and comma-style `LIMIT`.
+     instead of raw argument fallback. `HAVING MAX/MIN`, function-argument
+     `IGNORE/RESPECT NULLS`, function-local `ORDER BY ... IGNORE/RESPECT
+     NULLS`, and comma-style function `LIMIT offset, count` now have typed AST
+     fields, so common aggregate/function tails no longer need raw argument
+     strings.
+   - Remaining: raw function argument fallback is now for genuinely irregular
+     syntaxes such as `MAKE_INTERVAL`, `XMLELEMENT`, `OVERLAY`, and
+     `CEIL/FLOOR(... TO ...)`, not ordinary aggregate tail carriers.
 
 2. **Raw table-source carriers.**
    - Problem: `TableSource::Raw` still carries behavior, not only passthrough:
@@ -142,7 +147,11 @@ Retirement sequence:
      table-source array rewrites. Raw table-source metadata has been narrowed
      so unconditional SQLite rendering choices such as backtick quoting,
      function-name uppercasing, and typed-literal spelling are generator-owned
-     rather than parser flags.
+     rather than parser flags. `OPENJSON(...) [WITH (...)]` now joins
+     `JSON_TABLE` and `XMLTABLE` on the semi-typed
+     `TableSource::RawTableFunction` carrier, with the complex body/tail kept
+     textual but alias handling and SQLite type spelling owned by the
+     generator.
    - Exit: replace the remaining raw text with structured table-source fields
      where practical. Remaining table-source raw carriers are
      parenthesized/table-function fallback shapes and dialect fallback cases

@@ -198,8 +198,12 @@ of ordinary function rewrites.
    `ORDER BY` and `LIMIT`, with parser/generator ownership for the common
    aggregate family. Function-local `ORDER BY ... IGNORE/RESPECT NULLS` now
    stays structured and drops the null-treatment marker through parser-owned
-   normalization. Remaining raw fallback is now limited to harder tails such
-   as `HAVING` and comma-style `LIMIT`.
+   normalization. `HAVING MAX/MIN`, function-argument `IGNORE/RESPECT NULLS`,
+   function-local `ORDER BY ... IGNORE/RESPECT NULLS`, and comma-style
+   function `LIMIT offset, count` now have typed AST fields, so common
+   aggregate/function tails no longer need raw argument strings. Remaining raw
+   function argument fallback is for genuinely irregular syntaxes such as
+   `MAKE_INTERVAL`, `XMLELEMENT`, `OVERLAY`, and `CEIL/FLOOR(... TO ...)`.
 2. **Raw table-source carriers.**
    `TableSource::Raw` still encodes behavior for `UNNEST(...)`, `WITH OFFSET`,
    Postgres VALUES alias cleanup, typed literals, and raw function name
@@ -215,9 +219,10 @@ of ordinary function rewrites.
    Another slice adds `TableSource::RowsFrom` for Postgres `ROWS FROM (...)`,
    including function aliases, typed alias-column lists, table-level aliases,
    and `WITH ORDINALITY`. Another slice adds a semi-typed
-   `TableSource::RawTableFunction` carrier for `JSON_TABLE(...)` and
-   `XMLTABLE(...)`, keeping the complex inner body textual while moving alias
-   handling and SQLite type normalization into parser/generator ownership.
+   `TableSource::RawTableFunction` carrier for `JSON_TABLE(...)`,
+   `XMLTABLE(...)`, and `OPENJSON(...) [WITH (...)]`, keeping the complex
+   inner body/tail textual while moving alias handling and SQLite type
+   normalization into parser/generator ownership.
    Another slice adds `TableSource::TableWithTails` for base tables followed
    by raw dialect tails such as `LATERAL VIEW`, `AT`, `BEFORE`, and `CHANGES`,
    letting helper passes see the structural base table while generators own

@@ -715,6 +715,8 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
                         raw_order_nulls: None,
                         arg_order_by: vec![],
                         arg_limit: None,
+                        arg_limit_offset: None,
+                        arg_null_treatment: None,
                         filter: filter.map(|f| Box::new(transform_expr_plugin(*f, target))),
                         over,
                     };
@@ -748,6 +750,8 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
                         raw_order_nulls: None,
                         arg_order_by: vec![],
                         arg_limit: None,
+                        arg_limit_offset: None,
+                        arg_null_treatment: None,
                         filter: None,
                         over: None,
                     };
@@ -767,6 +771,8 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
             raw_order_nulls,
             arg_order_by,
             arg_limit,
+            arg_limit_offset,
+            arg_null_treatment,
             filter,
             over,
         } => {
@@ -789,10 +795,18 @@ fn transform_expr_plugin(expr: Expr, target: &DialectRef) -> Expr {
                 raw_order_nulls,
                 arg_order_by,
                 arg_limit: arg_limit.map(|limit| Box::new(transform_expr_plugin(*limit, target))),
+                arg_limit_offset: arg_limit_offset
+                    .map(|offset| Box::new(transform_expr_plugin(*offset, target))),
+                arg_null_treatment,
                 filter: filter.map(|f| Box::new(transform_expr_plugin(*f, target))),
                 over,
             }
         }
+        Expr::HavingMax { expr, having, max } => Expr::HavingMax {
+            expr: Box::new(transform_expr_plugin(*expr, target)),
+            having: Box::new(transform_expr_plugin(*having, target)),
+            max,
+        },
         Expr::Cast { expr, data_type } => Expr::Cast {
             expr: Box::new(transform_expr_plugin(*expr, target)),
             data_type: target.map_data_type(&data_type),

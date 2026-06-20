@@ -343,6 +343,10 @@ fn annotate_children<S: Schema>(
                 annotate_expr(f, ctx, ann);
             }
         }
+        Expr::HavingMax { expr, having, .. } => {
+            annotate_expr(expr, ctx, ann);
+            annotate_expr(having, ctx, ann);
+        }
         Expr::WithinGroup {
             expr: inner,
             order_by,
@@ -602,6 +606,7 @@ fn infer_type<S: Schema>(
 
         // ── Generic function ─────────────────────────────────────────
         Expr::Function { name, args, .. } => infer_generic_function_type(name, args, ctx, ann),
+        Expr::HavingMax { expr: inner, .. } => ann.get_type(inner.as_ref()).cloned(),
         Expr::WithinGroup { expr: inner, .. } => ann.get_type(inner.as_ref()).cloned(),
 
         // ── Typed functions ──────────────────────────────────────────

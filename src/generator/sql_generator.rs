@@ -164,6 +164,7 @@ fn select_with_sqlite_distinct_on_lowering(sel: &SelectStatement) -> Option<Sele
                 explicit_direction: false,
                 nulls_first: None,
                 implicit_nulls: false,
+                null_treatment: None,
             })
             .collect()
     } else {
@@ -319,6 +320,8 @@ fn sqlite_instr_with_position_expr(haystack: Expr, needle: Expr, position: Expr)
         raw_order_nulls: None,
         arg_order_by: vec![],
         arg_limit: None,
+        arg_limit_offset: None,
+        arg_null_treatment: None,
         filter: None,
         over: None,
     };
@@ -329,6 +332,8 @@ fn sqlite_instr_with_position_expr(haystack: Expr, needle: Expr, position: Expr)
         raw_order_nulls: None,
         arg_order_by: vec![],
         arg_limit: None,
+        arg_limit_offset: None,
+        arg_null_treatment: None,
         filter: None,
         over: None,
     };
@@ -402,6 +407,8 @@ fn sqlite_postgres_json_typeof_expr(expr: Expr) -> Expr {
             raw_order_nulls: None,
             arg_order_by: vec![],
             arg_limit: None,
+            arg_limit_offset: None,
+            arg_null_treatment: None,
             filter: None,
             over: None,
         }
@@ -1189,10 +1196,11 @@ impl Generator {
                 kind,
                 name,
                 body,
+                tail,
                 alias,
                 alias_quote_style,
             } => {
-                self.gen_raw_table_function(*kind, name, body);
+                self.gen_raw_table_function(*kind, name, body, tail.as_deref());
                 if let Some(alias) = alias {
                     self.write(" ");
                     if !self.omit_table_alias_as() {
@@ -1403,20 +1411,61 @@ impl Generator {
         }
     }
 
-    fn gen_raw_table_function(&mut self, kind: RawTableFunctionKind, name: &str, body: &str) {
-        let sql = format!("{name}({body})");
+    fn gen_raw_table_function(
+        &mut self,
+        kind: RawTableFunctionKind,
+        name: &str,
+        body: &str,
+        tail: Option<&str>,
+    ) {
+        let body = if matches!(kind, RawTableFunctionKind::OpenJson) {
+            Cow::Owned(Self::normalize_raw_function_arg_commas(body))
+        } else {
+            Cow::Borrowed(body)
+        };
+        let mut sql = format!("{name}({body})");
+        if let Some(tail) = tail {
+            sql.push(' ');
+            sql.push_str(tail);
+        }
         if matches!(self.dialect, Some(Dialect::Sqlite)) {
             match kind {
                 RawTableFunctionKind::JsonTable => {
                     self.write(&rewrite_json_table_sqlite_types(&sql));
                 }
-                RawTableFunctionKind::XmlTable => {
+                RawTableFunctionKind::OpenJson | RawTableFunctionKind::XmlTable => {
                     self.write(&rewrite_raw_table_sqlite_types(&sql));
                 }
             }
         } else {
             self.write(&sql);
         }
+    }
+
+    fn normalize_raw_function_arg_commas(sql: &str) -> String {
+        let mut out = String::with_capacity(sql.len());
+        let mut chars = sql.chars().peekable();
+        let mut in_single_quote = false;
+
+        while let Some(ch) = chars.next() {
+            out.push(ch);
+            if ch == '\'' {
+                if in_single_quote && chars.peek() == Some(&'\'') {
+                    out.push(chars.next().expect("peeked quote must exist"));
+                } else {
+                    in_single_quote = !in_single_quote;
+                }
+                continue;
+            }
+            if !in_single_quote
+                && ch == ','
+                && chars.peek().is_some_and(|next| !next.is_whitespace())
+            {
+                out.push(' ');
+            }
+        }
+
+        out
     }
 
     fn gen_rows_from_item(&mut self, item: &RowsFromItem) {
@@ -1725,7 +1774,45 @@ impl Generator {
         }
     }
 
-    fn gen_function_arg_modifiers(&mut self, order_by: &[OrderByItem], limit: Option<&Expr>) {
+    fn gen_function_arg_list(&mut self, args: &[Expr], null_treatment: Option<NullTreatment>) {
+        for (i, arg) in args.iter().enumerate() {
+            if i > 0 {
+                self.write(", ");
+            }
+            if i == 0
+                && let Some(treatment) = null_treatment
+                && matches!(self.dialect, Some(Dialect::BigQuery))
+            {
+                if let Expr::HavingMax { expr, having, max } = arg {
+                    self.gen_expr(expr);
+                    self.write(" ");
+                    self.write_keyword(match treatment {
+                        NullTreatment::Ignore => "IGNORE NULLS",
+                        NullTreatment::Respect => "RESPECT NULLS",
+                    });
+                    self.write(" ");
+                    self.write_keyword(if *max { "HAVING MAX " } else { "HAVING MIN " });
+                    self.gen_expr(having);
+                } else {
+                    self.gen_expr(arg);
+                    self.write(" ");
+                    self.write_keyword(match treatment {
+                        NullTreatment::Ignore => "IGNORE NULLS",
+                        NullTreatment::Respect => "RESPECT NULLS",
+                    });
+                }
+            } else {
+                self.gen_expr(arg);
+            }
+        }
+    }
+
+    fn gen_function_arg_modifiers(
+        &mut self,
+        order_by: &[OrderByItem],
+        limit: Option<&Expr>,
+        limit_offset: Option<&Expr>,
+    ) {
         if !order_by.is_empty() {
             self.write(" ");
             self.write_keyword("ORDER BY ");
@@ -1740,6 +1827,15 @@ impl Generator {
                 } else if item.explicit_direction {
                     self.write(" ");
                     self.write_keyword("ASC");
+                }
+                if let Some(treatment) = item.null_treatment
+                    && !matches!(self.dialect, Some(Dialect::Sqlite | Dialect::Postgres))
+                {
+                    self.write(" ");
+                    self.write_keyword(match treatment {
+                        NullTreatment::Ignore => "IGNORE NULLS",
+                        NullTreatment::Respect => "RESPECT NULLS",
+                    });
                 }
                 if should_render_nulls_ordering(self.dialect, item)
                     && let Some(nulls_first) = item.nulls_first
@@ -1756,6 +1852,10 @@ impl Generator {
         if let Some(limit) = limit {
             self.write(" ");
             self.write_keyword("LIMIT ");
+            if let Some(offset) = limit_offset {
+                self.gen_expr(offset);
+                self.write(", ");
+            }
             self.gen_expr(limit);
         }
     }
@@ -4096,6 +4196,8 @@ impl Generator {
                 raw_order_nulls,
                 arg_order_by,
                 arg_limit,
+                arg_limit_offset,
+                arg_null_treatment,
                 filter,
                 over,
             } => {
@@ -4128,8 +4230,24 @@ impl Generator {
                     self.write(")");
                     return;
                 }
+                if matches!(self.dialect, Some(Dialect::DuckDb))
+                    && upper == "ANY_VALUE"
+                    && args.len() == 1
+                    && let Expr::HavingMax { expr, having, max } = &args[0]
+                {
+                    self.write_keyword(if *max { "ARG_MAX_NULL" } else { "ARG_MIN_NULL" });
+                    self.write("(");
+                    self.gen_expr(expr);
+                    self.write(", ");
+                    self.gen_expr(having);
+                    self.write(")");
+                    self.gen_filter_and_over(filter.as_deref(), over.as_ref());
+                    return;
+                }
                 if arg_order_by.is_empty()
                     && arg_limit.is_none()
+                    && arg_limit_offset.is_none()
+                    && arg_null_treatment.is_none()
                     && self.gen_sqlite_function_lowering(
                         name,
                         args,
@@ -4219,13 +4337,23 @@ impl Generator {
                 if *distinct {
                     self.write_keyword("DISTINCT ");
                 }
-                self.gen_expr_list(args);
+                self.gen_function_arg_list(args, *arg_null_treatment);
                 if !(matches!(self.dialect, Some(Dialect::Sqlite)) && upper == "GROUP_CONCAT") {
-                    self.gen_function_arg_modifiers(arg_order_by, arg_limit.as_deref());
+                    self.gen_function_arg_modifiers(
+                        arg_order_by,
+                        arg_limit.as_deref(),
+                        arg_limit_offset.as_deref(),
+                    );
                 }
                 self.write(")");
 
                 self.gen_filter_and_over(filter.as_deref(), over.as_ref());
+            }
+            Expr::HavingMax { expr, having, max } => {
+                self.gen_expr(expr);
+                self.write(" ");
+                self.write_keyword(if *max { "HAVING MAX " } else { "HAVING MIN " });
+                self.gen_expr(having);
             }
             Expr::WithinGroup {
                 expr,
@@ -7116,6 +7244,25 @@ fn rewrite_json_table_sqlite_types(sql: &str) -> String {
     rewrite_raw_table_sqlite_types(sql).replace("VARCHAR", "TEXT")
 }
 
+fn raw_sql_integer_type_len(bytes: &[u8], index: usize) -> Option<usize> {
+    let keywords: [&[u8]; 5] = [b"TINYINT", b"SMALLINT", b"BIGINT", b"INTEGER", b"INT"];
+    for keyword in keywords {
+        let len = keyword.len();
+        if bytes[index..].len() >= len
+            && bytes[index..index + len].eq_ignore_ascii_case(keyword)
+            && bytes
+                .get(index.wrapping_sub(1))
+                .is_none_or(|b| !b.is_ascii_alphanumeric() && *b != b'_')
+            && bytes
+                .get(index + len)
+                .is_none_or(|b| !b.is_ascii_alphanumeric() && *b != b'_')
+        {
+            return Some(len);
+        }
+    }
+    None
+}
+
 fn rewrite_raw_table_sqlite_types(sql: &str) -> String {
     let bytes = sql.as_bytes();
     let mut out = String::with_capacity(sql.len());
@@ -7141,17 +7288,9 @@ fn rewrite_raw_table_sqlite_types(sql: &str) -> String {
                 i += 7;
                 continue;
             }
-            if bytes[i..].len() >= 3
-                && bytes[i..i + 3].eq_ignore_ascii_case(b"INT")
-                && bytes
-                    .get(i.wrapping_sub(1))
-                    .is_none_or(|b| !b.is_ascii_alphanumeric() && *b != b'_')
-                && bytes
-                    .get(i + 3)
-                    .is_none_or(|b| !b.is_ascii_alphanumeric() && *b != b'_')
-            {
+            if let Some(len) = raw_sql_integer_type_len(bytes, i) {
                 out.push_str("INTEGER");
-                i += 3;
+                i += len;
                 continue;
             }
         }

@@ -362,6 +362,7 @@ pub struct RowsFromItem {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RawTableFunctionKind {
     JsonTable,
+    OpenJson,
     XmlTable,
 }
 
@@ -386,6 +387,8 @@ pub enum TableSource {
         kind: RawTableFunctionKind,
         name: String,
         body: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        tail: Option<String>,
         alias: Option<String>,
         #[serde(default)]
         alias_quote_style: QuoteStyle,
@@ -551,6 +554,8 @@ pub struct OrderByItem {
     /// Whether NULLS FIRST / NULLS LAST was inferred from source dialect semantics.
     #[serde(default)]
     pub implicit_nulls: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub null_treatment: Option<NullTreatment>,
 }
 
 /// Null-ordering semantics attached to raw aggregate/function argument text.
@@ -560,6 +565,13 @@ pub enum RawOrderNullsPolicy {
     /// NULLS FIRST. This is parser-owned source semantics consumed by targets
     /// that need explicit null ordering when rendering raw argument carriers.
     PostgresDefault,
+}
+
+/// IGNORE NULLS / RESPECT NULLS attached to a function argument.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NullTreatment {
+    Ignore,
+    Respect,
 }
 
 /// Array-literal rendering policy for raw `UNNEST(...)` table sources.
@@ -640,10 +652,20 @@ pub enum Expr {
         arg_order_by: Vec<OrderByItem>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         arg_limit: Option<Box<Expr>>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        arg_limit_offset: Option<Box<Expr>>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        arg_null_treatment: Option<NullTreatment>,
         /// FILTER (WHERE expr) clause on aggregate
         filter: Option<Box<Expr>>,
         /// OVER window specification for window functions
         over: Option<WindowSpec>,
+    },
+    /// BigQuery-style aggregate argument modifier: `expr HAVING MAX/MIN having`.
+    HavingMax {
+        expr: Box<Expr>,
+        having: Box<Expr>,
+        max: bool,
     },
     /// `func(...) WITHIN GROUP (ORDER BY ...)` with optional FILTER / OVER.
     WithinGroup {
@@ -2607,6 +2629,8 @@ impl Expr {
                 args,
                 arg_order_by,
                 arg_limit,
+                arg_limit_offset,
+                arg_null_treatment: _,
                 filter,
                 ..
             } => {
@@ -2619,9 +2643,16 @@ impl Expr {
                 if let Some(limit) = arg_limit {
                     limit.walk(visitor);
                 }
+                if let Some(offset) = arg_limit_offset {
+                    offset.walk(visitor);
+                }
                 if let Some(f) = filter {
                     f.walk(visitor);
                 }
+            }
+            Expr::HavingMax { expr, having, .. } => {
+                expr.walk(visitor);
+                having.walk(visitor);
             }
             Expr::WithinGroup {
                 expr,
@@ -2823,6 +2854,8 @@ impl Expr {
                 raw_order_nulls,
                 arg_order_by,
                 arg_limit,
+                arg_limit_offset,
+                arg_null_treatment,
                 filter,
                 over,
             } => Expr::Function {
@@ -2838,8 +2871,15 @@ impl Expr {
                     })
                     .collect(),
                 arg_limit: arg_limit.map(|limit| Box::new(limit.transform(func))),
+                arg_limit_offset: arg_limit_offset.map(|offset| Box::new(offset.transform(func))),
+                arg_null_treatment,
                 filter: filter.map(|f| Box::new(f.transform(func))),
                 over,
+            },
+            Expr::HavingMax { expr, having, max } => Expr::HavingMax {
+                expr: Box::new(expr.transform(func)),
+                having: Box::new(having.transform(func)),
+                max,
             },
             Expr::WithinGroup {
                 expr,

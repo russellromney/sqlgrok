@@ -673,6 +673,8 @@ mod tests {
             raw_order_nulls: None,
             arg_order_by: vec![],
             arg_limit: None,
+            arg_limit_offset: None,
+            arg_null_treatment: None,
             filter: None,
             over: None,
         };
@@ -688,6 +690,8 @@ mod tests {
             raw_order_nulls: None,
             arg_order_by: vec![],
             arg_limit: None,
+            arg_limit_offset: None,
+            arg_null_treatment: None,
             filter: None,
             over: Some(WindowSpec {
                 window_ref: None,

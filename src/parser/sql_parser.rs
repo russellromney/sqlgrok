@@ -41,6 +41,14 @@ fn dialect_pipes_as_or(dialect: Dialect) -> bool {
     )
 }
 
+struct OrderedFunctionArgs {
+    args: Vec<Expr>,
+    null_treatment: Option<NullTreatment>,
+    order_by: Vec<OrderByItem>,
+    limit: Option<Expr>,
+    limit_offset: Option<Expr>,
+}
+
 fn dialect_interprets_string_escapes(dialect: Dialect) -> bool {
     // SQLite and (standard-conforming) Postgres treat backslashes
     // inside `'...'` as literal characters. Postgres' E'...' strings
@@ -403,6 +411,7 @@ pub struct Parser<'a> {
     pos: usize,
     sql: &'a str,
     parsing_column_default: bool,
+    preserve_arg_null_treatment: bool,
     /// Whether to preserve comments during parsing.
     #[allow(dead_code)]
     preserve_comments: bool,
@@ -455,6 +464,7 @@ impl<'a> Parser<'a> {
             pos: 0,
             sql,
             parsing_column_default: false,
+            preserve_arg_null_treatment: false,
             preserve_comments: false,
             pending_comments: Vec::new(),
             dialect: Dialect::Ansi,
@@ -470,6 +480,7 @@ impl<'a> Parser<'a> {
             pos: 0,
             sql,
             parsing_column_default: false,
+            preserve_arg_null_treatment: false,
             preserve_comments: true,
             pending_comments: Vec::new(),
             dialect: Dialect::Ansi,
@@ -506,6 +517,7 @@ impl<'a> Parser<'a> {
             pos: 0,
             sql,
             parsing_column_default: false,
+            preserve_arg_null_treatment: false,
             preserve_comments,
             pending_comments: Vec::new(),
             dialect,
@@ -1774,6 +1786,8 @@ impl<'a> Parser<'a> {
                     raw_order_nulls: None,
                     arg_order_by: vec![],
                     arg_limit: None,
+                    arg_limit_offset: None,
+                    arg_null_treatment: None,
                     filter: None,
                     over: None,
                 },
@@ -2112,7 +2126,7 @@ impl<'a> Parser<'a> {
 
         if matches!(
             self.peek().value.to_ascii_uppercase().as_str(),
-            "JSON_TABLE" | "XMLTABLE"
+            "JSON_TABLE" | "OPENJSON" | "XMLTABLE"
         ) && self.peek_n_type(1) == &TokenType::LParen
         {
             return self.parse_raw_table_function_source();
@@ -2530,6 +2544,7 @@ impl<'a> Parser<'a> {
         let name = name_token.value.to_ascii_uppercase();
         let kind = match name.as_str() {
             "JSON_TABLE" => RawTableFunctionKind::JsonTable,
+            "OPENJSON" => RawTableFunctionKind::OpenJson,
             "XMLTABLE" => RawTableFunctionKind::XmlTable,
             _ => {
                 return Err(SqlglotError::ParserError {
@@ -2568,6 +2583,25 @@ impl<'a> Parser<'a> {
             .map(|token| self.char_pos_to_byte(token.position))
             .unwrap_or(body_start);
         let body = self.sql[body_start..body_end].trim().to_string();
+        let tail = if matches!(kind, RawTableFunctionKind::OpenJson)
+            && self.match_token(TokenType::With)
+        {
+            let tail_start = self
+                .tokens
+                .get(self.pos.saturating_sub(1))
+                .map(|token| self.char_pos_to_byte(token.position))
+                .unwrap_or_else(|| self.sql.len());
+            self.expect(TokenType::LParen)?;
+            self.consume_balanced_parentheses_after_open();
+            let tail_end = self
+                .tokens
+                .get(self.pos)
+                .map(|token| self.char_pos_to_byte(token.position))
+                .unwrap_or_else(|| self.sql.len());
+            Some(self.sql[tail_start..tail_end].trim().to_string())
+        } else {
+            None
+        };
         let (alias, alias_quote_style) = match self.parse_optional_alias()? {
             Some((name, qs)) => (Some(name), qs),
             None => (None, QuoteStyle::None),
@@ -2576,6 +2610,7 @@ impl<'a> Parser<'a> {
             kind,
             name,
             body,
+            tail,
             alias,
             alias_quote_style,
         })
@@ -3102,7 +3137,11 @@ impl<'a> Parser<'a> {
     ) -> Result<Vec<OrderByItem>> {
         let mut items = Vec::new();
         loop {
-            let expr = self.parse_expr()?;
+            let expr = if consume_null_treatment {
+                self.parse_expr_preserving_arg_null_treatment()?
+            } else {
+                self.parse_expr()?
+            };
             let (ascending, explicit_direction) = if self.match_token(TokenType::Desc) {
                 (false, true)
             } else if self.match_token(TokenType::Asc) {
@@ -3123,9 +3162,9 @@ impl<'a> Parser<'a> {
             } else {
                 (None, false)
             };
-            if consume_null_treatment {
-                self.consume_null_treatment();
-            }
+            let null_treatment = consume_null_treatment
+                .then(|| self.parse_null_treatment())
+                .flatten();
 
             items.push(OrderByItem {
                 expr,
@@ -3133,6 +3172,7 @@ impl<'a> Parser<'a> {
                 explicit_direction,
                 nulls_first,
                 implicit_nulls,
+                null_treatment,
             });
             if !self.match_token(TokenType::Comma) {
                 break;
@@ -3143,7 +3183,9 @@ impl<'a> Parser<'a> {
 
     fn parse_expr_list(&mut self) -> Result<Vec<Expr>> {
         let mut exprs = vec![self.parse_expr_list_item()?];
-        self.consume_null_treatment();
+        if !self.preserve_arg_null_treatment {
+            self.consume_null_treatment();
+        }
         while self.match_token(TokenType::Comma) {
             exprs.push(self.parse_expr_list_item()?);
             self.consume_null_treatment();
@@ -3162,6 +3204,14 @@ impl<'a> Parser<'a> {
         } else {
             Ok(expr)
         }
+    }
+
+    fn parse_expr_preserving_arg_null_treatment(&mut self) -> Result<Expr> {
+        let saved = self.preserve_arg_null_treatment;
+        self.preserve_arg_null_treatment = true;
+        let result = self.parse_expr();
+        self.preserve_arg_null_treatment = saved;
+        result
     }
 
     /// Parse a GROUP BY list, which may contain regular expressions,
@@ -6428,6 +6478,8 @@ impl<'a> Parser<'a> {
                         raw_order_nulls: None,
                         arg_order_by: vec![],
                         arg_limit: None,
+                        arg_limit_offset: None,
+                        arg_null_treatment: None,
                         filter: None,
                         over: None,
                     }
@@ -6926,6 +6978,8 @@ impl<'a> Parser<'a> {
                     raw_order_nulls: None,
                     arg_order_by: vec![],
                     arg_limit: None,
+                    arg_limit_offset: None,
+                    arg_null_treatment: None,
                     filter: None,
                     over: None,
                 })
@@ -6946,6 +7000,8 @@ impl<'a> Parser<'a> {
                     raw_order_nulls: None,
                     arg_order_by: vec![],
                     arg_limit: None,
+                    arg_limit_offset: None,
+                    arg_null_treatment: None,
                     filter: None,
                     over: None,
                 })
@@ -7046,6 +7102,8 @@ impl<'a> Parser<'a> {
                     raw_order_nulls: None,
                     arg_order_by: vec![],
                     arg_limit: None,
+                    arg_limit_offset: None,
+                    arg_null_treatment: None,
                     filter: None,
                     over: None,
                 };
@@ -7058,6 +7116,8 @@ impl<'a> Parser<'a> {
                     raw_order_nulls: None,
                     arg_order_by: vec![],
                     arg_limit: None,
+                    arg_limit_offset: None,
+                    arg_null_treatment: None,
                     filter: None,
                     over: None,
                 };
@@ -7076,7 +7136,9 @@ impl<'a> Parser<'a> {
         }
 
         // Check for window function: expr OVER (...)
-        self.consume_null_treatment();
+        if !self.preserve_arg_null_treatment {
+            self.consume_null_treatment();
+        }
 
         if self.match_keyword("WITHIN") {
             self.expect(TokenType::Group)?;
@@ -7112,6 +7174,8 @@ impl<'a> Parser<'a> {
                     raw_order_nulls,
                     arg_order_by,
                     arg_limit,
+                    arg_limit_offset,
+                    arg_null_treatment,
                     over,
                     ..
                 } => {
@@ -7122,6 +7186,8 @@ impl<'a> Parser<'a> {
                         raw_order_nulls,
                         arg_order_by,
                         arg_limit,
+                        arg_limit_offset,
+                        arg_null_treatment,
                         filter: Some(Box::new(filter_expr)),
                         over,
                     };
@@ -7199,6 +7265,8 @@ impl<'a> Parser<'a> {
                 raw_order_nulls,
                 arg_order_by,
                 arg_limit,
+                arg_limit_offset,
+                arg_null_treatment,
                 ..
             } => Expr::Function {
                 name,
@@ -7207,6 +7275,8 @@ impl<'a> Parser<'a> {
                 raw_order_nulls,
                 arg_order_by,
                 arg_limit,
+                arg_limit_offset,
+                arg_null_treatment,
                 filter,
                 over: Some(spec),
             },
@@ -7231,14 +7301,23 @@ impl<'a> Parser<'a> {
     }
 
     fn consume_null_treatment(&mut self) -> bool {
+        self.parse_null_treatment().is_some()
+    }
+
+    fn parse_null_treatment(&mut self) -> Option<NullTreatment> {
         let saved = self.pos;
-        if (self.match_token(TokenType::Ignore) || self.match_token(TokenType::Respect))
-            && self.match_token(TokenType::Nulls)
-        {
-            return true;
+        let treatment = if self.match_token(TokenType::Ignore) {
+            Some(NullTreatment::Ignore)
+        } else if self.match_token(TokenType::Respect) {
+            Some(NullTreatment::Respect)
+        } else {
+            None
+        };
+        if treatment.is_some() && self.match_token(TokenType::Nulls) {
+            return treatment;
         }
         self.pos = saved;
-        false
+        None
     }
 
     fn parse_window_spec(&mut self) -> Result<WindowSpec> {
@@ -7437,6 +7516,8 @@ impl<'a> Parser<'a> {
                     raw_order_nulls: None,
                     arg_order_by: vec![],
                     arg_limit: None,
+                    arg_limit_offset: None,
+                    arg_null_treatment: None,
                     filter: None,
                     over: None,
                 })
@@ -7740,6 +7821,8 @@ impl<'a> Parser<'a> {
                         raw_order_nulls: None,
                         arg_order_by: vec![],
                         arg_limit: None,
+                        arg_limit_offset: None,
+                        arg_null_treatment: None,
                         filter: None,
                         over: None,
                     })
@@ -7802,6 +7885,8 @@ impl<'a> Parser<'a> {
                     raw_order_nulls: None,
                     arg_order_by: vec![],
                     arg_limit: None,
+                    arg_limit_offset: None,
+                    arg_null_treatment: None,
                     filter: None,
                     over: None,
                 })
@@ -7833,6 +7918,8 @@ impl<'a> Parser<'a> {
                         raw_order_nulls: None,
                         arg_order_by: vec![],
                         arg_limit: None,
+                        arg_limit_offset: None,
+                        arg_null_treatment: None,
                         filter: None,
                         over: None,
                     });
@@ -7960,6 +8047,8 @@ impl<'a> Parser<'a> {
                 raw_order_nulls: None,
                 arg_order_by: vec![],
                 arg_limit: None,
+                arg_limit_offset: None,
+                arg_null_treatment: None,
                 filter: None,
                 over: None,
             });
@@ -7976,6 +8065,8 @@ impl<'a> Parser<'a> {
                 raw_order_nulls: None,
                 arg_order_by: vec![],
                 arg_limit: None,
+                arg_limit_offset: None,
+                arg_null_treatment: None,
                 filter: None,
                 over: None,
             });
@@ -8009,6 +8100,8 @@ impl<'a> Parser<'a> {
                 raw_order_nulls,
                 arg_order_by: vec![],
                 arg_limit: None,
+                arg_limit_offset: None,
+                arg_null_treatment: None,
                 filter: None,
                 over: None,
             });
@@ -8042,6 +8135,8 @@ impl<'a> Parser<'a> {
 
         let mut arg_order_by = Vec::new();
         let mut arg_limit = None;
+        let mut arg_limit_offset = None;
+        let mut arg_null_treatment = None;
 
         let args = if name.eq_ignore_ascii_case("GROUP_CONCAT") {
             self.parse_group_concat_args()?
@@ -8060,10 +8155,12 @@ impl<'a> Parser<'a> {
                 | "NTILE"
                 | "STRING_AGG"
         ) {
-            let (args, order_by, limit) = self.parse_ordered_function_args()?;
-            arg_order_by = order_by;
-            arg_limit = limit.map(Box::new);
-            args
+            let parsed = self.parse_ordered_function_args()?;
+            arg_order_by = parsed.order_by;
+            arg_limit = parsed.limit.map(Box::new);
+            arg_limit_offset = parsed.limit_offset.map(Box::new);
+            arg_null_treatment = parsed.null_treatment;
+            parsed.args
         } else if name.eq_ignore_ascii_case("POSITION") {
             self.parse_position_args()?
         } else if name.eq_ignore_ascii_case("SUBSTRING") || name.eq_ignore_ascii_case("SUBSTR") {
@@ -8096,6 +8193,8 @@ impl<'a> Parser<'a> {
                 raw_order_nulls: None,
                 arg_order_by: vec![],
                 arg_limit: None,
+                arg_limit_offset: None,
+                arg_null_treatment: None,
                 filter: None,
                 over: None,
             });
@@ -8133,11 +8232,15 @@ impl<'a> Parser<'a> {
                 raw_order_nulls: None,
                 arg_order_by: vec![],
                 arg_limit: None,
+                arg_limit_offset: None,
+                arg_null_treatment: None,
                 filter: None,
                 over: None,
             })
         } else if arg_order_by.is_empty()
             && arg_limit.is_none()
+            && arg_limit_offset.is_none()
+            && arg_null_treatment.is_none()
             && let Some(typed) =
                 Self::try_typed_function(&name, args.clone(), distinct, self.dialect)
         {
@@ -8150,6 +8253,8 @@ impl<'a> Parser<'a> {
                 raw_order_nulls: None,
                 arg_order_by,
                 arg_limit,
+                arg_limit_offset,
+                arg_null_treatment,
                 filter: None,
                 over: None,
             })
@@ -8260,37 +8365,12 @@ impl<'a> Parser<'a> {
                     }
                     depth -= 1;
                 }
-                TokenType::Having if depth == 0 => return true,
-                TokenType::Ignore | TokenType::Respect
-                    if depth == 0 && !matches!(self.dialect, Dialect::Sqlite) =>
-                {
-                    return true;
-                }
-                TokenType::Limit if depth == 0 => {
-                    let mut limit_depth = 0usize;
-                    let mut limit_pos = pos + 1;
-                    while limit_pos < self.tokens.len() {
-                        match self.tokens[limit_pos].token_type {
-                            TokenType::LParen | TokenType::LBracket | TokenType::LBrace => {
-                                limit_depth += 1;
-                            }
-                            TokenType::RParen => {
-                                if limit_depth == 0 {
-                                    break;
-                                }
-                                limit_depth -= 1;
-                            }
-                            TokenType::Comma if limit_depth == 0 => return true,
-                            _ => {}
-                        }
-                        limit_pos += 1;
-                    }
-                }
-                TokenType::Identifier if depth == 0 && !matches!(self.dialect, Dialect::Sqlite) => {
-                    if matches!(
-                        self.tokens[pos].value.to_ascii_uppercase().as_str(),
-                        "IGNORE" | "RESPECT"
-                    ) {
+                TokenType::Having if depth == 0 => {
+                    let next = self
+                        .tokens
+                        .get(pos + 1)
+                        .map(|token| token.value.to_ascii_uppercase());
+                    if !matches!(next.as_deref(), Some("MAX" | "MIN")) {
                         return true;
                     }
                 }
@@ -8554,38 +8634,82 @@ impl<'a> Parser<'a> {
         Ok(args)
     }
 
-    fn parse_ordered_function_args(
-        &mut self,
-    ) -> Result<(Vec<Expr>, Vec<OrderByItem>, Option<Expr>)> {
+    fn parse_ordered_function_args(&mut self) -> Result<OrderedFunctionArgs> {
         if self.peek_type() == &TokenType::RParen {
-            return Ok((vec![], vec![], None));
+            return Ok(OrderedFunctionArgs {
+                args: vec![],
+                null_treatment: None,
+                order_by: vec![],
+                limit: None,
+                limit_offset: None,
+            });
         }
 
-        let mut args = vec![self.parse_expr()?];
-        self.consume_null_treatment();
+        let mut args = vec![self.parse_expr_preserving_arg_null_treatment()?];
+        let mut null_treatment = self.parse_null_treatment();
         while self.match_token(TokenType::Comma) {
-            if self.peek_type() == &TokenType::Order {
+            if matches!(
+                self.peek_type(),
+                TokenType::Having | TokenType::Order | TokenType::Limit
+            ) {
                 break;
             }
-            args.push(self.parse_expr()?);
-            self.consume_null_treatment();
+            args.push(self.parse_expr_preserving_arg_null_treatment()?);
+            if null_treatment.is_none() {
+                null_treatment = self.parse_null_treatment();
+            } else {
+                self.consume_null_treatment();
+            }
+        }
+        if self.match_token(TokenType::Having) {
+            let max = if self.match_keyword("MAX") {
+                true
+            } else {
+                self.expect_keyword("MIN")?;
+                false
+            };
+            let having = self.parse_expr_preserving_arg_null_treatment()?;
+            if let Some(arg) = args.pop() {
+                args.push(Expr::HavingMax {
+                    expr: Box::new(arg),
+                    having: Box::new(having),
+                    max,
+                });
+            }
         }
         let mut order_by = Vec::new();
         if self.match_token(TokenType::Order) {
             self.expect(TokenType::By)?;
             order_by = self.parse_order_by_items_with_null_treatment(true)?;
         }
-        self.consume_null_treatment();
+        if null_treatment.is_none() {
+            null_treatment = self.parse_null_treatment();
+        } else {
+            self.consume_null_treatment();
+        }
         let limit = if self.match_token(TokenType::Limit) {
-            let limit = self.parse_expr()?;
+            let first = self.parse_expr()?;
             if self.match_token(TokenType::Comma) {
-                let _ = self.parse_expr()?;
+                let second = self.parse_expr()?;
+                return Ok(OrderedFunctionArgs {
+                    args,
+                    null_treatment,
+                    order_by,
+                    limit: Some(second),
+                    limit_offset: Some(first),
+                });
             }
-            Some(limit)
+            Some(first)
         } else {
             None
         };
-        Ok((args, order_by, limit))
+        Ok(OrderedFunctionArgs {
+            args,
+            null_treatment,
+            order_by,
+            limit,
+            limit_offset: None,
+        })
     }
 
     fn parse_json_value_args(&mut self) -> Result<Vec<Expr>> {
@@ -8658,6 +8782,8 @@ impl<'a> Parser<'a> {
                 raw_order_nulls: None,
                 arg_order_by: vec![],
                 arg_limit: None,
+                arg_limit_offset: None,
+                arg_null_treatment: None,
                 filter: None,
                 over: None,
             })

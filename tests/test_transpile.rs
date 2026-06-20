@@ -4,7 +4,8 @@
 /// and basic cross-dialect transpilation. Modeled after the `validate` and
 /// `validate_identity` helpers in the Python test suite.
 use sqlgrok::ast::{
-    CommandKind, CreateTableOption, Expr, RawTableFunctionKind, SelectItem, TableSource,
+    CommandKind, CreateTableOption, Expr, NullTreatment, RawTableFunctionKind, SelectItem,
+    TableSource,
 };
 use sqlgrok::{Dialect, Statement, generate, generate_pretty, parse, transpile};
 
@@ -5105,6 +5106,31 @@ fn test_mysql_json_table_carrier_to_sqlite() {
 }
 
 #[test]
+fn test_openjson_table_function_carrier_to_sqlite() {
+    let sql = "SELECT * FROM OPENJSON(@array) WITH (month VARCHAR(3), temp int, month_id tinyint '$.sql:identity()') AS months";
+    let ast = parse(sql, Dialect::Tsql).expect("OPENJSON table source should parse");
+    assert!(matches!(
+        ast,
+        Statement::Select(ref select)
+            if matches!(
+                select.from.as_ref().map(|from| &from.source),
+                Some(TableSource::RawTableFunction {
+                    kind: RawTableFunctionKind::OpenJson,
+                    tail: Some(tail),
+                    alias,
+                    ..
+                }) if tail.starts_with("WITH") && alias.as_deref() == Some("months")
+            )
+    ));
+    validate_with_dialect(
+        sql,
+        "SELECT * FROM OPENJSON(@array) WITH (month TEXT(3), temp INTEGER, month_id INTEGER '$.sql:identity()') AS months",
+        Dialect::Tsql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_postgres_parser_carriers_to_sqlite() {
     validate_with_dialect(
         "SELECT * FROM (VALUES (1)) AS t1",
@@ -5693,6 +5719,79 @@ fn test_ordered_aggregate_args_are_structured() {
         } if name == "JSON_ARRAYAGG" && args.len() == 1 && arg_order_by.len() == 2
     ));
 
+    let having_ast = parse(
+        "SELECT ANY_VALUE(fruit HAVING MAX sold) FROM fruits",
+        Dialect::BigQuery,
+    )
+    .unwrap();
+    assert!(matches!(
+        having_ast,
+        Statement::Select(ref select)
+            if matches!(
+                &select.columns[0],
+                SelectItem::Expr {
+                    expr: Expr::Function {
+                        name,
+                        args,
+                        ..
+                    },
+                    ..
+                } if name == "ANY_VALUE"
+                    && matches!(
+                        args.as_slice(),
+                        [Expr::HavingMax { max: true, .. }]
+                    )
+            )
+    ));
+
+    let limit_offset_ast = parse(
+        "SELECT JSON_ARRAYAGG(name ORDER BY id LIMIT 1, 2) FROM t",
+        Dialect::Mysql,
+    )
+    .unwrap();
+    assert!(matches!(
+        limit_offset_ast,
+        Statement::Select(ref select)
+            if matches!(
+                &select.columns[0],
+                SelectItem::Expr {
+                    expr: Expr::Function {
+                        name,
+                        args,
+                        arg_order_by,
+                        arg_limit: Some(_),
+                        arg_limit_offset: Some(_),
+                        ..
+                    },
+                    ..
+                } if name == "JSON_ARRAYAGG" && args.len() == 1 && arg_order_by.len() == 1
+            )
+    ));
+
+    let null_treatment_ast = parse(
+        "SELECT ARRAY_AGG(DISTINCT x IGNORE NULLS HAVING MAX x ORDER BY x LIMIT 1) FROM t",
+        Dialect::BigQuery,
+    )
+    .unwrap();
+    assert!(matches!(
+        null_treatment_ast,
+        Statement::Select(ref select)
+            if matches!(
+                &select.columns[0],
+                SelectItem::Expr {
+                    expr: Expr::Function {
+                        args,
+                        arg_null_treatment: Some(NullTreatment::Ignore),
+                        arg_order_by,
+                        arg_limit: Some(_),
+                        ..
+                    },
+                    ..
+                } if matches!(args.as_slice(), [Expr::HavingMax { max: true, .. }])
+                    && arg_order_by.len() == 1
+            )
+    ));
+
     validate_with_dialect(
         "SELECT ARRAY_AGG(x ORDER BY y, z DESC) FROM t",
         "SELECT ARRAY_AGG(x ORDER BY y NULLS LAST, z DESC NULLS FIRST) FROM t",
@@ -5704,6 +5803,24 @@ fn test_ordered_aggregate_args_are_structured() {
         "SELECT LAST_VALUE(x ORDER BY x IGNORE NULLS) OVER (ORDER BY x) FROM t",
         Dialect::Postgres,
         Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT ANY_VALUE(fruit HAVING MAX sold) FROM fruits",
+        "SELECT ARG_MAX_NULL(fruit, sold) FROM fruits",
+        Dialect::BigQuery,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT ARRAY_AGG(DISTINCT x IGNORE NULLS HAVING MAX x ORDER BY x LIMIT 1) FROM t",
+        "SELECT ARRAY_AGG(DISTINCT x IGNORE NULLS HAVING MAX x ORDER BY x LIMIT 1) FROM t",
+        Dialect::BigQuery,
+        Dialect::BigQuery,
+    );
+    validate_with_dialect(
+        "SELECT JSON_ARRAYAGG(name ORDER BY id LIMIT 1, 2) FROM t",
+        "SELECT JSON_ARRAYAGG(name ORDER BY id LIMIT 1, 2) FROM t",
+        Dialect::Mysql,
+        Dialect::Mysql,
     );
 }
 

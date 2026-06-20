@@ -13,24 +13,24 @@ Filtered by read/write: `0`
 
 | Status | Count |
 | --- | ---: |
-| `match` | 8648 |
-| `mismatch` | 4325 |
+| `match` | 8664 |
+| `mismatch` | 4310 |
 | `oracle-error` | 1456 |
-| `rust-error` | 590 |
+| `rust-error` | 589 |
 | `unsupported-harness-shape` | 137 |
 
 ## Helper Buckets
 
 | Status | Helper | Count |
 | --- | --- | ---: |
-| `match` | `validate_all` | 5918 |
-| `mismatch` | `validate_all` | 3116 |
-| `match` | `validate_identity` | 2660 |
-| `mismatch` | `validate_identity` | 1105 |
+| `match` | `validate_all` | 5928 |
+| `mismatch` | `validate_all` | 3107 |
+| `match` | `validate_identity` | 2666 |
+| `mismatch` | `validate_identity` | 1099 |
 | `oracle-error` | `validate_identity` | 951 |
 | `oracle-error` | `validate_all` | 499 |
 | `rust-error` | `validate_identity` | 343 |
-| `rust-error` | `validate_all` | 244 |
+| `rust-error` | `validate_all` | 243 |
 | `unsupported-harness-shape` | `validate_all` | 122 |
 | `mismatch` | `validate` | 104 |
 | `match` | `validate` | 70 |
@@ -44,17 +44,17 @@ Filtered by read/write: `0`
 | Status | Source | Test | Count |
 | --- | --- | --- | ---: |
 | `match` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 905 |
-| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 480 |
-| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 396 |
+| `match` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 490 |
+| `match` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 398 |
 | `match` | `tests/dialects/test_postgres.py` | `test_postgres` | 282 |
 | `mismatch` | `tests/dialects/test_snowflake.py` | `test_snowflake` | 278 |
-| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 253 |
+| `mismatch` | `tests/dialects/test_bigquery.py` | `test_bigquery` | 243 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_time` | 230 |
 | `mismatch` | `tests/dialects/test_dialect.py` | `test_operators` | 169 |
 | `match` | `tests/dialects/test_spark.py` | `test_spark` | 146 |
 | `match` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 141 |
 | `mismatch` | `tests/dialects/test_clickhouse.py` | `test_clickhouse` | 138 |
-| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 127 |
+| `mismatch` | `tests/dialects/test_duckdb.py` | `test_duckdb` | 125 |
 | `match` | `tests/dialects/test_dialect.py` | `test_cast` | 124 |
 | `match` | `tests/dialects/test_dialect.py` | `test_time` | 122 |
 | `mismatch` | `tests/dialects/test_exasol.py` | `test_datetime_functions` | 122 |
