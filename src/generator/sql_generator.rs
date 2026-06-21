@@ -5480,6 +5480,204 @@ impl Generator {
         }
     }
 
+    fn gen_temporal_delta(
+        &mut self,
+        kind: TemporalKind,
+        op: &str,
+        expr: &Expr,
+        interval: &Expr,
+        unit: &Option<DateTimeField>,
+    ) {
+        if matches!(self.dialect, Some(Dialect::DuckDb)) {
+            self.gen_temporal_base_expr(kind, expr);
+            self.write(" ");
+            self.write(op);
+            self.write(" ");
+            self.gen_date_delta_interval(interval, unit);
+            return;
+        }
+
+        if self.dialect.is_some_and(crate::dialects::is_mysql_family)
+            && kind == TemporalKind::Timestamp
+        {
+            self.write_keyword(if op == "+" { "DATE_ADD(" } else { "DATE_SUB(" });
+            self.gen_expr(expr);
+            self.write(", ");
+            if matches!(interval, Expr::Interval { .. }) {
+                self.gen_expr(interval);
+            } else {
+                self.gen_mysql_interval_arg(interval, unit);
+            }
+            self.write(")");
+            return;
+        }
+
+        self.write_keyword(temporal_delta_function_name(kind, op));
+        self.write("(");
+        self.gen_expr(expr);
+        self.write(", ");
+        self.gen_expr(interval);
+        if let Some(unit) = unit {
+            self.write(", ");
+            self.gen_datetime_field(unit);
+        }
+        self.write(")");
+    }
+
+    fn gen_temporal_diff(
+        &mut self,
+        kind: TemporalKind,
+        start: &Expr,
+        end: &Expr,
+        unit: &Option<DateTimeField>,
+    ) {
+        if matches!(self.dialect, Some(Dialect::DuckDb)) {
+            self.write_keyword("DATE_DIFF(");
+            self.write("'");
+            if let Some(unit) = unit {
+                self.gen_datetime_field(unit);
+            } else {
+                self.write_keyword("DAY");
+            }
+            self.write("', ");
+            self.gen_temporal_diff_arg(kind, end);
+            self.write(", ");
+            self.gen_temporal_diff_arg(kind, start);
+            self.write(")");
+            return;
+        }
+
+        self.write_keyword(temporal_diff_function_name(kind));
+        self.write("(");
+        self.gen_expr(start);
+        self.write(", ");
+        self.gen_expr(end);
+        if let Some(unit) = unit {
+            self.write(", ");
+            self.gen_datetime_field(unit);
+        }
+        self.write(")");
+    }
+
+    fn gen_temporal_trunc(
+        &mut self,
+        kind: TemporalKind,
+        unit: &DateTimeField,
+        expr: &Expr,
+        zone: Option<&Expr>,
+    ) {
+        if matches!(self.dialect, Some(Dialect::DuckDb)) {
+            match kind {
+                TemporalKind::Timestamp => {
+                    self.write_keyword("DATE_TRUNC(");
+                    self.write("'");
+                    self.gen_datetime_field(unit);
+                    self.write("', ");
+                    self.gen_expr(expr);
+                    if let Some(zone) = zone {
+                        self.write_keyword(" AT TIME ZONE ");
+                        self.gen_expr(zone);
+                    }
+                    self.write(")");
+                    if let Some(zone) = zone {
+                        self.write_keyword(" AT TIME ZONE ");
+                        self.gen_expr(zone);
+                    }
+                }
+                TemporalKind::Datetime => {
+                    self.write_keyword("DATE_TRUNC(");
+                    self.write("'");
+                    self.gen_datetime_field(unit);
+                    self.write("', ");
+                    self.gen_cast_temporal_expr(
+                        expr,
+                        DataType::Timestamp {
+                            precision: None,
+                            with_tz: false,
+                        },
+                    );
+                    self.write(")");
+                }
+                _ => self.gen_temporal_trunc_call(kind, unit, expr, zone),
+            }
+            return;
+        }
+
+        if self
+            .dialect
+            .is_some_and(crate::dialects::is_postgres_family)
+            && kind == TemporalKind::Timestamp
+        {
+            self.write_keyword("DATE_TRUNC(");
+            self.write("'");
+            self.gen_datetime_field(unit);
+            self.write("', ");
+            self.gen_expr(expr);
+            if let Some(zone) = zone {
+                self.write(", ");
+                self.gen_expr(zone);
+            }
+            self.write(")");
+            return;
+        }
+
+        if self.dialect.is_some_and(crate::dialects::is_mysql_family)
+            && kind == TemporalKind::Timestamp
+        {
+            self.gen_mysql_timestamp_trunc(unit, expr);
+            return;
+        }
+
+        self.gen_temporal_trunc_call(kind, unit, expr, zone);
+    }
+
+    fn gen_temporal_trunc_call(
+        &mut self,
+        kind: TemporalKind,
+        unit: &DateTimeField,
+        expr: &Expr,
+        zone: Option<&Expr>,
+    ) {
+        self.write_keyword(temporal_trunc_function_name(kind));
+        self.write("(");
+        self.gen_expr(expr);
+        self.write(", ");
+        self.gen_datetime_field(unit);
+        if let Some(zone) = zone {
+            self.write(", ");
+            self.gen_expr(zone);
+        }
+        self.write(")");
+    }
+
+    fn gen_temporal_base_expr(&mut self, kind: TemporalKind, expr: &Expr) {
+        if matches!(expr, Expr::StringLiteral(_))
+            && let Some(data_type) = temporal_kind_cast_type(kind)
+        {
+            self.gen_cast_temporal_expr(expr, data_type);
+        } else {
+            self.gen_expr(expr);
+        }
+    }
+
+    fn gen_temporal_diff_arg(&mut self, kind: TemporalKind, expr: &Expr) {
+        if matches!(expr, Expr::StringLiteral(_))
+            && let Some(data_type) = temporal_kind_cast_type(kind)
+        {
+            self.gen_cast_temporal_expr(expr, data_type);
+        } else {
+            self.gen_expr(expr);
+        }
+    }
+
+    fn gen_cast_temporal_expr(&mut self, expr: &Expr, data_type: DataType) {
+        self.write_keyword("CAST(");
+        self.gen_expr(expr);
+        self.write_keyword(" AS ");
+        self.gen_data_type(&data_type);
+        self.write(")");
+    }
+
     fn gen_postgres_date_diff(&mut self, start: &Expr, end: &Expr, unit: &Option<DateTimeField>) {
         let start_sql = self.cast_expr_to_timestamp_sql(start);
         let end_sql = self.cast_expr_to_timestamp_sql(end);
@@ -6316,6 +6514,38 @@ impl Generator {
                     }
                     self.write(")");
                 }
+            }
+            TypedFunction::TemporalAdd {
+                kind,
+                expr,
+                interval,
+                unit,
+            } => {
+                self.gen_temporal_delta(*kind, "+", expr, interval, unit);
+            }
+            TypedFunction::TemporalSub {
+                kind,
+                expr,
+                interval,
+                unit,
+            } => {
+                self.gen_temporal_delta(*kind, "-", expr, interval, unit);
+            }
+            TypedFunction::TemporalDiff {
+                kind,
+                start,
+                end,
+                unit,
+            } => {
+                self.gen_temporal_diff(*kind, start, end, unit);
+            }
+            TypedFunction::TemporalTrunc {
+                kind,
+                unit,
+                expr,
+                zone,
+            } => {
+                self.gen_temporal_trunc(*kind, unit, expr, zone.as_deref());
             }
             TypedFunction::CurrentDate => {
                 if is_tsql {
@@ -7622,6 +7852,53 @@ fn postgres_date_diff_factor(field: &DateTimeField) -> Option<&'static str> {
         DateTimeField::Hour => Some(" / 3600"),
         DateTimeField::Day => Some(" / 86400"),
         _ => None,
+    }
+}
+
+fn temporal_delta_function_name(kind: TemporalKind, op: &str) -> &'static str {
+    match (kind, op) {
+        (TemporalKind::Date, "+") => "DATE_ADD",
+        (TemporalKind::Date, "-") => "DATE_SUB",
+        (TemporalKind::Datetime, "+") => "DATETIME_ADD",
+        (TemporalKind::Datetime, "-") => "DATETIME_SUB",
+        (TemporalKind::Time, "+") => "TIME_ADD",
+        (TemporalKind::Time, "-") => "TIME_SUB",
+        (TemporalKind::Timestamp, "+") => "TIMESTAMP_ADD",
+        (TemporalKind::Timestamp, "-") => "TIMESTAMP_SUB",
+        _ => "DATE_ADD",
+    }
+}
+
+fn temporal_diff_function_name(kind: TemporalKind) -> &'static str {
+    match kind {
+        TemporalKind::Date => "DATE_DIFF",
+        TemporalKind::Datetime => "DATETIME_DIFF",
+        TemporalKind::Time => "TIME_DIFF",
+        TemporalKind::Timestamp => "TIMESTAMP_DIFF",
+    }
+}
+
+fn temporal_trunc_function_name(kind: TemporalKind) -> &'static str {
+    match kind {
+        TemporalKind::Date => "DATE_TRUNC",
+        TemporalKind::Datetime => "DATETIME_TRUNC",
+        TemporalKind::Time => "TIME_TRUNC",
+        TemporalKind::Timestamp => "TIMESTAMP_TRUNC",
+    }
+}
+
+fn temporal_kind_cast_type(kind: TemporalKind) -> Option<DataType> {
+    match kind {
+        TemporalKind::Date => Some(DataType::Date),
+        TemporalKind::Datetime => Some(DataType::Timestamp {
+            precision: None,
+            with_tz: false,
+        }),
+        TemporalKind::Time => Some(DataType::Time { precision: None }),
+        TemporalKind::Timestamp => Some(DataType::Timestamp {
+            precision: None,
+            with_tz: false,
+        }),
     }
 }
 

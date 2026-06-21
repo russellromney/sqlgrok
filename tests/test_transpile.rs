@@ -5800,6 +5800,82 @@ fn test_non_sqlite_date_arithmetic_generator_backfill() {
 }
 
 #[test]
+fn test_typed_temporal_alias_backfill() {
+    validate_with_dialect(
+        "SELECT TIMESTAMP_ADD(TIMESTAMP '2008-12-25 15:30:00', INTERVAL 10 MINUTE)",
+        "SELECT CAST('2008-12-25 15:30:00' AS TIMESTAMP) + INTERVAL '10' MINUTE",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT TIMESTAMP_SUB(TIMESTAMP '2008-12-25 15:30:00', INTERVAL 10 MINUTE)",
+        "SELECT CAST('2008-12-25 15:30:00' AS TIMESTAMP) - INTERVAL '10' MINUTE",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT DATETIME_ADD('2023-01-01T00:00:00', INTERVAL 1 MILLISECOND)",
+        "SELECT CAST('2023-01-01T00:00:00' AS TIMESTAMP) + INTERVAL '1' MILLISECOND",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT DATETIME_SUB('2023-01-01T00:00:00', INTERVAL 1 MILLISECOND)",
+        "SELECT CAST('2023-01-01T00:00:00' AS TIMESTAMP) - INTERVAL '1' MILLISECOND",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT TIME_ADD(CAST('09:05:03' AS TIME), INTERVAL 2 HOUR)",
+        "SELECT CAST('09:05:03' AS TIME) + INTERVAL '2' HOUR",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT TIME_SUB(CAST('09:05:03' AS TIME), INTERVAL 2 HOUR)",
+        "SELECT CAST('09:05:03' AS TIME) - INTERVAL '2' HOUR",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT DATETIME_DIFF('2023-01-01T00:00:00', '2023-01-01T05:00:00', MILLISECOND)",
+        "SELECT DATE_DIFF('MILLISECOND', CAST('2023-01-01T05:00:00' AS TIMESTAMP), CAST('2023-01-01T00:00:00' AS TIMESTAMP))",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT TIME_DIFF('12:00:00', '12:30:00', MINUTE)",
+        "SELECT DATE_DIFF('MINUTE', CAST('12:30:00' AS TIME), CAST('12:00:00' AS TIME))",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT DATETIME_DIFF('2017-12-18', '2017-12-17', WEEK(MONDAY))",
+        "SELECT DATETIME_DIFF('2017-12-18', '2017-12-17', WEEK(MONDAY))",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT TIMESTAMP_TRUNC(TIMESTAMP '2024-03-15 14:35:47.123456', DAY)",
+        "SELECT DATE_TRUNC('DAY', CAST('2024-03-15 14:35:47.123456' AS TIMESTAMP))",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT TIMESTAMP_TRUNC(TIMESTAMP '2024-03-15 14:35:47.123456', DAY, 'America/New_York')",
+        "SELECT DATE_TRUNC('DAY', CAST('2024-03-15 14:35:47.123456' AS TIMESTAMP), 'America/New_York')",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT DATETIME_TRUNC('2023-01-01T01:01:01', HOUR)",
+        "SELECT DATE_TRUNC('HOUR', CAST('2023-01-01T01:01:01' AS TIMESTAMP))",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+}
+
+#[test]
 fn test_mysql_interval_expression_to_sqlite_stays_inside_interval() {
     validate_with_dialect(
         "SELECT DATE_ADD('2023-06-23 12:00:00', INTERVAL 2 * 2 MONTH) FROM foo",

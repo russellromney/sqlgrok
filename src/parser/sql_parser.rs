@@ -222,6 +222,20 @@ fn mysql_date_delta_interval_arg(
     }
 }
 
+fn temporal_kind_for_alias(name: &str) -> Option<TemporalKind> {
+    match name {
+        "DATE_ADD" | "DATE_SUB" | "DATE_DIFF" | "DATE_TRUNC" => Some(TemporalKind::Date),
+        "DATETIME_ADD" | "DATETIME_SUB" | "DATETIME_DIFF" | "DATETIME_TRUNC" => {
+            Some(TemporalKind::Datetime)
+        }
+        "TIME_ADD" | "TIME_SUB" | "TIME_DIFF" | "TIME_TRUNC" => Some(TemporalKind::Time),
+        "TIMESTAMP_ADD" | "TIMESTAMP_SUB" | "TIMESTAMP_DIFF" | "TIMESTAMP_TRUNC" => {
+            Some(TemporalKind::Timestamp)
+        }
+        _ => None,
+    }
+}
+
 fn data_type_is_json(data_type: &DataType) -> bool {
     matches!(data_type, DataType::Json | DataType::Jsonb)
         || matches!(data_type, DataType::Unknown(name) if name.eq_ignore_ascii_case("JSON") || name.eq_ignore_ascii_case("JSONB"))
@@ -8987,6 +9001,83 @@ impl<'a> Parser<'a> {
         let upper = name.to_uppercase();
         let tf = match upper.as_str() {
             // ── Date/Time ──────────────────────────────────────────
+            "TIMESTAMP_ADD" | "DATETIME_ADD" | "TIME_ADD" => {
+                if !matches!(args.len(), 2 | 3) {
+                    return None;
+                }
+                let kind = temporal_kind_for_alias(&upper)?;
+                let unit = if args.len() == 3 {
+                    Some(Self::expr_to_datetime_field(&args[2])?)
+                } else {
+                    None
+                };
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let interval = it.next()?;
+                TypedFunction::TemporalAdd {
+                    kind,
+                    expr: Box::new(expr),
+                    interval: Box::new(interval),
+                    unit,
+                }
+            }
+            "TIMESTAMP_SUB" | "DATETIME_SUB" | "TIME_SUB" => {
+                if !matches!(args.len(), 2 | 3) {
+                    return None;
+                }
+                let kind = temporal_kind_for_alias(&upper)?;
+                let unit = if args.len() == 3 {
+                    Some(Self::expr_to_datetime_field(&args[2])?)
+                } else {
+                    None
+                };
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let interval = it.next()?;
+                TypedFunction::TemporalSub {
+                    kind,
+                    expr: Box::new(expr),
+                    interval: Box::new(interval),
+                    unit,
+                }
+            }
+            "DATETIME_DIFF" | "TIME_DIFF" => {
+                if !matches!(args.len(), 2 | 3) {
+                    return None;
+                }
+                let kind = temporal_kind_for_alias(&upper)?;
+                let unit = if args.len() == 3 {
+                    Some(Self::expr_to_datetime_field(&args[2])?)
+                } else {
+                    None
+                };
+                let mut it = args.into_iter();
+                let start = it.next()?;
+                let end = it.next()?;
+                TypedFunction::TemporalDiff {
+                    kind,
+                    start: Box::new(start),
+                    end: Box::new(end),
+                    unit,
+                }
+            }
+            "TIMESTAMP_TRUNC" | "DATETIME_TRUNC" => {
+                if !matches!(args.len(), 2 | 3) {
+                    return None;
+                }
+                let kind = temporal_kind_for_alias(&upper)?;
+                let mut it = args.into_iter();
+                let expr = it.next()?;
+                let unit_arg = it.next()?;
+                let unit = Self::expr_to_datetime_field(&unit_arg)?;
+                let zone = it.next().map(Box::new);
+                TypedFunction::TemporalTrunc {
+                    kind,
+                    unit,
+                    expr: Box::new(expr),
+                    zone,
+                }
+            }
             "DATE_ADD" | "TIMESTAMPADD" => {
                 if args.len() == 3 {
                     let unit = Self::expr_to_datetime_field(&args[2]);

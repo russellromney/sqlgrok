@@ -934,6 +934,14 @@ pub enum DatePartFunction {
     Week,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TemporalKind {
+    Date,
+    Datetime,
+    Time,
+    Timestamp,
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // Typed function expressions
 // ═══════════════════════════════════════════════════════════════════════
@@ -994,6 +1002,34 @@ pub enum TypedFunction {
         unit: Option<DateTimeField>,
         #[serde(default)]
         mysql_interval: bool,
+    },
+    /// Typed temporal add aliases such as `TIMESTAMP_ADD`, `DATETIME_ADD`, and `TIME_ADD`.
+    TemporalAdd {
+        kind: TemporalKind,
+        expr: Box<Expr>,
+        interval: Box<Expr>,
+        unit: Option<DateTimeField>,
+    },
+    /// Typed temporal subtract aliases such as `TIMESTAMP_SUB`, `DATETIME_SUB`, and `TIME_SUB`.
+    TemporalSub {
+        kind: TemporalKind,
+        expr: Box<Expr>,
+        interval: Box<Expr>,
+        unit: Option<DateTimeField>,
+    },
+    /// Typed temporal diff aliases such as `DATETIME_DIFF` and `TIME_DIFF`.
+    TemporalDiff {
+        kind: TemporalKind,
+        start: Box<Expr>,
+        end: Box<Expr>,
+        unit: Option<DateTimeField>,
+    },
+    /// Typed temporal trunc aliases such as `TIMESTAMP_TRUNC` and `DATETIME_TRUNC`.
+    TemporalTrunc {
+        kind: TemporalKind,
+        unit: DateTimeField,
+        expr: Box<Expr>,
+        zone: Option<Box<Expr>>,
     },
     /// `CURRENT_DATE`
     CurrentDate,
@@ -1282,12 +1318,15 @@ impl TypedFunction {
         match self {
             // Date/Time
             TypedFunction::DateAdd { expr, interval, .. }
-            | TypedFunction::DateSub { expr, interval, .. } => {
+            | TypedFunction::DateSub { expr, interval, .. }
+            | TypedFunction::TemporalAdd { expr, interval, .. }
+            | TypedFunction::TemporalSub { expr, interval, .. } => {
                 expr.walk(visitor);
                 interval.walk(visitor);
             }
             TypedFunction::DateDiff { start, end, .. }
-            | TypedFunction::TimestampDiff { start, end, .. } => {
+            | TypedFunction::TimestampDiff { start, end, .. }
+            | TypedFunction::TemporalDiff { start, end, .. } => {
                 start.walk(visitor);
                 end.walk(visitor);
             }
@@ -1301,6 +1340,12 @@ impl TypedFunction {
             TypedFunction::DateTruncExpr { unit, expr, .. } => {
                 unit.walk(visitor);
                 expr.walk(visitor);
+            }
+            TypedFunction::TemporalTrunc { expr, zone, .. } => {
+                expr.walk(visitor);
+                if let Some(zone) = zone {
+                    zone.walk(visitor);
+                }
             }
             TypedFunction::ConvertTimezone {
                 source_tz,
@@ -1632,6 +1677,50 @@ impl TypedFunction {
                 interval: Box::new(interval.transform(func)),
                 unit,
                 mysql_interval,
+            },
+            TypedFunction::TemporalAdd {
+                kind,
+                expr,
+                interval,
+                unit,
+            } => TypedFunction::TemporalAdd {
+                kind,
+                expr: Box::new(expr.transform(func)),
+                interval: Box::new(interval.transform(func)),
+                unit,
+            },
+            TypedFunction::TemporalSub {
+                kind,
+                expr,
+                interval,
+                unit,
+            } => TypedFunction::TemporalSub {
+                kind,
+                expr: Box::new(expr.transform(func)),
+                interval: Box::new(interval.transform(func)),
+                unit,
+            },
+            TypedFunction::TemporalDiff {
+                kind,
+                start,
+                end,
+                unit,
+            } => TypedFunction::TemporalDiff {
+                kind,
+                start: Box::new(start.transform(func)),
+                end: Box::new(end.transform(func)),
+                unit,
+            },
+            TypedFunction::TemporalTrunc {
+                kind,
+                unit,
+                expr,
+                zone,
+            } => TypedFunction::TemporalTrunc {
+                kind,
+                unit,
+                expr: Box::new(expr.transform(func)),
+                zone: zone.map(|zone| Box::new(zone.transform(func))),
             },
             TypedFunction::CurrentDate => TypedFunction::CurrentDate,
             TypedFunction::CurrentTimestamp => TypedFunction::CurrentTimestamp,

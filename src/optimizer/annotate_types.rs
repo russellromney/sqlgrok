@@ -921,8 +921,12 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
         | TypedFunction::TsOrDsToDate { .. } => Some(DataType::Date),
         TypedFunction::DateDiff { .. }
         | TypedFunction::TimestampDiff { .. }
+        | TypedFunction::TemporalDiff { .. }
         | TypedFunction::DatePart { .. }
         | TypedFunction::ExtractPart { .. } => Some(DataType::Int),
+        TypedFunction::TemporalAdd { kind, .. }
+        | TypedFunction::TemporalSub { kind, .. }
+        | TypedFunction::TemporalTrunc { kind, .. } => Some(temporal_kind_data_type(*kind)),
         TypedFunction::CurrentDate => Some(DataType::Date),
         TypedFunction::CurrentTimestamp
         | TypedFunction::UtcTimestamp { .. }
@@ -1058,6 +1062,18 @@ fn infer_typed_function_type(func: &TypedFunction, ann: &TypeAnnotations) -> Opt
         | TypedFunction::Sha512 { .. } => Some(DataType::Varchar(None)),
         TypedFunction::Sha2 { .. } => Some(DataType::Varchar(None)),
         TypedFunction::Unhex { .. } => Some(DataType::Varbinary(None)),
+    }
+}
+
+fn temporal_kind_data_type(kind: TemporalKind) -> DataType {
+    match kind {
+        TemporalKind::Date => DataType::Date,
+        TemporalKind::Datetime => DataType::DateTime,
+        TemporalKind::Time => DataType::Time { precision: None },
+        TemporalKind::Timestamp => DataType::Timestamp {
+            precision: None,
+            with_tz: false,
+        },
     }
 }
 

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use crate::ast::{DataType, DatePartFunction, Expr, QuoteStyle, Statement};
+use crate::ast::{DataType, DatePartFunction, Expr, QuoteStyle, Statement, TemporalKind};
 
 /// Trait that external code can implement to define a custom SQL dialect.
 ///
@@ -286,6 +286,42 @@ impl std::fmt::Display for DialectRef {
 
 use crate::ast::TypedFunction;
 
+fn temporal_add_name(kind: TemporalKind) -> &'static str {
+    match kind {
+        TemporalKind::Date => "DATE_ADD",
+        TemporalKind::Datetime => "DATETIME_ADD",
+        TemporalKind::Time => "TIME_ADD",
+        TemporalKind::Timestamp => "TIMESTAMP_ADD",
+    }
+}
+
+fn temporal_sub_name(kind: TemporalKind) -> &'static str {
+    match kind {
+        TemporalKind::Date => "DATE_SUB",
+        TemporalKind::Datetime => "DATETIME_SUB",
+        TemporalKind::Time => "TIME_SUB",
+        TemporalKind::Timestamp => "TIMESTAMP_SUB",
+    }
+}
+
+fn temporal_diff_name(kind: TemporalKind) -> &'static str {
+    match kind {
+        TemporalKind::Date => "DATE_DIFF",
+        TemporalKind::Datetime => "DATETIME_DIFF",
+        TemporalKind::Time => "TIME_DIFF",
+        TemporalKind::Timestamp => "TIMESTAMP_DIFF",
+    }
+}
+
+fn temporal_trunc_name(kind: TemporalKind) -> &'static str {
+    match kind {
+        TemporalKind::Date => "DATE_TRUNC",
+        TemporalKind::Datetime => "DATETIME_TRUNC",
+        TemporalKind::Time => "TIME_TRUNC",
+        TemporalKind::Timestamp => "TIMESTAMP_TRUNC",
+    }
+}
+
 /// Return the canonical SQL function name for a TypedFunction variant.
 fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
     match func {
@@ -298,6 +334,10 @@ fn typed_function_canonical_name(func: &TypedFunction) -> &'static str {
         TypedFunction::DateTruncExpr { .. } => "DATE_TRUNC",
         TypedFunction::TimestampTrunc { .. } => "TIMESTAMP_TRUNC",
         TypedFunction::DateSub { .. } => "DATE_SUB",
+        TypedFunction::TemporalAdd { kind, .. } => temporal_add_name(*kind),
+        TypedFunction::TemporalSub { kind, .. } => temporal_sub_name(*kind),
+        TypedFunction::TemporalDiff { kind, .. } => temporal_diff_name(*kind),
+        TypedFunction::TemporalTrunc { kind, .. } => temporal_trunc_name(*kind),
         TypedFunction::CurrentDate => "CURRENT_DATE",
         TypedFunction::CurrentTimestamp => "NOW",
         TypedFunction::UtcTime { .. } => "UTC_TIME",
@@ -459,11 +499,23 @@ fn typed_function_args(func: &TypedFunction) -> Vec<Expr> {
             vec![*unit.clone(), *expr.clone()]
         }
         TypedFunction::DateAdd { expr, interval, .. }
-        | TypedFunction::DateSub { expr, interval, .. } => {
+        | TypedFunction::DateSub { expr, interval, .. }
+        | TypedFunction::TemporalAdd { expr, interval, .. }
+        | TypedFunction::TemporalSub { expr, interval, .. } => {
             vec![*expr.clone(), *interval.clone()]
         }
         TypedFunction::DateDiff { start, end, .. }
-        | TypedFunction::TimestampDiff { start, end, .. } => vec![*start.clone(), *end.clone()],
+        | TypedFunction::TimestampDiff { start, end, .. }
+        | TypedFunction::TemporalDiff { start, end, .. } => vec![*start.clone(), *end.clone()],
+        TypedFunction::TemporalTrunc {
+            unit, expr, zone, ..
+        } => {
+            let mut args = vec![Expr::StringLiteral(format!("{unit:?}")), *expr.clone()];
+            if let Some(zone) = zone {
+                args.push(*zone.clone());
+            }
+            args
+        }
         TypedFunction::ConvertTimezone {
             source_tz,
             target_tz,
