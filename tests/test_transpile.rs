@@ -5730,6 +5730,76 @@ fn test_non_sqlite_time_generator_backfill() {
 }
 
 #[test]
+fn test_non_sqlite_date_arithmetic_generator_backfill() {
+    validate_with_dialect(
+        "SELECT DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)",
+        "SELECT CURRENT_DATE + INTERVAL '-1 DAY'",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)",
+        "SELECT CURRENT_DATE - INTERVAL '2 DAY'",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)",
+        "SELECT CURRENT_DATE - INTERVAL '2' DAY",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT DATE_ADD('2020-01-01', 1, DAY)",
+        "SELECT '2020-01-01' + INTERVAL '1 DAY'",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT DATE_ADD('2020-01-01', 1, DAY)",
+        "SELECT CAST('2020-01-01' AS DATE) + INTERVAL 1 DAY",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "DATE_DIFF(DATE '2010-07-07', DATE '2008-12-25', DAY)",
+        "CAST(EXTRACT(epoch FROM CAST(CAST('2010-07-07' AS DATE) AS TIMESTAMP) - CAST(CAST('2008-12-25' AS DATE) AS TIMESTAMP)) / 86400 AS BIGINT)",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "DATE_DIFF(a, b, DAY)",
+        "CAST(EXTRACT(epoch FROM CAST(a AS TIMESTAMP) - CAST(b AS TIMESTAMP)) / 86400 AS BIGINT)",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "DATEDIFF(CAST('2010-07-07' AS DATE), CAST('2008-12-25' AS DATE))",
+        "CAST(AGE(CAST(CAST('2010-07-07' AS DATE) AS TIMESTAMP), CAST(CAST('2008-12-25' AS DATE) AS TIMESTAMP)) AS BIGINT)",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "DATE_DIFF(DATE '2010-07-07', DATE '2008-12-25', DAY)",
+        "DATE_DIFF('DAY', CAST('2008-12-25' AS DATE), CAST('2010-07-07' AS DATE))",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT DATE_TRUNC('MONTH', created_at) FROM orders",
+        "SELECT DATE_ADD('0000-01-01 00:00:00', INTERVAL (TIMESTAMPDIFF(MONTH, '0000-01-01 00:00:00', created_at)) MONTH) FROM orders",
+        Dialect::Postgres,
+        Dialect::Mysql,
+    );
+    validate_with_dialect(
+        "SELECT DATE_TRUNC(MONTH, created_at) FROM orders",
+        "SELECT STR_TO_DATE(CONCAT(YEAR(created_at), ' ', MONTH(created_at), ' 1'), '%Y %c %e') FROM orders",
+        Dialect::Mysql,
+        Dialect::Mysql,
+    );
+}
+
+#[test]
 fn test_mysql_interval_expression_to_sqlite_stays_inside_interval() {
     validate_with_dialect(
         "SELECT DATE_ADD('2023-06-23 12:00:00', INTERVAL 2 * 2 MONTH) FROM foo",

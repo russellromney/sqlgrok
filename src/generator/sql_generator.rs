@@ -5441,13 +5441,171 @@ impl Generator {
         interval: &Expr,
         unit: &Option<DateTimeField>,
     ) {
-        self.gen_expr(expr);
+        self.gen_date_delta_base_expr(expr);
         self.write(" ");
         self.write(op);
         self.write(" ");
-        self.write_keyword("INTERVAL '");
-        self.write(&self.interval_literal_payload(interval, unit));
-        self.write("'");
+        self.gen_date_delta_interval(interval, unit);
+    }
+
+    fn gen_date_delta_base_expr(&mut self, expr: &Expr) {
+        if matches!(self.dialect, Some(Dialect::DuckDb)) && matches!(expr, Expr::StringLiteral(_)) {
+            self.write_keyword("CAST(");
+            self.gen_expr(expr);
+            self.write_keyword(" AS DATE)");
+        } else {
+            self.gen_expr(expr);
+        }
+    }
+
+    fn gen_date_delta_interval(&mut self, interval: &Expr, unit: &Option<DateTimeField>) {
+        if matches!(interval, Expr::Interval { .. }) {
+            self.gen_expr(interval);
+            return;
+        }
+
+        if matches!(self.dialect, Some(Dialect::DuckDb)) {
+            self.write_keyword("INTERVAL ");
+            self.gen_expr(interval);
+            self.write(" ");
+            if let Some(unit) = unit {
+                self.gen_datetime_field(unit);
+            } else {
+                self.write_keyword("DAY");
+            }
+        } else {
+            self.write_keyword("INTERVAL '");
+            self.write(&self.interval_literal_payload(interval, unit));
+            self.write("'");
+        }
+    }
+
+    fn gen_postgres_date_diff(&mut self, start: &Expr, end: &Expr, unit: &Option<DateTimeField>) {
+        let start_sql = self.cast_expr_to_timestamp_sql(start);
+        let end_sql = self.cast_expr_to_timestamp_sql(end);
+        if let Some(factor) = unit.as_ref().and_then(postgres_date_diff_factor) {
+            self.write_keyword("CAST(EXTRACT(epoch FROM ");
+            self.write(&start_sql);
+            self.write(" - ");
+            self.write(&end_sql);
+            self.write(")");
+            self.write(factor);
+            self.write_keyword(" AS BIGINT)");
+            return;
+        }
+
+        self.write_keyword("CAST(");
+        match unit {
+            Some(DateTimeField::Week) => {
+                self.write_keyword("EXTRACT(days FROM (");
+                self.write(&start_sql);
+                self.write(" - ");
+                self.write(&end_sql);
+                self.write(")) / 7");
+            }
+            Some(DateTimeField::Month) => {
+                let age = format!("AGE({start_sql}, {end_sql})");
+                self.write_keyword("EXTRACT(year FROM ");
+                self.write(&age);
+                self.write(") * 12 + ");
+                self.write_keyword("EXTRACT(month FROM ");
+                self.write(&age);
+                self.write(")");
+            }
+            Some(DateTimeField::Quarter) => {
+                let age = format!("AGE({start_sql}, {end_sql})");
+                self.write_keyword("EXTRACT(year FROM ");
+                self.write(&age);
+                self.write(") * 4 + ");
+                self.write_keyword("EXTRACT(month FROM ");
+                self.write(&age);
+                self.write(") / 3");
+            }
+            Some(DateTimeField::Year) => {
+                self.write_keyword("EXTRACT(year FROM AGE(");
+                self.write(&start_sql);
+                self.write(", ");
+                self.write(&end_sql);
+                self.write("))");
+            }
+            _ => {
+                self.write_keyword("AGE(");
+                self.write(&start_sql);
+                self.write(", ");
+                self.write(&end_sql);
+                self.write(")");
+            }
+        }
+        self.write_keyword(" AS BIGINT)");
+    }
+
+    fn cast_expr_to_timestamp_sql(&self, expr: &Expr) -> String {
+        let inner = render_expr_to_sql(expr, self.dialect);
+        format!("CAST({inner} AS TIMESTAMP)")
+    }
+
+    fn gen_mysql_timestamp_trunc(&mut self, unit: &DateTimeField, expr: &Expr) {
+        self.write_keyword("DATE_ADD(");
+        self.write("'0000-01-01 00:00:00', ");
+        self.write_keyword("INTERVAL (");
+        self.write_keyword("TIMESTAMPDIFF(");
+        self.gen_datetime_field(unit);
+        self.write(", '0000-01-01 00:00:00', ");
+        self.gen_expr(expr);
+        self.write(")) ");
+        self.gen_datetime_field(unit);
+        self.write(")");
+    }
+
+    fn gen_mysql_date_trunc(&mut self, unit: &DateTimeField, expr: &Expr) {
+        match unit {
+            DateTimeField::Week => {
+                self.write_keyword("STR_TO_DATE(");
+                self.write_keyword("CONCAT(YEAR(");
+                self.gen_expr(expr);
+                self.write("), ' ', ");
+                self.write_keyword("WEEK(");
+                self.gen_expr(expr);
+                self.write(", 1), ' 1'), '%Y %u %w')");
+            }
+            DateTimeField::Month => {
+                self.write_keyword("STR_TO_DATE(");
+                self.write_keyword("CONCAT(YEAR(");
+                self.gen_expr(expr);
+                self.write("), ' ', ");
+                self.write_keyword("MONTH(");
+                self.gen_expr(expr);
+                self.write("), ' 1'), '%Y %c %e')");
+            }
+            DateTimeField::Quarter => {
+                self.write_keyword("STR_TO_DATE(");
+                self.write_keyword("CONCAT(YEAR(");
+                self.gen_expr(expr);
+                self.write("), ' ', ");
+                self.write_keyword("QUARTER(");
+                self.gen_expr(expr);
+                self.write(") * 3 - 2, ' 1'), '%Y %c %e')");
+            }
+            DateTimeField::Year => {
+                self.write_keyword("STR_TO_DATE(");
+                self.write_keyword("CONCAT(YEAR(");
+                self.gen_expr(expr);
+                self.write("), ' 1 1'), '%Y %c %e')");
+            }
+            DateTimeField::Day => {
+                self.write_keyword("DATE(");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+            _ => {
+                self.write_keyword("DATE_TRUNC(");
+                self.write("'");
+                self.gen_datetime_field(unit);
+                self.write("', ");
+                self.gen_expr(expr);
+                self.write(")");
+            }
+        }
     }
 
     fn date_trunc_expr_unit_sql(&self, unit: &Expr) -> String {
@@ -5795,9 +5953,7 @@ impl Generator {
                     self.write(", ");
                     self.gen_mysql_interval_arg(interval, unit);
                     self.write(")");
-                } else if *mysql_interval
-                    && (is_postgres_family || matches!(dialect, Some(Dialect::DuckDb)))
-                {
+                } else if is_postgres_family || matches!(dialect, Some(Dialect::DuckDb)) {
                     self.gen_date_delta_binary_interval(expr, "+", interval, unit);
                 } else if is_tsql || is_snowflake {
                     self.write_keyword("DATEADD(");
@@ -5929,6 +6085,21 @@ impl Generator {
                     self.write(", ");
                     self.gen_expr(end);
                     self.write(")");
+                } else if is_postgres_family {
+                    self.gen_postgres_date_diff(start, end, unit);
+                } else if matches!(dialect, Some(Dialect::DuckDb)) {
+                    self.write_keyword("DATE_DIFF(");
+                    self.write("'");
+                    if let Some(u) = unit {
+                        self.gen_datetime_field(u);
+                    } else {
+                        self.write_keyword("DAY");
+                    }
+                    self.write("', ");
+                    self.gen_expr(end);
+                    self.write(", ");
+                    self.gen_expr(start);
+                    self.write(")");
                 } else if is_bigquery {
                     self.write_keyword("DATE_DIFF(");
                     self.gen_expr(end);
@@ -6025,6 +6196,8 @@ impl Generator {
                     self.write("', ");
                     self.gen_expr(expr);
                     self.write(")");
+                } else if is_mysql {
+                    self.gen_mysql_timestamp_trunc(unit, expr);
                 } else {
                     self.write_keyword("TIMESTAMP_TRUNC(");
                     self.gen_expr(expr);
@@ -6046,6 +6219,8 @@ impl Generator {
                     self.write(", '");
                     self.gen_datetime_field(unit);
                     self.write("')");
+                } else if is_mysql {
+                    self.gen_mysql_date_trunc(unit, expr);
                 } else {
                     self.write_keyword("DATE_TRUNC(");
                     self.write("'");
@@ -6093,9 +6268,7 @@ impl Generator {
                     self.write(", ");
                     self.gen_mysql_interval_arg(interval, unit);
                     self.write(")");
-                } else if *mysql_interval
-                    && (is_postgres_family || matches!(dialect, Some(Dialect::DuckDb)))
-                {
+                } else if is_postgres_family || matches!(dialect, Some(Dialect::DuckDb)) {
                     self.gen_date_delta_binary_interval(expr, "-", interval, unit);
                 } else if matches!(dialect, Some(Dialect::Sqlite)) && *mysql_interval {
                     self.write_keyword("DATE_SUB(");
@@ -7407,6 +7580,16 @@ fn render_expr_to_sql_for_dialect(expr: &Expr, dialect: Option<Dialect>) -> Stri
     }
 }
 
+fn render_expr_to_sql(expr: &Expr, dialect: Option<Dialect>) -> String {
+    let mut generator = if let Some(dialect) = dialect {
+        Generator::with_dialect(dialect)
+    } else {
+        Generator::new()
+    };
+    generator.gen_expr(expr);
+    generator.output
+}
+
 fn datetime_field_keyword(field: &DateTimeField) -> String {
     let name = match field {
         DateTimeField::Year => "YEAR",
@@ -7428,6 +7611,18 @@ fn datetime_field_keyword(field: &DateTimeField) -> String {
         DateTimeField::TimezoneMinute => "TIMEZONE_MINUTE",
     };
     name.to_string()
+}
+
+fn postgres_date_diff_factor(field: &DateTimeField) -> Option<&'static str> {
+    match field {
+        DateTimeField::Microsecond => Some(" * 1000000"),
+        DateTimeField::Millisecond => Some(" * 1000"),
+        DateTimeField::Second => Some(""),
+        DateTimeField::Minute => Some(" / 60"),
+        DateTimeField::Hour => Some(" / 3600"),
+        DateTimeField::Day => Some(" / 86400"),
+        _ => None,
+    }
 }
 
 fn date_part_alias_name(name: DatePartFunction, dialect: Option<Dialect>) -> &'static str {
