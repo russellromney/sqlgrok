@@ -3185,7 +3185,9 @@ impl Generator {
                     ("TIMESTAMP", false)
                 };
                 self.write(name);
-                if let Some(p) = precision {
+                if let Some(p) = precision
+                    && !(*with_tz && matches!(dialect, Some(Dialect::DuckDb)))
+                {
                     self.write(&format!("({p})"));
                 }
                 if tz_suffix {
@@ -3416,6 +3418,157 @@ impl Generator {
             Expr::Nested(inner) => matches!(inner.as_ref(), Expr::Subquery(_)),
             _ => false,
         }
+    }
+
+    fn gen_target_time_function_lowering(&mut self, upper: &str, args: &[Expr]) -> bool {
+        let Some(dialect) = self.dialect else {
+            return false;
+        };
+        let is_postgres_family = crate::dialects::is_postgres_family(dialect);
+        let is_mysql_family = crate::dialects::is_mysql_family(dialect);
+        let is_duckdb = matches!(dialect, Dialect::DuckDb);
+
+        match (upper, args) {
+            ("STR_TO_TIME", [expr, format]) if is_postgres_family => {
+                self.write_keyword("TO_TIMESTAMP(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(format);
+                self.write(")");
+                true
+            }
+            ("STR_TO_TIME", [expr, format]) if is_duckdb => {
+                self.write_keyword("STRPTIME(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(format);
+                self.write(")");
+                true
+            }
+            ("STR_TO_TIME", [expr, format]) if is_mysql_family => {
+                self.write_keyword("STR_TO_DATE(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(format);
+                self.write(")");
+                true
+            }
+            ("STR_TO_UNIX", [expr, format]) if is_duckdb => {
+                self.write_keyword("EPOCH(STRPTIME(");
+                self.gen_expr(expr);
+                self.write(", ");
+                self.gen_expr(format);
+                self.write("))");
+                true
+            }
+            ("TIME_TO_UNIX", [expr]) if is_postgres_family => {
+                self.write_keyword("DATE_PART('epoch', ");
+                self.gen_expr(expr);
+                self.write(")");
+                true
+            }
+            ("TIME_TO_UNIX", [expr]) if is_duckdb => {
+                self.write_keyword("EPOCH(");
+                self.gen_expr(expr);
+                self.write(")");
+                true
+            }
+            ("UNIX_TO_STR", [expr, format]) if is_duckdb => {
+                self.write_keyword("STRFTIME(TO_TIMESTAMP(");
+                self.gen_expr(expr);
+                self.write("), ");
+                self.gen_expr(format);
+                self.write(")");
+                true
+            }
+            ("UNIX_TO_TIME", [expr]) if is_postgres_family || is_duckdb => {
+                self.write_keyword("TO_TIMESTAMP(");
+                self.gen_expr(expr);
+                self.write(")");
+                true
+            }
+            ("UNIX_TO_TIME", [expr]) if is_mysql_family => {
+                self.write_keyword("FROM_UNIXTIME(");
+                self.gen_expr(expr);
+                self.write(")");
+                true
+            }
+            ("TIME_STR_TO_TIME", [expr]) if is_postgres_family || is_duckdb => {
+                self.gen_cast_to(
+                    expr,
+                    DataType::Timestamp {
+                        precision: None,
+                        with_tz: false,
+                    },
+                );
+                true
+            }
+            ("TIME_STR_TO_TIME", [expr, _zone]) if is_postgres_family || is_duckdb => {
+                self.gen_cast_to(
+                    expr,
+                    DataType::Timestamp {
+                        precision: None,
+                        with_tz: true,
+                    },
+                );
+                true
+            }
+            ("TIME_STR_TO_TIME", [expr]) if is_mysql_family => {
+                self.gen_cast_to(expr, DataType::DateTime);
+                true
+            }
+            ("TIME_STR_TO_TIME", [expr, _zone]) if is_mysql_family => {
+                self.write_keyword("TIMESTAMP(");
+                self.gen_expr(expr);
+                self.write(")");
+                true
+            }
+            ("TIME_STR_TO_UNIX", [expr]) if is_duckdb => {
+                self.write_keyword("EPOCH(");
+                self.gen_cast_to(
+                    expr,
+                    DataType::Timestamp {
+                        precision: None,
+                        with_tz: false,
+                    },
+                );
+                self.write(")");
+                true
+            }
+            ("TIME_STR_TO_UNIX", [expr]) if is_mysql_family => {
+                self.write_keyword("UNIX_TIMESTAMP(");
+                self.gen_expr(expr);
+                self.write(")");
+                true
+            }
+            ("TIME_TO_TIME_STR" | "DATE_TO_DATE_STR" | "DATE_TO_TIME_STR", [expr])
+                if is_postgres_family || is_duckdb =>
+            {
+                self.gen_cast_to(expr, DataType::Text);
+                true
+            }
+            ("TIME_TO_TIME_STR" | "DATE_TO_DATE_STR" | "DATE_TO_TIME_STR", [expr])
+                if is_mysql_family =>
+            {
+                self.write_keyword("CAST(");
+                self.gen_expr(expr);
+                self.write_keyword(" AS CHAR)");
+                true
+            }
+            ("DATE_STR_TO_DATE", [expr]) if is_postgres_family || is_duckdb || is_mysql_family => {
+                self.gen_cast_to(expr, DataType::Date);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn gen_cast_to(&mut self, expr: &Expr, data_type: DataType) {
+        self.write_keyword("CAST(");
+        self.gen_expr(expr);
+        self.write_keyword(" AS ");
+        self.gen_data_type(&data_type);
+        self.write(")");
     }
 
     fn gen_sqlite_function_lowering(
@@ -4281,6 +4434,17 @@ impl Generator {
                 if upper == "ARRAY" && self.gen_array_constructor_function(args) {
                     return;
                 }
+                if !*distinct
+                    && arg_order_by.is_empty()
+                    && arg_limit.is_none()
+                    && arg_limit_offset.is_none()
+                    && arg_null_treatment.is_none()
+                    && filter.is_none()
+                    && over.is_none()
+                    && self.gen_target_time_function_lowering(upper, args)
+                {
+                    return;
+                }
                 if matches!(self.dialect, Some(Dialect::DuckDb))
                     && upper == "ANY_VALUE"
                     && args.len() == 1
@@ -4819,22 +4983,29 @@ impl Generator {
                 unit_text,
             } => {
                 self.write_keyword("INTERVAL ");
-                let render_unit = |g: &mut Self| {
-                    if let Some(text) = unit_text {
-                        g.write(" ");
-                        g.write(&text.to_ascii_uppercase());
-                    } else if let Some(unit) = unit {
-                        g.write(" ");
-                        g.gen_datetime_field(unit);
-                    }
-                };
+                let target = self.dialect;
+                if unit.is_none()
+                    && unit_text.is_none()
+                    && let Expr::BinaryOp { left, op, right } = value.as_ref()
+                    && matches!(op, BinaryOperator::Multiply | BinaryOperator::Divide)
+                    && let Some((amount, interval_unit)) =
+                        interval_literal_amount_and_unit(left, unit, unit_text)
+                    && self.render_target_interval_literal_after_keyword(
+                        &amount,
+                        interval_unit.as_deref(),
+                    )
+                {
+                    self.write(Self::binary_op_str(op));
+                    self.gen_expr(right);
+                    return;
+                }
                 if matches!(self.dialect, Some(Dialect::Sqlite))
                     && let Expr::Number(n) = value.as_ref()
                 {
                     self.write("'");
                     self.write(n);
                     self.write("'");
-                    render_unit(self);
+                    self.render_interval_unit(unit, unit_text);
                 } else if matches!(self.dialect, Some(Dialect::Sqlite))
                     && unit.is_none()
                     && let Expr::StringLiteral(s) = value.as_ref()
@@ -4863,9 +5034,53 @@ impl Generator {
                     self.write(" ");
                     self.write(&datetime_field_keyword(unit));
                     self.write("'");
+                } else if let Some((amount, interval_unit)) =
+                    interval_literal_amount_and_unit(value, unit, unit_text)
+                    && target.is_some_and(|dialect| {
+                        crate::dialects::is_postgres_family(dialect)
+                            || matches!(
+                                dialect,
+                                Dialect::Redshift
+                                    | Dialect::Materialize
+                                    | Dialect::RisingWave
+                                    | Dialect::Snowflake
+                            )
+                    })
+                {
+                    self.write("'");
+                    self.write(&amount);
+                    if let Some(interval_unit) = interval_unit {
+                        self.write(" ");
+                        self.write(&interval_unit.to_ascii_uppercase());
+                    }
+                    self.write("'");
+                } else if let Some((amount, interval_unit)) =
+                    interval_literal_amount_and_unit(value, unit, unit_text)
+                    && matches!(
+                        target,
+                        Some(
+                            Dialect::DuckDb
+                                | Dialect::Mysql
+                                | Dialect::SingleStore
+                                | Dialect::Doris
+                                | Dialect::StarRocks
+                        )
+                    )
+                {
+                    self.write("'");
+                    self.write(&amount);
+                    self.write("'");
+                    if let Some(interval_unit) = interval_unit {
+                        self.write(" ");
+                        if target.is_some_and(crate::dialects::is_mysql_family) {
+                            self.write(&singular_interval_unit(&interval_unit));
+                        } else {
+                            self.write(&interval_unit.to_ascii_uppercase());
+                        }
+                    }
                 } else {
                     self.gen_expr(value);
-                    render_unit(self);
+                    self.render_interval_unit(unit, unit_text);
                 }
             }
             Expr::ArrayLiteral(items) => {
@@ -5137,6 +5352,67 @@ impl Generator {
         } else {
             self.write_keyword("DAY");
         }
+    }
+
+    fn render_interval_unit(&mut self, unit: &Option<DateTimeField>, unit_text: &Option<String>) {
+        if let Some(text) = unit_text {
+            self.write(" ");
+            self.write(&text.to_ascii_uppercase());
+        } else if let Some(unit) = unit {
+            self.write(" ");
+            self.gen_datetime_field(unit);
+        }
+    }
+
+    fn render_target_interval_literal_after_keyword(
+        &mut self,
+        amount: &str,
+        interval_unit: Option<&str>,
+    ) -> bool {
+        let target = self.dialect;
+        if target.is_some_and(|dialect| {
+            crate::dialects::is_postgres_family(dialect)
+                || matches!(
+                    dialect,
+                    Dialect::Redshift
+                        | Dialect::Materialize
+                        | Dialect::RisingWave
+                        | Dialect::Snowflake
+                )
+        }) {
+            self.write("'");
+            self.write(amount);
+            if let Some(interval_unit) = interval_unit {
+                self.write(" ");
+                self.write(&interval_unit.to_ascii_uppercase());
+            }
+            self.write("'");
+            return true;
+        }
+        if matches!(
+            target,
+            Some(
+                Dialect::DuckDb
+                    | Dialect::Mysql
+                    | Dialect::SingleStore
+                    | Dialect::Doris
+                    | Dialect::StarRocks
+            )
+        ) {
+            self.write("'");
+            self.write(amount);
+            self.write("'");
+            if let Some(interval_unit) = interval_unit {
+                self.write(" ");
+                if target.is_some_and(crate::dialects::is_mysql_family) {
+                    self.write(&singular_interval_unit(interval_unit));
+                } else {
+                    self.write(&interval_unit.to_ascii_uppercase());
+                }
+            }
+            return true;
+        }
+        false
     }
 
     fn interval_literal_payload(&self, interval: &Expr, unit: &Option<DateTimeField>) -> String {
@@ -7251,6 +7527,59 @@ fn split_interval_string(s: &str) -> Option<(&str, &str)> {
         return None;
     }
     Some((num, rest))
+}
+
+fn interval_literal_amount_and_unit(
+    value: &Expr,
+    unit: &Option<DateTimeField>,
+    unit_text: &Option<String>,
+) -> Option<(String, Option<String>)> {
+    let (amount, split_unit) = match value {
+        Expr::StringLiteral(s) => {
+            if unit.is_none()
+                && unit_text.is_none()
+                && let Some((num, rest)) = split_interval_string(s)
+            {
+                (num.to_string(), Some(rest.to_string()))
+            } else {
+                (s.clone(), None)
+            }
+        }
+        Expr::Number(n) => (n.clone(), None),
+        Expr::UnaryOp {
+            op: UnaryOperator::Minus,
+            expr,
+        } => match expr.as_ref() {
+            Expr::StringLiteral(s) | Expr::Number(s) => (format!("-{s}"), None),
+            _ => return None,
+        },
+        _ => return None,
+    };
+    let interval_unit = split_unit.or_else(|| {
+        unit_text
+            .as_ref()
+            .map(|text| text.to_ascii_uppercase())
+            .or_else(|| unit.as_ref().map(datetime_field_keyword))
+    });
+    Some((amount, interval_unit))
+}
+
+fn singular_interval_unit(unit: &str) -> String {
+    let upper = unit.to_ascii_uppercase();
+    match upper.as_str() {
+        "YEARS" => "YEAR".to_string(),
+        "QUARTERS" => "QUARTER".to_string(),
+        "MONTHS" => "MONTH".to_string(),
+        "WEEKS" => "WEEK".to_string(),
+        "DAYS" => "DAY".to_string(),
+        "HOURS" => "HOUR".to_string(),
+        "MINUTES" => "MINUTE".to_string(),
+        "SECONDS" => "SECOND".to_string(),
+        "MILLISECONDS" => "MILLISECOND".to_string(),
+        "MICROSECONDS" => "MICROSECOND".to_string(),
+        "NANOSECONDS" => "NANOSECOND".to_string(),
+        _ => upper,
+    }
 }
 
 fn raw_starts_with_keyword(value: &str, keyword: &str) -> bool {

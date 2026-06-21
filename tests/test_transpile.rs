@@ -5620,6 +5620,132 @@ fn test_forced_suite_qualified_functions_to_sqlite() {
 }
 
 #[test]
+fn test_non_sqlite_time_generator_backfill() {
+    for write in [Dialect::Postgres, Dialect::DuckDb, Dialect::Mysql] {
+        validate_with_dialect(
+            "SELECT DATE '2020-01-01'",
+            "SELECT CAST('2020-01-01' AS DATE)",
+            Dialect::Postgres,
+            write,
+        );
+    }
+
+    validate_with_dialect(
+        "INTERVAL '1 day'",
+        "INTERVAL '1 DAY'",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "INTERVAL '1 day'",
+        "INTERVAL '1' DAY",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "INTERVAL '1 days' * 5",
+        "INTERVAL '1 DAYS' * 5",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "INTERVAL '1 days' * 5",
+        "INTERVAL '1' DAYS * 5",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "INTERVAL 2 months",
+        "INTERVAL '2' MONTH",
+        Dialect::Postgres,
+        Dialect::Mysql,
+    );
+    validate_with_dialect(
+        "TIMESTAMP(9) WITH TIME ZONE '2020-01-01'",
+        "CAST('2020-01-01' AS TIMESTAMPTZ)",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+
+    validate_with_dialect(
+        "SELECT STR_TO_TIME('x', 'y')",
+        "SELECT TO_TIMESTAMP('x', 'y')",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT STR_TO_TIME('x', 'y')",
+        "SELECT STRPTIME('x', 'y')",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT TIME_TO_UNIX(x)",
+        "SELECT DATE_PART('epoch', x)",
+        Dialect::Postgres,
+        Dialect::Postgres,
+    );
+    validate_with_dialect(
+        "SELECT TIME_TO_UNIX(x)",
+        "SELECT EPOCH(x)",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT UNIX_TO_STR(123, 'y')",
+        "SELECT STRFTIME(TO_TIMESTAMP(123), 'y')",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT UNIX_TO_TIME(123)",
+        "SELECT TO_TIMESTAMP(123)",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT TIME_STR_TO_TIME(x), TIME_STR_TO_TIME(x, 'America/Los_Angeles')",
+        "SELECT CAST(x AS TIMESTAMP), CAST(x AS TIMESTAMPTZ)",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT TIME_STR_TO_TIME(x), TIME_STR_TO_TIME(x, 'America/Los_Angeles')",
+        "SELECT CAST(x AS DATETIME), TIMESTAMP(x)",
+        Dialect::Postgres,
+        Dialect::Mysql,
+    );
+    validate_with_dialect(
+        "SELECT TIME_TO_TIME_STR(x), DATE_STR_TO_DATE(x), DATE_TO_DATE_STR(x)",
+        "SELECT CAST(x AS TEXT), CAST(x AS DATE), CAST(x AS TEXT)",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+    validate_with_dialect(
+        "SELECT STR_TO_UNIX('x', 'y'), TIME_STR_TO_UNIX(x)",
+        "SELECT EPOCH(STRPTIME('x', 'y')), EPOCH(CAST(x AS TIMESTAMP))",
+        Dialect::Postgres,
+        Dialect::DuckDb,
+    );
+}
+
+#[test]
+fn test_mysql_interval_expression_to_sqlite_stays_inside_interval() {
+    validate_with_dialect(
+        "SELECT DATE_ADD('2023-06-23 12:00:00', INTERVAL 2 * 2 MONTH) FROM foo",
+        "SELECT DATE('2023-06-23 12:00:00', '2 * 2 MONTH') FROM foo",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+    validate_with_dialect(
+        "SELECT DATE(DATE_SUB(`dt`, INTERVAL DAYOFMONTH(`dt`) - 1 DAY)) AS __timestamp FROM tableT",
+        "SELECT DATE(DATE_SUB(\"dt\", DAY_OF_MONTH(DATE(\"dt\")) - 1, DAY)) AS __timestamp FROM tableT",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_forced_suite_expression_alias_and_if_to_sqlite() {
     let cases = [
         ("x::INT AS y", "CAST(x AS INTEGER) AS y"),

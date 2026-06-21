@@ -7557,17 +7557,9 @@ impl<'a> Parser<'a> {
             {
                 self.advance();
                 let value = self.advance().value.clone();
-                Ok(Expr::Function {
-                    name: "DATE".to_string(),
-                    args: vec![Expr::StringLiteral(value)],
-                    distinct: false,
-                    raw_order_nulls: None,
-                    arg_order_by: vec![],
-                    arg_limit: None,
-                    arg_limit_offset: None,
-                    arg_null_treatment: None,
-                    filter: None,
-                    over: None,
+                Ok(Expr::Cast {
+                    expr: Box::new(Expr::StringLiteral(value)),
+                    data_type: DataType::Date,
                 })
             }
             TokenType::Time
