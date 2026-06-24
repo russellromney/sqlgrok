@@ -2304,6 +2304,65 @@ fn test_mysql_create_table_constraints_to_sqlite() {
     }
 }
 
+#[test]
+fn test_mysql_inline_index_hoisted_to_sqlite() {
+    // SQLite has no inline secondary index, so MySQL's `[FULLTEXT|SPATIAL]
+    // {INDEX|KEY} [name] (cols)` is hoisted into separate CREATE INDEX
+    // statements. Unique secondary indexes stay inline as a UNIQUE constraint.
+    let cases = [
+        // named non-unique index
+        (
+            "CREATE TABLE jobs (id INT PRIMARY KEY, status VARCHAR(32), INDEX idx_status (status))",
+            "CREATE TABLE jobs (id INTEGER PRIMARY KEY, status TEXT(32)); CREATE INDEX idx_status ON jobs (status)",
+        ),
+        // KEY is a synonym for INDEX; multi-column
+        (
+            "CREATE TABLE jobs (id INT PRIMARY KEY, a INT, b INT, KEY by_ab (a, b))",
+            "CREATE TABLE jobs (id INTEGER PRIMARY KEY, a INTEGER, b INTEGER); CREATE INDEX by_ab ON jobs (a, b)",
+        ),
+        // anonymous index gets a deterministic synthesized name
+        (
+            "CREATE TABLE jobs (id INT PRIMARY KEY, b INT, KEY (b))",
+            "CREATE TABLE jobs (id INTEGER PRIMARY KEY, b INTEGER); CREATE INDEX jobs_b ON jobs (b)",
+        ),
+        // UNIQUE KEY stays inline as a named UNIQUE constraint
+        (
+            "CREATE TABLE jobs (id INT PRIMARY KEY, e VARCHAR(50), UNIQUE KEY uq_e (e))",
+            "CREATE TABLE jobs (id INTEGER PRIMARY KEY, e TEXT(50), CONSTRAINT uq_e UNIQUE (e))",
+        ),
+        // FULLTEXT / SPATIAL have no SQLite equivalent → degrade to plain index
+        (
+            "CREATE TABLE docs (id INT PRIMARY KEY, body TEXT, FULLTEXT KEY ft (body))",
+            "CREATE TABLE docs (id INTEGER PRIMARY KEY, body TEXT); CREATE INDEX ft ON docs (body)",
+        ),
+        // IF NOT EXISTS propagates to the hoisted index for idempotent re-runs
+        (
+            "CREATE TABLE IF NOT EXISTS jobs (id INT PRIMARY KEY, status VARCHAR(32), INDEX idx (status))",
+            "CREATE TABLE IF NOT EXISTS jobs (id INTEGER PRIMARY KEY, status TEXT(32)); CREATE INDEX IF NOT EXISTS idx ON jobs (status)",
+        ),
+        // inline index coexists with table-level CHECK and FOREIGN KEY
+        (
+            "CREATE TABLE t (id INT PRIMARY KEY, pid INT, qty INT, CONSTRAINT fk FOREIGN KEY (pid) REFERENCES p (id), CHECK (qty > 0), INDEX i_pid (pid))",
+            "CREATE TABLE t (id INTEGER PRIMARY KEY, pid INTEGER, qty INTEGER, CONSTRAINT fk FOREIGN KEY (pid) REFERENCES p (id), CHECK (qty > 0)); CREATE INDEX i_pid ON t (pid)",
+        ),
+    ];
+
+    for (source, expected) in cases {
+        validate_with_dialect(source, expected, Dialect::Mysql, Dialect::Sqlite);
+    }
+}
+
+#[test]
+fn test_mysql_inline_index_roundtrip() {
+    // Non-SQLite targets keep the index inline (no hoist).
+    validate_with_dialect(
+        "CREATE TABLE jobs (id INT PRIMARY KEY, status VARCHAR(32), INDEX idx (status))",
+        "CREATE TABLE jobs (id INT PRIMARY KEY, status VARCHAR(32), INDEX idx (status))",
+        Dialect::Mysql,
+        Dialect::Mysql,
+    );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Identity tests – DDL: DROP TABLE, CREATE/DROP VIEW
 // (from Python identity.sql)

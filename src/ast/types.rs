@@ -2302,6 +2302,14 @@ pub struct CreateTableStatement {
     pub table: TableRef,
     pub columns: Vec<ColumnDef>,
     pub constraints: Vec<TableConstraint>,
+    /// Inline secondary indexes declared in the column list: MySQL's
+    /// `[FULLTEXT|SPATIAL] {INDEX|KEY} [name] (cols)`. SQLite has no inline
+    /// secondary index, so for the SQLite target these are hoisted into
+    /// separate `CREATE INDEX` statements after the table; other dialects
+    /// render them inline. Unique secondary indexes stay in `constraints`
+    /// as `TableConstraint::Unique` (SQLite supports that inline).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub indexes: Vec<TableIndex>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub options: Vec<CreateTableOption>,
     /// CREATE TABLE ... AS SELECT ...
@@ -2325,6 +2333,26 @@ pub enum CreateTableOption {
     Comment(String),
     RowFormat(String),
     Unknown { name: String, value: Option<String> },
+}
+
+/// An inline non-unique secondary index declared in a CREATE TABLE column
+/// list (MySQL `[FULLTEXT|SPATIAL] {INDEX|KEY} [name] (cols)`). Unique indexes
+/// are modeled as `TableConstraint::Unique` instead.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TableIndex {
+    /// Index name as written, if any. MySQL allows anonymous indexes.
+    pub name: Option<String>,
+    pub kind: TableIndexKind,
+    pub columns: Vec<String>,
+}
+
+/// The flavor of an inline secondary index. FULLTEXT and SPATIAL have no SQLite
+/// equivalent and degrade to a plain index on the SQLite target.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TableIndexKind {
+    Index,
+    FullText,
+    Spatial,
 }
 
 /// Table-level constraints.
