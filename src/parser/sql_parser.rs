@@ -4092,6 +4092,7 @@ impl<'a> Parser<'a> {
                 table,
                 columns: vec![],
                 constraints: vec![],
+                indexes: vec![],
                 options: vec![],
                 as_select: Some(Box::new(query)),
                 like_in_columns: None,
@@ -4111,6 +4112,7 @@ impl<'a> Parser<'a> {
                 table,
                 columns: vec![],
                 constraints: vec![],
+                indexes: vec![],
                 options: vec![],
                 as_select: Some(Box::new(Statement::Select(query))),
                 like_in_columns: None,
@@ -4119,6 +4121,7 @@ impl<'a> Parser<'a> {
 
         let mut columns = Vec::new();
         let mut constraints = Vec::new();
+        let mut indexes = Vec::new();
         let mut like_in_columns: Option<TableRef> = None;
 
         if self.match_token(TokenType::LParen) {
@@ -4141,6 +4144,22 @@ impl<'a> Parser<'a> {
                         | TokenType::Constraint
                 ) {
                     constraints.push(self.parse_table_constraint()?);
+                } else if matches!(self.peek_type(), TokenType::Index | TokenType::Key) {
+                    // A bare INDEX/KEY token at element start is always an inline
+                    // secondary index — a column named `key`/`index` would be
+                    // quoted and tokenize as an Identifier.
+                    indexes.push(self.parse_table_index(TableIndexKind::Index)?);
+                } else if self.peek().quote_char == '\0'
+                    && (self.peek().value.eq_ignore_ascii_case("FULLTEXT")
+                        || self.peek().value.eq_ignore_ascii_case("SPATIAL"))
+                {
+                    let kind = if self.peek().value.eq_ignore_ascii_case("FULLTEXT") {
+                        TableIndexKind::FullText
+                    } else {
+                        TableIndexKind::Spatial
+                    };
+                    self.advance();
+                    indexes.push(self.parse_table_index(kind)?);
                 } else if self.peek_type() != &TokenType::RParen {
                     columns.push(self.parse_column_def()?);
                 }
@@ -4181,6 +4200,7 @@ impl<'a> Parser<'a> {
             table,
             columns,
             constraints,
+            indexes,
             options,
             as_select,
             like_in_columns,
@@ -4724,6 +4744,19 @@ impl<'a> Parser<'a> {
             self.consume_index_using();
             Ok(TableConstraint::PrimaryKey { name, columns })
         } else if self.match_token(TokenType::Unique) {
+            // MySQL: UNIQUE [INDEX|KEY] [index_name] [USING ...] (cols). The
+            // optional INDEX/KEY keyword and index name carry no SQLite meaning
+            // beyond the constraint name, which a leading CONSTRAINT already set.
+            let _ = self.match_token(TokenType::Index) || self.match_token(TokenType::Key);
+            let name = if name.is_none()
+                && self.peek_type() != &TokenType::LParen
+                && !self.check_keyword("USING")
+            {
+                Some(self.expect_name()?)
+            } else {
+                name
+            };
+            self.consume_index_using();
             self.expect(TokenType::LParen)?;
             let columns = self.parse_index_column_list()?;
             self.expect(TokenType::RParen)?;
@@ -4771,6 +4804,30 @@ impl<'a> Parser<'a> {
                 message: "Expected constraint type".into(),
             })
         }
+    }
+
+    /// Parse an inline secondary index from a CREATE TABLE column list:
+    /// `[FULLTEXT|SPATIAL] {INDEX|KEY} [index_name] [USING ...] (cols) [USING ...]`.
+    /// The leading FULLTEXT/SPATIAL keyword (when present) is consumed by the
+    /// caller, which passes the matching `kind`. For a plain index the current
+    /// token is the INDEX or KEY keyword itself.
+    fn parse_table_index(&mut self, kind: TableIndexKind) -> Result<TableIndex> {
+        let _ = self.match_token(TokenType::Index) || self.match_token(TokenType::Key);
+        let name = if self.peek_type() != &TokenType::LParen && !self.check_keyword("USING") {
+            Some(self.expect_name()?)
+        } else {
+            None
+        };
+        self.consume_index_using();
+        self.expect(TokenType::LParen)?;
+        let columns = self.parse_index_column_list()?;
+        self.expect(TokenType::RParen)?;
+        self.consume_index_using();
+        Ok(TableIndex {
+            name,
+            kind,
+            columns,
+        })
     }
 
     fn parse_referential_action(&mut self) -> Result<ReferentialAction> {
@@ -4841,6 +4898,7 @@ impl<'a> Parser<'a> {
 
         let mut nullable = None;
         let mut default = None;
+        let mut on_update = None;
         let mut primary_key = false;
         let mut unique = false;
         let mut unique_before_not_null = false;
@@ -4880,6 +4938,16 @@ impl<'a> Parser<'a> {
                 let parsed_default = self.parse_expr();
                 self.parsing_column_default = was_parsing_column_default;
                 default = Some(parsed_default?);
+            } else if self.peek_type() == &TokenType::On
+                && self.tokens[(self.pos + 1).min(self.tokens.len() - 1)].token_type
+                    == TokenType::Update
+            {
+                // MySQL column auto-update: `ON UPDATE <expr>` (e.g.
+                // CURRENT_TIMESTAMP). Distinct from a foreign key's ON UPDATE,
+                // which lives inside the reference spec.
+                self.advance(); // ON
+                self.advance(); // UPDATE
+                on_update = Some(self.parse_expr()?);
             } else if self.match_token(TokenType::Primary) {
                 self.expect(TokenType::Key)?;
                 if auto_increment && !auto_increment_from_identity {
@@ -4990,6 +5058,7 @@ impl<'a> Parser<'a> {
             data_type,
             nullable,
             default,
+            on_update,
             primary_key,
             unique,
             unique_before_not_null,

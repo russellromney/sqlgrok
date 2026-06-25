@@ -837,6 +837,11 @@ pub(crate) fn map_data_type(dt: DataType, target: Dialect) -> DataType {
         && matches!(target, Dialect::Sqlite)
     {
         let upper = name.to_ascii_uppercase();
+        // MySQL ENUM/SET store strings; SQLite has neither type → TEXT affinity.
+        let base_word = upper.split('(').next().unwrap_or(upper.as_str()).trim();
+        if matches!(base_word, "ENUM" | "SET") {
+            return DataType::Text;
+        }
         if let Some((base, rest)) = upper.split_once('(') {
             // MEDIUMINT(n) is kept by SQLGlot (not folded to INTEGER(n)).
             if matches!(base, "INT" | "INTEGER" | "BIGINT" | "SMALLINT" | "TINYINT") {

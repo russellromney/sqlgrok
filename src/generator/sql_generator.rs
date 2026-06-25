@@ -2316,6 +2316,7 @@ impl Generator {
         if let Some(as_select) = &ct.as_select
             && ct.columns.is_empty()
             && ct.constraints.is_empty()
+            && ct.indexes.is_empty()
             && ct.like_in_columns.is_none()
         {
             self.write(" ");
@@ -2326,6 +2327,7 @@ impl Generator {
 
         if ct.columns.is_empty()
             && ct.constraints.is_empty()
+            && ct.indexes.is_empty()
             && ct.as_select.is_none()
             && ct.like_in_columns.is_none()
         {
@@ -2365,22 +2367,42 @@ impl Generator {
             })
             .collect();
 
+        // SQLite has no inline secondary index — hoist into CREATE INDEX after
+        // the table. Every other dialect renders the index inline.
+        let hoist_indexes = matches!(self.dialect, Some(Dialect::Sqlite));
+        let inline_indexes: &[TableIndex] = if hoist_indexes { &[] } else { &ct.indexes };
+
+        // Total body items, so comma placement stays correct across columns,
+        // constraints, inline indexes, and a trailing LIKE clause.
+        let body_items = ct.columns.len()
+            + visible_constraints.len()
+            + inline_indexes.len()
+            + usize::from(like_clause.is_some());
+
         if self.pretty {
             self.indent_up();
+            let mut written = 0usize;
             for (i, col) in ct.columns.iter().enumerate() {
                 self.newline();
                 self.gen_column_def_with_sqlite_promotion(col, promoted_primary_key, i);
-                if i < ct.columns.len() - 1
-                    || !visible_constraints.is_empty()
-                    || like_clause.is_some()
-                {
+                written += 1;
+                if written < body_items {
                     self.write(",");
                 }
             }
-            for (i, (_, constraint)) in visible_constraints.iter().enumerate() {
+            for (_, constraint) in &visible_constraints {
                 self.newline();
                 self.gen_table_constraint(constraint);
-                if i < visible_constraints.len() - 1 || like_clause.is_some() {
+                written += 1;
+                if written < body_items {
+                    self.write(",");
+                }
+            }
+            for index in inline_indexes {
+                self.newline();
+                self.gen_table_index_inline(index);
+                written += 1;
+                if written < body_items {
                     self.write(",");
                 }
             }
@@ -2391,20 +2413,30 @@ impl Generator {
             self.indent_down();
             self.newline();
         } else {
+            let mut written = 0usize;
             for (i, col) in ct.columns.iter().enumerate() {
-                if i > 0 {
+                if written > 0 {
                     self.write(", ");
                 }
                 self.gen_column_def_with_sqlite_promotion(col, promoted_primary_key, i);
+                written += 1;
             }
-            for (i, (_, constraint)) in visible_constraints.iter().enumerate() {
-                if i + ct.columns.len() > 0 {
+            for (_, constraint) in &visible_constraints {
+                if written > 0 {
                     self.write(", ");
                 }
                 self.gen_table_constraint(constraint);
+                written += 1;
+            }
+            for index in inline_indexes {
+                if written > 0 {
+                    self.write(", ");
+                }
+                self.gen_table_index_inline(index);
+                written += 1;
             }
             if let Some(s) = &like_clause {
-                if !ct.columns.is_empty() || !ct.constraints.is_empty() {
+                if written > 0 {
                     self.write(", ");
                 }
                 self.write(s);
@@ -2418,6 +2450,62 @@ impl Generator {
             self.write_keyword("AS ");
             self.gen_statement(as_select);
         }
+
+        // SQLite: emit the hoisted secondary indexes as standalone statements.
+        if hoist_indexes {
+            for index in &ct.indexes {
+                self.write(";");
+                if self.pretty {
+                    self.newline();
+                } else {
+                    self.write(" ");
+                }
+                self.gen_hoisted_create_index(ct, index);
+            }
+        }
+    }
+
+    /// Render an inline secondary index inside a CREATE TABLE column list
+    /// (non-SQLite dialects): `[FULLTEXT|SPATIAL ]INDEX [name] (cols)`.
+    fn gen_table_index_inline(&mut self, index: &TableIndex) {
+        match index.kind {
+            TableIndexKind::Index => {}
+            TableIndexKind::FullText => self.write_keyword("FULLTEXT "),
+            TableIndexKind::Spatial => self.write_keyword("SPATIAL "),
+        }
+        self.write_keyword("INDEX");
+        if let Some(name) = &index.name {
+            self.write(" ");
+            self.write(name);
+        }
+        self.write(" (");
+        self.write(&index.columns.join(", "));
+        self.write(")");
+    }
+
+    /// Render a hoisted `CREATE INDEX ... ON table (cols)` for the SQLite target.
+    /// FULLTEXT/SPATIAL have no SQLite equivalent and degrade to a plain index.
+    /// Anonymous indexes get a deterministic name derived from table + columns,
+    /// since SQLite (unlike MySQL) requires every index to be named.
+    fn gen_hoisted_create_index(&mut self, ct: &CreateTableStatement, index: &TableIndex) {
+        self.write_keyword("CREATE INDEX ");
+        // Mirror the table's IF NOT EXISTS so re-running the whole transpiled
+        // batch no-ops, matching MySQL's CREATE TABLE IF NOT EXISTS semantics.
+        if ct.if_not_exists {
+            self.write_keyword("IF NOT EXISTS ");
+        }
+        match &index.name {
+            Some(name) => self.write(name),
+            None => {
+                let synthesized = format!("{}_{}", ct.table.name, index.columns.join("_"));
+                self.write(&synthesized);
+            }
+        }
+        self.write_keyword(" ON ");
+        self.gen_table_ref(&ct.table);
+        self.write(" (");
+        self.write(&index.columns.join(", "));
+        self.write(")");
     }
 
     fn gen_column_def_with_sqlite_promotion(
@@ -2603,6 +2691,15 @@ impl Generator {
             self.write(" ");
             self.write_keyword("DEFAULT ");
             self.gen_expr(default);
+        }
+
+        // MySQL `ON UPDATE <expr>` auto-update has no SQLite equivalent.
+        if let Some(on_update) = &col.on_update
+            && !matches!(self.dialect, Some(Dialect::Sqlite))
+        {
+            self.write(" ");
+            self.write_keyword("ON UPDATE ");
+            self.gen_expr(on_update);
         }
 
         if let Some(collation) = &col.collation {
