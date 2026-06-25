@@ -2374,8 +2374,10 @@ impl Generator {
 
         // Total body items, so comma placement stays correct across columns,
         // constraints, inline indexes, and a trailing LIKE clause.
-        let body_items =
-            ct.columns.len() + visible_constraints.len() + inline_indexes.len() + usize::from(like_clause.is_some());
+        let body_items = ct.columns.len()
+            + visible_constraints.len()
+            + inline_indexes.len()
+            + usize::from(like_clause.is_some());
 
         if self.pretty {
             self.indent_up();
