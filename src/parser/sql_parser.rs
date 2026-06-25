@@ -4898,6 +4898,7 @@ impl<'a> Parser<'a> {
 
         let mut nullable = None;
         let mut default = None;
+        let mut on_update = None;
         let mut primary_key = false;
         let mut unique = false;
         let mut unique_before_not_null = false;
@@ -4937,6 +4938,16 @@ impl<'a> Parser<'a> {
                 let parsed_default = self.parse_expr();
                 self.parsing_column_default = was_parsing_column_default;
                 default = Some(parsed_default?);
+            } else if self.peek_type() == &TokenType::On
+                && self.tokens[(self.pos + 1).min(self.tokens.len() - 1)].token_type
+                    == TokenType::Update
+            {
+                // MySQL column auto-update: `ON UPDATE <expr>` (e.g.
+                // CURRENT_TIMESTAMP). Distinct from a foreign key's ON UPDATE,
+                // which lives inside the reference spec.
+                self.advance(); // ON
+                self.advance(); // UPDATE
+                on_update = Some(self.parse_expr()?);
             } else if self.match_token(TokenType::Primary) {
                 self.expect(TokenType::Key)?;
                 if auto_increment && !auto_increment_from_identity {
@@ -5047,6 +5058,7 @@ impl<'a> Parser<'a> {
             data_type,
             nullable,
             default,
+            on_update,
             primary_key,
             unique,
             unique_before_not_null,

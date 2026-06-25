@@ -2691,6 +2691,15 @@ impl Generator {
             self.gen_expr(default);
         }
 
+        // MySQL `ON UPDATE <expr>` auto-update has no SQLite equivalent.
+        if let Some(on_update) = &col.on_update
+            && !matches!(self.dialect, Some(Dialect::Sqlite))
+        {
+            self.write(" ");
+            self.write_keyword("ON UPDATE ");
+            self.gen_expr(on_update);
+        }
+
         if let Some(collation) = &col.collation {
             self.write(" ");
             self.write_keyword("COLLATE ");

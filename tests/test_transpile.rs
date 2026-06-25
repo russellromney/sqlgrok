@@ -2353,6 +2353,29 @@ fn test_mysql_inline_index_hoisted_to_sqlite() {
 }
 
 #[test]
+fn test_mysql_column_on_update_to_sqlite() {
+    // MySQL column `ON UPDATE <expr>` auto-update has no SQLite equivalent and is
+    // dropped; previously the whole statement fell back to a raw passthrough.
+    validate_with_dialect(
+        "CREATE TABLE t (id INT, ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)",
+        "CREATE TABLE t (id INTEGER, ts TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
+fn test_mysql_enum_set_to_sqlite() {
+    // MySQL ENUM/SET store strings; SQLite has neither → TEXT affinity.
+    validate_with_dialect(
+        "CREATE TABLE t (a ENUM('x', 'y'), b SET('p', 'q'))",
+        "CREATE TABLE t (a TEXT, b TEXT)",
+        Dialect::Mysql,
+        Dialect::Sqlite,
+    );
+}
+
+#[test]
 fn test_mysql_inline_index_roundtrip() {
     // Non-SQLite targets keep the index inline (no hoist).
     validate_with_dialect(

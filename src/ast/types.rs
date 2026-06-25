@@ -2428,6 +2428,10 @@ pub struct ColumnDef {
     pub data_type: DataType,
     pub nullable: Option<bool>,
     pub default: Option<Expr>,
+    /// MySQL column auto-update: `ON UPDATE <expr>` (typically
+    /// CURRENT_TIMESTAMP). SQLite has no equivalent and drops it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_update: Option<Expr>,
     pub primary_key: bool,
     pub unique: bool,
     /// True when UNIQUE appeared before NOT NULL in the source column
